@@ -139,11 +139,12 @@ void tickProjectiles() {
 std::vector<std::pair<int,int>> findPath(int sx, int sy, int tx, int ty, int maxSteps) {
     if (sx == tx && sy == ty) return {};
     if (!isPassable(tx, ty)) {
-        int bestD = 9999, bx = tx, by = ty;
+        int bestD = 9999, bx = -1, by = -1;
         for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
             int nx = tx+dx, ny = ty+dy;
             if (isPassable(nx,ny)) { int d=mdist(sx,sy,nx,ny); if(d<bestD){bestD=d;bx=nx;by=ny;} }
         }
+        if (bx < 0) return {};  // surrounded by impassable terrain, give up
         tx = bx; ty = by;
     }
     static int visited[MAP_H][MAP_W]; static int vgen = 0;
@@ -165,7 +166,7 @@ std::vector<std::pair<int,int>> findPath(int sx, int sy, int tx, int ty, int max
             for (int i = 0; i < 8; i++) {
                 int nx = cur.x+dx8[i], ny = cur.y+dy8[i];
                 if (!inBounds(nx,ny) || visited[ny][nx] == vgen) continue;
-                if (!isPassable(nx,ny) && !(nx==tx && ny==ty)) continue;
+                if (!isPassable(nx,ny)) continue;
                 Entity* occ = entityAt(nx,ny);
                 if (occ && isBuilding(occ->type) && !(nx==tx && ny==ty)) continue;
                 // Pass 0: treat idle non-building units as soft obstacles — route around them
@@ -442,6 +443,28 @@ void moveAlongPath(Entity& e) {
     e.moveCd = spd;
 }
 
+// Scan explored/visible tiles for a resource matching e.gatherType; re-issue gather if found.
+static bool findNearbyResource(Entity& e) {
+    bool wantGold = (e.gatherType == 0);
+    int bestD = 99999, bx = -1, by = -1;
+    int r = FOG_RADIUS * 4;
+    for (int dy = -r; dy <= r; dy++) for (int dx = -r; dx <= r; dx++) {
+        int nx = e.x+dx, ny = e.y+dy;
+        if (!inBounds(nx,ny)) continue;
+        if (e.owner < OWNER_NATURE && !g.map[ny][nx].explored[e.owner]) continue;
+        if (g.map[ny][nx].resources <= 0) continue;
+        Terrain t = g.map[ny][nx].terrain;
+        bool isGold = (t == T_GOLD);
+        bool isWood = (t==T_FOREST||t==T_PINE||t==T_PALM||t==T_DEAD_TREE);
+        if ((wantGold && isGold) || (!wantGold && isWood)) {
+            int d = mdist(e.x, e.y, nx, ny);
+            if (d < bestD) { bestD = d; bx = nx; by = ny; }
+        }
+    }
+    if (bx >= 0) { orderGather(e, bx, by); return true; }
+    return false;
+}
+
 // ============================================================
 // ENTITY TICK
 // ============================================================
@@ -553,7 +576,10 @@ void tickEntity(Entity& e) {
                         } else e.state = S_IDLE;
                     }
                 }
-            } else e.state = S_IDLE;
+            } else {
+                // Tile depleted (beaten to it) — seek another nearby node
+                if (!findNearbyResource(e)) e.state = S_IDLE;
+            }
         } else {
             moveAlongPath(e);
             if (e.path.empty() && dist(e.x,e.y,e.targetX,e.targetY) > 1) {
@@ -581,7 +607,10 @@ void tickEntity(Entity& e) {
             if ((rt.terrain==T_GOLD||isW) && rt.resources > 0) {
                 e.state = S_GATHERING; e.targetX = e.rallyX; e.targetY = e.rallyY;
                 e.path = findPath(e.x, e.y, e.rallyX, e.rallyY); e.pathIdx = 0;
-            } else e.state = S_IDLE;
+            } else {
+                // Rally point depleted — seek another nearby node of the same type
+                if (!findNearbyResource(e)) e.state = S_IDLE;
+            }
         } else {
             moveAlongPath(e);
             if (e.path.empty() && dist(e.x,e.y,dep->x,dep->y) > STATS[dep->type].sizeW+1) {
@@ -814,31 +843,39 @@ void tickAI() {
 
     aiGather(o);
 
-    if (peas < 6) {
+    // Keep training peasants up to a higher cap
+    if (peas < 8) {
         Entity* th = aiBldg(o, E_TOWNHALL);
         if (th && th->producing==E_NONE && p.gold>=50) orderTrain(*th, E_PEASANT);
     }
-    if (p.supply+2 >= p.supplyMax && hous<6 && p.wood>=50) {
+    // Build houses proactively for supply room
+    if (p.supply+3 >= p.supplyMax && hous<8 && p.wood>=50) {
         Entity* b = aiIdle(o, E_PEASANT); if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_HOUSE,bx,by); if(bx>=0) orderBuild(*b,E_HOUSE,bx,by); }
     }
-    if (bar==0 && p.wood>=150 && peas>=3) {
+    // Barracks as soon as we have 2 peasants
+    if (bar==0 && p.wood>=150 && peas>=2) {
         Entity* b = aiIdle(o, E_PEASANT); if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_BARRACKS,bx,by); if(bx>=0) orderBuild(*b,E_BARRACKS,bx,by); }
     }
+    // Train military aggressively — more militia, more archers
     if (bar > 0) {
         Entity* br = aiBldg(o, E_BARRACKS);
         if (br && br->producing==E_NONE) {
-            if (mil<4 && p.gold>=60) orderTrain(*br, E_MILITIA);
-            else if (arch<3 && p.gold>=70) orderTrain(*br, E_ARCHER);
+            if (mil<8 && p.gold>=60) orderTrain(*br, E_MILITIA);
+            else if (arch<4 && p.gold>=70) orderTrain(*br, E_ARCHER);
         }
     }
-    if (stb==0 && mil>=3 && p.wood>=200) {
+    // Blacksmith before stable (combat bonus matters)
+    if (aiCount(o,E_BLACKSMITH)==0 && bar>0 && p.wood>=120) {
+        Entity* b = aiIdle(o, E_PEASANT); if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_BLACKSMITH,bx,by); if(bx>=0) orderBuild(*b,E_BLACKSMITH,bx,by); }
+    }
+    if (stb==0 && mil>=4 && p.wood>=200) {
         Entity* b = aiIdle(o, E_PEASANT); if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_STABLE,bx,by); if(bx>=0) orderBuild(*b,E_STABLE,bx,by); }
     }
     if (stb > 0) {
         Entity* st = aiBldg(o, E_STABLE);
-        if (st && st->producing==E_NONE && kni<3 && p.gold>=120) orderTrain(*st, E_KNIGHT);
+        if (st && st->producing==E_NONE && kni<4 && p.gold>=120) orderTrain(*st, E_KNIGHT);
     }
-    if (aiCountAll(o,E_TOWER)<2 && p.wood>=100 && p.gold>=50) {
+    if (aiCountAll(o,E_TOWER)<2 && mil>=2 && p.wood>=100 && p.gold>=50) {
         Entity* b = aiIdle(o, E_PEASANT); if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_TOWER,bx,by); if(bx>=0) orderBuild(*b,E_TOWER,bx,by); }
     }
     if (aiCountAll(o,E_MILL)==0 && p.wood>=100 && bar>0) {
@@ -847,12 +884,10 @@ void tickAI() {
     if (aiCountAll(o,E_MILL)>0 && aiCountAll(o,E_FARM)<3 && getSeason()!=WINTER) {
         Entity* b = aiIdle(o, E_PEASANT); if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_FARM,bx,by); if(bx>=0) orderBuild(*b,E_FARM,bx,by); }
     }
-    if (aiCount(o,E_BLACKSMITH)==0 && bar>0 && p.wood>=120) {
-        Entity* b = aiIdle(o, E_PEASANT); if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_BLACKSMITH,bx,by); if(bx>=0) orderBuild(*b,E_BLACKSMITH,bx,by); }
-    }
 
+    // Attack with just 3 units — don't stockpile, keep pressure on
     int army = mil + arch + kni;
-    if (army >= 6) {
+    if (army >= 3) {
         Entity* pt = nullptr;
         for (auto& e : g.entities) if (e.alive && e.owner==0) {
             if (e.type==E_TOWNHALL||e.type==E_CASTLE) { pt=&e; break; }
@@ -863,12 +898,13 @@ void tickAI() {
                 orderAttack(e, pt->id);
     }
 
+    // Defend: respond to any enemy unit within 20 tiles of base
     Entity* th = aiBldg(o, E_TOWNHALL);
     if (!th) th = aiBldg(o, E_CASTLE);
     if (th) {
         for (auto& en : g.entities) {
-            if (!en.alive || en.owner==o || en.owner==OWNER_NATURE) continue; // ignore animals
-            if (dist(en.x,en.y,th->x,th->y) < 15) {
+            if (!en.alive || en.owner==o || en.owner==OWNER_NATURE) continue;
+            if (dist(en.x,en.y,th->x,th->y) < 20) {
                 for (auto& d : g.entities)
                     if (d.alive && d.owner==o && isUnit(d.type) && d.type!=E_PEASANT && d.state==S_IDLE)
                         orderAttack(d, en.id);
