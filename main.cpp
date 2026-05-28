@@ -10,6 +10,7 @@ void initGame() {
     g.dragging = false; g.dragStartX = 0; g.dragStartY = 0;
     for (int i = 0; i < 9; i++) g.controlGroups[i].clear();
     g.winner = -1; g.aiTimer = 0; g.farmTimer = 0; g.statusTimer = 0;
+    g.buildPending = E_NONE; g.wallDragX = 0; g.wallDragY = 0;
     g.dayPhase = 0.25f; g.seasonPhase = 0.0f;
     g.players[0] = {300, 200, 100, 0, 0, true};
     g.players[1] = {300, 200, 100, 0, 0, true};
@@ -89,7 +90,7 @@ int main() {
                 g.seasonPhase += 1.0f / SEASON_LENGTH;
                 if (g.seasonPhase >= 4.0f) g.seasonPhase -= 4.0f;
                 for (int i = 0; i < (int)g.entities.size(); i++) tickEntity(g.entities[i]);
-                tickTowers(); tickProjectiles(); tickFarms(); tickMarkets();
+                tickTowers(); tickGates(); tickProjectiles(); tickFarms(); tickMarkets();
                 tickChurches(); tickAnimals(); tickAI(); updateFog();
                 if (g.tick % 100 == 0) {
                     g.entities.erase(std::remove_if(g.entities.begin(), g.entities.end(),

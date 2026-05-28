@@ -340,11 +340,28 @@ void renderMap() {
 
     // Precompute drag-selection box (map coords); -1 means no active box
     int boxX0 = -1, boxY0 = -1, boxX1 = -1, boxY1 = -1;
-    if (g.dragging) {
+    if (g.dragging && g.mode != M_WALL_DRAG) {
         boxX0 = std::min(g.dragStartX, g.cursorX);
         boxY0 = std::min(g.dragStartY, g.cursorY);
         boxX1 = std::max(g.dragStartX, g.cursorX);
         boxY1 = std::max(g.dragStartY, g.cursorY);
+    }
+
+    // Precompute wall drag preview line (Bresenham)
+    static bool wallPrev[MAP_H][MAP_W];
+    memset(wallPrev, 0, sizeof(wallPrev));
+    if (g.mode == M_WALL_DRAG && g.dragging) {
+        int x0=g.wallDragX, y0=g.wallDragY, x1=g.cursorX, y1=g.cursorY;
+        int dx=std::abs(x1-x0), sx=x0<x1?1:-1;
+        int dy=-std::abs(y1-y0), sy2=y0<y1?1:-1;
+        int err=dx+dy;
+        while (true) {
+            if (inBounds(x0,y0)) wallPrev[y0][x0] = true;
+            if (x0==x1 && y0==y1) break;
+            int e2=2*err;
+            if (e2>=dy){err+=dy; x0+=sx;}
+            if (e2<=dx){err+=dx; y0+=sy2;}
+        }
     }
 
     for (int sy = 0; sy < g.viewH; sy++) { int my = g.viewY + sy;
@@ -370,6 +387,9 @@ void renderMap() {
                 continue;
             }
 
+            // Wall drag preview overrides terrain
+            if (wallPrev[my][mx]) { ch = '#'; cp = CP_PLAYER; }
+
             Entity* ent = entityAt(mx, my);
             if (ent && ent->alive) {
                 ch = STATS[ent->type].glyph;
@@ -378,6 +398,9 @@ void renderMap() {
                 else if (ent->type == E_WOLF) cp = CP_WOLF;
                 else if (ent->type == E_SHEEP)cp = CP_SHEEP;
                 else                          cp = CP_DEER;
+                // Gate: glyph reflects open/closed state
+                if (ent->type == E_GATE && !ent->underConstruction)
+                    ch = (ent->carrying > 0) ? '-' : '|';
                 if (ent->underConstruction && g.tick%10 < 5) ch = '#';
             }
             for (auto& p : g.projectiles) {
@@ -592,6 +615,11 @@ void renderUI() {
                     if (sel->type==E_LUMBER_CAMP) mvprintw(iy++, panelX+1, "Wood drop-off");
                     if (sel->type==E_MINING_CAMP) mvprintw(iy++, panelX+1, "Gold drop-off");
                     if (sel->type==E_MILL)        mvprintw(iy++, panelX+1, "Enables harvesting");
+                    if (sel->type==E_GATE) {
+                        mvprintw(iy++, panelX+1, sel->carrying>0 ? "State: Open" : "State: Closed");
+                        mvprintw(iy++, panelX+1, sel->gatherType==1 ? "Mode: Locked" : "Mode: Auto");
+                        mvprintw(iy++, panelX+1, "[O] Toggle/Lock");
+                    }
                     if (sel->type==E_CASTLE)     mvprintw(iy++, panelX+1, "+15 Supply, 300 HP");
                 }
                 attroff(COLOR_PAIR(CP_UI_ACCENT));
@@ -622,7 +650,7 @@ void renderUI() {
     int botY2 = maxY-2, botY1 = maxY-1;
     attron(COLOR_PAIR(CP_UI_BAR)); mvhline(botY2, 0, ' ', maxX);
     if (g.mode == M_BUILD_SELECT)
-        mvprintw(botY2, 1, " BUILD: [H]ouse [B]arracks [S]table [T]ower [F]arm [W]all [A]rmory [C]hurch [M]arket [K]Castle [L]umber [N]mine [I]mill [Esc] ");
+        mvprintw(botY2, 1, " BUILD: [H]ouse [B]arracks [S]table [T]ower [F]arm [W]all [G]ate [A]rmory [C]hurch [M]arket [K]Castle [L]umber [N]mine [I]mill [Esc] ");
     else if (g.mode == M_TRAIN_SELECT) {
         Entity* s2 = findEntity(g.selectedId);
         if (s2) {
@@ -630,6 +658,11 @@ void renderUI() {
             else if (s2->type==E_BARRACKS) mvprintw(botY2, 1, " TRAIN: [M]ilitia(60g) [A]rcher(70g) [C]atapult(180g+50w) [Esc] ");
             else if (s2->type==E_STABLE)   mvprintw(botY2, 1, " TRAIN: [K]night(120g) [Esc] ");
         }
+    } else if (g.mode == M_WALL_DRAG) {
+        if (g.dragging)
+            mvprintw(botY2, 1, " WALL: Drag to cursor position — release to place  [Esc] Cancel ");
+        else
+            mvprintw(botY2, 1, " WALL: Click and drag to draw wall line  [Esc] Cancel ");
     } else if (g.mode == M_PAUSED) {
         attron(A_BOLD); mvprintw(botY2, 1, " PAUSED - Press [P] to resume "); attroff(A_BOLD);
     } else if (g.mode == M_GAME_OVER) {

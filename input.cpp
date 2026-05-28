@@ -19,7 +19,16 @@ void handleInput(int ch) {
         case 's': case 'S': tb = E_STABLE;     break;
         case 't': case 'T': tb = E_TOWER;      break;
         case 'f': case 'F': tb = E_FARM;       break;
-        case 'w': case 'W': tb = E_WALL;       break;
+        case 'w': case 'W': {
+            // Wall uses click-drag mode instead of point placement
+            Entity* sel2 = findEntity(g.selectedId);
+            if (sel2 && sel2->owner==0 && sel2->type==E_PEASANT) {
+                g.buildPending = E_WALL;
+                g.mode = M_WALL_DRAG;
+                setStatus("Click and drag to draw wall line...");
+            }
+            return;
+        }
         case 'a': case 'A': tb = E_BLACKSMITH; break;
         case 'c': case 'C': tb = E_CHURCH;     break;
         case 'm': case 'M': tb = E_MARKET;     break;
@@ -27,6 +36,7 @@ void handleInput(int ch) {
         case 'l': case 'L': tb = E_LUMBER_CAMP; break;
         case 'n': case 'N': tb = E_MINING_CAMP; break;
         case 'i': case 'I': tb = E_MILL;        break;
+        case 'g': case 'G': tb = E_GATE;        break;
         case 27: g.mode = M_NORMAL; return;
         default: return;
         }
@@ -49,6 +59,55 @@ void handleInput(int ch) {
         if (tt != E_NONE) { orderTrain(*sel, tt); g.mode = M_NORMAL; }
         if (ch == 27) g.mode = M_NORMAL;
         return;
+    }
+
+    // Wall drag mode
+    if (g.mode == M_WALL_DRAG) {
+        if (ch == 27) { g.mode = M_NORMAL; g.dragging = false; return; }
+        // Cursor movement still works for preview
+        if (ch == KEY_UP)    { g.cursorY--; goto clamp; }
+        if (ch == KEY_DOWN)  { g.cursorY++; goto clamp; }
+        if (ch == KEY_LEFT)  { g.cursorX--; goto clamp; }
+        if (ch == KEY_RIGHT) { g.cursorX++; goto clamp; }
+        if (ch == KEY_MOUSE) {
+            MEVENT me;
+            if (getmouse(&me) != OK) goto clamp;
+            int mapSY = me.y - 2;
+            int mapX  = g.viewX + me.x;
+            int mapY  = g.viewY + mapSY;
+            bool inMap = (mapSY>=0 && g.viewW>0 && me.x<g.viewW && inBounds(mapX,mapY));
+            if (!inMap) goto clamp;
+            g.cursorX = mapX; g.cursorY = mapY;
+            if (me.bstate & BUTTON1_PRESSED) {
+                g.dragging = true;
+                g.wallDragX = mapX; g.wallDragY = mapY;
+            } else if (me.bstate & (BUTTON1_RELEASED | BUTTON1_CLICKED)) {
+                if (g.dragging || (me.bstate & BUTTON1_CLICKED)) {
+                    Entity* sel = findEntity(g.selectedId);
+                    if (sel && sel->alive && sel->owner==0 && sel->type==E_PEASANT) {
+                        int x0=g.wallDragX, y0=g.wallDragY, x1=mapX, y1=mapY;
+                        int dx=std::abs(x1-x0), sx2=x0<x1?1:-1;
+                        int dy=-std::abs(y1-y0), sy2=y0<y1?1:-1;
+                        int err=dx+dy; int firstId=-1;
+                        while (true) {
+                            if (canPlace(E_WALL,x0,y0,0) && g.players[0].wood>=20) {
+                                g.players[0].wood -= 20;
+                                int wid = spawnEntity(E_WALL, 0, x0, y0, false);
+                                if (firstId < 0) firstId = wid;
+                            }
+                            if (x0==x1 && y0==y1) break;
+                            int e2=2*err;
+                            if (e2>=dy){err+=dy; x0+=sx2;}
+                            if (e2<=dx){err+=dx; y0+=sy2;}
+                        }
+                        if (firstId >= 0) { orderHelp(*sel, firstId); setStatus("Building walls..."); }
+                    }
+                }
+                g.dragging = false;
+                g.mode = M_NORMAL;
+            }
+        }
+        goto clamp;
     }
 
     switch (ch) {
@@ -134,6 +193,21 @@ void handleInput(int ch) {
                 setStatus("Select unit to train...");
             } else setStatus("This building can't train.");
         } else setStatus("Select a production building!");
+        break;
+    }
+
+    // Gate toggle: cycle auto / locked-open / locked-closed
+    case 'O': {
+        Entity* sel = findEntity(g.selectedId);
+        if (sel && sel->alive && sel->owner==0 && sel->type==E_GATE && !sel->underConstruction) {
+            if (sel->gatherType == 0) {
+                sel->gatherType = 1; // enter manual lock in current state
+                setStatus(sel->carrying > 0 ? "Gate locked open" : "Gate locked closed");
+            } else {
+                sel->carrying = (sel->carrying > 0) ? 0 : 1; // toggle state
+                setStatus(sel->carrying > 0 ? "Gate locked open" : "Gate locked closed");
+            }
+        }
         break;
     }
 
@@ -332,6 +406,7 @@ void handleInput(int ch) {
     }
     }
 
+    clamp:
     g.cursorX = std::max(0, std::min(g.cursorX, MAP_W-1));
     g.cursorY = std::max(0, std::min(g.cursorY, MAP_H-1));
 }

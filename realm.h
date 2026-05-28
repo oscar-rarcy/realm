@@ -44,7 +44,7 @@ enum EntityType {
     E_NONE = 0,
     E_PEASANT, E_MILITIA, E_ARCHER, E_KNIGHT, E_CATAPULT,
     E_TOWNHALL, E_HOUSE, E_BARRACKS, E_STABLE, E_TOWER,
-    E_FARM, E_BLACKSMITH, E_CHURCH, E_MARKET, E_WALL, E_CASTLE,
+    E_FARM, E_BLACKSMITH, E_CHURCH, E_MARKET, E_WALL, E_GATE, E_CASTLE,
     E_LUMBER_CAMP, E_MINING_CAMP, E_MILL,
     E_DEER, E_WOLF, E_SHEEP
 };
@@ -53,7 +53,7 @@ enum EntityState {
     S_IDLE, S_MOVING, S_ATTACKING, S_GATHERING,
     S_BUILDING, S_TRAINING, S_RETURNING, S_DEAD
 };
-enum GameMode  { M_NORMAL, M_BUILD_SELECT, M_TRAIN_SELECT, M_PAUSED, M_GAME_OVER };
+enum GameMode  { M_NORMAL, M_BUILD_SELECT, M_TRAIN_SELECT, M_WALL_DRAG, M_PAUSED, M_GAME_OVER };
 enum Biome     { B_TEMPERATE, B_DESERT, B_SNOW, B_SWAMP, B_FOREST };
 enum Season    { SPRING = 0, SUMMER, AUTUMN, WINTER };
 
@@ -140,6 +140,7 @@ struct Game {
     bool groupAssignPending;
     bool dragging; int dragStartX, dragStartY;
     std::string statusMsg; int statusTimer;
+    EntityType buildPending; int wallDragX, wallDragY;
     int winner, aiTimer, farmTimer;
     float dayPhase, seasonPhase;
 };
@@ -196,6 +197,7 @@ void moveAlongPath(Entity& e);
 // entity.cpp — tick / game logic
 void tickEntity(Entity& e);
 void tickTowers();
+void tickGates();
 void tickFarms();
 void tickMarkets();
 void tickChurches();

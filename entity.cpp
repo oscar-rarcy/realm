@@ -153,46 +153,40 @@ std::vector<std::pair<int,int>> findPath(int sx, int sy, int tx, int ty, int max
     static const int dx8[] = {0,1,1,1,0,-1,-1,-1};
     static const int dy8[] = {-1,-1,0,1,1,1,0,-1};
 
-    // Two passes: first avoids idle units (routes around clusters), second ignores them (fallback)
-    for (int pass = 0; pass < 2; pass++) {
-        bool avoidIdle = (pass == 0);
-        vgen++; int hc = 0; bool found = false; int fi = -1;
-        std::queue<Node> q;
-        q.push({sx, sy, -1, -1}); visited[sy][sx] = vgen;
-        while (!q.empty() && hc < maxSteps*4) {
-            Node cur = q.front(); q.pop();
-            int idx = hc; hist[hc++] = cur;
-            if (cur.x == tx && cur.y == ty) { found = true; fi = idx; break; }
-            for (int i = 0; i < 8; i++) {
-                int nx = cur.x+dx8[i], ny = cur.y+dy8[i];
-                if (!inBounds(nx,ny) || visited[ny][nx] == vgen) continue;
-                if (!isPassable(nx,ny)) continue;
-                Entity* occ = entityAt(nx,ny);
-                if (occ && isBuilding(occ->type) && !(nx==tx && ny==ty)) continue;
-                // Pass 0: treat idle non-building units as soft obstacles — route around them
-                if (avoidIdle && occ && !isBuilding(occ->type) && occ->state==S_IDLE
-                    && !(nx==tx && ny==ty)) continue;
-                visited[ny][nx] = vgen;
-                q.push({nx, ny, cur.x, cur.y});
-            }
+    // Units are passable — only terrain and buildings block the BFS
+    vgen++; int hc = 0; bool found = false; int fi = -1;
+    std::queue<Node> q;
+    q.push({sx, sy, -1, -1}); visited[sy][sx] = vgen;
+    while (!q.empty() && hc < maxSteps*4) {
+        Node cur = q.front(); q.pop();
+        int idx = hc; hist[hc++] = cur;
+        if (cur.x == tx && cur.y == ty) { found = true; fi = idx; break; }
+        for (int i = 0; i < 8; i++) {
+            int nx = cur.x+dx8[i], ny = cur.y+dy8[i];
+            if (!inBounds(nx,ny) || visited[ny][nx] == vgen) continue;
+            if (!isPassable(nx,ny)) continue;
+            Entity* occ = entityAt(nx,ny);
+            if (occ && isBuilding(occ->type) && !(nx==tx && ny==ty)
+                && !(occ->type == E_GATE && occ->carrying > 0)) continue; // open gates are passable
+            visited[ny][nx] = vgen;
+            q.push({nx, ny, cur.x, cur.y});
         }
-        if (!found) continue; // retry without the idle-avoidance constraint
-        std::vector<std::pair<int,int>> path;
-        int cx = hist[fi].x, cy = hist[fi].y;
-        path.push_back({cx, cy});
-        int px = hist[fi].px, py = hist[fi].py;
-        while (px != -1) {
-            path.push_back({px, py});
-            for (int i = fi-1; i >= 0; i--) {
-                if (hist[i].x == px && hist[i].y == py) { px=hist[i].px; py=hist[i].py; fi=i; break; }
-            }
-            if ((int)path.size() > 600) break;
-        }
-        std::reverse(path.begin(), path.end());
-        if (!path.empty()) path.erase(path.begin());
-        return path;
     }
-    return {};
+    if (!found) return {};
+    std::vector<std::pair<int,int>> path;
+    int cx = hist[fi].x, cy = hist[fi].y;
+    path.push_back({cx, cy});
+    int px = hist[fi].px, py = hist[fi].py;
+    while (px != -1) {
+        path.push_back({px, py});
+        for (int i = fi-1; i >= 0; i--) {
+            if (hist[i].x == px && hist[i].y == py) { px=hist[i].px; py=hist[i].py; fi=i; break; }
+        }
+        if ((int)path.size() > 600) break;
+    }
+    std::reverse(path.begin(), path.end());
+    if (!path.empty()) path.erase(path.begin());
+    return path;
 }
 
 // ============================================================
@@ -254,16 +248,14 @@ Entity* findNearestEnemy(Entity& e, int range) {
 void orderMove(Entity& e, int tx, int ty) {
     e.state = S_MOVING; e.targetX = tx; e.targetY = ty; e.targetId = -1;
     e.path = findPath(e.x, e.y, tx, ty); e.pathIdx = 0;
-    // If path is empty but we're not already there, scan expanding rings for a reachable nearby tile
+    // If path is empty but we're not there, try nearby passable tiles (handles building-blocked destinations)
     if (e.path.empty() && (e.x != tx || e.y != ty)) {
         for (int r = 1; r <= 3 && e.path.empty(); r++)
             for (int dy = -r; dy <= r && e.path.empty(); dy++)
                 for (int dx = -r; dx <= r && e.path.empty(); dx++) {
                     if (std::abs(dx)!=r && std::abs(dy)!=r) continue;
                     int nx=tx+dx, ny=ty+dy;
-                    if (!inBounds(nx,ny)||!isPassable(nx,ny)) continue;
-                    Entity* occ = entityAt(nx,ny);
-                    if (occ && occ->state==S_IDLE) continue;
+                    if (!inBounds(nx,ny) || !isPassable(nx,ny)) continue;
                     e.path = findPath(e.x, e.y, nx, ny);
                 }
     }
@@ -419,21 +411,19 @@ void moveAlongPath(Entity& e) {
     }
     if (e.moveCd > 0) { e.moveCd--; return; }
     auto [nx, ny] = e.path[e.pathIdx];
+    // Units share tiles freely; buildings block, except open gates
     Entity* blk = entityAt(nx, ny);
-    if (blk && blk->id != e.id) {
-        e.stuckTicks++;
-        e.moveCd = 1 + (e.id % 2); // short staggered wait before retry
-        // Force repath after a few blocked attempts; stagger per entity to prevent thrash
-        if (e.stuckTicks >= 3 + (e.id % 3) && !e.path.empty()
-            && (e.state==S_MOVING||e.state==S_GATHERING||e.state==S_BUILDING)) {
-            auto dest = e.path.back();
-            e.path = findPath(e.x, e.y, dest.first, dest.second);
-            e.pathIdx = 0;
-            e.stuckTicks = 0;
+    if (blk && blk->id != e.id && isBuilding(blk->type)) {
+        bool isOpenGate = (blk->type == E_GATE && blk->carrying > 0);
+        if (!isOpenGate) {
+            if (!e.path.empty()) {
+                auto dest = e.path.back();
+                e.path = findPath(e.x, e.y, dest.first, dest.second);
+                e.pathIdx = 0;
+            }
+            return;
         }
-        return;
     }
-    e.stuckTicks = 0;
     e.x = nx; e.y = ny; e.pathIdx++;
     Terrain ter = g.map[ny][nx].terrain;
     int spd = STATS[e.type].speed;
@@ -671,6 +661,19 @@ void tickTowers() {
                 if (en->hp <= 0) { en->alive=false; en->state=S_DEAD; updateSupply(en->owner); }
             } else e.atkCd--;
         }
+    }
+}
+
+void tickGates() {
+    for (auto& gate : g.entities) {
+        if (!gate.alive || gate.type != E_GATE || gate.underConstruction) continue;
+        if (gate.gatherType == 1) continue; // manually locked — don't auto-toggle
+        bool allyNear = false;
+        for (auto& u : g.entities) {
+            if (!u.alive || u.owner != gate.owner || isBuilding(u.type)) continue;
+            if (dist(u.x, u.y, gate.x, gate.y) <= 2) { allyNear = true; break; }
+        }
+        gate.carrying = allyNear ? 1 : 0;
     }
 }
 
