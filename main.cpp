@@ -11,9 +11,9 @@ void initGame() {
     for (int i = 0; i < 9; i++) g.controlGroups[i].clear();
     g.winner = -1; g.aiTimer = 0; g.farmTimer = 0; g.statusTimer = 0;
     g.dayPhase = 0.25f; g.seasonPhase = 0.0f;
-    g.players[0] = {300, 200, 0, 0, true};
-    g.players[1] = {300, 200, 0, 0, true};
-    g.players[OWNER_NATURE] = {0, 0, 0, 0, true};
+    g.players[0] = {300, 200, 100, 0, 0, true};
+    g.players[1] = {300, 200, 100, 0, 0, true};
+    g.players[OWNER_NATURE] = {0, 0, 0, 0, 0, true};
 
     generateMap();
 

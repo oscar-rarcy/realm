@@ -23,7 +23,9 @@ void handleInput(int ch) {
         case 'a': case 'A': tb = E_BLACKSMITH; break;
         case 'c': case 'C': tb = E_CHURCH;     break;
         case 'm': case 'M': tb = E_MARKET;     break;
-        case 'k': case 'K': tb = E_CASTLE;     break;
+        case 'k': case 'K': tb = E_CASTLE;      break;
+        case 'l': case 'L': tb = E_LUMBER_CAMP; break;
+        case 'n': case 'N': tb = E_MINING_CAMP; break;
         case 27: g.mode = M_NORMAL; return;
         default: return;
         }
@@ -87,7 +89,10 @@ void handleInput(int ch) {
             Entity* sel = findEntity(g.selectedId);
             if (!sel || sel->owner != 0 || !isUnit(sel->type)) break;
             Entity* tgt = entityAt(g.cursorX, g.cursorY);
-            if (tgt && tgt->alive && tgt->owner != 0 && g.map[g.cursorY][g.cursorX].visible[0]) {
+            if (tgt && tgt->alive && tgt->owner == 0 && tgt->underConstruction && sel->type == E_PEASANT) {
+                orderHelp(*sel, tgt->id);
+                setStatus("Helping build...");
+            } else if (tgt && tgt->alive && tgt->owner != 0 && g.map[g.cursorY][g.cursorX].visible[0]) {
                 orderAttack(*sel, tgt->id);
                 setStatus("Attacking!");
             } else if (sel->type == E_PEASANT) {
@@ -292,7 +297,9 @@ void handleInput(int ch) {
                 Entity* sel = findEntity(g.selectedId);
                 if (!sel || sel->owner != 0 || !isUnit(sel->type)) break;
                 Entity* tgt = entityAt(mapX, mapY);
-                if (tgt && tgt->alive && tgt->owner != 0 && g.map[mapY][mapX].visible[0]) {
+                if (tgt && tgt->alive && tgt->owner == 0 && tgt->underConstruction && sel->type == E_PEASANT) {
+                    orderHelp(*sel, tgt->id); setStatus("Helping build...");
+                } else if (tgt && tgt->alive && tgt->owner != 0 && g.map[mapY][mapX].visible[0]) {
                     orderAttack(*sel, tgt->id); setStatus("Attacking!");
                 } else if (sel->type == E_PEASANT) {
                     Terrain ter = g.map[mapY][mapX].terrain;

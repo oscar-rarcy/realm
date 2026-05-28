@@ -415,7 +415,7 @@ void renderUI() {
     // Top bar
     attron(COLOR_PAIR(CP_UI_BAR)|A_BOLD); mvhline(0, 0, ' ', maxX);
     mvprintw(0, 1, " REALM "); attroff(A_BOLD);
-    mvprintw(0, 9, "Gold:%-5d Wood:%-5d Pop:%d/%d", p.gold, p.wood, p.supply, p.supplyMax);
+    mvprintw(0, 9, "Gold:%-5d Wood:%-5d Food:%-5d Pop:%d/%d", p.gold, p.wood, p.food, p.supply, p.supplyMax);
 
     int iconX = maxX - 22;
     if (getBrightness() > 0.5f) { attron(COLOR_PAIR(CP_SUN)|A_BOLD); mvprintw(0,iconX,"*"); attroff(COLOR_PAIR(CP_SUN)|A_BOLD); }
@@ -553,7 +553,9 @@ void renderUI() {
                     if (sel->type==E_BLACKSMITH) mvprintw(iy++, panelX+1, "Speeds training");
                     if (sel->type==E_CHURCH)     mvprintw(iy++, panelX+1, "Heals nearby +Vision");
                     if (sel->type==E_MARKET)     mvprintw(iy++, panelX+1, "Passive gold income");
-                    if (sel->type==E_FARM)       mvprintw(iy++, panelX+1, "Generates gold");
+                    if (sel->type==E_FARM)        mvprintw(iy++, panelX+1, "Generates food");
+                    if (sel->type==E_LUMBER_CAMP) mvprintw(iy++, panelX+1, "Wood drop-off");
+                    if (sel->type==E_MINING_CAMP) mvprintw(iy++, panelX+1, "Gold drop-off");
                     if (sel->type==E_CASTLE)     mvprintw(iy++, panelX+1, "+15 Supply, 300 HP");
                 }
                 attroff(COLOR_PAIR(CP_UI_ACCENT));
@@ -584,7 +586,7 @@ void renderUI() {
     int botY2 = maxY-2, botY1 = maxY-1;
     attron(COLOR_PAIR(CP_UI_BAR)); mvhline(botY2, 0, ' ', maxX);
     if (g.mode == M_BUILD_SELECT)
-        mvprintw(botY2, 1, " BUILD: [H]ouse [B]arracks [S]table [T]ower [F]arm [W]all [A]rmory [C]hurch [M]arket [K]Castle [Esc] ");
+        mvprintw(botY2, 1, " BUILD: [H]ouse [B]arracks [S]table [T]ower [F]arm [W]all [A]rmory [C]hurch [M]arket [K]Castle [L]umber [N]mine [Esc] ");
     else if (g.mode == M_TRAIN_SELECT) {
         Entity* s2 = findEntity(g.selectedId);
         if (s2) {

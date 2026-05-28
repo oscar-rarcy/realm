@@ -47,7 +47,10 @@ Entity* findDepot(Entity& e) {
     Entity* best = nullptr; int bestD = 99999;
     for (auto& o : g.entities) {
         if (!o.alive || o.owner != e.owner || o.underConstruction) continue;
-        if (o.type == E_TOWNHALL || o.type == E_CASTLE) {
+        bool isBase = (o.type == E_TOWNHALL || o.type == E_CASTLE);
+        bool isWood = (o.type == E_LUMBER_CAMP && e.gatherType == 1);
+        bool isGold = (o.type == E_MINING_CAMP && e.gatherType == 0);
+        if (isBase || isWood || isGold) {
             int d = mdist(e.x, e.y, o.x, o.y);
             if (d < bestD) { bestD = d; best = &o; }
         }
@@ -277,6 +280,12 @@ void orderTrain(Entity& bld, EntityType ut) {
     if (p.supply + STATS[ut].supplyUsed > p.supplyMax) {
         if (bld.owner==0) setStatus("Need more houses!"); return;
     }
+    int foodCost = 0;
+    if (ut==E_MILITIA||ut==E_ARCHER) foodCost = 20;
+    else if (ut==E_KNIGHT) foodCost = 40;
+    else if (ut==E_CATAPULT) foodCost = 30;
+    if (p.food < foodCost) { if (bld.owner==0) setStatus("Need more food!"); return; }
+    p.food -= foodCost;
     p.gold -= STATS[ut].costGold; p.wood -= STATS[ut].costWood;
     bld.producing = ut; bld.prodProgress = 0; bld.prodTime = STATS[ut].trainTime;
     bld.state = S_TRAINING;
@@ -325,6 +334,15 @@ void orderGroupAttack(int tid) {
     setStatus("Group attacking!");
 }
 
+void orderHelp(Entity& e, int buildingId) {
+    if (e.type != E_PEASANT) return;
+    Entity* bld = findEntity(buildingId);
+    if (!bld || !bld->alive || !bld->underConstruction) return;
+    e.state = S_BUILDING; e.targetId = buildingId;
+    e.targetX = bld->x; e.targetY = bld->y;
+    e.path = findPath(e.x, e.y, bld->x - 1, bld->y); e.pathIdx = 0;
+}
+
 // ============================================================
 // MOVEMENT
 // ============================================================
@@ -338,8 +356,11 @@ void moveAlongPath(Entity& e) {
     auto [nx, ny] = e.path[e.pathIdx];
     Entity* blk = entityAt(nx, ny);
     if (blk && blk->id != e.id) {
-        if (e.state==S_MOVING || e.state==S_GATHERING || e.state==S_BUILDING) {
-            e.path = findPath(e.x, e.y, e.path.back().first, e.path.back().second);
+        e.moveCd = 2 + (e.id % 3);
+        if (blk->state == S_IDLE && !e.path.empty()
+            && (e.state==S_MOVING||e.state==S_GATHERING||e.state==S_BUILDING)) {
+            auto dest = e.path.back();
+            e.path = findPath(e.x, e.y, dest.first, dest.second);
             e.pathIdx = 0;
         }
         return;
@@ -421,7 +442,14 @@ void tickEntity(Entity& e) {
                     int pcol = (e.type==E_CATAPULT) ? CP_PROJ_BOULDER : CP_PROJ_ARROW;
                     spawnProjectile(e.x, e.y, t->x, t->y, pc, pcol);
                 }
-                if (t->hp <= 0) { t->alive=false; t->state=S_DEAD; e.state=S_IDLE; updateSupply(t->owner); }
+                if (t->hp <= 0) {
+                    t->alive=false; t->state=S_DEAD; e.state=S_IDLE; updateSupply(t->owner);
+                    if (t->owner == OWNER_NATURE && e.owner < OWNER_NATURE) {
+                        int food = (t->type==E_SHEEP)?80:(t->type==E_DEER)?120:30;
+                        g.players[e.owner].food += food;
+                        if (e.owner==0) setStatus(std::string("Got ") + std::to_string(food) + " food!");
+                    }
+                }
             } else e.atkCd--;
         } else {
             if (e.path.empty() || e.pathIdx >= (int)e.path.size()) {
@@ -528,7 +556,7 @@ void tickFarms() {
     for (int p = 0; p < 2; p++) {
         int farms = 0;
         for (auto& e : g.entities) if (e.alive && e.owner==p && e.type==E_FARM && !e.underConstruction) farms++;
-        g.players[p].gold += std::max(0, farms * (3 + bonus));
+        g.players[p].food += std::max(0, farms * (3 + bonus));
     }
 }
 
@@ -580,7 +608,7 @@ void tickAnimals() {
         if (e.type == E_WOLF && (e.state==S_IDLE || (e.state==S_MOVING && e.path.empty()))) {
             for (auto& o : g.entities) {
                 if (!o.alive || o.owner==OWNER_NATURE || !isUnit(o.type)) continue;
-                if (dist(e.x, e.y, o.x, o.y) <= 6) {
+                if (dist(e.x, e.y, o.x, o.y) <= 3) {
                     orderAttack(e, o.id);
                     break;
                 }
