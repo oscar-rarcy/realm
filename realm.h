@@ -123,6 +123,7 @@ struct Entity {
     EntityType producing; int prodProgress, prodTime;
     bool underConstruction, alive; int rallyX, rallyY;
     int carrying;
+    int stuckTicks;
 };
 
 struct Player { int gold, wood, food, supply, supplyMax; bool alive; };

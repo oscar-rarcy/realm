@@ -250,7 +250,17 @@ void orderGather(Entity& e, int tx, int ty) {
     if (ter != T_GOLD && !isW) return;
     e.state = S_GATHERING; e.targetX = tx; e.targetY = ty;
     e.gatherType = (ter == T_GOLD) ? 0 : 1;
-    e.path = findPath(e.x, e.y, tx, ty); e.pathIdx = 0;
+    // Path to nearest adjacent passable tile so multiple peasants don't block each other on same resource
+    int bestAX = tx, bestAY = ty, bestAD = 99999;
+    for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
+        if (dx==0 && dy==0) continue;
+        int nx = tx+dx, ny = ty+dy;
+        if (inBounds(nx,ny) && isPassable(nx,ny)) {
+            int d = mdist(e.x, e.y, nx, ny);
+            if (d < bestAD) { bestAD = d; bestAX = nx; bestAY = ny; }
+        }
+    }
+    e.path = findPath(e.x, e.y, bestAX, bestAY); e.pathIdx = 0;
     e.gatherCd = 0; e.carrying = 0;
     e.rallyX = tx; e.rallyY = ty;
 }
@@ -267,7 +277,18 @@ void orderBuild(Entity& e, EntityType bt, int bx, int by) {
     p.gold -= STATS[bt].costGold; p.wood -= STATS[bt].costWood;
     int bid = spawnEntity(bt, e.owner, bx, by, false);
     e.state = S_BUILDING; e.targetId = bid; e.targetX = bx; e.targetY = by;
-    e.path = findPath(e.x, e.y, bx-1, by); e.pathIdx = 0;
+    // Pick nearest passable tile adjacent to the building footprint
+    int bldW = STATS[bt].sizeW, bldH = STATS[bt].sizeH;
+    int bestAX = bx-1, bestAY = by, bestAD = 99999;
+    for (int dy = -1; dy <= bldH; dy++) for (int dx = -1; dx <= bldW; dx++) {
+        if (dx>=0 && dx<bldW && dy>=0 && dy<bldH) continue;
+        int nx = bx+dx, ny = by+dy;
+        if (inBounds(nx,ny) && isPassable(nx,ny)) {
+            int d = mdist(e.x, e.y, nx, ny);
+            if (d < bestAD) { bestAD = d; bestAX = nx; bestAY = ny; }
+        }
+    }
+    e.path = findPath(e.x, e.y, bestAX, bestAY); e.pathIdx = 0;
 }
 
 void orderTrain(Entity& bld, EntityType ut) {
@@ -340,7 +361,17 @@ void orderHelp(Entity& e, int buildingId) {
     if (!bld || !bld->alive || !bld->underConstruction) return;
     e.state = S_BUILDING; e.targetId = buildingId;
     e.targetX = bld->x; e.targetY = bld->y;
-    e.path = findPath(e.x, e.y, bld->x - 1, bld->y); e.pathIdx = 0;
+    int bldW = STATS[bld->type].sizeW, bldH = STATS[bld->type].sizeH;
+    int bestAX = bld->x-1, bestAY = bld->y, bestAD = 99999;
+    for (int dy = -1; dy <= bldH; dy++) for (int dx = -1; dx <= bldW; dx++) {
+        if (dx>=0 && dx<bldW && dy>=0 && dy<bldH) continue;
+        int nx = bld->x+dx, ny = bld->y+dy;
+        if (inBounds(nx,ny) && isPassable(nx,ny)) {
+            int d = mdist(e.x, e.y, nx, ny);
+            if (d < bestAD) { bestAD = d; bestAX = nx; bestAY = ny; }
+        }
+    }
+    e.path = findPath(e.x, e.y, bestAX, bestAY); e.pathIdx = 0;
 }
 
 // ============================================================
@@ -356,15 +387,19 @@ void moveAlongPath(Entity& e) {
     auto [nx, ny] = e.path[e.pathIdx];
     Entity* blk = entityAt(nx, ny);
     if (blk && blk->id != e.id) {
+        e.stuckTicks++;
         e.moveCd = 2 + (e.id % 3);
-        if (blk->state == S_IDLE && !e.path.empty()
+        // After enough blocked attempts (staggered per entity), repath unconditionally
+        if (e.stuckTicks >= 4 + (e.id % 4) && !e.path.empty()
             && (e.state==S_MOVING||e.state==S_GATHERING||e.state==S_BUILDING)) {
             auto dest = e.path.back();
             e.path = findPath(e.x, e.y, dest.first, dest.second);
             e.pathIdx = 0;
+            e.stuckTicks = 0;
         }
         return;
     }
+    e.stuckTicks = 0;
     e.x = nx; e.y = ny; e.pathIdx++;
     Terrain ter = g.map[ny][nx].terrain;
     int spd = STATS[e.type].speed;
@@ -402,9 +437,14 @@ void tickEntity(Entity& e) {
     // Construction progress
     if (e.underConstruction) {
         bool hasBuilder = false;
-        for (auto& o : g.entities)
-            if (o.alive && o.owner==e.owner && o.state==S_BUILDING && o.targetId==e.id)
-                if (dist(o.x,o.y,e.x,e.y) <= STATS[e.type].sizeW+1) hasBuilder = true;
+        for (auto& o : g.entities) {
+            if (!o.alive || o.owner!=e.owner || o.state!=S_BUILDING || o.targetId!=e.id) continue;
+            // Require adjacency to the building footprint, not just proximity to its origin
+            int bx2 = e.x + STATS[e.type].sizeW - 1, by2 = e.y + STATS[e.type].sizeH - 1;
+            int cx = std::max(e.x, std::min(o.x, bx2));
+            int cy = std::max(e.y, std::min(o.y, by2));
+            if (dist(o.x, o.y, cx, cy) <= 1) hasBuilder = true;
+        }
         if (hasBuilder) {
             e.hp += 2;
             if (e.hp >= e.maxHp) {
@@ -520,10 +560,25 @@ void tickEntity(Entity& e) {
     case S_BUILDING: {
         Entity* bld = findEntity(e.targetId);
         if (!bld || !bld->alive || !bld->underConstruction) { e.state = S_IDLE; break; }
-        int d = dist(e.x, e.y, bld->x, bld->y);
-        if (d > STATS[bld->type].sizeW + 1) {
+        int bx2 = bld->x + STATS[bld->type].sizeW - 1, by2 = bld->y + STATS[bld->type].sizeH - 1;
+        int cx = std::max(bld->x, std::min(e.x, bx2));
+        int cy = std::max(bld->y, std::min(e.y, by2));
+        if (dist(e.x, e.y, cx, cy) > 1) {
             moveAlongPath(e);
-            if (e.path.empty()) { e.path = findPath(e.x, e.y, bld->x-1, bld->y); e.pathIdx = 0; }
+            if (e.path.empty()) {
+                // Re-scan for the nearest free adjacent tile
+                int bestAX = bld->x-1, bestAY = bld->y, bestAD = 99999;
+                int bw = STATS[bld->type].sizeW, bh = STATS[bld->type].sizeH;
+                for (int dy = -1; dy <= bh; dy++) for (int dx = -1; dx <= bw; dx++) {
+                    if (dx>=0&&dx<bw&&dy>=0&&dy<bh) continue;
+                    int nx = bld->x+dx, ny = bld->y+dy;
+                    if (inBounds(nx,ny) && isPassable(nx,ny)) {
+                        int d2 = mdist(e.x,e.y,nx,ny);
+                        if (d2 < bestAD) { bestAD=d2; bestAX=nx; bestAY=ny; }
+                    }
+                }
+                e.path = findPath(e.x, e.y, bestAX, bestAY); e.pathIdx = 0;
+            }
         }
         break;
     }
