@@ -329,6 +329,15 @@ void renderMap() {
 
     bool night = isNight();
 
+    // Precompute drag-selection box (map coords); -1 means no active box
+    int boxX0 = -1, boxY0 = -1, boxX1 = -1, boxY1 = -1;
+    if (g.dragging) {
+        boxX0 = std::min(g.dragStartX, g.cursorX);
+        boxY0 = std::min(g.dragStartY, g.cursorY);
+        boxX1 = std::max(g.dragStartX, g.cursorX);
+        boxY1 = std::max(g.dragStartY, g.cursorY);
+    }
+
     for (int sy = 0; sy < g.viewH; sy++) { int my = g.viewY + sy;
         for (int sx = 0; sx < g.viewW; sx++) { int mx = g.viewX + sx;
             int scY = sy+2, scX = sx;
@@ -379,12 +388,17 @@ void renderMap() {
                 }
             }
 
+            bool onBoxBorder = (boxX0 >= 0)
+                && mx >= boxX0 && mx <= boxX1 && my >= boxY0 && my <= boxY1
+                && (mx == boxX0 || mx == boxX1 || my == boxY0 || my == boxY1);
+
             if (isCur) {
                 attron(COLOR_PAIR(CP_CURSOR)); mvaddch(scY, scX, ch); attroff(COLOR_PAIR(CP_CURSOR));
             } else {
                 int attr = COLOR_PAIR(cp);
                 if (ent && ent->alive) attr |= A_BOLD;
-                if (isSel) attr |= A_UNDERLINE;
+                if (isSel)        attr |= A_UNDERLINE;
+                if (onBoxBorder)  attr |= A_REVERSE;
                 attron(attr); mvaddch(scY, scX, ch); attroff(attr);
             }
         }

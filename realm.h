@@ -136,6 +136,7 @@ struct Game {
     std::vector<int> selectedIds;
     std::vector<int> controlGroups[9];
     bool groupAssignPending;
+    bool dragging; int dragStartX, dragStartY;
     std::string statusMsg; int statusTimer;
     int winner, aiTimer, farmTimer;
     float dayPhase, seasonPhase;

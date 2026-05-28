@@ -1,4 +1,5 @@
 #include "realm.h"
+#include <chrono>
 
 void initGame() {
     srand((unsigned)time(nullptr));
@@ -6,6 +7,7 @@ void initGame() {
     g.projectiles.reserve(256);
     g.nextId = 1; g.tick = 0; g.mode = M_NORMAL;
     g.selectedId = -1; g.selectedIds.clear(); g.groupAssignPending = false;
+    g.dragging = false; g.dragStartX = 0; g.dragStartY = 0;
     for (int i = 0; i < 9; i++) g.controlGroups[i].clear();
     g.winner = -1; g.aiTimer = 0; g.farmTimer = 0; g.statusTimer = 0;
     g.dayPhase = 0.25f; g.seasonPhase = 0.0f;
@@ -53,30 +55,50 @@ void initGame() {
 }
 
 int main() {
-    initscr(); cbreak(); noecho(); keypad(stdscr, TRUE); curs_set(0); timeout(TICK_MS);
-    mousemask(ALL_MOUSE_EVENTS, NULL);
+    initscr(); cbreak(); noecho(); keypad(stdscr, TRUE); curs_set(0);
+    // REPORT_MOUSE_POSITION gives continuous hover events for live cursor tracking
+    mousemask(ALL_MOUSE_EVENTS | REPORT_MOUSE_POSITION, NULL);
     initColors();
     initGame();
     setStatus("Dawn breaks over the realm. Select peasants [Space] and gather [Enter]. [A]=select all military.");
+
+    using Clock = std::chrono::steady_clock;
+    using Ms    = std::chrono::milliseconds;
+    auto nextTick = Clock::now() + Ms(TICK_MS);
+
     while (true) {
+        // Block only as long as needed to reach the next game tick
+        int wait = (int)std::chrono::duration_cast<Ms>(nextTick - Clock::now()).count();
+        timeout(std::max(0, wait));
         int ch = getch();
         handleInput(ch);
-        if (g.mode != M_PAUSED && g.mode != M_GAME_OVER) {
-            g.tick++;
-            g.dayPhase += 1.0f / DAY_LENGTH;
-            if (g.dayPhase >= 1.0f) g.dayPhase -= 1.0f;
-            g.seasonPhase += 1.0f / SEASON_LENGTH;
-            if (g.seasonPhase >= 4.0f) g.seasonPhase -= 4.0f;
-            for (int i = 0; i < (int)g.entities.size(); i++) tickEntity(g.entities[i]);
-            tickTowers(); tickProjectiles(); tickFarms(); tickMarkets();
-            tickChurches(); tickAnimals(); tickAI(); updateFog();
-            if (g.tick % 100 == 0) {
-                g.entities.erase(std::remove_if(g.entities.begin(), g.entities.end(),
-                    [](const Entity& e){ return !e.alive && e.state==S_DEAD; }), g.entities.end());
-                checkWin();
+
+        // Drain any events that piled up (mouse moves, key repeats) without
+        // running game logic for each one — keeps the cursor smooth
+        timeout(0);
+        int extra;
+        while ((extra = getch()) != ERR) handleInput(extra);
+
+        // Tick and render at fixed rate regardless of input volume
+        if (Clock::now() >= nextTick) {
+            nextTick += Ms(TICK_MS);
+            if (g.mode != M_PAUSED && g.mode != M_GAME_OVER) {
+                g.tick++;
+                g.dayPhase += 1.0f / DAY_LENGTH;
+                if (g.dayPhase >= 1.0f) g.dayPhase -= 1.0f;
+                g.seasonPhase += 1.0f / SEASON_LENGTH;
+                if (g.seasonPhase >= 4.0f) g.seasonPhase -= 4.0f;
+                for (int i = 0; i < (int)g.entities.size(); i++) tickEntity(g.entities[i]);
+                tickTowers(); tickProjectiles(); tickFarms(); tickMarkets();
+                tickChurches(); tickAnimals(); tickAI(); updateFog();
+                if (g.tick % 100 == 0) {
+                    g.entities.erase(std::remove_if(g.entities.begin(), g.entities.end(),
+                        [](const Entity& e){ return !e.alive && e.state==S_DEAD; }), g.entities.end());
+                    checkWin();
+                }
             }
+            render();
         }
-        render();
     }
     endwin();
     return 0;

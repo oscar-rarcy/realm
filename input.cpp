@@ -215,15 +215,58 @@ void handleInput(int ch) {
     case KEY_MOUSE: {
         MEVENT me;
         if (getmouse(&me) != OK) break;
-        // Row 0-1 is the top bar / terrain strip; map starts at screen row 2
         int mapSY = me.y - 2;
         int mapX  = g.viewX + me.x;
         int mapY  = g.viewY + mapSY;
-        if (mapSY < 0 || g.viewW <= 0 || me.x >= g.viewW || !inBounds(mapX, mapY)) break;
+        bool inMap = (mapSY >= 0 && g.viewW > 0 && me.x < g.viewW && inBounds(mapX, mapY));
+        if (!inMap) { g.dragging = false; break; }
 
-        if (me.bstate & (BUTTON1_CLICKED | BUTTON1_PRESSED)) {
-            // Left click: move cursor + select (like arrows + Space)
-            g.cursorX = mapX; g.cursorY = mapY;
+        // Always track cursor position — this is what gives live hover
+        g.cursorX = mapX; g.cursorY = mapY;
+
+        if (me.bstate & BUTTON1_PRESSED) {
+            // Start of left-button drag/click
+            g.dragging    = true;
+            g.dragStartX  = mapX;
+            g.dragStartY  = mapY;
+        }
+        else if (me.bstate & BUTTON1_RELEASED) {
+            if (g.dragging) {
+                g.dragging = false;
+                bool moved = (std::abs(mapX - g.dragStartX) + std::abs(mapY - g.dragStartY)) > 1;
+                if (moved) {
+                    // Box select: all own units inside the rectangle
+                    int x0 = std::min(g.dragStartX, mapX), x1 = std::max(g.dragStartX, mapX);
+                    int y0 = std::min(g.dragStartY, mapY), y1 = std::max(g.dragStartY, mapY);
+                    g.selectedIds.clear(); g.selectedId = -1;
+                    for (auto& e : g.entities) {
+                        if (!e.alive || e.owner != 0 || !isUnit(e.type)) continue;
+                        if (e.x >= x0 && e.x <= x1 && e.y >= y0 && e.y <= y1) {
+                            g.selectedIds.push_back(e.id);
+                            if (g.selectedId < 0) g.selectedId = e.id;
+                        }
+                    }
+                    if (!g.selectedIds.empty())
+                        setStatus(std::to_string(g.selectedIds.size()) + " units selected");
+                } else {
+                    // Click: select entity at cursor
+                    Entity* ent = entityAtOwner(mapX, mapY, 0);
+                    if (ent) {
+                        g.selectedId = ent->id; g.selectedIds.clear();
+                        setStatus(std::string("Selected: ") + STATS[ent->type].name);
+                    } else {
+                        Entity* any = entityAt(mapX, mapY);
+                        if (any && any->alive && g.map[mapY][mapX].visible[0]) {
+                            g.selectedId = any->id; g.selectedIds.clear();
+                            setStatus(std::string(any->owner==OWNER_NATURE?"Animal: ":"Enemy ") + STATS[any->type].name);
+                        } else { g.selectedId = -1; g.selectedIds.clear(); }
+                    }
+                }
+            }
+        }
+        else if (me.bstate & BUTTON1_CLICKED) {
+            // Terminals that report CLICKED instead of PRESSED+RELEASED
+            g.dragging = false;
             Entity* ent = entityAtOwner(mapX, mapY, 0);
             if (ent) {
                 g.selectedId = ent->id; g.selectedIds.clear();
@@ -233,14 +276,12 @@ void handleInput(int ch) {
                 if (any && any->alive && g.map[mapY][mapX].visible[0]) {
                     g.selectedId = any->id; g.selectedIds.clear();
                     setStatus(std::string(any->owner==OWNER_NATURE?"Animal: ":"Enemy ") + STATS[any->type].name);
-                } else {
-                    g.selectedId = -1; g.selectedIds.clear();
-                }
+                } else { g.selectedId = -1; g.selectedIds.clear(); }
             }
         }
         else if (me.bstate & (BUTTON3_CLICKED | BUTTON3_PRESSED)) {
-            // Right click: move cursor + issue command (like arrows + Enter)
-            g.cursorX = mapX; g.cursorY = mapY;
+            // Right click: issue command at cursor position
+            g.dragging = false;
             if (g.selectedIds.size() > 1) {
                 Entity* tgt = entityAt(mapX, mapY);
                 if (tgt && tgt->alive && tgt->owner != 0 && g.map[mapY][mapX].visible[0])
@@ -263,6 +304,7 @@ void handleInput(int ch) {
                 } else { orderMove(*sel, mapX, mapY); setStatus("Moving..."); }
             }
         }
+        // All other events (pure movement): cursor already updated above
         break;
     }
     }
