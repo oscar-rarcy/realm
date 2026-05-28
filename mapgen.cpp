@@ -189,6 +189,8 @@ void generateMap() {
             if (inBounds(x,y) && g.map[y][x].terrain != T_GOLD) g.map[y][x].terrain = T_GRASS;
         }
     };
-    clearArea(4, 4, 6); clearArea(MAP_W-11, MAP_H-11, 6);
-    placeGold(14, 9, 5); placeGold(MAP_W-16, MAP_H-11, 5);
+    clearArea(4,       4,       6); clearArea(MAP_W-11, 4,       6);
+    clearArea(4,       MAP_H-11, 6); clearArea(MAP_W-11, MAP_H-11, 6);
+    placeGold(14,         9,         5); placeGold(MAP_W-16, 9,         5);
+    placeGold(14,         MAP_H-11,  5); placeGold(MAP_W-16, MAP_H-11,  5);
 }

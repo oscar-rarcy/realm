@@ -18,13 +18,29 @@ void initGame() {
 
     generateMap();
 
-    spawnEntity(E_TOWNHALL, 0, 5, 5);
-    for (int i = 0; i < 4; i++) spawnEntity(E_PEASANT, 0, 9+i, 9);
-    spawnEntity(E_TOWNHALL, 1, MAP_W-9, MAP_H-9);
-    for (int i = 0; i < 4; i++) spawnEntity(E_PEASANT, 1, MAP_W-8+i, MAP_H-5);
+    // Four corner spawn points: thX,thY, peasant row anchor pX,pY, pDir (+1 or -1 along X)
+    struct Spawn { int thX,thY, pX,pY, pDir; };
+    const Spawn corners[4] = {
+        {5,        5,        9,         9,         1},   // top-left     — peasants go right
+        {MAP_W-9,  5,        MAP_W-14,  9,         1},   // top-right    — peasants go right
+        {5,        MAP_H-9,  9,         MAP_H-5,   1},   // bottom-left  — peasants go right
+        {MAP_W-9,  MAP_H-9,  MAP_W-14,  MAP_H-5,   1},   // bottom-right — peasants go right
+    };
+    // Assign players to diagonally opposite corners
+    int layout = rand() % 2;  // 0: TL vs BR, 1: TR vs BL
+    int p0 = (layout == 0) ? 0 : 1;  // corner index for player 0
+    int p1 = (layout == 0) ? 3 : 2;  // corner index for player 1 (opposite)
+    if (rand() % 2) std::swap(p0, p1); // also randomly flip who gets which end
+
+    auto& s0 = corners[p0]; auto& s1 = corners[p1];
+    spawnEntity(E_TOWNHALL, 0, s0.thX, s0.thY);
+    for (int i = 0; i < 4; i++) spawnEntity(E_PEASANT, 0, s0.pX + i*s0.pDir, s0.pY);
+    spawnEntity(E_TOWNHALL, 1, s1.thX, s1.thY);
+    for (int i = 0; i < 4; i++) spawnEntity(E_PEASANT, 1, s1.pX + i*s1.pDir, s1.pY);
     updateSupply(0); updateSupply(1);
 
-    g.cursorX = 7; g.cursorY = 7; g.viewX = 0; g.viewY = 0;
+    g.cursorX = s0.thX + 2; g.cursorY = s0.thY + 2;
+    g.viewX = std::max(0, s0.thX - 10); g.viewY = std::max(0, s0.thY - 5);
 
     // Wild deer in open terrain
     for (int i = 0, t = 0; i < 25 && t < 600; t++) {
@@ -40,16 +56,15 @@ void initGame() {
         if ((tr==T_FOREST||tr==T_PINE||tr==T_TALL_GRASS) && !entityAt(ax,ay))
             { spawnEntity(E_WOLF, OWNER_NATURE, ax, ay); i++; }
     }
-    // Domestic sheep near each TC
-    for (int i = 0, t = 0; i < 5 && t < 200; t++) {
-        int ax = 8+(rand()%7)-3, ay = 8+(rand()%7)-3;
-        ax = std::max(1, std::min(ax, MAP_W-2)); ay = std::max(1, std::min(ay, MAP_H-2));
-        if (isPassable(ax,ay) && !entityAt(ax,ay)) { spawnEntity(E_SHEEP, OWNER_NATURE, ax, ay); i++; }
-    }
-    for (int i = 0, t = 0; i < 5 && t < 200; t++) {
-        int ax = (MAP_W-9)+(rand()%7)-3, ay = (MAP_H-9)+(rand()%7)-3;
-        ax = std::max(1, std::min(ax, MAP_W-2)); ay = std::max(1, std::min(ay, MAP_H-2));
-        if (isPassable(ax,ay) && !entityAt(ax,ay)) { spawnEntity(E_SHEEP, OWNER_NATURE, ax, ay); i++; }
+    // Domestic sheep near each player's town hall
+    for (int pi = 0; pi < 2; pi++) {
+        int bx = (pi==0 ? s0.thX : s1.thX) + 4;
+        int by = (pi==0 ? s0.thY : s1.thY) + 4;
+        for (int i = 0, t = 0; i < 5 && t < 200; t++) {
+            int ax = bx+(rand()%7)-3, ay = by+(rand()%7)-3;
+            ax = std::max(1, std::min(ax, MAP_W-2)); ay = std::max(1, std::min(ay, MAP_H-2));
+            if (isPassable(ax,ay) && !entityAt(ax,ay)) { spawnEntity(E_SHEEP, OWNER_NATURE, ax, ay); i++; }
+        }
     }
 
     updateFog();
