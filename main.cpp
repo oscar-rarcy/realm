@@ -33,7 +33,7 @@ void initGame() {
             { spawnEntity(E_DEER, OWNER_NATURE, ax, ay); i++; }
     }
     // Wolves in forested areas
-    for (int i = 0, t = 0; i < 12 && t < 600; t++) {
+    for (int i = 0, t = 0; i < 5 && t < 600; t++) {
         int ax = 10 + rand()%(MAP_W-20), ay = 10 + rand()%(MAP_H-20);
         Terrain tr = g.map[ay][ax].terrain;
         if ((tr==T_FOREST||tr==T_PINE||tr==T_TALL_GRASS) && !entityAt(ax,ay))

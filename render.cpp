@@ -522,8 +522,23 @@ void renderUI() {
             attron(COLOR_PAIR(CP_UI_TEXT)); mvprintw(iy++, panelX+1, "%d / %d", sel->hp, sel->maxHp); attroff(COLOR_PAIR(CP_UI_TEXT));
             if (isUnit(sel->type)) {
                 attron(COLOR_PAIR(CP_UI_TEXT)); mvprintw(iy++, panelX+1, "ATK %-3d  RNG %-2d", st.atk, st.range); attroff(COLOR_PAIR(CP_UI_TEXT));
-                const char* sn[] = {"Idle","Moving","Attacking","Gathering","Building","Training","Returning","Dead"};
-                attron(COLOR_PAIR(CP_UI_ACCENT)); mvprintw(iy++, panelX+1, "%s", sn[sel->state]); attroff(COLOR_PAIR(CP_UI_ACCENT));
+                std::string stDesc;
+                if (sel->type == E_PEASANT) {
+                    switch (sel->state) {
+                    case S_IDLE:      stDesc = "Idle"; break;
+                    case S_MOVING:    stDesc = "Moving"; break;
+                    case S_ATTACKING: stDesc = "Fighting"; break;
+                    case S_GATHERING: stDesc = (sel->gatherType==0) ? "Mining gold" : "Chopping wood"; break;
+                    case S_BUILDING:  { Entity* b = findEntity(sel->targetId);
+                                        stDesc = b ? (std::string("Building ") + STATS[b->type].name) : "Building"; break; }
+                    case S_RETURNING: stDesc = (sel->gatherType==0) ? "Carrying gold" : "Carrying wood"; break;
+                    default:          stDesc = "Idle"; break;
+                    }
+                } else {
+                    const char* sn[] = {"Idle","Moving","Attacking","Gathering","Building","Training","Returning","Dead"};
+                    stDesc = sn[sel->state];
+                }
+                attron(COLOR_PAIR(CP_UI_ACCENT)); mvprintw(iy++, panelX+1, "%s", stDesc.c_str()); attroff(COLOR_PAIR(CP_UI_ACCENT));
                 if (sel->carrying > 0) {
                     attron(COLOR_PAIR(CP_UI_HIGH));
                     mvprintw(iy++, panelX+1, "Carrying: %d %s", sel->carrying, sel->gatherType==0?"gold":"wood");

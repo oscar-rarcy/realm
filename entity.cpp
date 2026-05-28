@@ -604,13 +604,28 @@ void tickAnimals() {
             }
         }
 
-        // Wolves hunt nearby player units within 6 tiles
-        if (e.type == E_WOLF && (e.state==S_IDLE || (e.state==S_MOVING && e.path.empty()))) {
+        // Wolves flee settlements and only hunt isolated units far from buildings
+        if (e.type == E_WOLF) {
+            bool nearSettlement = false;
+            int fleeX = -1, fleeY = -1;
             for (auto& o : g.entities) {
-                if (!o.alive || o.owner==OWNER_NATURE || !isUnit(o.type)) continue;
-                if (dist(e.x, e.y, o.x, o.y) <= 3) {
-                    orderAttack(e, o.id);
+                if (!o.alive || o.owner == OWNER_NATURE || !isBuilding(o.type)) continue;
+                int d = dist(e.x, e.y, o.x, o.y);
+                if (d <= 15) {
+                    nearSettlement = true;
+                    fleeX = std::max(1, std::min(e.x + (e.x - o.x)*4, MAP_W-2));
+                    fleeY = std::max(1, std::min(e.y + (e.y - o.y)*4, MAP_H-2));
                     break;
+                }
+            }
+            if (nearSettlement) {
+                if (e.state == S_ATTACKING) { e.state = S_IDLE; e.path.clear(); }
+                if (e.state == S_IDLE && fleeX >= 0 && isPassable(fleeX, fleeY))
+                    orderMove(e, fleeX, fleeY);
+            } else if (e.state==S_IDLE || (e.state==S_MOVING && e.path.empty())) {
+                for (auto& o : g.entities) {
+                    if (!o.alive || o.owner==OWNER_NATURE || !isUnit(o.type)) continue;
+                    if (dist(e.x, e.y, o.x, o.y) <= 3) { orderAttack(e, o.id); break; }
                 }
             }
         }
