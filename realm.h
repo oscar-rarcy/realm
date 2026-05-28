@@ -1,0 +1,219 @@
+#pragma once
+#include <ncurses.h>
+#include <vector>
+#include <queue>
+#include <algorithm>
+#include <cstdlib>
+#include <ctime>
+#include <cmath>
+#include <string>
+#include <cstring>
+
+// ============================================================
+// CONSTANTS
+// ============================================================
+const int MAP_W        = 140;
+const int MAP_H        = 90;
+const int TICK_MS      = 80;
+const int FOG_RADIUS   = 7;
+const int GATHER_RATE  = 8;
+const int GATHER_TICKS = 15;
+const int DAY_LENGTH   = 1500;
+const int SEASON_LENGTH= 3000;
+const int CARRY_MAX    = 20;
+const int OWNER_NATURE = 2;
+
+// ============================================================
+// ENUMS
+// ============================================================
+enum Terrain {
+    T_GRASS, T_TALL_GRASS, T_FLOWERS, T_MEADOW,
+    T_FOREST, T_PINE, T_PALM, T_DEAD_TREE,
+    T_MOUNTAIN, T_HILLS, T_STONE,
+    T_WATER, T_SHALLOWS, T_MARSH, T_REEDS,
+    T_GOLD,
+    T_SAND, T_DUNES,
+    T_SNOW, T_ICE,
+    T_DIRT, T_ROAD,
+    T_WHEAT, T_BERRY,
+    T_RUINS, T_GRAVEL,
+    T_CASTLE_WALL, T_CASTLE_FLOOR, T_CASTLE_GATE
+};
+
+enum EntityType {
+    E_NONE = 0,
+    E_PEASANT, E_MILITIA, E_ARCHER, E_KNIGHT, E_CATAPULT,
+    E_TOWNHALL, E_HOUSE, E_BARRACKS, E_STABLE, E_TOWER,
+    E_FARM, E_BLACKSMITH, E_CHURCH, E_MARKET, E_WALL, E_CASTLE,
+    E_DEER, E_WOLF, E_SHEEP
+};
+
+enum EntityState {
+    S_IDLE, S_MOVING, S_ATTACKING, S_GATHERING,
+    S_BUILDING, S_TRAINING, S_RETURNING, S_DEAD
+};
+enum GameMode  { M_NORMAL, M_BUILD_SELECT, M_TRAIN_SELECT, M_PAUSED, M_GAME_OVER };
+enum Biome     { B_TEMPERATE, B_DESERT, B_SNOW, B_SWAMP, B_FOREST };
+enum Season    { SPRING = 0, SUMMER, AUTUMN, WINTER };
+
+// ============================================================
+// COLOR PAIR IDS  (used in both entity.cpp and render.cpp)
+// ============================================================
+enum {
+    CP_GRASS = 1, CP_GRASS_LIGHT, CP_GRASS_DRY, CP_TALL_GRASS,
+    CP_FLOWERS, CP_FLOWERS_BLUE, CP_MEADOW,
+    CP_FOREST, CP_FOREST_DARK, CP_PINE, CP_PALM, CP_DEAD_TREE,
+    CP_MOUNTAIN, CP_HILLS, CP_STONE,
+    CP_WATER, CP_WATER_SHIMMER, CP_SHALLOWS, CP_MARSH, CP_REEDS,
+    CP_GOLD, CP_GOLD_SHIMMER,
+    CP_SAND, CP_DUNES, CP_SNOW_GROUND, CP_ICE,
+    CP_DIRT, CP_ROAD,
+    CP_WHEAT, CP_WHEAT_GOLD, CP_BERRY,
+    CP_RUINS, CP_GRAVEL,
+    CP_CASTLE_WALL, CP_CASTLE_FLOOR, CP_CASTLE_GATE,
+    CP_AUT_TREE_EARLY, CP_AUT_TREE_MID, CP_AUT_TREE_LATE,
+    CP_AUT_GRASS, CP_AUT_GRASS_LATE,
+    CP_WIN_GROUND, CP_WIN_TREE, CP_WIN_PINE, CP_WIN_ICE,
+    CP_NIGHT_GRASS, CP_NIGHT_TREE, CP_NIGHT_WATER,
+    CP_NIGHT_GROUND, CP_NIGHT_GOLD,
+    CP_DAWN_SKY, CP_DUSK_SKY,
+    CP_PLAYER, CP_PLAYER_NIGHT, CP_ENEMY, CP_ENEMY_NIGHT,
+    CP_PROJ_ARROW, CP_PROJ_BOULDER, CP_PROJ_TOWER,
+    CP_UI_BAR, CP_UI_TEXT, CP_UI_HIGH, CP_UI_DIM, CP_UI_ACCENT,
+    CP_FOG, CP_FOG_EXPLORED, CP_CURSOR,
+    CP_HP_GREEN, CP_HP_YELLOW, CP_HP_RED,
+    CP_SUN, CP_MOON,
+    CP_MM_PLAYER, CP_MM_ENEMY, CP_MM_WATER, CP_MM_FOREST,
+    CP_MM_GOLD, CP_MM_SAND, CP_MM_SNOW, CP_MM_MTN, CP_MM_CASTLE,
+    CP_SPRING_FLOWER,
+    CP_DEER, CP_WOLF, CP_SHEEP, CP_MM_ANIMAL,
+    CP_COUNT
+};
+
+// ============================================================
+// ENTITY STATS
+// ============================================================
+struct EntityStats {
+    const char* name; char glyph;
+    int maxHp, atk, range, speed, atkSpeed, costGold, costWood, trainTime;
+    int sizeW, sizeH, supplyProvided, supplyUsed; bool isBuilding;
+};
+extern const EntityStats STATS[];
+
+inline bool isUnit(EntityType t)     { return (t>=E_PEASANT&&t<=E_CATAPULT)||(t>=E_DEER&&t<=E_SHEEP); }
+inline bool isBuilding(EntityType t) { return t>=E_TOWNHALL&&t<=E_CASTLE; }
+inline bool isRanged(EntityType t)   { return t==E_ARCHER||t==E_CATAPULT; }
+
+// ============================================================
+// DATA STRUCTURES
+// ============================================================
+struct Projectile { float x,y,tx,ty; char glyph; int color,life; bool alive; };
+
+struct Tile {
+    Terrain terrain; int resources;
+    bool visible[2], explored[2]; Biome biome;
+};
+
+struct Entity {
+    int id; EntityType type; int owner, x, y, hp, maxHp;
+    EntityState state; int targetId, targetX, targetY;
+    std::vector<std::pair<int,int>> path; int pathIdx;
+    int moveCd, atkCd, gatherCd, gatherType;
+    EntityType producing; int prodProgress, prodTime;
+    bool underConstruction, alive; int rallyX, rallyY;
+    int carrying;
+};
+
+struct Player { int gold, wood, supply, supplyMax; bool alive; };
+
+struct Game {
+    Tile map[MAP_H][MAP_W];
+    std::vector<Entity> entities;
+    std::vector<Projectile> projectiles;
+    int nextId; Player players[3]; int tick;
+    GameMode mode; int cursorX, cursorY, viewX, viewY, viewW, viewH;
+    int selectedId;
+    std::vector<int> selectedIds;
+    std::vector<int> controlGroups[9];
+    bool groupAssignPending;
+    std::string statusMsg; int statusTimer;
+    int winner, aiTimer, farmTimer;
+    float dayPhase, seasonPhase;
+};
+extern Game g;
+
+// ============================================================
+// FUNCTION PROTOTYPES
+// ============================================================
+
+// mapgen.cpp
+void generateMap();
+
+// entity.cpp — time
+float       getBrightness();
+Season      getSeason();
+float       getSeasonProgress();
+const char* getSeasonName();
+const char* getTimeName();
+bool        isNight();
+bool        isDusk();
+bool        isDawn();
+
+// entity.cpp — helpers
+int     dist(int x1,int y1,int x2,int y2);
+int     mdist(int x1,int y1,int x2,int y2);
+bool    inBounds(int x,int y);
+bool    isPassable(int x,int y);
+void    setStatus(const std::string& msg);
+Entity* findEntity(int id);
+Entity* findDepot(Entity& e);
+Entity* entityAt(int x,int y);
+Entity* entityAtOwner(int x,int y,int owner);
+bool    canPlace(EntityType type,int x,int y,int owner);
+void    updateSupply(int owner);
+int     spawnEntity(EntityType type,int owner,int x,int y,bool built=true);
+
+// entity.cpp — projectiles / pathfinding
+void spawnProjectile(int sx,int sy,int tx,int ty,char gl,int col);
+void tickProjectiles();
+std::vector<std::pair<int,int>> findPath(int sx,int sy,int tx,int ty,int maxSteps=300);
+
+// entity.cpp — orders
+Entity* findNearestEnemy(Entity& e,int range);
+void orderMove(Entity& e,int tx,int ty);
+void orderAttack(Entity& e,int tid);
+void orderGather(Entity& e,int tx,int ty);
+void orderBuild(Entity& e,EntityType bt,int bx,int by);
+void orderTrain(Entity& bld,EntityType ut);
+void orderGroupMove(int tx,int ty);
+void orderGroupAttack(int tid);
+void moveAlongPath(Entity& e);
+
+// entity.cpp — tick / game logic
+void tickEntity(Entity& e);
+void tickTowers();
+void tickFarms();
+void tickMarkets();
+void tickChurches();
+void tickAnimals();
+void checkWin();
+void updateFog();
+
+// entity.cpp — AI
+int     aiCount(int owner,EntityType t);
+int     aiCountAll(int owner,EntityType t);
+Entity* aiIdle(int owner,EntityType t);
+Entity* aiBldg(int owner,EntityType t);
+void    aiGather(int owner);
+void    aiBuildSpot(int owner,EntityType bt,int& ox,int& oy);
+void    tickAI();
+
+// render.cpp
+void initColors();
+void render();
+
+// input.cpp
+void handleInput(int ch);
+
+// main.cpp
+void initGame();

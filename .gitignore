@@ -1,0 +1,14 @@
+# Build output
+realm
+*.o
+*.d
+
+# macOS
+.DS_Store
+
+# JetBrains IDE
+.idea/
+
+# Swap / temp
+*.swp
+*~
