@@ -45,7 +45,7 @@ enum EntityType {
     E_PEASANT, E_MILITIA, E_ARCHER, E_KNIGHT, E_CATAPULT,
     E_TOWNHALL, E_HOUSE, E_BARRACKS, E_STABLE, E_TOWER,
     E_FARM, E_BLACKSMITH, E_CHURCH, E_MARKET, E_WALL, E_CASTLE,
-    E_LUMBER_CAMP, E_MINING_CAMP,
+    E_LUMBER_CAMP, E_MINING_CAMP, E_MILL,
     E_DEER, E_WOLF, E_SHEEP
 };
 
@@ -102,7 +102,7 @@ struct EntityStats {
 extern const EntityStats STATS[];
 
 inline bool isUnit(EntityType t)     { return (t>=E_PEASANT&&t<=E_CATAPULT)||(t>=E_DEER&&t<=E_SHEEP); }
-inline bool isBuilding(EntityType t) { return t>=E_TOWNHALL&&t<=E_MINING_CAMP; }
+inline bool isBuilding(EntityType t) { return t>=E_TOWNHALL&&t<=E_MILL; }
 inline bool isRanged(EntityType t)   { return t==E_ARCHER||t==E_CATAPULT; }
 
 // ============================================================

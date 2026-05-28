@@ -33,6 +33,8 @@ bool inBounds(int x, int y)              { return x >= 0 && x < MAP_W && y >= 0 
 bool isPassable(int x, int y) {
     if (!inBounds(x, y)) return false;
     Terrain t = g.map[y][x].terrain;
+    // Rivers freeze solid in mid-to-late winter and become walkable
+    if (t == T_WATER && getSeason() == WINTER && getSeasonProgress() > 0.25f) return true;
     return t != T_MOUNTAIN && t != T_WATER && t != T_ICE && t != T_STONE && t != T_CASTLE_WALL;
 }
 
@@ -79,6 +81,12 @@ Entity* entityAtOwner(int x, int y, int owner) {
 }
 
 bool canPlace(EntityType type, int x, int y, int owner) {
+    // Farms can only be sown on open ground, not in winter
+    if (type == E_FARM) {
+        if (getSeason() == WINTER) return false;
+        Terrain t = g.map[y][x].terrain;
+        if (t!=T_GRASS&&t!=T_MEADOW&&t!=T_TALL_GRASS&&t!=T_FLOWERS&&t!=T_DIRT&&t!=T_WHEAT) return false;
+    }
     auto& s = STATS[type];
     for (int dy = 0; dy < s.sizeH; dy++) for (int dx = 0; dx < s.sizeW; dx++) {
         int nx = x+dx, ny = y+dy;
@@ -138,42 +146,52 @@ std::vector<std::pair<int,int>> findPath(int sx, int sy, int tx, int ty, int max
         }
         tx = bx; ty = by;
     }
-    static int visited[MAP_H][MAP_W]; static int vgen = 0; vgen++;
+    static int visited[MAP_H][MAP_W]; static int vgen = 0;
     struct Node { int x, y, px, py; };
-    std::queue<Node> q;
-    q.push({sx, sy, -1, -1});
-    visited[sy][sx] = vgen;
-    static Node hist[MAP_W*MAP_H]; int hc = 0; bool found = false; int fi = -1;
-    while (!q.empty() && hc < maxSteps*4) {
-        Node cur = q.front(); q.pop();
-        int idx = hc; hist[hc++] = cur;
-        if (cur.x == tx && cur.y == ty) { found = true; fi = idx; break; }
-        static const int dx8[] = {0,1,1,1,0,-1,-1,-1}, dy8[] = {-1,-1,0,1,1,1,0,-1};
-        for (int i = 0; i < 8; i++) {
-            int nx = cur.x+dx8[i], ny = cur.y+dy8[i];
-            if (!inBounds(nx,ny) || visited[ny][nx] == vgen) continue;
-            if (!isPassable(nx,ny) && !(nx==tx && ny==ty)) continue;
-            Entity* occ = entityAt(nx,ny);
-            if (occ && isBuilding(occ->type) && !(nx==tx && ny==ty)) continue;
-            visited[ny][nx] = vgen;
-            q.push({nx, ny, cur.x, cur.y});
+    static Node hist[MAP_W*MAP_H];
+    static const int dx8[] = {0,1,1,1,0,-1,-1,-1};
+    static const int dy8[] = {-1,-1,0,1,1,1,0,-1};
+
+    // Two passes: first avoids idle units (routes around clusters), second ignores them (fallback)
+    for (int pass = 0; pass < 2; pass++) {
+        bool avoidIdle = (pass == 0);
+        vgen++; int hc = 0; bool found = false; int fi = -1;
+        std::queue<Node> q;
+        q.push({sx, sy, -1, -1}); visited[sy][sx] = vgen;
+        while (!q.empty() && hc < maxSteps*4) {
+            Node cur = q.front(); q.pop();
+            int idx = hc; hist[hc++] = cur;
+            if (cur.x == tx && cur.y == ty) { found = true; fi = idx; break; }
+            for (int i = 0; i < 8; i++) {
+                int nx = cur.x+dx8[i], ny = cur.y+dy8[i];
+                if (!inBounds(nx,ny) || visited[ny][nx] == vgen) continue;
+                if (!isPassable(nx,ny) && !(nx==tx && ny==ty)) continue;
+                Entity* occ = entityAt(nx,ny);
+                if (occ && isBuilding(occ->type) && !(nx==tx && ny==ty)) continue;
+                // Pass 0: treat idle non-building units as soft obstacles — route around them
+                if (avoidIdle && occ && !isBuilding(occ->type) && occ->state==S_IDLE
+                    && !(nx==tx && ny==ty)) continue;
+                visited[ny][nx] = vgen;
+                q.push({nx, ny, cur.x, cur.y});
+            }
         }
-    }
-    if (!found) return {};
-    std::vector<std::pair<int,int>> path;
-    int cx = hist[fi].x, cy = hist[fi].y;
-    path.push_back({cx, cy});
-    int px = hist[fi].px, py = hist[fi].py;
-    while (px != -1) {
-        path.push_back({px, py});
-        for (int i = fi-1; i >= 0; i--) {
-            if (hist[i].x == px && hist[i].y == py) { px=hist[i].px; py=hist[i].py; fi=i; break; }
+        if (!found) continue; // retry without the idle-avoidance constraint
+        std::vector<std::pair<int,int>> path;
+        int cx = hist[fi].x, cy = hist[fi].y;
+        path.push_back({cx, cy});
+        int px = hist[fi].px, py = hist[fi].py;
+        while (px != -1) {
+            path.push_back({px, py});
+            for (int i = fi-1; i >= 0; i--) {
+                if (hist[i].x == px && hist[i].y == py) { px=hist[i].px; py=hist[i].py; fi=i; break; }
+            }
+            if ((int)path.size() > 600) break;
         }
-        if ((int)path.size() > 600) break;
+        std::reverse(path.begin(), path.end());
+        if (!path.empty()) path.erase(path.begin());
+        return path;
     }
-    std::reverse(path.begin(), path.end());
-    if (!path.empty()) path.erase(path.begin());
-    return path;
+    return {};
 }
 
 // ============================================================
@@ -235,6 +253,19 @@ Entity* findNearestEnemy(Entity& e, int range) {
 void orderMove(Entity& e, int tx, int ty) {
     e.state = S_MOVING; e.targetX = tx; e.targetY = ty; e.targetId = -1;
     e.path = findPath(e.x, e.y, tx, ty); e.pathIdx = 0;
+    // If path is empty but we're not already there, scan expanding rings for a reachable nearby tile
+    if (e.path.empty() && (e.x != tx || e.y != ty)) {
+        for (int r = 1; r <= 3 && e.path.empty(); r++)
+            for (int dy = -r; dy <= r && e.path.empty(); dy++)
+                for (int dx = -r; dx <= r && e.path.empty(); dx++) {
+                    if (std::abs(dx)!=r && std::abs(dy)!=r) continue;
+                    int nx=tx+dx, ny=ty+dy;
+                    if (!inBounds(nx,ny)||!isPassable(nx,ny)) continue;
+                    Entity* occ = entityAt(nx,ny);
+                    if (occ && occ->state==S_IDLE) continue;
+                    e.path = findPath(e.x, e.y, nx, ny);
+                }
+    }
 }
 
 void orderAttack(Entity& e, int tid) {
@@ -358,7 +389,9 @@ void orderGroupAttack(int tid) {
 void orderHelp(Entity& e, int buildingId) {
     if (e.type != E_PEASANT) return;
     Entity* bld = findEntity(buildingId);
-    if (!bld || !bld->alive || !bld->underConstruction) return;
+    if (!bld || !bld->alive) return;
+    // Allow tending a completed farm; otherwise only work on buildings under construction
+    if (!bld->underConstruction && bld->type != E_FARM) return;
     e.state = S_BUILDING; e.targetId = buildingId;
     e.targetX = bld->x; e.targetY = bld->y;
     int bldW = STATS[bld->type].sizeW, bldH = STATS[bld->type].sizeH;
@@ -388,9 +421,9 @@ void moveAlongPath(Entity& e) {
     Entity* blk = entityAt(nx, ny);
     if (blk && blk->id != e.id) {
         e.stuckTicks++;
-        e.moveCd = 2 + (e.id % 3);
-        // After enough blocked attempts (staggered per entity), repath unconditionally
-        if (e.stuckTicks >= 4 + (e.id % 4) && !e.path.empty()
+        e.moveCd = 1 + (e.id % 2); // short staggered wait before retry
+        // Force repath after a few blocked attempts; stagger per entity to prevent thrash
+        if (e.stuckTicks >= 3 + (e.id % 3) && !e.path.empty()
             && (e.state==S_MOVING||e.state==S_GATHERING||e.state==S_BUILDING)) {
             auto dest = e.path.back();
             e.path = findPath(e.x, e.y, dest.first, dest.second);
@@ -559,7 +592,16 @@ void tickEntity(Entity& e) {
     }
     case S_BUILDING: {
         Entity* bld = findEntity(e.targetId);
-        if (!bld || !bld->alive || !bld->underConstruction) { e.state = S_IDLE; break; }
+        if (!bld || !bld->alive) { e.state = S_IDLE; break; }
+        // Tending a completed farm — stay adjacent
+        if (!bld->underConstruction && bld->type == E_FARM) {
+            if (dist(e.x, e.y, bld->x, bld->y) > 1) {
+                moveAlongPath(e);
+                if (e.path.empty()) { e.path = findPath(e.x, e.y, bld->x, bld->y); e.pathIdx = 0; }
+            }
+            break;
+        }
+        if (!bld->underConstruction) { e.state = S_IDLE; break; }
         int bx2 = bld->x + STATS[bld->type].sizeW - 1, by2 = bld->y + STATS[bld->type].sizeH - 1;
         int cx = std::max(bld->x, std::min(e.x, bx2));
         int cy = std::max(bld->y, std::min(e.y, by2));
@@ -607,11 +649,31 @@ void tickFarms() {
     g.farmTimer++;
     if (g.farmTimer < 40) return;
     g.farmTimer = 0;
-    int bonus = (getSeason()==SUMMER) ? 2 : (getSeason()==WINTER) ? -1 : 0;
+
+    // Wheat dies at the onset of winter
+    if (getSeason() == WINTER) {
+        for (auto& e : g.entities)
+            if (e.alive && e.type == E_FARM) { e.alive = false; e.state = S_DEAD; }
+        return;
+    }
+
+    int bonus = (getSeason() == SUMMER) ? 1 : 0;
     for (int p = 0; p < 2; p++) {
-        int farms = 0;
-        for (auto& e : g.entities) if (e.alive && e.owner==p && e.type==E_FARM && !e.underConstruction) farms++;
-        g.players[p].food += std::max(0, farms * (3 + bonus));
+        bool hasMill = false;
+        for (auto& e : g.entities)
+            if (e.alive && e.owner==p && e.type==E_MILL && !e.underConstruction) { hasMill=true; break; }
+        if (!hasMill) continue;
+
+        for (auto& farm : g.entities) {
+            if (!farm.alive || farm.type!=E_FARM || farm.owner!=p || farm.underConstruction) continue;
+            // Any adjacent peasant (explicitly tending or just idle nearby) counts
+            bool tended = false;
+            for (auto& u : g.entities) {
+                if (!u.alive || u.owner!=p || u.type!=E_PEASANT) continue;
+                if (dist(u.x, u.y, farm.x, farm.y) <= 1) { tended=true; break; }
+            }
+            if (tended) g.players[p].food += 3 + bonus;
+        }
     }
 }
 
@@ -779,7 +841,10 @@ void tickAI() {
     if (aiCountAll(o,E_TOWER)<2 && p.wood>=100 && p.gold>=50) {
         Entity* b = aiIdle(o, E_PEASANT); if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_TOWER,bx,by); if(bx>=0) orderBuild(*b,E_TOWER,bx,by); }
     }
-    if (aiCountAll(o,E_FARM)<2 && p.wood>=60 && bar>0) {
+    if (aiCountAll(o,E_MILL)==0 && p.wood>=100 && bar>0) {
+        Entity* b = aiIdle(o, E_PEASANT); if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_MILL,bx,by); if(bx>=0) orderBuild(*b,E_MILL,bx,by); }
+    }
+    if (aiCountAll(o,E_MILL)>0 && aiCountAll(o,E_FARM)<3 && getSeason()!=WINTER) {
         Entity* b = aiIdle(o, E_PEASANT); if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_FARM,bx,by); if(bx>=0) orderBuild(*b,E_FARM,bx,by); }
     }
     if (aiCount(o,E_BLACKSMITH)==0 && bar>0 && p.wood>=120) {

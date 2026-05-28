@@ -26,6 +26,7 @@ void handleInput(int ch) {
         case 'k': case 'K': tb = E_CASTLE;      break;
         case 'l': case 'L': tb = E_LUMBER_CAMP; break;
         case 'n': case 'N': tb = E_MINING_CAMP; break;
+        case 'i': case 'I': tb = E_MILL;        break;
         case 27: g.mode = M_NORMAL; return;
         default: return;
         }
@@ -92,6 +93,9 @@ void handleInput(int ch) {
             if (tgt && tgt->alive && tgt->owner == 0 && tgt->underConstruction && sel->type == E_PEASANT) {
                 orderHelp(*sel, tgt->id);
                 setStatus("Helping build...");
+            } else if (tgt && tgt->alive && tgt->owner == 0 && tgt->type == E_FARM && !tgt->underConstruction && sel->type == E_PEASANT) {
+                orderHelp(*sel, tgt->id);
+                setStatus("Tending farm...");
             } else if (tgt && tgt->alive && tgt->owner != 0 && g.map[g.cursorY][g.cursorX].visible[0]) {
                 orderAttack(*sel, tgt->id);
                 setStatus("Attacking!");
@@ -130,6 +134,16 @@ void handleInput(int ch) {
                 setStatus("Select unit to train...");
             } else setStatus("This building can't train.");
         } else setStatus("Select a production building!");
+        break;
+    }
+
+    // Debug: reveal entire map (Shift+S)
+    case 'S': {
+        for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
+            g.map[y][x].visible[0]  = true;
+            g.map[y][x].explored[0] = true;
+        }
+        setStatus("Debug: map revealed");
         break;
     }
 
@@ -299,6 +313,8 @@ void handleInput(int ch) {
                 Entity* tgt = entityAt(mapX, mapY);
                 if (tgt && tgt->alive && tgt->owner == 0 && tgt->underConstruction && sel->type == E_PEASANT) {
                     orderHelp(*sel, tgt->id); setStatus("Helping build...");
+                } else if (tgt && tgt->alive && tgt->owner == 0 && tgt->type == E_FARM && !tgt->underConstruction && sel->type == E_PEASANT) {
+                    orderHelp(*sel, tgt->id); setStatus("Tending farm...");
                 } else if (tgt && tgt->alive && tgt->owner != 0 && g.map[mapY][mapX].visible[0]) {
                     orderAttack(*sel, tgt->id); setStatus("Attacking!");
                 } else if (sel->type == E_PEASANT) {

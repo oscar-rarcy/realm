@@ -279,18 +279,27 @@ void getTerrainVisual(Terrain t, int x, int y, char& ch, int& cp) {
         }
         case WINTER: {
             float p = sprog;
-            if ((t==T_GRASS||t==T_TALL_GRASS||t==T_MEADOW||t==T_FLOWERS||t==T_DIRT) && shouldShowSeasonAt(x,y,p*0.8f))
-                { ch='.'; cp=CP_WIN_GROUND; }
-            if (t==T_FOREST   && shouldShowSeasonAt(x,y,p*0.7f)) { ch='t'; cp=CP_WIN_TREE;  }
-            if (t==T_PINE     && shouldShowSeasonAt(x,y,p*0.4f))           cp=CP_WIN_PINE;
-            if (t==T_WHEAT)   { ch='.'; cp=shouldShowSeasonAt(x,y,p*0.5f)?CP_WIN_GROUND:CP_DIRT; }
-            if (t==T_SHALLOWS && p>0.3f && shouldShowSeasonAt(x,y,(p-0.3f)*1.4f)) { ch='='; cp=CP_WIN_ICE; }
-            if (t==T_HILLS    && shouldShowSeasonAt(x,y,p*0.6f))           cp=CP_WIN_GROUND;
-            if (t==T_BERRY    && shouldShowSeasonAt(x,y,p*0.5f))  { ch='.'; cp=CP_WIN_TREE; }
+            // Snow blankets ground immediately, near-total by mid-winter
+            float snowAmt = std::min(1.0f, 0.55f + p * 0.5f);
+            if (t==T_GRASS||t==T_TALL_GRASS||t==T_MEADOW||t==T_FLOWERS||t==T_DIRT||t==T_BERRY||t==T_GRAVEL)
+                if (shouldShowSeasonAt(x,y,snowAmt)) { ch='.'; cp=CP_WIN_GROUND; }
+            if (t==T_HILLS && shouldShowSeasonAt(x,y,snowAmt)) cp=CP_WIN_GROUND;
+            if (t==T_WHEAT) { ch='.'; cp=CP_WIN_GROUND; }
+            if (t==T_FOREST && shouldShowSeasonAt(x,y,0.35f+p*0.55f)) { ch='t'; cp=CP_WIN_TREE; }
+            if (t==T_PINE   && shouldShowSeasonAt(x,y,0.25f+p*0.4f))          cp=CP_WIN_PINE;
+            // Rivers and marshes freeze over
+            float freezeAmt = std::min(1.0f, 0.25f + p * 1.1f);
+            if (t==T_WATER  && shouldShowSeasonAt(x,y,freezeAmt)) { ch='='; cp=CP_WIN_ICE; }
+            if (t==T_SHALLOWS && shouldShowSeasonAt(x,y,freezeAmt)) { ch='='; cp=CP_WIN_ICE; }
+            if (t==T_MARSH  && shouldShowSeasonAt(x,y,freezeAmt)) { ch='='; cp=CP_WIN_ICE; }
+            if (t==T_REEDS  && shouldShowSeasonAt(x,y,freezeAmt)) { ch='='; cp=CP_WIN_ICE; }
+            // Thaw at the tail end of winter
             if (p > 0.85f) {
                 float thaw = (p-0.85f)*6.67f;
-                if (cp==CP_WIN_GROUND && t!=T_SNOW && shouldShowSeasonAt(x+100,y+100,thaw))
+                if ((cp==CP_WIN_GROUND) && t!=T_SNOW && shouldShowSeasonAt(x+100,y+100,thaw))
                     { ch='.'; cp=CP_GRASS; }
+                if (cp==CP_WIN_ICE && (t==T_WATER||t==T_SHALLOWS) && shouldShowSeasonAt(x+200,y+200,thaw*0.7f))
+                    { ch='~'; cp=CP_WATER; }
             }
             break;
         }}
@@ -344,13 +353,20 @@ void renderMap() {
             if (!inBounds(mx, my)) { mvaddch(scY, scX, ' '); continue; }
             Tile& tile = g.map[my][mx];
             bool vis = tile.visible[0], expl = tile.explored[0];
-            if (!expl) { mvaddch(scY, scX, ' '); continue; }
+            bool isCur = (mx == g.cursorX && my == g.cursorY);
+
+            if (!expl) {
+                if (isCur) { attron(COLOR_PAIR(CP_CURSOR)); mvaddch(scY, scX, ' '); attroff(COLOR_PAIR(CP_CURSOR)); }
+                else { mvaddch(scY, scX, ' '); }
+                continue;
+            }
 
             char ch; int cp;
             getTerrainVisual(tile.terrain, mx, my, ch, cp);
 
             if (!vis) {
-                attron(COLOR_PAIR(CP_FOG_EXPLORED)); mvaddch(scY, scX, ch); attroff(COLOR_PAIR(CP_FOG_EXPLORED));
+                if (isCur) { attron(COLOR_PAIR(CP_CURSOR)); mvaddch(scY, scX, ch); attroff(COLOR_PAIR(CP_CURSOR)); }
+                else { attron(COLOR_PAIR(CP_FOG_EXPLORED)); mvaddch(scY, scX, ch); attroff(COLOR_PAIR(CP_FOG_EXPLORED)); }
                 continue;
             }
 
@@ -369,7 +385,6 @@ void renderMap() {
                 if ((int)roundf(p.x)==mx && (int)roundf(p.y)==my) { ch=p.glyph; cp=p.color; }
             }
 
-            bool isCur = (mx == g.cursorX && my == g.cursorY);
             bool isSel = false;
 
             // Single selection highlight
@@ -530,7 +545,11 @@ void renderUI() {
                     case S_ATTACKING: stDesc = "Fighting"; break;
                     case S_GATHERING: stDesc = (sel->gatherType==0) ? "Mining gold" : "Chopping wood"; break;
                     case S_BUILDING:  { Entity* b = findEntity(sel->targetId);
-                                        stDesc = b ? (std::string("Building ") + STATS[b->type].name) : "Building"; break; }
+                                        if (b && !b->underConstruction && b->type==E_FARM)
+                                            stDesc = "Tending farm";
+                                        else
+                                            stDesc = b ? (std::string("Building ") + STATS[b->type].name) : "Building";
+                                        break; }
                     case S_RETURNING: stDesc = (sel->gatherType==0) ? "Carrying gold" : "Carrying wood"; break;
                     default:          stDesc = "Idle"; break;
                     }
@@ -568,9 +587,11 @@ void renderUI() {
                     if (sel->type==E_BLACKSMITH) mvprintw(iy++, panelX+1, "Speeds training");
                     if (sel->type==E_CHURCH)     mvprintw(iy++, panelX+1, "Heals nearby +Vision");
                     if (sel->type==E_MARKET)     mvprintw(iy++, panelX+1, "Passive gold income");
-                    if (sel->type==E_FARM)        mvprintw(iy++, panelX+1, "Generates food");
+                    if (sel->type==E_FARM)        { mvprintw(iy++, panelX+1, "Generates food");
+                                                     mvprintw(iy++, panelX+1, "Assign peasant to tend"); }
                     if (sel->type==E_LUMBER_CAMP) mvprintw(iy++, panelX+1, "Wood drop-off");
                     if (sel->type==E_MINING_CAMP) mvprintw(iy++, panelX+1, "Gold drop-off");
+                    if (sel->type==E_MILL)        mvprintw(iy++, panelX+1, "Enables harvesting");
                     if (sel->type==E_CASTLE)     mvprintw(iy++, panelX+1, "+15 Supply, 300 HP");
                 }
                 attroff(COLOR_PAIR(CP_UI_ACCENT));
@@ -601,7 +622,7 @@ void renderUI() {
     int botY2 = maxY-2, botY1 = maxY-1;
     attron(COLOR_PAIR(CP_UI_BAR)); mvhline(botY2, 0, ' ', maxX);
     if (g.mode == M_BUILD_SELECT)
-        mvprintw(botY2, 1, " BUILD: [H]ouse [B]arracks [S]table [T]ower [F]arm [W]all [A]rmory [C]hurch [M]arket [K]Castle [L]umber [N]mine [Esc] ");
+        mvprintw(botY2, 1, " BUILD: [H]ouse [B]arracks [S]table [T]ower [F]arm [W]all [A]rmory [C]hurch [M]arket [K]Castle [L]umber [N]mine [I]mill [Esc] ");
     else if (g.mode == M_TRAIN_SELECT) {
         Entity* s2 = findEntity(g.selectedId);
         if (s2) {
