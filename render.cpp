@@ -393,7 +393,9 @@ void renderMap() {
             Entity* ent = entityAt(mx, my);
             if (ent && ent->alive) {
                 ch = STATS[ent->type].glyph;
-                if      (ent->owner == 0)     cp = night ? CP_PLAYER_NIGHT : CP_PLAYER;
+                // Farms use natural wheat colouring regardless of owner
+                if (ent->type == E_FARM)      cp = (g.tick%40 < 20) ? CP_WHEAT : CP_WHEAT_GOLD;
+                else if (ent->owner == 0)     cp = night ? CP_PLAYER_NIGHT : CP_PLAYER;
                 else if (ent->owner == 1)     cp = night ? CP_ENEMY_NIGHT  : CP_ENEMY;
                 else if (ent->type == E_WOLF) cp = CP_WOLF;
                 else if (ent->type == E_SHEEP)cp = CP_SHEEP;

@@ -164,6 +164,10 @@ void handleInput(int ch) {
                 if ((ter==T_GOLD||isW) && g.map[g.cursorY][g.cursorX].resources > 0) {
                     orderGather(*sel, g.cursorX, g.cursorY);
                     setStatus(ter==T_GOLD ? "Mining gold..." : "Chopping wood...");
+                } else if (ter == T_WHEAT && !tgt && canPlace(E_FARM, g.cursorX, g.cursorY, 0)) {
+                    int fid = spawnEntity(E_FARM, 0, g.cursorX, g.cursorY, true);
+                    orderHelp(*sel, fid);
+                    setStatus("Working wheat field...");
                 } else {
                     orderMove(*sel, g.cursorX, g.cursorY);
                     setStatus("Moving...");
@@ -397,6 +401,10 @@ void handleInput(int ch) {
                     if ((ter==T_GOLD||isW) && g.map[mapY][mapX].resources > 0) {
                         orderGather(*sel, mapX, mapY);
                         setStatus(ter==T_GOLD ? "Mining gold..." : "Chopping wood...");
+                    } else if (ter == T_WHEAT && !tgt && canPlace(E_FARM, mapX, mapY, 0)) {
+                        int fid = spawnEntity(E_FARM, 0, mapX, mapY, true);
+                        orderHelp(*sel, fid);
+                        setStatus("Working wheat field...");
                     } else { orderMove(*sel, mapX, mapY); setStatus("Moving..."); }
                 } else { orderMove(*sel, mapX, mapY); setStatus("Moving..."); }
             }
