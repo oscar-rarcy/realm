@@ -211,6 +211,60 @@ void handleInput(int ch) {
         g.groupAssignPending = false;
         g.mode = M_NORMAL;
         break;
+
+    case KEY_MOUSE: {
+        MEVENT me;
+        if (getmouse(&me) != OK) break;
+        // Row 0-1 is the top bar / terrain strip; map starts at screen row 2
+        int mapSY = me.y - 2;
+        int mapX  = g.viewX + me.x;
+        int mapY  = g.viewY + mapSY;
+        if (mapSY < 0 || g.viewW <= 0 || me.x >= g.viewW || !inBounds(mapX, mapY)) break;
+
+        if (me.bstate & (BUTTON1_CLICKED | BUTTON1_PRESSED)) {
+            // Left click: move cursor + select (like arrows + Space)
+            g.cursorX = mapX; g.cursorY = mapY;
+            Entity* ent = entityAtOwner(mapX, mapY, 0);
+            if (ent) {
+                g.selectedId = ent->id; g.selectedIds.clear();
+                setStatus(std::string("Selected: ") + STATS[ent->type].name);
+            } else {
+                Entity* any = entityAt(mapX, mapY);
+                if (any && any->alive && g.map[mapY][mapX].visible[0]) {
+                    g.selectedId = any->id; g.selectedIds.clear();
+                    setStatus(std::string(any->owner==OWNER_NATURE?"Animal: ":"Enemy ") + STATS[any->type].name);
+                } else {
+                    g.selectedId = -1; g.selectedIds.clear();
+                }
+            }
+        }
+        else if (me.bstate & (BUTTON3_CLICKED | BUTTON3_PRESSED)) {
+            // Right click: move cursor + issue command (like arrows + Enter)
+            g.cursorX = mapX; g.cursorY = mapY;
+            if (g.selectedIds.size() > 1) {
+                Entity* tgt = entityAt(mapX, mapY);
+                if (tgt && tgt->alive && tgt->owner != 0 && g.map[mapY][mapX].visible[0])
+                    orderGroupAttack(tgt->id);
+                else
+                    orderGroupMove(mapX, mapY);
+            } else {
+                Entity* sel = findEntity(g.selectedId);
+                if (!sel || sel->owner != 0 || !isUnit(sel->type)) break;
+                Entity* tgt = entityAt(mapX, mapY);
+                if (tgt && tgt->alive && tgt->owner != 0 && g.map[mapY][mapX].visible[0]) {
+                    orderAttack(*sel, tgt->id); setStatus("Attacking!");
+                } else if (sel->type == E_PEASANT) {
+                    Terrain ter = g.map[mapY][mapX].terrain;
+                    bool isW = (ter==T_FOREST||ter==T_PINE||ter==T_PALM||ter==T_DEAD_TREE);
+                    if ((ter==T_GOLD||isW) && g.map[mapY][mapX].resources > 0) {
+                        orderGather(*sel, mapX, mapY);
+                        setStatus(ter==T_GOLD ? "Mining gold..." : "Chopping wood...");
+                    } else { orderMove(*sel, mapX, mapY); setStatus("Moving..."); }
+                } else { orderMove(*sel, mapX, mapY); setStatus("Moving..."); }
+            }
+        }
+        break;
+    }
     }
 
     g.cursorX = std::max(0, std::min(g.cursorX, MAP_W-1));

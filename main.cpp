@@ -54,6 +54,7 @@ void initGame() {
 
 int main() {
     initscr(); cbreak(); noecho(); keypad(stdscr, TRUE); curs_set(0); timeout(TICK_MS);
+    mousemask(ALL_MOUSE_EVENTS, NULL);
     initColors();
     initGame();
     setStatus("Dawn breaks over the realm. Select peasants [Space] and gather [Enter]. [A]=select all military.");
