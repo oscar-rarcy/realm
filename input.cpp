@@ -64,11 +64,41 @@ void handleInput(int ch) {
     // Wall drag mode
     if (g.mode == M_WALL_DRAG) {
         if (ch == 27) { g.mode = M_NORMAL; g.dragging = false; return; }
-        // Cursor movement still works for preview
+        // Cursor movement — preview updates in render
         if (ch == KEY_UP)    { g.cursorY--; goto clamp; }
         if (ch == KEY_DOWN)  { g.cursorY++; goto clamp; }
         if (ch == KEY_LEFT)  { g.cursorX--; goto clamp; }
         if (ch == KEY_RIGHT) { g.cursorX++; goto clamp; }
+        // Space / Enter: set start (first press) or confirm placement (second press)
+        if (ch == ' ' || ch == '\n' || ch == '\r' || ch == KEY_ENTER) {
+            if (!g.dragging) {
+                g.dragging = true;
+                g.wallDragX = g.cursorX; g.wallDragY = g.cursorY;
+                setStatus("Wall start set — move cursor then press Space/Enter to place");
+            } else {
+                Entity* sel = findEntity(g.selectedId);
+                if (sel && sel->alive && sel->owner==0 && sel->type==E_PEASANT) {
+                    int x0=g.wallDragX, y0=g.wallDragY, x1=g.cursorX, y1=g.cursorY;
+                    int dx=std::abs(x1-x0), sx2=x0<x1?1:-1;
+                    int dy=-std::abs(y1-y0), sy2=y0<y1?1:-1;
+                    int err=dx+dy; int firstId=-1;
+                    while (true) {
+                        if (canPlace(E_WALL,x0,y0,0) && g.players[0].wood>=20) {
+                            g.players[0].wood -= 20;
+                            int wid = spawnEntity(E_WALL, 0, x0, y0, false);
+                            if (firstId < 0) firstId = wid;
+                        }
+                        if (x0==x1 && y0==y1) break;
+                        int e2=2*err;
+                        if (e2>=dy){err+=dy; x0+=sx2;}
+                        if (e2<=dx){err+=dx; y0+=sy2;}
+                    }
+                    if (firstId >= 0) { orderHelp(*sel, firstId); setStatus("Building walls..."); }
+                }
+                g.dragging = false; g.mode = M_NORMAL;
+            }
+            goto clamp;
+        }
         if (ch == KEY_MOUSE) {
             MEVENT me;
             if (getmouse(&me) != OK) goto clamp;

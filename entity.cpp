@@ -136,7 +136,7 @@ void tickProjectiles() {
 // ============================================================
 // PATHFINDING
 // ============================================================
-std::vector<std::pair<int,int>> findPath(int sx, int sy, int tx, int ty, int maxSteps) {
+std::vector<std::pair<int,int>> findPath(int sx, int sy, int tx, int ty, int /*maxSteps*/) {
     if (sx == tx && sy == ty) return {};
     if (!isPassable(tx, ty)) {
         int bestD = 9999, bx = -1, by = -1;
@@ -144,48 +144,58 @@ std::vector<std::pair<int,int>> findPath(int sx, int sy, int tx, int ty, int max
             int nx = tx+dx, ny = ty+dy;
             if (isPassable(nx,ny)) { int d=mdist(sx,sy,nx,ny); if(d<bestD){bestD=d;bx=nx;by=ny;} }
         }
-        if (bx < 0) return {};  // surrounded by impassable terrain, give up
+        if (bx < 0) return {};
         tx = bx; ty = by;
     }
-    static int visited[MAP_H][MAP_W]; static int vgen = 0;
-    struct Node { int x, y, px, py; };
-    static Node hist[MAP_W*MAP_H];
+
+    // Pre-scan buildings into a flat bool map — O(1) lookup in BFS vs O(N) entityAt
+    static bool bldMap[MAP_H][MAP_W];
+    memset(bldMap, 0, sizeof(bldMap));
+    for (auto& e : g.entities) {
+        if (!e.alive || !isBuilding(e.type)) continue;
+        if (e.type == E_GATE && e.carrying > 0) continue; // open gate: passable
+        auto& s = STATS[e.type];
+        for (int dy2 = 0; dy2 < s.sizeH; dy2++) for (int dx2 = 0; dx2 < s.sizeW; dx2++) {
+            int bx = e.x+dx2, by = e.y+dy2;
+            if (inBounds(bx,by)) bldMap[by][bx] = true;
+        }
+    }
+    bldMap[ty][tx] = false; // always allow reaching the destination
+
+    // BFS with parent-pointer reconstruction — no iteration cap, full map coverage
+    static int  visited[MAP_H][MAP_W]; static int vgen = 0;
+    static std::pair<int8_t,int8_t> parent[MAP_H][MAP_W]; // delta back toward parent
     static const int dx8[] = {0,1,1,1,0,-1,-1,-1};
     static const int dy8[] = {-1,-1,0,1,1,1,0,-1};
 
-    // Units are passable — only terrain and buildings block the BFS
-    vgen++; int hc = 0; bool found = false; int fi = -1;
-    std::queue<Node> q;
-    q.push({sx, sy, -1, -1}); visited[sy][sx] = vgen;
-    while (!q.empty() && hc < maxSteps*4) {
-        Node cur = q.front(); q.pop();
-        int idx = hc; hist[hc++] = cur;
-        if (cur.x == tx && cur.y == ty) { found = true; fi = idx; break; }
+    vgen++;
+    std::queue<std::pair<int,int>> q;
+    q.push({sx,sy}); visited[sy][sx] = vgen; parent[sy][sx] = {0,0};
+    bool found = false;
+
+    while (!q.empty()) {
+        auto [cx,cy] = q.front(); q.pop();
+        if (cx == tx && cy == ty) { found = true; break; }
         for (int i = 0; i < 8; i++) {
-            int nx = cur.x+dx8[i], ny = cur.y+dy8[i];
-            if (!inBounds(nx,ny) || visited[ny][nx] == vgen) continue;
-            if (!isPassable(nx,ny)) continue;
-            Entity* occ = entityAt(nx,ny);
-            if (occ && isBuilding(occ->type) && !(nx==tx && ny==ty)
-                && !(occ->type == E_GATE && occ->carrying > 0)) continue; // open gates are passable
+            int nx = cx+dx8[i], ny = cy+dy8[i];
+            if (!inBounds(nx,ny) || visited[ny][nx]==vgen) continue;
+            if (!isPassable(nx,ny) || bldMap[ny][nx]) continue;
             visited[ny][nx] = vgen;
-            q.push({nx, ny, cur.x, cur.y});
+            parent[ny][nx] = {(int8_t)(cx-nx),(int8_t)(cy-ny)};
+            q.push({nx,ny});
         }
     }
     if (!found) return {};
+
+    // Trace parent pointers from destination back to source
     std::vector<std::pair<int,int>> path;
-    int cx = hist[fi].x, cy = hist[fi].y;
-    path.push_back({cx, cy});
-    int px = hist[fi].px, py = hist[fi].py;
-    while (px != -1) {
-        path.push_back({px, py});
-        for (int i = fi-1; i >= 0; i--) {
-            if (hist[i].x == px && hist[i].y == py) { px=hist[i].px; py=hist[i].py; fi=i; break; }
-        }
-        if ((int)path.size() > 600) break;
+    int cx = tx, cy = ty;
+    while (cx != sx || cy != sy) {
+        path.push_back({cx,cy});
+        auto [ddx,ddy] = parent[cy][cx];
+        cx += ddx; cy += ddy;
     }
     std::reverse(path.begin(), path.end());
-    if (!path.empty()) path.erase(path.begin());
     return path;
 }
 
@@ -250,7 +260,7 @@ void orderMove(Entity& e, int tx, int ty) {
     e.path = findPath(e.x, e.y, tx, ty); e.pathIdx = 0;
     // If path is empty but we're not there, try nearby passable tiles (handles building-blocked destinations)
     if (e.path.empty() && (e.x != tx || e.y != ty)) {
-        for (int r = 1; r <= 3 && e.path.empty(); r++)
+        for (int r = 1; r <= 6 && e.path.empty(); r++)
             for (int dy = -r; dy <= r && e.path.empty(); dy++)
                 for (int dx = -r; dx <= r && e.path.empty(); dx++) {
                     if (std::abs(dx)!=r && std::abs(dy)!=r) continue;
