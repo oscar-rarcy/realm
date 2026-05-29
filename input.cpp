@@ -57,7 +57,11 @@ void handleInput(int ch) {
             else if (ch=='c'||ch=='C') tt = E_CATAPULT;
         }
         else if (sel->type == E_STABLE) { if (ch=='k'||ch=='K') tt = E_KNIGHT; }
-        else if (sel->type == E_DOCK)   { if (ch=='b'||ch=='B') tt = E_FISHING_BOAT; }
+        else if (sel->type == E_DOCK)   {
+            if      (ch=='b'||ch=='B') tt = E_FISHING_BOAT;
+            else if (ch=='w'||ch=='W') tt = E_WARSHIP;
+            else if (ch=='t'||ch=='T') tt = E_TRANSPORT;
+        }
         if (tt != E_NONE) { orderTrain(*sel, tt); g.mode = M_NORMAL; }
         if (ch == 27) g.mode = M_NORMAL;
         return;
@@ -339,10 +343,10 @@ void handleInput(int ch) {
         break;
     }
 
-    // Eject garrison from selected building
+    // Eject garrison from selected building or transport
     case 'U': case 'u': {
         Entity* sel = findEntity(g.selectedId);
-        if (sel && sel->alive && sel->owner == 0 && isBuilding(sel->type) && canGarrisonIn(sel->type)) {
+        if (sel && sel->alive && sel->owner == 0 && canGarrisonIn(sel->type)) {
             int n = (int)sel->garrison.size();
             if (n > 0) { ejectGarrison(*sel); setStatus(std::to_string(n) + " unit(s) ejected"); }
             else setStatus("No garrison to eject");

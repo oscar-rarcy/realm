@@ -43,7 +43,8 @@ enum Terrain {
 
 enum EntityType {
     E_NONE = 0,
-    E_PEASANT, E_MILITIA, E_ARCHER, E_KNIGHT, E_CATAPULT, E_FISHING_BOAT,
+    E_PEASANT, E_MILITIA, E_ARCHER, E_KNIGHT, E_CATAPULT,
+    E_FISHING_BOAT, E_WARSHIP, E_TRANSPORT,
     E_TOWNHALL, E_HOUSE, E_BARRACKS, E_STABLE, E_TOWER,
     E_FARM, E_BLACKSMITH, E_CHURCH, E_MARKET, E_WALL, E_GATE, E_CASTLE,
     E_LUMBER_CAMP, E_MINING_CAMP, E_MILL, E_DOCK,
@@ -107,10 +108,10 @@ struct EntityStats {
 };
 extern const EntityStats STATS[];
 
-inline bool isUnit(EntityType t)     { return (t>=E_PEASANT&&t<=E_FISHING_BOAT)||(t>=E_DEER&&t<=E_SHEEP); }
+inline bool isUnit(EntityType t)     { return (t>=E_PEASANT&&t<=E_TRANSPORT)||(t>=E_DEER&&t<=E_SHEEP); }
 inline bool isBuilding(EntityType t) { return t>=E_TOWNHALL&&t<=E_DOCK; }
-inline bool isRanged(EntityType t)   { return t==E_ARCHER||t==E_CATAPULT; }
-inline bool isNaval(EntityType t)    { return t==E_FISHING_BOAT; }
+inline bool isRanged(EntityType t)   { return t==E_ARCHER||t==E_CATAPULT||t==E_WARSHIP; }
+inline bool isNaval(EntityType t)    { return t==E_FISHING_BOAT||t==E_WARSHIP||t==E_TRANSPORT; }
 
 // ============================================================
 // DATA STRUCTURES

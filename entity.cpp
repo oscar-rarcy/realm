@@ -33,10 +33,11 @@ bool inBounds(int x, int y)              { return x >= 0 && x < MAP_W && y >= 0 
 bool isPassable(int x, int y) {
     if (!inBounds(x, y)) return false;
     Terrain t = g.map[y][x].terrain;
-    // Winter converts water → T_ICE (passable but slow). Glaciers from mapgen are also T_ICE.
-    // Shallows + reeds are water tiles for boats only — land units can't ford them.
+    // Land units can wade through shallows and reeds (slow, see moveAlongPath), but
+    // deep water and fish shoals block them. Winter freezes water → T_ICE which is
+    // passable everywhere as a slick. Mountains/stone/walls always block.
     return t != T_MOUNTAIN && t != T_WATER && t != T_STONE && t != T_CASTLE_WALL
-        && t != T_FISH && t != T_SHALLOWS && t != T_REEDS;
+        && t != T_FISH;
 }
 
 bool isPassableWater(int x, int y) {
@@ -480,6 +481,8 @@ void orderTrain(Entity& bld, EntityType ut) {
     if (ut==E_MILITIA||ut==E_ARCHER) foodCost = 20;
     else if (ut==E_KNIGHT) foodCost = 40;
     else if (ut==E_CATAPULT) foodCost = 30;
+    else if (ut==E_WARSHIP)  foodCost = 20;
+    else if (ut==E_TRANSPORT) foodCost = 10;
     if (p.food < foodCost) { if (bld.owner==0) setStatus("Need more food!"); return; }
     p.food -= foodCost;
     p.gold -= STATS[ut].costGold; p.wood -= STATS[ut].costWood;
@@ -569,15 +572,16 @@ void orderGroupAttack(int tid) {
 // GARRISON
 // ============================================================
 bool canGarrisonIn(EntityType bt) {
-    return bt==E_TOWER || bt==E_TOWNHALL || bt==E_CASTLE || bt==E_HOUSE;
+    return bt==E_TOWER || bt==E_TOWNHALL || bt==E_CASTLE || bt==E_HOUSE || bt==E_TRANSPORT;
 }
 int garrisonCap(EntityType bt) {
     switch (bt) {
-        case E_TOWER:    return 3;
-        case E_HOUSE:    return 4;
-        case E_TOWNHALL: return 6;
-        case E_CASTLE:   return 10;
-        default:         return 0;
+        case E_TOWER:     return 3;
+        case E_HOUSE:     return 4;
+        case E_TOWNHALL:  return 6;
+        case E_CASTLE:    return 10;
+        case E_TRANSPORT: return 4;
+        default:          return 0;
     }
 }
 
@@ -618,8 +622,9 @@ void ejectGarrison(Entity& bld) {
 static void killEntity(Entity& t) {
     if (!t.alive) return;
     t.alive = false; t.state = S_DEAD;
+    // Anything that can hold a garrison (buildings + transports) drops its cargo on death.
+    if (canGarrisonIn(t.type)) ejectGarrison(t);
     if (isBuilding(t.type)) {
-        ejectGarrison(t);
         // Large buildings leave a permanent scar — the floor goes to ruins.
         auto& s = STATS[t.type];
         if (s.sizeW * s.sizeH >= 4 && t.type != E_FARM) {
@@ -642,6 +647,8 @@ void orderGarrison(Entity& e, int buildingId) {
     if (bld->owner != e.owner) return;
     if (!canGarrisonIn(bld->type)) return;
     if (!isUnit(e.type) || e.type == E_CATAPULT) return;
+    // Naval units can't board buildings or each other.
+    if (isNaval(e.type)) return;
     if ((int)bld->garrison.size() >= garrisonCap(bld->type)) {
         if (e.owner == 0) setStatus(std::string(STATS[bld->type].name) + " is full");
         return;
@@ -915,13 +922,32 @@ void tickEntity(Entity& e) {
         int d = dist(e.x, e.y, t->x, t->y);
         if (d <= unitRange(e)) {
             if (e.atkCd <= 0) {
-                t->hp -= unitAtk(e);
+                int dmg = unitAtk(e);
+                t->hp -= dmg;
                 e.atkCd = STATS[e.type].atkSpeed;
                 e.alertTicks = 12; t->alertTicks = 12;
                 if (isRanged(e.type)) {
                     char pc = (e.type==E_CATAPULT) ? 'o' : '-';
                     int pcol = (e.type==E_CATAPULT) ? CP_PROJ_BOULDER : CP_PROJ_ARROW;
                     spawnProjectile(e.x, e.y, t->x, t->y, pc, pcol);
+                }
+                // Catapult splash: 1-tile radius around impact centre, half damage to
+                // anyone but the prime target. Friendly fire is on — siege is messy.
+                if (e.type == E_CATAPULT) {
+                    auto& ts = STATS[t->type];
+                    int tcx = t->x + ts.sizeW/2, tcy = t->y + ts.sizeH/2;
+                    int primeId = t->id, splash = dmg / 2;
+                    for (auto& o : g.entities) {
+                        if (!o.alive || o.id == primeId) continue;
+                        auto& os = STATS[o.type];
+                        // Use footprint-overlap-ish check: nearest point of o's footprint to impact centre.
+                        int ox = std::max(o.x, std::min(tcx, o.x + os.sizeW - 1));
+                        int oy = std::max(o.y, std::min(tcy, o.y + os.sizeH - 1));
+                        if (std::abs(ox - tcx) <= 1 && std::abs(oy - tcy) <= 1) {
+                            o.hp -= splash; o.alertTicks = 12;
+                            if (o.hp <= 0) killEntity(o);
+                        }
+                    }
                 }
                 if (t->hp <= 0) {
                     if (t->owner == OWNER_NATURE && e.owner < OWNER_NATURE) {
@@ -1239,8 +1265,9 @@ void tickThaw() {
     if (g.tick % 5 != 0) return;
     if (getSeason() != SPRING) return;
     float progress = getSeasonProgress();
-    // Patchy melt completes by ~60% of spring so the world looks alive by mid-season.
-    int threshold = std::max(0, (int)(progress * 1700.0f));
+    // Patchy melt completes by ~40% of spring — earlier sessions felt snowy way too
+    // deep into the season. Tiles thaw faster, world greens up quickly.
+    int threshold = std::max(0, (int)(progress * 2600.0f));
     for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
         Tile& t = g.map[y][x];
         if (t.terrain != T_SNOW && t.terrain != T_ICE) continue;
@@ -1638,7 +1665,9 @@ static void tickAIForOwner(int o) {
     for (auto& dk : g.entities) {
         if (!dk.alive || dk.owner != o || dk.type != E_DOCK || dk.underConstruction) continue;
         if (dk.producing != E_NONE) continue;
-        if (aiCount(o,E_FISHING_BOAT) < 3 && p.gold >= 80 && p.wood >= 50) orderTrain(dk, E_FISHING_BOAT);
+        // Fishing boats first for food, then a couple of warships for coastline pressure.
+        if (aiCount(o,E_FISHING_BOAT) < 3 && p.gold >= 80 && p.wood >= 50) { orderTrain(dk, E_FISHING_BOAT); continue; }
+        if (aiCount(o,E_WARSHIP) < 2 && p.gold >= 150 && p.wood >= 80 && p.food >= 20) { orderTrain(dk, E_WARSHIP); continue; }
     }
 
     // === EXPANSION: forward TH halfway to the player ===

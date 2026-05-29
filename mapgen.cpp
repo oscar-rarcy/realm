@@ -44,7 +44,7 @@ void generateMap() {
         else if (n1 < 0.25f) b = B_SNOW;
         else if (n2 > 0.7f) b = B_SWAMP;
         else if (n2 < 0.3f && n1 > 0.4f && n1 < 0.6f) b = B_FOREST;
-        g.map[y][x] = {T_GRASS, 0, {false,false}, {false,false}, b};
+        g.map[y][x] = {T_GRASS, 0, {}, {}, b, T_GRASS, 0};
     }
     for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
         Tile& t = g.map[y][x]; int r = rand() % 100;

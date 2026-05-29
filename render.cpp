@@ -648,6 +648,15 @@ void renderUI() {
                     mvprintw(iy++, panelX+1, "Carrying: %d %s", sel->carrying, sel->gatherType==0?"gold":"wood");
                     attroff(COLOR_PAIR(CP_UI_HIGH));
                 }
+                // Transport cargo display + unload hint
+                if (sel->type == E_TRANSPORT && sel->owner == 0) {
+                    attron(COLOR_PAIR(CP_UI_HIGH));
+                    mvprintw(iy++, panelX+1, "Cargo: %d/%d", (int)sel->garrison.size(), garrisonCap(E_TRANSPORT));
+                    attroff(COLOR_PAIR(CP_UI_HIGH));
+                    attron(COLOR_PAIR(CP_UI_ACCENT));
+                    mvprintw(iy++, panelX+1, "[U] Unload");
+                    attroff(COLOR_PAIR(CP_UI_ACCENT));
+                }
             }
             if (sel->producing != E_NONE) {
                 iy++;
@@ -744,7 +753,7 @@ void renderUI() {
             if (s2->type==E_TOWNHALL)  mvprintw(botY2, 1, " TRAIN: [P]easant(50g) [Esc] ");
             else if (s2->type==E_BARRACKS) mvprintw(botY2, 1, " TRAIN: [M]ilitia(60g) [A]rcher(70g) [C]atapult(150g+40w) [Esc] ");
             else if (s2->type==E_STABLE)   mvprintw(botY2, 1, " TRAIN: [K]night(120g) [Esc] ");
-            else if (s2->type==E_DOCK)     mvprintw(botY2, 1, " TRAIN: [B]oat(80g+50w) [Esc] ");
+            else if (s2->type==E_DOCK)     mvprintw(botY2, 1, " TRAIN: [B]oat(80g+50w) [W]arship(150g+80w) [T]ransport(80g+40w) [Esc] ");
         }
     } else if (g.mode == M_WALL_DRAG) {
         if (g.dragging)
