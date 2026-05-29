@@ -127,6 +127,7 @@ struct Entity {
     bool underConstruction, alive; int rallyX, rallyY;
     int carrying;
     int stuckTicks;
+    int alertTicks; // > 0 = recently in combat; render flashes '!'
     std::vector<int> garrison; // unit ids currently inside this building
 };
 

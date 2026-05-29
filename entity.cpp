@@ -647,6 +647,7 @@ static bool findNearbyResource(Entity& e) {
 // ============================================================
 void tickEntity(Entity& e) {
     if (!e.alive) return;
+    if (e.alertTicks > 0) e.alertTicks--;
     // Building production
     if (e.producing != E_NONE && !e.underConstruction) {
         int bonus = 0;
@@ -686,8 +687,22 @@ void tickEntity(Entity& e) {
             if (e.hp >= e.maxHp) {
                 e.hp = e.maxHp; e.underConstruction = false; updateSupply(e.owner);
                 if (e.owner==0) setStatus(std::string(STATS[e.type].name) + " complete!");
-                for (auto& o : g.entities)
-                    if (o.alive && o.state==S_BUILDING && o.targetId==e.id) o.state = S_IDLE;
+                for (auto& o : g.entities) {
+                    if (!o.alive || o.state!=S_BUILDING || o.targetId!=e.id) continue;
+                    // For farms: keep tending — S_BUILDING handler routes to its farm branch.
+                    if (e.type == E_FARM) continue;
+                    // For other structures: cast around for the nearest in-progress build
+                    // (any owner==o.owner site under construction) and continue helping.
+                    Entity* next = nullptr; int bestD = 99999;
+                    for (auto& b : g.entities) {
+                        if (!b.alive || b.owner != o.owner || !b.underConstruction || !isBuilding(b.type)) continue;
+                        if (b.id == e.id) continue;
+                        int d = mdist(o.x, o.y, b.x, b.y);
+                        if (d < bestD) { bestD = d; next = &b; }
+                    }
+                    if (next) orderHelp(o, next->id);
+                    else o.state = S_IDLE;
+                }
             }
         }
         return;
@@ -717,6 +732,7 @@ void tickEntity(Entity& e) {
             if (e.atkCd <= 0) {
                 t->hp -= STATS[e.type].atk;
                 e.atkCd = STATS[e.type].atkSpeed;
+                e.alertTicks = 12; t->alertTicks = 12;
                 if (isRanged(e.type)) {
                     char pc = (e.type==E_CATAPULT) ? 'o' : '-';
                     int pcol = (e.type==E_CATAPULT) ? CP_PROJ_BOULDER : CP_PROJ_ARROW;
@@ -923,6 +939,7 @@ void tickTowers() {
         if (en) {
             if (e.atkCd <= 0) {
                 en->hp -= atk; e.atkCd = isTower ? STATS[E_TOWER].atkSpeed : 9;
+                en->alertTicks = 12;
                 spawnProjectile(sx, sy, en->x, en->y, '*', CP_PROJ_TOWER);
                 if (en->hp <= 0) killEntity(*en);
             } else e.atkCd--;

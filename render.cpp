@@ -99,9 +99,9 @@ void initColors() {
     init_pair(CP_HILLS,         C::OLIVE,        bg);
     init_pair(CP_STONE,         C::MED_GRAY,     bg);
 
-    init_pair(CP_WATER,         C::MED_BLUE,     C::DEEP_BLUE);
-    init_pair(CP_WATER_SHIMMER, C::BRIGHT_TEAL,  C::DEEP_BLUE);
-    init_pair(CP_SHALLOWS,      C::TEAL,         bg);
+    init_pair(CP_WATER,         C::ICE_BLUE,     C::DEEP_BLUE);
+    init_pair(CP_WATER_SHIMMER, C::SNOW_WHITE,   C::DEEP_BLUE);
+    init_pair(CP_SHALLOWS,      C::SNOW_WHITE,   C::TEAL);
     init_pair(CP_MARSH,         C::SWAMP_GREEN,  bg);
     init_pair(CP_REEDS,         C::DARK_GOLD,    bg);
 
@@ -110,8 +110,8 @@ void initColors() {
 
     init_pair(CP_SAND,          C::TAN,          bg);
     init_pair(CP_DUNES,         C::LIGHT_TAN,    bg);
-    init_pair(CP_SNOW_GROUND,   C::SNOW_WHITE,   bg);
-    init_pair(CP_ICE,           C::ICE_BLUE,     bg);
+    init_pair(CP_SNOW_GROUND,   C::LIGHT_GRAY,   C::SNOW_WHITE);
+    init_pair(CP_ICE,           C::MED_BLUE,     C::ICE_BLUE);
 
     init_pair(CP_DIRT,          C::BROWN,        bg);
     init_pair(CP_ROAD,          C::LIGHT_GRAY,   bg);
@@ -133,9 +133,9 @@ void initColors() {
     init_pair(CP_AUT_GRASS,      C::OLIVE,        bg);
     init_pair(CP_AUT_GRASS_LATE, C::BROWN,        bg);
 
-    init_pair(CP_WIN_GROUND,     C::SNOW_WHITE,   bg);
-    init_pair(CP_WIN_TREE,       C::LIGHT_GRAY,   bg);
-    init_pair(CP_WIN_PINE,       C::PINE_GREEN,   bg);
+    init_pair(CP_WIN_GROUND,     C::LIGHT_GRAY,   C::SNOW_WHITE);
+    init_pair(CP_WIN_TREE,       C::DARK_GREEN,   C::SNOW_WHITE);
+    init_pair(CP_WIN_PINE,       C::PINE_GREEN,   C::SNOW_WHITE);
     init_pair(CP_WIN_ICE,        C::ICE_BLUE,     C::NAVY);
 
     init_pair(CP_NIGHT_GRASS,    C::DARK_GREEN,   bg);
@@ -414,6 +414,8 @@ void renderMap() {
                 if (ent->underConstruction && g.tick%10 < 5) { ch = '#'; drawCh = (chtype)ch; }
                 // Dwarf-Fortress-style solid wall block when complete
                 if (ent->type == E_WALL && !ent->underConstruction) drawCh = ACS_CKBOARD;
+                // Recently in combat: flash an exclamation mark
+                if (ent->alertTicks > 0 && (g.tick & 2)) { ch = '!'; drawCh = (chtype)ch; }
             }
             for (auto& p : g.projectiles) {
                 if (!p.alive) continue;
