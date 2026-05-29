@@ -622,7 +622,12 @@ void renderUI() {
                         mvprintw(iy++, panelX+1, sel->gatherType==1 ? "Mode: Locked" : "Mode: Auto");
                         mvprintw(iy++, panelX+1, "[O] Toggle/Lock");
                     }
-                    if (sel->type==E_CASTLE)     mvprintw(iy++, panelX+1, "+15 Supply, 300 HP");
+                    if (sel->type==E_CASTLE)     mvprintw(iy++, panelX+1, "+15 Supply, 350 HP");
+                    if (canGarrisonIn(sel->type)) {
+                        mvprintw(iy++, panelX+1, "Garrison: %d/%d",
+                                 (int)sel->garrison.size(), garrisonCap(sel->type));
+                        mvprintw(iy++, panelX+1, "[U] Eject all");
+                    }
                 }
                 attroff(COLOR_PAIR(CP_UI_ACCENT));
             }
@@ -657,7 +662,7 @@ void renderUI() {
         Entity* s2 = findEntity(g.selectedId);
         if (s2) {
             if (s2->type==E_TOWNHALL)  mvprintw(botY2, 1, " TRAIN: [P]easant(50g) [Esc] ");
-            else if (s2->type==E_BARRACKS) mvprintw(botY2, 1, " TRAIN: [M]ilitia(60g) [A]rcher(70g) [C]atapult(180g+50w) [Esc] ");
+            else if (s2->type==E_BARRACKS) mvprintw(botY2, 1, " TRAIN: [M]ilitia(60g) [A]rcher(70g) [C]atapult(150g+40w) [Esc] ");
             else if (s2->type==E_STABLE)   mvprintw(botY2, 1, " TRAIN: [K]night(120g) [Esc] ");
         }
     } else if (g.mode == M_WALL_DRAG) {

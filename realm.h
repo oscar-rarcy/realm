@@ -51,7 +51,8 @@ enum EntityType {
 
 enum EntityState {
     S_IDLE, S_MOVING, S_ATTACKING, S_GATHERING,
-    S_BUILDING, S_TRAINING, S_RETURNING, S_DEAD
+    S_BUILDING, S_TRAINING, S_RETURNING, S_DEAD,
+    S_ENTERING, S_GARRISONED
 };
 enum GameMode  { M_NORMAL, M_BUILD_SELECT, M_TRAIN_SELECT, M_WALL_DRAG, M_PAUSED, M_GAME_OVER };
 enum Biome     { B_TEMPERATE, B_DESERT, B_SNOW, B_SWAMP, B_FOREST };
@@ -124,6 +125,7 @@ struct Entity {
     bool underConstruction, alive; int rallyX, rallyY;
     int carrying;
     int stuckTicks;
+    std::vector<int> garrison; // unit ids currently inside this building
 };
 
 struct Player { int gold, wood, food, supply, supplyMax; bool alive; };
@@ -192,7 +194,13 @@ void orderTrain(Entity& bld,EntityType ut);
 void orderGroupMove(int tx,int ty);
 void orderGroupAttack(int tid);
 void orderHelp(Entity& e,int buildingId);
+void orderGarrison(Entity& e,int buildingId);
 void moveAlongPath(Entity& e);
+
+// entity.cpp — garrison
+bool canGarrisonIn(EntityType bt);
+int  garrisonCap(EntityType bt);
+void ejectGarrison(Entity& bld);
 
 // entity.cpp — tick / game logic
 void tickEntity(Entity& e);

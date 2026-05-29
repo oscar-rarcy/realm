@@ -62,7 +62,7 @@ Entity* findDepot(Entity& e) {
 
 Entity* entityAt(int x, int y) {
     for (auto& e : g.entities) {
-        if (!e.alive) continue;
+        if (!e.alive || e.state == S_GARRISONED) continue;
         auto& s = STATS[e.type];
         if (s.isBuilding) { if (x>=e.x && x<e.x+s.sizeW && y>=e.y && y<e.y+s.sizeH) return &e; }
         else if (e.x == x && e.y == y) return &e;
@@ -72,7 +72,7 @@ Entity* entityAt(int x, int y) {
 
 Entity* entityAtOwner(int x, int y, int owner) {
     for (auto& e : g.entities) {
-        if (!e.alive || e.owner != owner) continue;
+        if (!e.alive || e.owner != owner || e.state == S_GARRISONED) continue;
         auto& s = STATS[e.type];
         if (s.isBuilding) { if (x>=e.x && x<e.x+s.sizeW && y>=e.y && y<e.y+s.sizeH) return &e; }
         else if (e.x == x && e.y == y) return &e;
@@ -134,10 +134,13 @@ void tickProjectiles() {
 }
 
 // ============================================================
-// PATHFINDING
+// PATHFINDING — A* with octile distance (10 cardinal, 14 diagonal).
+// Returns path to closest reachable tile if the target itself is unreachable,
+// so a click always produces motion toward the destination.
 // ============================================================
 std::vector<std::pair<int,int>> findPath(int sx, int sy, int tx, int ty, int /*maxSteps*/) {
     if (sx == tx && sy == ty) return {};
+    // If target tile is blocked, retarget to its nearest passable neighbor.
     if (!isPassable(tx, ty)) {
         int bestD = 9999, bx = -1, by = -1;
         for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
@@ -148,12 +151,12 @@ std::vector<std::pair<int,int>> findPath(int sx, int sy, int tx, int ty, int /*m
         tx = bx; ty = by;
     }
 
-    // Pre-scan buildings into a flat bool map — O(1) lookup in BFS vs O(N) entityAt
+    // Pre-scan buildings into a flat bool map — O(1) lookup vs O(N) entityAt per step.
     static bool bldMap[MAP_H][MAP_W];
     memset(bldMap, 0, sizeof(bldMap));
     for (auto& e : g.entities) {
         if (!e.alive || !isBuilding(e.type)) continue;
-        if (e.type == E_GATE && e.carrying > 0) continue; // open gate: passable
+        if (e.type == E_GATE && e.carrying > 0) continue;
         auto& s = STATS[e.type];
         for (int dy2 = 0; dy2 < s.sizeH; dy2++) for (int dx2 = 0; dx2 < s.sizeW; dx2++) {
             int bx = e.x+dx2, by = e.y+dy2;
@@ -162,34 +165,71 @@ std::vector<std::pair<int,int>> findPath(int sx, int sy, int tx, int ty, int /*m
     }
     bldMap[ty][tx] = false; // always allow reaching the destination
 
-    // BFS with parent-pointer reconstruction — no iteration cap, full map coverage
-    static int  visited[MAP_H][MAP_W]; static int vgen = 0;
-    static std::pair<int8_t,int8_t> parent[MAP_H][MAP_W]; // delta back toward parent
-    static const int dx8[] = {0,1,1,1,0,-1,-1,-1};
-    static const int dy8[] = {-1,-1,0,1,1,1,0,-1};
+    static int  gScore[MAP_H][MAP_W];
+    static int  visited[MAP_H][MAP_W];  // == vgen → discovered (g+parent valid)
+    static int  closed [MAP_H][MAP_W];  // == vgen → expanded (final g)
+    static int  vgen = 0;
+    static std::pair<int8_t,int8_t> parent[MAP_H][MAP_W];
+    static const int dx8[]   = {0,1,1,1,0,-1,-1,-1};
+    static const int dy8[]   = {-1,-1,0,1,1,1,0,-1};
+    static const int cost8[] = {10,14,10,14,10,14,10,14};
+
+    auto h = [&](int x, int y) {
+        int dx = std::abs(x-tx), dy = std::abs(y-ty);
+        return 10 * std::max(dx,dy) + 4 * std::min(dx,dy);
+    };
 
     vgen++;
-    std::queue<std::pair<int,int>> q;
-    q.push({sx,sy}); visited[sy][sx] = vgen; parent[sy][sx] = {0,0};
-    bool found = false;
+    using Node = std::tuple<int,int,int>; // (f, x, y) — min-heap via std::greater
+    std::priority_queue<Node, std::vector<Node>, std::greater<Node>> open;
+    gScore[sy][sx] = 0;
+    visited[sy][sx] = vgen;
+    parent[sy][sx] = {0,0};
+    open.push({h(sx,sy), sx, sy});
 
-    while (!q.empty()) {
-        auto [cx,cy] = q.front(); q.pop();
+    // Track best progress toward target for the unreachable-fallback path.
+    int bestH = h(sx,sy), bestX = sx, bestY = sy;
+    bool found = false;
+    int iter = 0;
+    const int MAX_ITER = 4000;
+
+    while (!open.empty() && iter++ < MAX_ITER) {
+        auto [f, cx, cy] = open.top(); open.pop();
+        if (closed[cy][cx] == vgen) continue;
+        closed[cy][cx] = vgen;
+
         if (cx == tx && cy == ty) { found = true; break; }
+        int ch = h(cx, cy);
+        if (ch < bestH) { bestH = ch; bestX = cx; bestY = cy; }
+        int gc = gScore[cy][cx];
+
         for (int i = 0; i < 8; i++) {
             int nx = cx+dx8[i], ny = cy+dy8[i];
-            if (!inBounds(nx,ny) || visited[ny][nx]==vgen) continue;
+            if (!inBounds(nx,ny)) continue;
+            if (closed[ny][nx] == vgen) continue;
             if (!isPassable(nx,ny) || bldMap[ny][nx]) continue;
+            // Forbid corner-cutting between two blocked cardinals on a diagonal step.
+            if (i & 1) {
+                int hx = cx+dx8[i], hy = cy;
+                int vx = cx,         vy = cy+dy8[i];
+                if (!isPassable(hx,hy) || bldMap[hy][hx]) continue;
+                if (!isPassable(vx,vy) || bldMap[vy][vx]) continue;
+            }
+            int ng = gc + cost8[i];
+            if (visited[ny][nx] == vgen && ng >= gScore[ny][nx]) continue;
             visited[ny][nx] = vgen;
+            gScore[ny][nx] = ng;
             parent[ny][nx] = {(int8_t)(cx-nx),(int8_t)(cy-ny)};
-            q.push({nx,ny});
+            open.push({ng + h(nx,ny), nx, ny});
         }
     }
-    if (!found) return {};
 
-    // Trace parent pointers from destination back to source
+    int cx, cy;
+    if (found) { cx = tx; cy = ty; }
+    else if (bestX == sx && bestY == sy) return {};  // no progress possible
+    else { cx = bestX; cy = bestY; }
+
     std::vector<std::pair<int,int>> path;
-    int cx = tx, cy = ty;
     while (cx != sx || cy != sy) {
         path.push_back({cx,cy});
         auto [ddx,ddy] = parent[cy][cx];
@@ -222,6 +262,7 @@ void updateFog() {
     int nightPen = isNight() ? 2 : (isDusk()||isDawn()) ? 1 : 0;
     for (auto& e : g.entities) {
         if (!e.alive || e.owner >= OWNER_NATURE) continue;
+        if (e.state == S_GARRISONED) continue;
         int r = FOG_RADIUS - nightPen;
         if (isBuilding(e.type)) r += 2;
         if (e.type == E_TOWER)  r += 4;
@@ -247,6 +288,7 @@ Entity* findNearestEnemy(Entity& e, int range) {
     Entity* best = nullptr; int bestD = range + 1;
     for (auto& o : g.entities) {
         if (!o.alive || o.owner == e.owner) continue;
+        if (o.state == S_GARRISONED) continue;
         // Non-nature units do not auto-attack nature entities (deer/wolf/sheep)
         if (e.owner != OWNER_NATURE && o.owner == OWNER_NATURE) continue;
         int d = dist(e.x, e.y, o.x, o.y);
@@ -257,17 +299,11 @@ Entity* findNearestEnemy(Entity& e, int range) {
 
 void orderMove(Entity& e, int tx, int ty) {
     e.state = S_MOVING; e.targetX = tx; e.targetY = ty; e.targetId = -1;
+    e.stuckTicks = 0;
     e.path = findPath(e.x, e.y, tx, ty); e.pathIdx = 0;
-    // If path is empty but we're not there, try nearby passable tiles (handles building-blocked destinations)
     if (e.path.empty() && (e.x != tx || e.y != ty)) {
-        for (int r = 1; r <= 6 && e.path.empty(); r++)
-            for (int dy = -r; dy <= r && e.path.empty(); dy++)
-                for (int dx = -r; dx <= r && e.path.empty(); dx++) {
-                    if (std::abs(dx)!=r && std::abs(dy)!=r) continue;
-                    int nx=tx+dx, ny=ty+dy;
-                    if (!inBounds(nx,ny) || !isPassable(nx,ny)) continue;
-                    e.path = findPath(e.x, e.y, nx, ny);
-                }
+        e.state = S_IDLE;
+        if (e.owner == 0) setStatus("Can't reach there.");
     }
 }
 
@@ -389,6 +425,89 @@ void orderGroupAttack(int tid) {
     setStatus("Group attacking!");
 }
 
+// ============================================================
+// GARRISON
+// ============================================================
+bool canGarrisonIn(EntityType bt) {
+    return bt==E_TOWER || bt==E_TOWNHALL || bt==E_CASTLE || bt==E_HOUSE;
+}
+int garrisonCap(EntityType bt) {
+    switch (bt) {
+        case E_TOWER:    return 3;
+        case E_HOUSE:    return 4;
+        case E_TOWNHALL: return 6;
+        case E_CASTLE:   return 10;
+        default:         return 0;
+    }
+}
+
+void ejectGarrison(Entity& bld) {
+    if (bld.garrison.empty()) return;
+    int bw = STATS[bld.type].sizeW, bh = STATS[bld.type].sizeH;
+    std::vector<std::pair<int,int>> spots;
+    static bool taken[MAP_H][MAP_W];
+    memset(taken, 0, sizeof(taken));
+    for (int r = 1; r <= 6 && spots.size() < bld.garrison.size(); r++)
+        for (int dy = -r; dy <= bh-1+r && spots.size() < bld.garrison.size(); dy++)
+            for (int dx = -r; dx <= bw-1+r && spots.size() < bld.garrison.size(); dx++) {
+                if (dx>=0 && dx<bw && dy>=0 && dy<bh) continue;
+                int nx = bld.x+dx, ny = bld.y+dy;
+                if (!inBounds(nx,ny) || taken[ny][nx]) continue;
+                if (!isPassable(nx,ny) || entityAt(nx,ny)) continue;
+                taken[ny][nx] = true;
+                spots.push_back({nx,ny});
+            }
+    size_t si = 0;
+    for (int uid : bld.garrison) {
+        Entity* u = findEntity(uid);
+        if (!u || !u->alive) continue;
+        if (si < spots.size()) {
+            u->x = spots[si].first; u->y = spots[si].second;
+            u->state = S_IDLE; u->path.clear(); u->pathIdx = 0;
+            u->stuckTicks = 0; u->targetId = -1;
+            si++;
+        } else {
+            u->alive = false; u->state = S_DEAD;
+        }
+    }
+    bld.garrison.clear();
+    updateSupply(bld.owner);
+}
+
+// Centralized death handler: marks dead, ejects garrison, updates supply.
+static void killEntity(Entity& t) {
+    if (!t.alive) return;
+    t.alive = false; t.state = S_DEAD;
+    if (isBuilding(t.type)) ejectGarrison(t);
+    updateSupply(t.owner);
+}
+
+void orderGarrison(Entity& e, int buildingId) {
+    Entity* bld = findEntity(buildingId);
+    if (!bld || !bld->alive || bld->underConstruction) return;
+    if (bld->owner != e.owner) return;
+    if (!canGarrisonIn(bld->type)) return;
+    if (!isUnit(e.type) || e.type == E_CATAPULT) return;
+    if ((int)bld->garrison.size() >= garrisonCap(bld->type)) {
+        if (e.owner == 0) setStatus(std::string(STATS[bld->type].name) + " is full");
+        return;
+    }
+    e.state = S_ENTERING; e.targetId = buildingId;
+    e.targetX = bld->x; e.targetY = bld->y;
+    e.stuckTicks = 0;
+    int bw = STATS[bld->type].sizeW, bh = STATS[bld->type].sizeH;
+    int bestAX = bld->x-1, bestAY = bld->y, bestAD = 99999;
+    for (int dy = -1; dy <= bh; dy++) for (int dx = -1; dx <= bw; dx++) {
+        if (dx>=0 && dx<bw && dy>=0 && dy<bh) continue;
+        int nx = bld->x+dx, ny = bld->y+dy;
+        if (inBounds(nx,ny) && isPassable(nx,ny)) {
+            int d = mdist(e.x, e.y, nx, ny);
+            if (d < bestAD) { bestAD = d; bestAX = nx; bestAY = ny; }
+        }
+    }
+    e.path = findPath(e.x, e.y, bestAX, bestAY); e.pathIdx = 0;
+}
+
 void orderHelp(Entity& e, int buildingId) {
     if (e.type != E_PEASANT) return;
     Entity* bld = findEntity(buildingId);
@@ -416,6 +535,7 @@ void orderHelp(Entity& e, int buildingId) {
 void moveAlongPath(Entity& e) {
     if (e.pathIdx >= (int)e.path.size()) {
         e.path.clear(); e.pathIdx = 0;
+        e.stuckTicks = 0;
         if (e.state == S_MOVING) e.state = S_IDLE;
         return;
     }
@@ -426,15 +546,35 @@ void moveAlongPath(Entity& e) {
     if (blk && blk->id != e.id && isBuilding(blk->type)) {
         bool isOpenGate = (blk->type == E_GATE && blk->carrying > 0);
         if (!isOpenGate) {
-            if (!e.path.empty()) {
-                auto dest = e.path.back();
-                e.path = findPath(e.x, e.y, dest.first, dest.second);
-                e.pathIdx = 0;
+            // Tolerate transient blocks; only repath after several stuck ticks (staggered by id).
+            e.stuckTicks++;
+            int threshold = 3 + (e.id % 5);
+            if (e.stuckTicks >= threshold) {
+                e.stuckTicks = 0;
+                int gx = e.path.empty() ? e.targetX : e.path.back().first;
+                int gy = e.path.empty() ? e.targetY : e.path.back().second;
+                // If the original goal tile is now blocked by a building, target the closest free tile around it.
+                if (!isPassable(gx, gy) || (entityAt(gx,gy) && isBuilding(entityAt(gx,gy)->type))) {
+                    int bestD = 99999, bx = gx, by = gy;
+                    for (int r = 1; r <= 4 && bestD == 99999; r++)
+                        for (int dy = -r; dy <= r; dy++) for (int dx = -r; dx <= r; dx++) {
+                            if (std::abs(dx) != r && std::abs(dy) != r) continue;
+                            int qx = gx+dx, qy = gy+dy;
+                            if (!inBounds(qx,qy) || !isPassable(qx,qy)) continue;
+                            Entity* o = entityAt(qx,qy);
+                            if (o && isBuilding(o->type)) continue;
+                            int d = mdist(e.x, e.y, qx, qy);
+                            if (d < bestD) { bestD = d; bx = qx; by = qy; }
+                        }
+                    gx = bx; gy = by;
+                }
+                e.path = findPath(e.x, e.y, gx, gy); e.pathIdx = 0;
             }
             return;
         }
     }
     e.x = nx; e.y = ny; e.pathIdx++;
+    e.stuckTicks = 0;
     Terrain ter = g.map[ny][nx].terrain;
     int spd = STATS[e.type].speed;
     if (ter==T_ROAD||ter==T_DIRT||ter==T_CASTLE_FLOOR) spd = std::max(1, spd-1);
@@ -539,18 +679,23 @@ void tickEntity(Entity& e) {
                     spawnProjectile(e.x, e.y, t->x, t->y, pc, pcol);
                 }
                 if (t->hp <= 0) {
-                    t->alive=false; t->state=S_DEAD; e.state=S_IDLE; updateSupply(t->owner);
                     if (t->owner == OWNER_NATURE && e.owner < OWNER_NATURE) {
                         int food = (t->type==E_SHEEP)?80:(t->type==E_DEER)?120:30;
                         g.players[e.owner].food += food;
                         if (e.owner==0) setStatus(std::string("Got ") + std::to_string(food) + " food!");
                     }
+                    killEntity(*t);
+                    e.state = S_IDLE;
                 }
             } else e.atkCd--;
         } else {
-            if (e.path.empty() || e.pathIdx >= (int)e.path.size()) {
-                e.path = findPath(e.x, e.y, t->x, t->y); e.pathIdx = 0;
+            // Re-path if our path is exhausted OR target wandered away from its end.
+            bool stale = e.path.empty() || e.pathIdx >= (int)e.path.size();
+            if (!stale) {
+                auto end = e.path.back();
+                if (dist(end.first, end.second, t->x, t->y) > 2) stale = true;
             }
+            if (stale) { e.path = findPath(e.x, e.y, t->x, t->y); e.pathIdx = 0; }
             moveAlongPath(e);
         }
         break;
@@ -619,6 +764,46 @@ void tickEntity(Entity& e) {
         }
         break;
     }
+    case S_ENTERING: {
+        Entity* bld = findEntity(e.targetId);
+        if (!bld || !bld->alive || bld->underConstruction || !canGarrisonIn(bld->type) || bld->owner != e.owner) {
+            e.state = S_IDLE; break;
+        }
+        int bw = STATS[bld->type].sizeW, bh = STATS[bld->type].sizeH;
+        int bx2 = bld->x + bw - 1, by2 = bld->y + bh - 1;
+        int cx = std::max(bld->x, std::min(e.x, bx2));
+        int cy = std::max(bld->y, std::min(e.y, by2));
+        if (dist(e.x, e.y, cx, cy) <= 1) {
+            if ((int)bld->garrison.size() < garrisonCap(bld->type)) {
+                bld->garrison.push_back(e.id);
+                e.state = S_GARRISONED;
+                e.x = bld->x; e.y = bld->y;
+                e.path.clear(); e.pathIdx = 0; e.stuckTicks = 0;
+                if (e.owner == 0) setStatus(std::string("Garrisoned in ") + STATS[bld->type].name);
+            } else {
+                if (e.owner == 0) setStatus(std::string(STATS[bld->type].name) + " is full");
+                e.state = S_IDLE;
+            }
+        } else {
+            moveAlongPath(e);
+            if (e.path.empty()) {
+                int bestAX = bld->x-1, bestAY = bld->y, bestAD = 99999;
+                for (int dy = -1; dy <= bh; dy++) for (int dx = -1; dx <= bw; dx++) {
+                    if (dx>=0 && dx<bw && dy>=0 && dy<bh) continue;
+                    int nx = bld->x+dx, ny = bld->y+dy;
+                    if (inBounds(nx,ny) && isPassable(nx,ny)) {
+                        int d2 = mdist(e.x, e.y, nx, ny);
+                        if (d2 < bestAD) { bestAD = d2; bestAX = nx; bestAY = ny; }
+                    }
+                }
+                e.path = findPath(e.x, e.y, bestAX, bestAY); e.pathIdx = 0;
+                if (e.path.empty()) e.state = S_IDLE;
+            }
+        }
+        break;
+    }
+    case S_GARRISONED:
+        break; // Stays inside; building handles its own attacks.
     case S_BUILDING: {
         Entity* bld = findEntity(e.targetId);
         if (!bld || !bld->alive) { e.state = S_IDLE; break; }
@@ -661,16 +846,40 @@ void tickEntity(Entity& e) {
 // PASSIVE BUILDING TICKS
 // ============================================================
 void tickTowers() {
+    // Towers always defend. Town Hall/Castle/House defend only when garrisoned.
+    // Garrisoned archers add ranged punch; militia/knights add a smaller bonus.
     for (auto& e : g.entities) {
-        if (!e.alive || e.underConstruction || e.type != E_TOWER) continue;
-        Entity* en = findNearestEnemy(e, STATS[E_TOWER].range);
+        if (!e.alive || e.underConstruction) continue;
+        if (!isBuilding(e.type)) continue;
+        bool isTower    = (e.type == E_TOWER);
+        bool canGarrAtk = canGarrisonIn(e.type) && !e.garrison.empty();
+        if (!isTower && !canGarrAtk) continue;
+
+        int archers = 0, fighters = 0;
+        for (int uid : e.garrison) {
+            Entity* u = findEntity(uid);
+            if (!u || !u->alive) continue;
+            if (u->type == E_ARCHER) archers++;
+            else if (u->type == E_MILITIA || u->type == E_KNIGHT) fighters++;
+        }
+        int atk = STATS[e.type].atk + archers*5 + fighters*2;
+        int rng = STATS[e.type].range;
+        if (e.type == E_TOWNHALL && canGarrAtk) rng = std::max(rng, 6);
+        if (e.type == E_CASTLE   && canGarrAtk) rng = std::max(rng, 8);
+        if (e.type == E_HOUSE    && canGarrAtk) rng = std::max(rng, 4);
+        if (rng <= 0 || atk <= 0) { if (e.atkCd > 0) e.atkCd--; continue; }
+
+        int sx = e.x + STATS[e.type].sizeW/2;
+        int sy = e.y + STATS[e.type].sizeH/2;
+        // Build a temporary anchor entity for range checks (use e directly — its x,y is top-left, close enough)
+        Entity* en = findNearestEnemy(e, rng);
         if (en) {
             if (e.atkCd <= 0) {
-                en->hp -= STATS[E_TOWER].atk; e.atkCd = STATS[E_TOWER].atkSpeed;
-                spawnProjectile(e.x, e.y, en->x, en->y, '*', CP_PROJ_TOWER);
-                if (en->hp <= 0) { en->alive=false; en->state=S_DEAD; updateSupply(en->owner); }
+                en->hp -= atk; e.atkCd = isTower ? STATS[E_TOWER].atkSpeed : 9;
+                spawnProjectile(sx, sy, en->x, en->y, '*', CP_PROJ_TOWER);
+                if (en->hp <= 0) killEntity(*en);
             } else e.atkCd--;
-        }
+        } else if (e.atkCd > 0) e.atkCd--;
     }
 }
 
@@ -753,6 +962,7 @@ void tickAnimals() {
             if (e.state != S_MOVING || e.path.empty()) {
                 for (auto& o : g.entities) {
                     if (!o.alive || o.owner==OWNER_NATURE || !isUnit(o.type)) continue;
+                    if (o.state == S_GARRISONED) continue;
                     if (dist(e.x, e.y, o.x, o.y) <= 4) {
                         int fx = std::max(1, std::min(e.x + (e.x-o.x)*4, MAP_W-2));
                         int fy = std::max(1, std::min(e.y + (e.y-o.y)*4, MAP_H-2));
@@ -784,6 +994,7 @@ void tickAnimals() {
             } else if (e.state==S_IDLE || (e.state==S_MOVING && e.path.empty())) {
                 for (auto& o : g.entities) {
                     if (!o.alive || o.owner==OWNER_NATURE || !isUnit(o.type)) continue;
+                    if (o.state == S_GARRISONED) continue;
                     if (dist(e.x, e.y, o.x, o.y) <= 3) { orderAttack(e, o.id); break; }
                 }
             }

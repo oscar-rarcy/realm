@@ -170,7 +170,14 @@ void handleInput(int ch) {
         if (g.selectedIds.size() > 1) {
             // Group command
             Entity* tgt = entityAt(g.cursorX, g.cursorY);
-            if (tgt && tgt->alive && tgt->owner != 0 && g.map[g.cursorY][g.cursorX].visible[0]) {
+            if (tgt && tgt->alive && tgt->owner == 0 && !tgt->underConstruction && canGarrisonIn(tgt->type)) {
+                for (int id : g.selectedIds) {
+                    Entity* u = findEntity(id);
+                    if (u && u->alive && u->owner == 0 && isUnit(u->type) && u->type != E_CATAPULT)
+                        orderGarrison(*u, tgt->id);
+                }
+                setStatus("Garrisoning...");
+            } else if (tgt && tgt->alive && tgt->owner != 0 && g.map[g.cursorY][g.cursorX].visible[0]) {
                 orderGroupAttack(tgt->id);
             } else {
                 orderGroupMove(g.cursorX, g.cursorY);
@@ -185,6 +192,8 @@ void handleInput(int ch) {
             } else if (tgt && tgt->alive && tgt->owner == 0 && tgt->type == E_FARM && !tgt->underConstruction && sel->type == E_PEASANT) {
                 orderHelp(*sel, tgt->id);
                 setStatus("Tending farm...");
+            } else if (tgt && tgt->alive && tgt->owner == 0 && !tgt->underConstruction && canGarrisonIn(tgt->type) && sel->type != E_CATAPULT) {
+                orderGarrison(*sel, tgt->id);
             } else if (tgt && tgt->alive && tgt->owner != 0 && g.map[g.cursorY][g.cursorX].visible[0]) {
                 orderAttack(*sel, tgt->id);
                 setStatus("Attacking!");
@@ -230,6 +239,17 @@ void handleInput(int ch) {
         break;
     }
 
+    // Eject garrison from selected building
+    case 'U': case 'u': {
+        Entity* sel = findEntity(g.selectedId);
+        if (sel && sel->alive && sel->owner == 0 && isBuilding(sel->type) && canGarrisonIn(sel->type)) {
+            int n = (int)sel->garrison.size();
+            if (n > 0) { ejectGarrison(*sel); setStatus(std::to_string(n) + " unit(s) ejected"); }
+            else setStatus("No garrison to eject");
+        }
+        break;
+    }
+
     // Gate toggle: cycle auto / locked-open / locked-closed
     case 'O': {
         Entity* sel = findEntity(g.selectedId);
@@ -259,7 +279,7 @@ void handleInput(int ch) {
     case 'A': {
         g.selectedIds.clear(); g.selectedId = -1;
         for (auto& e : g.entities) {
-            if (!e.alive || e.owner != 0) continue;
+            if (!e.alive || e.owner != 0 || e.state == S_GARRISONED) continue;
             if (e.type==E_MILITIA||e.type==E_ARCHER||e.type==E_KNIGHT||e.type==E_CATAPULT) {
                 g.selectedIds.push_back(e.id);
                 if (g.selectedId < 0) { g.selectedId=e.id; g.cursorX=e.x; g.cursorY=e.y; }
@@ -312,12 +332,12 @@ void handleInput(int ch) {
     case '\t': {
         int sid = g.selectedId; bool found = false, past = (sid < 0);
         for (auto& e : g.entities) {
-            if (!e.alive || e.owner!=0 || !isUnit(e.type)) continue;
+            if (!e.alive || e.owner!=0 || !isUnit(e.type) || e.state==S_GARRISONED) continue;
             if (!past) { if (e.id==sid) past=true; continue; }
             g.selectedId=e.id; g.selectedIds.clear(); g.cursorX=e.x; g.cursorY=e.y; found=true; break;
         }
         if (!found) for (auto& e : g.entities) {
-            if (!e.alive || e.owner!=0 || !isUnit(e.type)) continue;
+            if (!e.alive || e.owner!=0 || !isUnit(e.type) || e.state==S_GARRISONED) continue;
             g.selectedId=e.id; g.selectedIds.clear(); g.cursorX=e.x; g.cursorY=e.y; break;
         }
         break;
@@ -368,6 +388,7 @@ void handleInput(int ch) {
                     g.selectedIds.clear(); g.selectedId = -1;
                     for (auto& e : g.entities) {
                         if (!e.alive || e.owner != 0 || !isUnit(e.type)) continue;
+                        if (e.state == S_GARRISONED) continue;
                         if (e.x >= x0 && e.x <= x1 && e.y >= y0 && e.y <= y1) {
                             g.selectedIds.push_back(e.id);
                             if (g.selectedId < 0) g.selectedId = e.id;
@@ -411,7 +432,14 @@ void handleInput(int ch) {
             g.dragging = false;
             if (g.selectedIds.size() > 1) {
                 Entity* tgt = entityAt(mapX, mapY);
-                if (tgt && tgt->alive && tgt->owner != 0 && g.map[mapY][mapX].visible[0])
+                if (tgt && tgt->alive && tgt->owner == 0 && !tgt->underConstruction && canGarrisonIn(tgt->type)) {
+                    for (int id : g.selectedIds) {
+                        Entity* u = findEntity(id);
+                        if (u && u->alive && u->owner == 0 && isUnit(u->type) && u->type != E_CATAPULT)
+                            orderGarrison(*u, tgt->id);
+                    }
+                    setStatus("Garrisoning...");
+                } else if (tgt && tgt->alive && tgt->owner != 0 && g.map[mapY][mapX].visible[0])
                     orderGroupAttack(tgt->id);
                 else
                     orderGroupMove(mapX, mapY);
@@ -423,6 +451,8 @@ void handleInput(int ch) {
                     orderHelp(*sel, tgt->id); setStatus("Helping build...");
                 } else if (tgt && tgt->alive && tgt->owner == 0 && tgt->type == E_FARM && !tgt->underConstruction && sel->type == E_PEASANT) {
                     orderHelp(*sel, tgt->id); setStatus("Tending farm...");
+                } else if (tgt && tgt->alive && tgt->owner == 0 && !tgt->underConstruction && canGarrisonIn(tgt->type) && sel->type != E_CATAPULT) {
+                    orderGarrison(*sel, tgt->id);
                 } else if (tgt && tgt->alive && tgt->owner != 0 && g.map[mapY][mapX].visible[0]) {
                     orderAttack(*sel, tgt->id); setStatus("Attacking!");
                 } else if (sel->type == E_PEASANT) {
