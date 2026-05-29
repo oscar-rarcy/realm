@@ -386,6 +386,7 @@ Entity* findNearestEnemy(Entity& e, int range) {
 void orderMove(Entity& e, int tx, int ty) {
     e.state = S_MOVING; e.targetX = tx; e.targetY = ty; e.targetId = -1;
     e.stuckTicks = 0;
+    e.attackMove = 0; e.holdPosition = 0;
     e.path = findPathFor(e, tx, ty); e.pathIdx = 0;
     if (e.path.empty() && (e.x != tx || e.y != ty)) {
         e.state = S_IDLE;
@@ -393,9 +394,16 @@ void orderMove(Entity& e, int tx, int ty) {
     }
 }
 
+// Attack-move: walk toward (tx,ty) but engage anything along the way.
+static void orderAttackMove(Entity& e, int tx, int ty) {
+    orderMove(e, tx, ty);
+    e.attackMove = 1;
+}
+
 void orderAttack(Entity& e, int tid) {
     Entity* t = findEntity(tid);
     if (!t) return;
+    e.holdPosition = 0;
     e.state = S_ATTACKING; e.targetId = tid;
 }
 
@@ -484,7 +492,22 @@ void orderTrain(Entity& bld, EntityType ut) {
     }
 }
 
-void orderGroupMove(int tx, int ty) {
+// Lower priority = closer to the front of the formation (toward the destination).
+static int rolePriority(EntityType t) {
+    switch (t) {
+        case E_KNIGHT:   return 0;
+        case E_MILITIA:  return 1;
+        case E_PEASANT:  return 2;
+        case E_ARCHER:   return 3;
+        case E_CATAPULT: return 4;
+        default:         return 5;
+    }
+}
+
+// Group move with role-aware formation:
+// melee occupy the rows facing the target, ranged hang back.
+// If attackMove is true, all units engage opportunistically en route.
+static void groupMoveCore(int tx, int ty, bool attackMove) {
     std::vector<Entity*> units;
     for (int id : g.selectedIds) {
         Entity* e = findEntity(id);
@@ -492,31 +515,46 @@ void orderGroupMove(int tx, int ty) {
             units.push_back(e);
     }
     if (units.empty()) return;
+    std::sort(units.begin(), units.end(), [](Entity* a, Entity* b) {
+        return rolePriority(a->type) < rolePriority(b->type);
+    });
     int N = (int)units.size();
     int cols = std::max(1, (int)ceil(sqrt((double)N)));
-    int rows  = (N + cols - 1) / cols;
-    int offsetX = (cols - 1) / 2;
-    int offsetY = (rows - 1) / 2;
+    int rows = (N + cols - 1) / cols;
+    int half = (cols - 1) / 2;
+
+    // Approach direction: from group centroid toward target.
+    int cx = 0, cy = 0;
+    for (Entity* u : units) { cx += u->x; cy += u->y; }
+    cx /= N; cy /= N;
+    int dx = tx - cx, dy = ty - cy;
+    bool horizontal = std::abs(dx) >= std::abs(dy);
+    int sx = (dx > 0) ? 1 : (dx < 0 ? -1 : 1);
+    int sy = (dy > 0) ? 1 : (dy < 0 ? -1 : 1);
+
+    // Generate slots: row 0 = the front (at the target), receding back toward approach.
     std::vector<std::pair<int,int>> slots;
+    slots.reserve(N);
     for (int r = 0; r < rows && (int)slots.size() < N; r++) {
         for (int c = 0; c < cols && (int)slots.size() < N; c++) {
-            int sx = std::max(0, std::min(tx - offsetX + c, MAP_W-1));
-            int sy = std::max(0, std::min(ty - offsetY + r, MAP_H-1));
-            slots.push_back({sx, sy});
+            int slotX, slotY;
+            if (horizontal) { slotX = tx - sx*r; slotY = ty + (c - half); }
+            else            { slotX = tx + (c - half); slotY = ty - sy*r; }
+            slotX = std::max(0, std::min(slotX, MAP_W-1));
+            slotY = std::max(0, std::min(slotY, MAP_H-1));
+            slots.push_back({slotX, slotY});
         }
     }
-    std::vector<bool> taken(slots.size(), false);
-    for (Entity* u : units) {
-        int best = -1, bestD = 9999;
-        for (int i = 0; i < (int)slots.size(); i++) {
-            if (taken[i]) continue;
-            int d = mdist(u->x, u->y, slots[i].first, slots[i].second);
-            if (d < bestD) { bestD = d; best = i; }
-        }
-        if (best >= 0) { taken[best] = true; orderMove(*u, slots[best].first, slots[best].second); }
+    // Assign role-sorted units to ordered slots: front-line goes first.
+    for (int i = 0; i < N && i < (int)slots.size(); i++) {
+        if (attackMove) orderAttackMove(*units[i], slots[i].first, slots[i].second);
+        else            orderMove(*units[i], slots[i].first, slots[i].second);
     }
-    setStatus("Group moving in formation...");
+    setStatus(attackMove ? "Attack-move in formation!" : "Group moving in formation...");
 }
+
+void orderGroupMove(int tx, int ty)        { groupMoveCore(tx, ty, false); }
+void orderGroupAttackMove(int tx, int ty)  { groupMoveCore(tx, ty, true); }
 
 void orderGroupAttack(int tid) {
     for (int id : g.selectedIds) {
@@ -833,7 +871,7 @@ void tickEntity(Entity& e) {
 
     switch (e.state) {
     case S_IDLE:
-        if (e.type != E_PEASANT && e.type != E_FISHING_BOAT && STATS[e.type].atk > 0) {
+        if (!e.holdPosition && e.type != E_PEASANT && e.type != E_FISHING_BOAT && STATS[e.type].atk > 0) {
             Entity* en = findNearestEnemy(e, unitRange(e)+1);
             if (en) orderAttack(e, en->id);
         }
@@ -853,8 +891,15 @@ void tickEntity(Entity& e) {
         }
         break;
     case S_MOVING:
+        // Attack-move: engage anything in range while marching toward the destination.
+        if (e.attackMove && STATS[e.type].atk > 0) {
+            Entity* en = findNearestEnemy(e, unitRange(e)+1);
+            if (en) { orderAttack(e, en->id); break; }
+        }
         moveAlongPath(e);
-        if (e.path.empty() || e.pathIdx >= (int)e.path.size()) e.state = S_IDLE;
+        if (e.path.empty() || e.pathIdx >= (int)e.path.size()) {
+            e.state = S_IDLE; e.attackMove = 0;
+        }
         break;
     case S_ATTACKING: {
         Entity* t = findEntity(e.targetId);

@@ -55,7 +55,7 @@ enum EntityState {
     S_BUILDING, S_TRAINING, S_RETURNING, S_DEAD,
     S_ENTERING, S_GARRISONED
 };
-enum GameMode  { M_NORMAL, M_BUILD_SELECT, M_TRAIN_SELECT, M_WALL_DRAG, M_PAUSED, M_GAME_OVER, M_RALLY_SET, M_RESEARCH_SELECT };
+enum GameMode  { M_NORMAL, M_BUILD_SELECT, M_TRAIN_SELECT, M_WALL_DRAG, M_PAUSED, M_GAME_OVER, M_RALLY_SET, M_RESEARCH_SELECT, M_ATTACK_MOVE };
 
 // Research bits stored in Player.research
 enum Research { R_IRON_WEAPONS = 1, R_CROSSBOWS = 2 };
@@ -136,6 +136,8 @@ struct Entity {
     int alertTicks; // > 0 = recently in combat; render flashes '!'
     int rallySet;   // 0 = default, 1 = player-set rally point honoured on training
     int researching; // Research bit currently being researched (Blacksmith only); 0 = none
+    int attackMove;  // 1 = engage enemies opportunistically while moving
+    int holdPosition;// 1 = ignore auto-aggro; only attack when explicitly ordered
     std::vector<int> queue;    // pending EntityTypes to train (FIFO, max 5)
     std::vector<int> garrison; // unit ids currently inside this building
 };
@@ -216,6 +218,7 @@ void orderBuild(Entity& e,EntityType bt,int bx,int by);
 void orderTrain(Entity& bld,EntityType ut);
 void orderGroupMove(int tx,int ty);
 void orderGroupAttack(int tid);
+void orderGroupAttackMove(int tx,int ty);
 void orderHelp(Entity& e,int buildingId);
 void orderGarrison(Entity& e,int buildingId);
 void moveAlongPath(Entity& e);

@@ -170,6 +170,38 @@ void handleInput(int ch) {
         goto clamp;
     }
 
+    // Attack-move target selection.
+    if (g.mode == M_ATTACK_MOVE) {
+        if (ch == 27) { g.mode = M_NORMAL; return; }
+        if (ch == KEY_UP)    { g.cursorY--; goto clamp; }
+        if (ch == KEY_DOWN)  { g.cursorY++; goto clamp; }
+        if (ch == KEY_LEFT)  { g.cursorX--; goto clamp; }
+        if (ch == KEY_RIGHT) { g.cursorX++; goto clamp; }
+        auto commit = [](int tx, int ty) {
+            if (g.selectedIds.size() > 1) {
+                orderGroupAttackMove(tx, ty);
+            } else {
+                Entity* sel = findEntity(g.selectedId);
+                if (sel && sel->alive && sel->owner == 0 && isUnit(sel->type)) {
+                    orderMove(*sel, tx, ty); sel->attackMove = 1;
+                    setStatus("Attack-moving.");
+                }
+            }
+            g.mode = M_NORMAL;
+        };
+        if (ch == '\n' || ch == '\r' || ch == KEY_ENTER) { commit(g.cursorX, g.cursorY); goto clamp; }
+        if (ch == KEY_MOUSE) {
+            MEVENT me; if (getmouse(&me) != OK) goto clamp;
+            int mapSY = me.y - 2;
+            int mapX = g.viewX + me.x, mapY = g.viewY + mapSY;
+            if (mapSY >= 0 && me.x < g.viewW && inBounds(mapX, mapY)) {
+                g.cursorX = mapX; g.cursorY = mapY;
+                if (me.bstate & (BUTTON1_CLICKED | BUTTON1_RELEASED | BUTTON3_CLICKED)) commit(mapX, mapY);
+            }
+        }
+        goto clamp;
+    }
+
     // Research selection from the blacksmith.
     if (g.mode == M_RESEARCH_SELECT) {
         if (ch == 27) { g.mode = M_NORMAL; return; }
@@ -372,18 +404,54 @@ void handleInput(int ch) {
         break;
     }
 
-    // Select all player military units
+    // 'A' is overloaded:
+    //   with no selection or non-military selection → select all military
+    //   with military selected → enter attack-move mode (next click = a-move target)
     case 'A': {
-        g.selectedIds.clear(); g.selectedId = -1;
-        for (auto& e : g.entities) {
-            if (!e.alive || e.owner != 0 || e.state == S_GARRISONED) continue;
-            if (e.type==E_MILITIA||e.type==E_ARCHER||e.type==E_KNIGHT||e.type==E_CATAPULT) {
-                g.selectedIds.push_back(e.id);
-                if (g.selectedId < 0) { g.selectedId=e.id; g.cursorX=e.x; g.cursorY=e.y; }
+        bool hasMilitarySel = false;
+        if (!g.selectedIds.empty()) {
+            for (int id : g.selectedIds) {
+                Entity* e = findEntity(id);
+                if (e && (e->type==E_MILITIA||e->type==E_ARCHER||e->type==E_KNIGHT||e->type==E_CATAPULT))
+                    { hasMilitarySel = true; break; }
             }
+        } else if (g.selectedId >= 0) {
+            Entity* e = findEntity(g.selectedId);
+            if (e && (e->type==E_MILITIA||e->type==E_ARCHER||e->type==E_KNIGHT||e->type==E_CATAPULT))
+                hasMilitarySel = true;
         }
-        if (g.selectedIds.empty()) setStatus("No military units!");
-        else setStatus(std::to_string(g.selectedIds.size()) + " military units selected");
+        if (hasMilitarySel) {
+            g.mode = M_ATTACK_MOVE;
+            setStatus("Attack-move: click destination. [Esc] cancel");
+        } else {
+            g.selectedIds.clear(); g.selectedId = -1;
+            for (auto& e : g.entities) {
+                if (!e.alive || e.owner != 0 || e.state == S_GARRISONED) continue;
+                if (e.type==E_MILITIA||e.type==E_ARCHER||e.type==E_KNIGHT||e.type==E_CATAPULT) {
+                    g.selectedIds.push_back(e.id);
+                    if (g.selectedId < 0) { g.selectedId=e.id; g.cursorX=e.x; g.cursorY=e.y; }
+                }
+            }
+            if (g.selectedIds.empty()) setStatus("No military units!");
+            else setStatus(std::to_string(g.selectedIds.size()) + " military units selected");
+        }
+        break;
+    }
+
+    // Hold position — stop and ignore auto-aggro until explicitly ordered.
+    case 'X': case 'x': {
+        auto hold = [](Entity* e) {
+            if (!e || !e->alive || e->owner != 0 || !isUnit(e->type)) return;
+            e->state = S_IDLE; e->path.clear(); e->pathIdx = 0;
+            e->attackMove = 0; e->holdPosition = 1; e->targetId = -1;
+        };
+        int n = 0;
+        if (!g.selectedIds.empty()) {
+            for (int id : g.selectedIds) { hold(findEntity(id)); n++; }
+        } else if (g.selectedId >= 0) {
+            hold(findEntity(g.selectedId)); n = 1;
+        }
+        if (n > 0) setStatus("Hold position.");
         break;
     }
 
@@ -487,6 +555,25 @@ void handleInput(int ch) {
         // Always track cursor position — this is what gives live hover
         g.cursorX = mapX; g.cursorY = mapY;
 
+        if (me.bstate & BUTTON1_DOUBLE_CLICKED) {
+            // Select all of clicked unit type within the current viewport.
+            Entity* ent = entityAtOwner(mapX, mapY, 0);
+            if (ent && isUnit(ent->type)) {
+                EntityType t = ent->type;
+                g.selectedIds.clear(); g.selectedId = -1;
+                for (auto& e : g.entities) {
+                    if (!e.alive || e.owner != 0 || e.type != t) continue;
+                    if (e.state == S_GARRISONED) continue;
+                    if (e.x < g.viewX || e.x >= g.viewX+g.viewW) continue;
+                    if (e.y < g.viewY || e.y >= g.viewY+g.viewH) continue;
+                    g.selectedIds.push_back(e.id);
+                    if (g.selectedId < 0) g.selectedId = e.id;
+                }
+                setStatus(std::to_string(g.selectedIds.size()) + " " + STATS[t].name + "s selected");
+            }
+            g.dragging = false;
+            break;
+        }
         if (me.bstate & BUTTON1_PRESSED) {
             // Start of left-button drag/click
             g.dragging    = true;

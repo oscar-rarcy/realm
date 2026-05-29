@@ -327,6 +327,18 @@ void renderMap() {
 
     bool night = isNight();
 
+    // Selected ranged unit/tower: precompute range-ring centre + radius.
+    int ringX = -1, ringY = -1, ringR = 0;
+    Entity* selR = findEntity(g.selectedId);
+    if (selR && selR->alive && selR->owner == 0) {
+        int rng = STATS[selR->type].range;
+        if (selR->type == E_ARCHER && (g.players[0].research & R_CROSSBOWS)) rng += 2;
+        if (rng > 1) {
+            auto& ss = STATS[selR->type];
+            ringX = selR->x + ss.sizeW/2; ringY = selR->y + ss.sizeH/2; ringR = rng;
+        }
+    }
+
     // Precompute drag-selection box (map coords); -1 means no active box
     int boxX0 = -1, boxY0 = -1, boxX1 = -1, boxY1 = -1;
     if (g.dragging && g.mode != M_WALL_DRAG) {
@@ -434,6 +446,8 @@ void renderMap() {
             bool onBoxBorder = (boxX0 >= 0)
                 && mx >= boxX0 && mx <= boxX1 && my >= boxY0 && my <= boxY1
                 && (mx == boxX0 || mx == boxX1 || my == boxY0 || my == boxY1);
+            bool onRangeRing = (ringR > 0)
+                && std::max(std::abs(mx - ringX), std::abs(my - ringY)) == ringR;
 
             if (isCur) {
                 attron(COLOR_PAIR(CP_CURSOR)); mvaddch(scY, scX, drawCh); attroff(COLOR_PAIR(CP_CURSOR));
@@ -442,6 +456,11 @@ void renderMap() {
                 attron(COLOR_PAIR(CP_SUN)|A_BOLD|A_REVERSE);
                 mvaddch(scY, scX, drawCh);
                 attroff(COLOR_PAIR(CP_SUN)|A_BOLD|A_REVERSE);
+            } else if (onRangeRing && !ent) {
+                // Subtle range-ring marker on empty tiles only.
+                attron(COLOR_PAIR(CP_UI_HIGH)|A_DIM);
+                mvaddch(scY, scX, '.');
+                attroff(COLOR_PAIR(CP_UI_HIGH)|A_DIM);
             } else {
                 int attr = COLOR_PAIR(cp);
                 if (ent && ent->alive) attr |= A_BOLD;
@@ -483,11 +502,19 @@ void renderUI() {
     // Top bar
     attron(COLOR_PAIR(CP_UI_BAR)|A_BOLD); mvhline(0, 0, ' ', maxX);
     mvprintw(0, 1, " REALM "); attroff(A_BOLD);
-    int idleCount = 0;
-    for (auto& e : g.entities)
-        if (e.alive && e.owner == 0 && e.type == E_PEASANT && e.state == S_IDLE) idleCount++;
-    mvprintw(0, 9, "Gold:%-5d Wood:%-5d Food:%-5d Pop:%d/%d Idle:%d",
-             p.gold, p.wood, p.food, p.supply, p.supplyMax, idleCount);
+    int idleCount = 0, idleBldg = 0, popForecast = 0;
+    for (auto& e : g.entities) {
+        if (!e.alive || e.owner != 0) continue;
+        if (e.type == E_PEASANT && e.state == S_IDLE) idleCount++;
+        if (isBuilding(e.type) && !e.underConstruction) {
+            bool producer = (e.type==E_TOWNHALL||e.type==E_BARRACKS||e.type==E_STABLE||e.type==E_DOCK);
+            if (producer && e.producing == E_NONE && e.queue.empty()) idleBldg++;
+            if (e.producing != E_NONE) popForecast += STATS[e.producing].supplyUsed;
+            for (int qt : e.queue) popForecast += STATS[(EntityType)qt].supplyUsed;
+        }
+    }
+    mvprintw(0, 9, "Gold:%-5d Wood:%-5d Food:%-5d Pop:%d/%d(+%d) Idle:%d/%d",
+             p.gold, p.wood, p.food, p.supply, p.supplyMax, popForecast, idleCount, idleBldg);
 
     int iconX = maxX - 22;
     if (getBrightness() > 0.5f) { attron(COLOR_PAIR(CP_SUN)|A_BOLD); mvprintw(0,iconX,"*"); attroff(COLOR_PAIR(CP_SUN)|A_BOLD); }
