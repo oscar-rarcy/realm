@@ -34,7 +34,9 @@ bool isPassable(int x, int y) {
     if (!inBounds(x, y)) return false;
     Terrain t = g.map[y][x].terrain;
     // Winter converts water → T_ICE (passable but slow). Glaciers from mapgen are also T_ICE.
-    return t != T_MOUNTAIN && t != T_WATER && t != T_STONE && t != T_CASTLE_WALL && t != T_FISH;
+    // Shallows + reeds are water tiles for boats only — land units can't ford them.
+    return t != T_MOUNTAIN && t != T_WATER && t != T_STONE && t != T_CASTLE_WALL
+        && t != T_FISH && t != T_SHALLOWS && t != T_REEDS;
 }
 
 bool isPassableWater(int x, int y) {
