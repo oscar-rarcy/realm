@@ -3,7 +3,11 @@
 
 void initGame() {
     srand((unsigned)time(nullptr));
-    g.entities.reserve(512);
+    // Reserve generously: late-game FFA can hit a few hundred live entities plus
+    // dead-but-not-yet-purged ones. Reallocating mid-tick would dangle the
+    // `Entity& e` reference held by tickEntity while it calls spawnEntity (training,
+    // building completion, etc.), corrupting heap state.
+    g.entities.reserve(8192);
     g.projectiles.reserve(256);
     g.nextId = 1; g.tick = 0; g.mode = M_NORMAL;
     g.selectedId = -1; g.selectedIds.clear(); g.groupAssignPending = false;

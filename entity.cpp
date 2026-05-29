@@ -319,10 +319,8 @@ int spawnEntity(EntityType type, int owner, int x, int y, bool built) {
 }
 
 void updateFog() {
-    for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
-        g.map[y][x].visible[0] = false;
-        g.map[y][x].visible[1] = false;
-    }
+    for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++)
+        for (int p = 0; p < MAX_PLAYERS; p++) g.map[y][x].visible[p] = false;
     int nightPen = isNight() ? 2 : (isDusk()||isDawn()) ? 1 : 0;
     if (getSeason() == WINTER) nightPen += 1; // blizzards eat sight
     if (g.weather == W_STORM) nightPen += 1;
@@ -1203,7 +1201,7 @@ static void applyWinter() {
             case T_GRASS: case T_TALL_GRASS: case T_FLOWERS: case T_MEADOW:
             case T_DIRT:  case T_ROAD:       case T_GRAVEL:  case T_RUINS:
             case T_SAND:  case T_DUNES:      case T_WHEAT:   case T_BERRY:
-            case T_CASTLE_FLOOR:
+            case T_MUD:   case T_CASTLE_FLOOR:
                 t.terrain = T_SNOW; break;
             case T_WATER: case T_SHALLOWS: case T_MARSH: case T_REEDS:
                 t.terrain = T_ICE; break;

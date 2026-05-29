@@ -230,6 +230,17 @@ void handleInput(int ch) {
     case KEY_LEFT:  g.cursorX--; break;
     case KEY_RIGHT: g.cursorX++; break;
 
+    // Fast cursor pan — 10 tiles per press. Crossing a 140x90 map takes
+    // dozens of presses otherwise. Shift+arrows on most terminals.
+    case KEY_SR:     g.cursorY -= 10; break;   // Shift+Up
+    case KEY_SF:     g.cursorY += 10; break;   // Shift+Down
+    case KEY_SLEFT:  g.cursorX -= 10; break;
+    case KEY_SRIGHT: g.cursorX += 10; break;
+    case KEY_PPAGE:  g.cursorY -= 10; break;   // PgUp
+    case KEY_NPAGE:  g.cursorY += 10; break;   // PgDn
+    case KEY_HOME:   g.cursorX -= 10; break;
+    case KEY_END:    g.cursorX += 10; break;
+
     case ' ': {
         Entity* ent = entityAtOwner(g.cursorX, g.cursorY, 0);
         if (ent) {
@@ -552,8 +563,17 @@ void handleInput(int ch) {
         bool inMap = (mapSY >= 0 && g.viewW > 0 && me.x < g.viewW && inBounds(mapX, mapY));
         if (!inMap) { g.dragging = false; break; }
 
-        // Always track cursor position — this is what gives live hover
-        g.cursorX = mapX; g.cursorY = mapY;
+        // Hover-track the cursor, but only when the mouse actually crossed into a new map
+        // cell. Without this, every stale ncurses motion event would yank the cursor back
+        // to the OS mouse position, fighting keyboard arrow input. Clicks/drags still pin
+        // the cursor regardless of last-cell state.
+        static int lastMx = -9999, lastMy = -9999;
+        bool clickEvt = (me.bstate & (BUTTON1_PRESSED|BUTTON1_RELEASED|BUTTON1_CLICKED
+                                    |BUTTON1_DOUBLE_CLICKED|BUTTON3_CLICKED|BUTTON3_PRESSED)) != 0;
+        if (clickEvt || mapX != lastMx || mapY != lastMy) {
+            g.cursorX = mapX; g.cursorY = mapY;
+            lastMx = mapX; lastMy = mapY;
+        }
 
         if (me.bstate & BUTTON1_DOUBLE_CLICKED) {
             // Select all of clicked unit type within the current viewport.
