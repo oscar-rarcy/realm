@@ -37,6 +37,7 @@ void handleInput(int ch) {
         case 'n': case 'N': tb = E_MINING_CAMP; break;
         case 'i': case 'I': tb = E_MILL;        break;
         case 'g': case 'G': tb = E_GATE;        break;
+        case 'd': case 'D': tb = E_DOCK;        break;
         case 27: g.mode = M_NORMAL; return;
         default: return;
         }
@@ -56,6 +57,7 @@ void handleInput(int ch) {
             else if (ch=='c'||ch=='C') tt = E_CATAPULT;
         }
         else if (sel->type == E_STABLE) { if (ch=='k'||ch=='K') tt = E_KNIGHT; }
+        else if (sel->type == E_DOCK)   { if (ch=='b'||ch=='B') tt = E_FISHING_BOAT; }
         if (tt != E_NONE) { orderTrain(*sel, tt); g.mode = M_NORMAL; }
         if (ch == 27) g.mode = M_NORMAL;
         return;
@@ -211,6 +213,11 @@ void handleInput(int ch) {
                     orderMove(*sel, g.cursorX, g.cursorY);
                     setStatus("Moving...");
                 }
+            } else if (sel->type == E_FISHING_BOAT) {
+                Terrain ter = g.map[g.cursorY][g.cursorX].terrain;
+                if (ter == T_FISH && g.map[g.cursorY][g.cursorX].resources > 0) {
+                    orderGather(*sel, g.cursorX, g.cursorY); setStatus("Fishing...");
+                } else { orderMove(*sel, g.cursorX, g.cursorY); setStatus("Moving..."); }
             } else {
                 orderMove(*sel, g.cursorX, g.cursorY);
                 setStatus("Moving...");
@@ -231,7 +238,7 @@ void handleInput(int ch) {
     case 't': case 'T': {
         Entity* sel = findEntity(g.selectedId);
         if (sel && sel->owner==0 && isBuilding(sel->type) && !sel->underConstruction) {
-            if (sel->type==E_TOWNHALL||sel->type==E_BARRACKS||sel->type==E_STABLE) {
+            if (sel->type==E_TOWNHALL||sel->type==E_BARRACKS||sel->type==E_STABLE||sel->type==E_DOCK) {
                 g.mode = M_TRAIN_SELECT;
                 setStatus("Select unit to train...");
             } else setStatus("This building can't train.");
@@ -465,6 +472,11 @@ void handleInput(int ch) {
                         int fid = spawnEntity(E_FARM, 0, mapX, mapY, true);
                         orderHelp(*sel, fid);
                         setStatus("Working wheat field...");
+                    } else { orderMove(*sel, mapX, mapY); setStatus("Moving..."); }
+                } else if (sel->type == E_FISHING_BOAT) {
+                    Terrain ter = g.map[mapY][mapX].terrain;
+                    if (ter == T_FISH && g.map[mapY][mapX].resources > 0) {
+                        orderGather(*sel, mapX, mapY); setStatus("Fishing...");
                     } else { orderMove(*sel, mapX, mapY); setStatus("Moving..."); }
                 } else { orderMove(*sel, mapX, mapY); setStatus("Moving..."); }
             }

@@ -226,6 +226,7 @@ void getTerrainVisual(Terrain t, int x, int y, char& ch, int& cp) {
     case T_ROAD:         ch='#'; cp=CP_ROAD;        break;
     case T_WHEAT:        ch='%'; cp=CP_WHEAT;       break;
     case T_BERRY:        ch='*'; cp=CP_BERRY;       break;
+    case T_FISH:         ch=(g.tick%30<15)?'~':'"'; cp=CP_SHALLOWS; break;
     case T_RUINS:        ch='&'; cp=CP_RUINS;       break;
     case T_GRAVEL:       ch=':'; cp=CP_GRAVEL;      break;
     case T_CASTLE_WALL:  ch='#'; cp=CP_CASTLE_WALL; break;
@@ -390,9 +391,14 @@ void renderMap() {
             // Wall drag preview overrides terrain
             if (wallPrev[my][mx]) { ch = '#'; cp = CP_PLAYER; }
 
+            // Use a chtype-wide draw glyph so completed walls can use the ACS solid block
+            chtype drawCh = (chtype)ch;
+            if (wallPrev[my][mx]) drawCh = ACS_CKBOARD;
+
             Entity* ent = entityAt(mx, my);
             if (ent && ent->alive) {
                 ch = STATS[ent->type].glyph;
+                drawCh = (chtype)ch;
                 // Farms use natural wheat colouring regardless of owner
                 if (ent->type == E_FARM)      cp = (g.tick%40 < 20) ? CP_WHEAT : CP_WHEAT_GOLD;
                 else if (ent->owner == 0)     cp = night ? CP_PLAYER_NIGHT : CP_PLAYER;
@@ -401,13 +407,17 @@ void renderMap() {
                 else if (ent->type == E_SHEEP)cp = CP_SHEEP;
                 else                          cp = CP_DEER;
                 // Gate: glyph reflects open/closed state
-                if (ent->type == E_GATE && !ent->underConstruction)
+                if (ent->type == E_GATE && !ent->underConstruction) {
                     ch = (ent->carrying > 0) ? '-' : '|';
-                if (ent->underConstruction && g.tick%10 < 5) ch = '#';
+                    drawCh = (chtype)ch;
+                }
+                if (ent->underConstruction && g.tick%10 < 5) { ch = '#'; drawCh = (chtype)ch; }
+                // Dwarf-Fortress-style solid wall block when complete
+                if (ent->type == E_WALL && !ent->underConstruction) drawCh = ACS_CKBOARD;
             }
             for (auto& p : g.projectiles) {
                 if (!p.alive) continue;
-                if ((int)roundf(p.x)==mx && (int)roundf(p.y)==my) { ch=p.glyph; cp=p.color; }
+                if ((int)roundf(p.x)==mx && (int)roundf(p.y)==my) { ch=p.glyph; cp=p.color; drawCh=(chtype)ch; }
             }
 
             bool isSel = false;
@@ -433,13 +443,13 @@ void renderMap() {
                 && (mx == boxX0 || mx == boxX1 || my == boxY0 || my == boxY1);
 
             if (isCur) {
-                attron(COLOR_PAIR(CP_CURSOR)); mvaddch(scY, scX, ch); attroff(COLOR_PAIR(CP_CURSOR));
+                attron(COLOR_PAIR(CP_CURSOR)); mvaddch(scY, scX, drawCh); attroff(COLOR_PAIR(CP_CURSOR));
             } else {
                 int attr = COLOR_PAIR(cp);
                 if (ent && ent->alive) attr |= A_BOLD;
                 if (isSel)        attr |= A_UNDERLINE;
                 if (onBoxBorder)  attr |= A_REVERSE;
-                attron(attr); mvaddch(scY, scX, ch); attroff(attr);
+                attron(attr); mvaddch(scY, scX, drawCh); attroff(attr);
             }
         }
     }
@@ -472,7 +482,7 @@ void renderUI() {
         const char* tn[] = {"Grassland","Tall Grass","Wildflowers","Meadow","Oak Forest","Pine Forest",
             "Palm Grove","Dead Tree","Mountain","Rolling Hills","Stone","Deep Water","Shallows",
             "Marshland","Reed Bed","Gold Deposit","Sandy Ground","Sand Dunes","Snow Cover","Frozen Ice",
-            "Bare Earth","Stone Road","Wheat Field","Berry Bush","Ancient Ruins","Gravel",
+            "Bare Earth","Stone Road","Wheat Field","Berry Bush","Fish Shoal","Ancient Ruins","Gravel",
             "Castle Wall","Castle Floor","Castle Gate"};
         attron(COLOR_PAIR(CP_UI_TEXT)); mvprintw(1, 1, "%-16s", tn[ct.terrain]); attroff(COLOR_PAIR(CP_UI_TEXT));
         attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(1, 18, "[%s]", bn[ct.biome]); attroff(COLOR_PAIR(CP_UI_DIM));
@@ -608,7 +618,8 @@ void renderUI() {
                 if (sel->type == E_PEASANT) { mvprintw(iy++, panelX+1, "[B] Build"); mvprintw(iy++, panelX+1, "[Enter] Move/Gather"); }
                 else if (isUnit(sel->type)) mvprintw(iy++, panelX+1, "[Enter] Move/Attack");
                 else if (isBuilding(sel->type) && !sel->underConstruction) {
-                    if (sel->type==E_TOWNHALL||sel->type==E_BARRACKS||sel->type==E_STABLE) mvprintw(iy++, panelX+1, "[T] Train");
+                    if (sel->type==E_TOWNHALL||sel->type==E_BARRACKS||sel->type==E_STABLE||sel->type==E_DOCK) mvprintw(iy++, panelX+1, "[T] Train");
+                    if (sel->type==E_DOCK)        mvprintw(iy++, panelX+1, "Fish drop-off");
                     if (sel->type==E_BLACKSMITH) mvprintw(iy++, panelX+1, "Speeds training");
                     if (sel->type==E_CHURCH)     mvprintw(iy++, panelX+1, "Heals nearby +Vision");
                     if (sel->type==E_MARKET)     mvprintw(iy++, panelX+1, "Passive gold income");
@@ -657,13 +668,14 @@ void renderUI() {
     int botY2 = maxY-2, botY1 = maxY-1;
     attron(COLOR_PAIR(CP_UI_BAR)); mvhline(botY2, 0, ' ', maxX);
     if (g.mode == M_BUILD_SELECT)
-        mvprintw(botY2, 1, " BUILD: [H]ouse [B]arracks [S]table [T]ower [F]arm [W]all [G]ate [A]rmory [C]hurch [M]arket [K]Castle [L]umber [N]mine [I]mill [Esc] ");
+        mvprintw(botY2, 1, " BUILD: [H]ouse [B]arracks [S]table [T]ower [F]arm [W]all [G]ate [A]rmory [C]hurch [M]arket [K]Castle [L]umber [N]mine [I]mill [D]ock [Esc] ");
     else if (g.mode == M_TRAIN_SELECT) {
         Entity* s2 = findEntity(g.selectedId);
         if (s2) {
             if (s2->type==E_TOWNHALL)  mvprintw(botY2, 1, " TRAIN: [P]easant(50g) [Esc] ");
             else if (s2->type==E_BARRACKS) mvprintw(botY2, 1, " TRAIN: [M]ilitia(60g) [A]rcher(70g) [C]atapult(150g+40w) [Esc] ");
             else if (s2->type==E_STABLE)   mvprintw(botY2, 1, " TRAIN: [K]night(120g) [Esc] ");
+            else if (s2->type==E_DOCK)     mvprintw(botY2, 1, " TRAIN: [B]oat(80g+50w) [Esc] ");
         }
     } else if (g.mode == M_WALL_DRAG) {
         if (g.dragging)

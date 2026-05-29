@@ -34,7 +34,14 @@ bool isPassable(int x, int y) {
     if (!inBounds(x, y)) return false;
     Terrain t = g.map[y][x].terrain;
     // Winter converts water → T_ICE (passable but slow). Glaciers from mapgen are also T_ICE.
-    return t != T_MOUNTAIN && t != T_WATER && t != T_STONE && t != T_CASTLE_WALL;
+    return t != T_MOUNTAIN && t != T_WATER && t != T_STONE && t != T_CASTLE_WALL && t != T_FISH;
+}
+
+bool isPassableWater(int x, int y) {
+    if (!inBounds(x, y)) return false;
+    Terrain t = g.map[y][x].terrain;
+    // Boats float on open water and shallows, glide through reeds. Marsh and ice block them.
+    return t == T_WATER || t == T_SHALLOWS || t == T_REEDS || t == T_FISH;
 }
 
 void setStatus(const std::string& msg) { g.statusMsg = msg; g.statusTimer = 35; }
@@ -48,10 +55,11 @@ Entity* findDepot(Entity& e) {
     Entity* best = nullptr; int bestD = 99999;
     for (auto& o : g.entities) {
         if (!o.alive || o.owner != e.owner || o.underConstruction) continue;
-        bool isBase = (o.type == E_TOWNHALL || o.type == E_CASTLE);
+        bool isBase = (o.type == E_TOWNHALL || o.type == E_CASTLE) && e.gatherType != 2;
         bool isWood = (o.type == E_LUMBER_CAMP && e.gatherType == 1);
         bool isGold = (o.type == E_MINING_CAMP && e.gatherType == 0);
-        if (isBase || isWood || isGold) {
+        bool isFish = (o.type == E_DOCK        && e.gatherType == 2);
+        if (isBase || isWood || isGold || isFish) {
             int d = mdist(e.x, e.y, o.x, o.y);
             if (d < bestD) { bestD = d; best = &o; }
         }
@@ -80,6 +88,7 @@ Entity* entityAtOwner(int x, int y, int owner) {
 }
 
 bool canPlace(EntityType type, int x, int y, int owner) {
+    (void)owner;
     // Farms can only be sown on open ground, not in winter
     if (type == E_FARM) {
         if (getSeason() == WINTER) return false;
@@ -92,6 +101,17 @@ bool canPlace(EntityType type, int x, int y, int owner) {
         if (!inBounds(nx,ny) || !isPassable(nx,ny)) return false;
         if (g.map[ny][nx].terrain == T_GOLD) return false;
         if (entityAt(nx,ny)) return false;
+    }
+    // Docks must sit on the shoreline — at least one neighbouring tile must be water.
+    if (type == E_DOCK) {
+        bool touchesWater = false;
+        for (int dy = -1; dy <= s.sizeH && !touchesWater; dy++)
+            for (int dx = -1; dx <= s.sizeW && !touchesWater; dx++) {
+                if (dx >= 0 && dx < s.sizeW && dy >= 0 && dy < s.sizeH) continue;
+                int nx = x+dx, ny = y+dy;
+                if (inBounds(nx,ny) && isPassableWater(nx,ny)) touchesWater = true;
+            }
+        if (!touchesWater) return false;
     }
     return true;
 }
@@ -137,29 +157,37 @@ void tickProjectiles() {
 // Returns path to closest reachable tile if the target itself is unreachable,
 // so a click always produces motion toward the destination.
 // ============================================================
-std::vector<std::pair<int,int>> findPath(int sx, int sy, int tx, int ty, int /*maxSteps*/) {
+static inline std::vector<std::pair<int,int>> findPathFor(Entity& e, int tx, int ty) {
+    return findPath(e.x, e.y, tx, ty, 300, isNaval(e.type));
+}
+
+std::vector<std::pair<int,int>> findPath(int sx, int sy, int tx, int ty, int /*maxSteps*/, bool naval) {
     if (sx == tx && sy == ty) return {};
+    auto pass = [&](int x, int y) { return naval ? isPassableWater(x,y) : isPassable(x,y); };
     // If target tile is blocked, retarget to its nearest passable neighbor.
-    if (!isPassable(tx, ty)) {
+    if (!pass(tx, ty)) {
         int bestD = 9999, bx = -1, by = -1;
         for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
             int nx = tx+dx, ny = ty+dy;
-            if (isPassable(nx,ny)) { int d=mdist(sx,sy,nx,ny); if(d<bestD){bestD=d;bx=nx;by=ny;} }
+            if (pass(nx,ny)) { int d=mdist(sx,sy,nx,ny); if(d<bestD){bestD=d;bx=nx;by=ny;} }
         }
         if (bx < 0) return {};
         tx = bx; ty = by;
     }
 
     // Pre-scan buildings into a flat bool map — O(1) lookup vs O(N) entityAt per step.
+    // Boats also block each other since they occupy water tiles.
     static bool bldMap[MAP_H][MAP_W];
     memset(bldMap, 0, sizeof(bldMap));
     for (auto& e : g.entities) {
-        if (!e.alive || !isBuilding(e.type)) continue;
-        if (e.type == E_GATE && e.carrying > 0) continue;
-        auto& s = STATS[e.type];
-        for (int dy2 = 0; dy2 < s.sizeH; dy2++) for (int dx2 = 0; dx2 < s.sizeW; dx2++) {
-            int bx = e.x+dx2, by = e.y+dy2;
-            if (inBounds(bx,by)) bldMap[by][bx] = true;
+        if (!e.alive) continue;
+        if (isBuilding(e.type)) {
+            if (e.type == E_GATE && e.carrying > 0) continue;
+            auto& s = STATS[e.type];
+            for (int dy2 = 0; dy2 < s.sizeH; dy2++) for (int dx2 = 0; dx2 < s.sizeW; dx2++) {
+                int bx = e.x+dx2, by = e.y+dy2;
+                if (inBounds(bx,by)) bldMap[by][bx] = true;
+            }
         }
     }
     bldMap[ty][tx] = false; // always allow reaching the destination
@@ -206,13 +234,13 @@ std::vector<std::pair<int,int>> findPath(int sx, int sy, int tx, int ty, int /*m
             int nx = cx+dx8[i], ny = cy+dy8[i];
             if (!inBounds(nx,ny)) continue;
             if (closed[ny][nx] == vgen) continue;
-            if (!isPassable(nx,ny) || bldMap[ny][nx]) continue;
+            if (!pass(nx,ny) || bldMap[ny][nx]) continue;
             // Forbid corner-cutting between two blocked cardinals on a diagonal step.
             if (i & 1) {
                 int hx = cx+dx8[i], hy = cy;
                 int vx = cx,         vy = cy+dy8[i];
-                if (!isPassable(hx,hy) || bldMap[hy][hx]) continue;
-                if (!isPassable(vx,vy) || bldMap[vy][vx]) continue;
+                if (!pass(hx,hy) || bldMap[hy][hx]) continue;
+                if (!pass(vx,vy) || bldMap[vy][vx]) continue;
             }
             int ng = gc + cost8[i];
             if (visited[ny][nx] == vgen && ng >= gScore[ny][nx]) continue;
@@ -248,6 +276,7 @@ int spawnEntity(EntityType type, int owner, int x, int y, bool built) {
     e.state = S_IDLE; e.targetId = -1; e.targetX = -1; e.targetY = -1;
     e.producing = E_NONE; e.underConstruction = !built; e.alive = true;
     e.rallyX = x + STATS[type].sizeW; e.rallyY = y + STATS[type].sizeH;
+    if (type == E_FISHING_BOAT) e.gatherType = 2; // fish
     g.entities.push_back(e);
     updateSupply(owner);
     return e.id;
@@ -300,7 +329,7 @@ Entity* findNearestEnemy(Entity& e, int range) {
 void orderMove(Entity& e, int tx, int ty) {
     e.state = S_MOVING; e.targetX = tx; e.targetY = ty; e.targetId = -1;
     e.stuckTicks = 0;
-    e.path = findPath(e.x, e.y, tx, ty); e.pathIdx = 0;
+    e.path = findPathFor(e, tx, ty); e.pathIdx = 0;
     if (e.path.empty() && (e.x != tx || e.y != ty)) {
         e.state = S_IDLE;
         if (e.owner == 0) setStatus("Can't reach there.");
@@ -314,23 +343,31 @@ void orderAttack(Entity& e, int tid) {
 }
 
 void orderGather(Entity& e, int tx, int ty) {
-    if (e.type != E_PEASANT) return;
     Terrain ter = g.map[ty][tx].terrain;
-    bool isW = (ter==T_FOREST||ter==T_PINE||ter==T_PALM||ter==T_DEAD_TREE);
-    if (ter != T_GOLD && !isW) return;
+    bool isW    = (ter==T_FOREST||ter==T_PINE||ter==T_PALM||ter==T_DEAD_TREE);
+    bool isFishT = (ter == T_FISH);
+    // Peasants gather wood/gold; boats fish.
+    if (e.type == E_PEASANT) {
+        if (ter != T_GOLD && !isW) return;
+        e.gatherType = (ter == T_GOLD) ? 0 : 1;
+    } else if (e.type == E_FISHING_BOAT) {
+        if (!isFishT) return;
+        e.gatherType = 2;
+    } else return;
     e.state = S_GATHERING; e.targetX = tx; e.targetY = ty;
-    e.gatherType = (ter == T_GOLD) ? 0 : 1;
-    // Path to nearest adjacent passable tile so multiple peasants don't block each other on same resource
+    // Path to nearest adjacent passable tile so units don't block each other on the same node
+    bool naval = isNaval(e.type);
     int bestAX = tx, bestAY = ty, bestAD = 99999;
     for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
         if (dx==0 && dy==0) continue;
         int nx = tx+dx, ny = ty+dy;
-        if (inBounds(nx,ny) && isPassable(nx,ny)) {
-            int d = mdist(e.x, e.y, nx, ny);
-            if (d < bestAD) { bestAD = d; bestAX = nx; bestAY = ny; }
-        }
+        if (!inBounds(nx,ny)) continue;
+        bool ok = naval ? isPassableWater(nx,ny) : isPassable(nx,ny);
+        if (!ok) continue;
+        int d = mdist(e.x, e.y, nx, ny);
+        if (d < bestAD) { bestAD = d; bestAX = nx; bestAY = ny; }
     }
-    e.path = findPath(e.x, e.y, bestAX, bestAY); e.pathIdx = 0;
+    e.path = findPathFor(e, bestAX, bestAY); e.pathIdx = 0;
     e.gatherCd = 0; e.carrying = 0;
     e.rallyX = tx; e.rallyY = ty;
 }
@@ -358,7 +395,7 @@ void orderBuild(Entity& e, EntityType bt, int bx, int by) {
             if (d < bestAD) { bestAD = d; bestAX = nx; bestAY = ny; }
         }
     }
-    e.path = findPath(e.x, e.y, bestAX, bestAY); e.pathIdx = 0;
+    e.path = findPathFor(e, bestAX, bestAY); e.pathIdx = 0;
 }
 
 void orderTrain(Entity& bld, EntityType ut) {
@@ -505,7 +542,7 @@ void orderGarrison(Entity& e, int buildingId) {
             if (d < bestAD) { bestAD = d; bestAX = nx; bestAY = ny; }
         }
     }
-    e.path = findPath(e.x, e.y, bestAX, bestAY); e.pathIdx = 0;
+    e.path = findPathFor(e, bestAX, bestAY); e.pathIdx = 0;
 }
 
 void orderHelp(Entity& e, int buildingId) {
@@ -526,7 +563,7 @@ void orderHelp(Entity& e, int buildingId) {
             if (d < bestAD) { bestAD = d; bestAX = nx; bestAY = ny; }
         }
     }
-    e.path = findPath(e.x, e.y, bestAX, bestAY); e.pathIdx = 0;
+    e.path = findPathFor(e, bestAX, bestAY); e.pathIdx = 0;
 }
 
 // ============================================================
@@ -568,7 +605,7 @@ void moveAlongPath(Entity& e) {
                         }
                     gx = bx; gy = by;
                 }
-                e.path = findPath(e.x, e.y, gx, gy); e.pathIdx = 0;
+                e.path = findPathFor(e, gx, gy); e.pathIdx = 0;
             }
             return;
         }
@@ -585,7 +622,6 @@ void moveAlongPath(Entity& e) {
 
 // Scan explored/visible tiles for a resource matching e.gatherType; re-issue gather if found.
 static bool findNearbyResource(Entity& e) {
-    bool wantGold = (e.gatherType == 0);
     int bestD = 99999, bx = -1, by = -1;
     int r = FOG_RADIUS * 4;
     for (int dy = -r; dy <= r; dy++) for (int dx = -r; dx <= r; dx++) {
@@ -594,12 +630,13 @@ static bool findNearbyResource(Entity& e) {
         if (e.owner < OWNER_NATURE && !g.map[ny][nx].explored[e.owner]) continue;
         if (g.map[ny][nx].resources <= 0) continue;
         Terrain t = g.map[ny][nx].terrain;
-        bool isGold = (t == T_GOLD);
-        bool isWood = (t==T_FOREST||t==T_PINE||t==T_PALM||t==T_DEAD_TREE);
-        if ((wantGold && isGold) || (!wantGold && isWood)) {
-            int d = mdist(e.x, e.y, nx, ny);
-            if (d < bestD) { bestD = d; bx = nx; by = ny; }
-        }
+        bool match = false;
+        if      (e.gatherType == 0) match = (t == T_GOLD);
+        else if (e.gatherType == 1) match = (t==T_FOREST||t==T_PINE||t==T_PALM||t==T_DEAD_TREE);
+        else if (e.gatherType == 2) match = (t == T_FISH);
+        if (!match) continue;
+        int d = mdist(e.x, e.y, nx, ny);
+        if (d < bestD) { bestD = d; bx = nx; by = ny; }
     }
     if (bx >= 0) { orderGather(e, bx, by); return true; }
     return false;
@@ -618,11 +655,14 @@ void tickEntity(Entity& e) {
         e.prodProgress += 1 + bonus;
         if (e.prodProgress >= e.prodTime) {
             auto& bs = STATS[e.type]; bool placed = false;
-            for (int r = 0; r <= 3 && !placed; r++)
+            bool produceNaval = isNaval(e.producing);
+            for (int r = 0; r <= 4 && !placed; r++)
                 for (int dy = -r; dy <= bs.sizeH+r && !placed; dy++)
                     for (int dx = -r; dx <= bs.sizeW+r && !placed; dx++) {
                         int nx = e.x+dx, ny = e.y+dy;
-                        if (!inBounds(nx,ny)||!isPassable(nx,ny)||entityAt(nx,ny)) continue;
+                        if (!inBounds(nx,ny) || entityAt(nx,ny)) continue;
+                        bool ok = produceNaval ? isPassableWater(nx,ny) : isPassable(nx,ny);
+                        if (!ok) continue;
                         spawnEntity(e.producing, e.owner, nx, ny);
                         placed = true;
                     }
@@ -656,9 +696,13 @@ void tickEntity(Entity& e) {
 
     switch (e.state) {
     case S_IDLE:
-        if (e.type != E_PEASANT && STATS[e.type].atk > 0) {
+        if (e.type != E_PEASANT && e.type != E_FISHING_BOAT && STATS[e.type].atk > 0) {
             Entity* en = findNearestEnemy(e, STATS[e.type].range+1);
             if (en) orderAttack(e, en->id);
+        }
+        // Boats auto-fish when idle — find a fish shoal, gather, return to dock.
+        if (e.type == E_FISHING_BOAT && (g.tick + e.id) % 12 == 0) {
+            findNearbyResource(e);
         }
         break;
     case S_MOVING:
@@ -695,7 +739,7 @@ void tickEntity(Entity& e) {
                 auto end = e.path.back();
                 if (dist(end.first, end.second, t->x, t->y) > 2) stale = true;
             }
-            if (stale) { e.path = findPath(e.x, e.y, t->x, t->y); e.pathIdx = 0; }
+            if (stale) { e.path = findPathFor(e, t->x, t->y); e.pathIdx = 0; }
             moveAlongPath(e);
         }
         break;
@@ -704,20 +748,21 @@ void tickEntity(Entity& e) {
         int d = dist(e.x, e.y, e.targetX, e.targetY);
         if (d <= 1) {
             Tile& tile = g.map[e.targetY][e.targetX];
-            bool isW = (tile.terrain==T_FOREST||tile.terrain==T_PINE||tile.terrain==T_PALM||tile.terrain==T_DEAD_TREE);
-            if ((tile.terrain==T_GOLD||isW) && tile.resources > 0) {
+            bool isW    = (tile.terrain==T_FOREST||tile.terrain==T_PINE||tile.terrain==T_PALM||tile.terrain==T_DEAD_TREE);
+            bool isFishT = (tile.terrain == T_FISH);
+            if ((tile.terrain==T_GOLD||isW||isFishT) && tile.resources > 0) {
                 e.gatherCd++;
                 if (e.gatherCd >= GATHER_TICKS) {
                     e.gatherCd = 0;
                     int amt = std::min(GATHER_RATE, tile.resources);
                     tile.resources -= amt; e.carrying += amt;
-                    if (tile.resources <= 0) tile.terrain = T_DIRT;
+                    if (tile.resources <= 0) tile.terrain = isFishT ? T_WATER : T_DIRT;
                     if (e.carrying >= CARRY_MAX || tile.resources <= 0) {
                         Entity* dep = findDepot(e);
                         if (dep) {
                             e.state = S_RETURNING; e.targetId = dep->id;
                             e.targetX = dep->x; e.targetY = dep->y;
-                            e.path = findPath(e.x, e.y, dep->x, dep->y); e.pathIdx = 0;
+                            e.path = findPathFor(e, dep->x, dep->y); e.pathIdx = 0;
                         } else e.state = S_IDLE;
                     }
                 }
@@ -728,7 +773,7 @@ void tickEntity(Entity& e) {
         } else {
             moveAlongPath(e);
             if (e.path.empty() && dist(e.x,e.y,e.targetX,e.targetY) > 1) {
-                e.path = findPath(e.x, e.y, e.targetX, e.targetY); e.pathIdx = 0;
+                e.path = findPathFor(e, e.targetX, e.targetY); e.pathIdx = 0;
                 if (e.path.empty()) e.state = S_IDLE;
             }
         }
@@ -740,18 +785,20 @@ void tickEntity(Entity& e) {
             dep = findDepot(e);
             if (!dep) { e.state = S_IDLE; break; }
             e.targetId = dep->id; e.targetX = dep->x; e.targetY = dep->y;
-            e.path = findPath(e.x, e.y, dep->x, dep->y); e.pathIdx = 0;
+            e.path = findPathFor(e, dep->x, dep->y); e.pathIdx = 0;
         }
         int d = dist(e.x, e.y, dep->x, dep->y);
         if (d <= STATS[dep->type].sizeW + 1) {
-            if (e.gatherType == 0) g.players[e.owner].gold += e.carrying;
-            else                   g.players[e.owner].wood += e.carrying;
+            if (e.gatherType == 0)      g.players[e.owner].gold += e.carrying;
+            else if (e.gatherType == 1) g.players[e.owner].wood += e.carrying;
+            else                        g.players[e.owner].food += e.carrying;
             e.carrying = 0;
             Tile& rt = g.map[e.rallyY][e.rallyX];
             bool isW = (rt.terrain==T_FOREST||rt.terrain==T_PINE||rt.terrain==T_PALM||rt.terrain==T_DEAD_TREE);
-            if ((rt.terrain==T_GOLD||isW) && rt.resources > 0) {
+            bool isFishT = (rt.terrain == T_FISH);
+            if ((rt.terrain==T_GOLD||isW||isFishT) && rt.resources > 0) {
                 e.state = S_GATHERING; e.targetX = e.rallyX; e.targetY = e.rallyY;
-                e.path = findPath(e.x, e.y, e.rallyX, e.rallyY); e.pathIdx = 0;
+                e.path = findPathFor(e, e.rallyX, e.rallyY); e.pathIdx = 0;
             } else {
                 // Rally point depleted — seek another nearby node of the same type
                 if (!findNearbyResource(e)) e.state = S_IDLE;
@@ -759,7 +806,7 @@ void tickEntity(Entity& e) {
         } else {
             moveAlongPath(e);
             if (e.path.empty() && dist(e.x,e.y,dep->x,dep->y) > STATS[dep->type].sizeW+1) {
-                e.path = findPath(e.x, e.y, dep->x, dep->y); e.pathIdx = 0;
+                e.path = findPathFor(e, dep->x, dep->y); e.pathIdx = 0;
             }
         }
         break;
@@ -796,7 +843,7 @@ void tickEntity(Entity& e) {
                         if (d2 < bestAD) { bestAD = d2; bestAX = nx; bestAY = ny; }
                     }
                 }
-                e.path = findPath(e.x, e.y, bestAX, bestAY); e.pathIdx = 0;
+                e.path = findPathFor(e, bestAX, bestAY); e.pathIdx = 0;
                 if (e.path.empty()) e.state = S_IDLE;
             }
         }
@@ -811,7 +858,7 @@ void tickEntity(Entity& e) {
         if (!bld->underConstruction && bld->type == E_FARM) {
             if (dist(e.x, e.y, bld->x, bld->y) > 1) {
                 moveAlongPath(e);
-                if (e.path.empty()) { e.path = findPath(e.x, e.y, bld->x, bld->y); e.pathIdx = 0; }
+                if (e.path.empty()) { e.path = findPathFor(e, bld->x, bld->y); e.pathIdx = 0; }
             }
             break;
         }
@@ -833,7 +880,7 @@ void tickEntity(Entity& e) {
                         if (d2 < bestAD) { bestAD=d2; bestAX=nx; bestAY=ny; }
                     }
                 }
-                e.path = findPath(e.x, e.y, bestAX, bestAY); e.pathIdx = 0;
+                e.path = findPathFor(e, bestAX, bestAY); e.pathIdx = 0;
             }
         }
         break;

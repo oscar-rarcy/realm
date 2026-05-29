@@ -123,6 +123,32 @@ void generateMap() {
             }
         }
     }
+    // Open inland seas — sizeable water bodies so boats have somewhere to roam.
+    for (int s = 0; s < 2; s++) {
+        int cx = 30 + rand() % (MAP_W - 60);
+        int cy = 25 + rand() % (MAP_H - 50);
+        int sz = 7 + rand() % 4;
+        for (int dy = -sz; dy <= sz; dy++) for (int dx = -sz; dx <= sz; dx++) {
+            int r2 = dx*dx + dy*dy;
+            if (r2 > sz*sz) continue;
+            int nx = cx+dx, ny = cy+dy;
+            if (!inBounds(nx,ny)) continue;
+            Terrain o = g.map[ny][nx].terrain;
+            if (o == T_MOUNTAIN || o == T_GOLD) continue;
+            if (r2 < (sz-2)*(sz-2))      g.map[ny][nx].terrain = T_WATER;
+            else if (r2 < (sz-1)*(sz-1)) g.map[ny][nx].terrain = (rand()%4==0) ? T_SHALLOWS : T_WATER;
+            else                         g.map[ny][nx].terrain = (rand()%2==0) ? T_SHALLOWS : T_REEDS;
+            g.map[ny][nx].resources = 0;
+        }
+    }
+    // Fish shoals — sparse food deposits in open water and shallows.
+    for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
+        Terrain t = g.map[y][x].terrain;
+        if ((t == T_WATER || t == T_SHALLOWS) && rand() % 30 == 0) {
+            g.map[y][x].terrain = T_FISH;
+            g.map[y][x].resources = 80 + rand() % 70;
+        }
+    }
     // Gold
     auto placeGold = [](int cx, int cy, int count) {
         for (int i = 0; i < count; i++) {

@@ -35,17 +35,17 @@ enum Terrain {
     T_SAND, T_DUNES,
     T_SNOW, T_ICE,
     T_DIRT, T_ROAD,
-    T_WHEAT, T_BERRY,
+    T_WHEAT, T_BERRY, T_FISH,
     T_RUINS, T_GRAVEL,
     T_CASTLE_WALL, T_CASTLE_FLOOR, T_CASTLE_GATE
 };
 
 enum EntityType {
     E_NONE = 0,
-    E_PEASANT, E_MILITIA, E_ARCHER, E_KNIGHT, E_CATAPULT,
+    E_PEASANT, E_MILITIA, E_ARCHER, E_KNIGHT, E_CATAPULT, E_FISHING_BOAT,
     E_TOWNHALL, E_HOUSE, E_BARRACKS, E_STABLE, E_TOWER,
     E_FARM, E_BLACKSMITH, E_CHURCH, E_MARKET, E_WALL, E_GATE, E_CASTLE,
-    E_LUMBER_CAMP, E_MINING_CAMP, E_MILL,
+    E_LUMBER_CAMP, E_MINING_CAMP, E_MILL, E_DOCK,
     E_DEER, E_WOLF, E_SHEEP
 };
 
@@ -102,9 +102,10 @@ struct EntityStats {
 };
 extern const EntityStats STATS[];
 
-inline bool isUnit(EntityType t)     { return (t>=E_PEASANT&&t<=E_CATAPULT)||(t>=E_DEER&&t<=E_SHEEP); }
-inline bool isBuilding(EntityType t) { return t>=E_TOWNHALL&&t<=E_MILL; }
+inline bool isUnit(EntityType t)     { return (t>=E_PEASANT&&t<=E_FISHING_BOAT)||(t>=E_DEER&&t<=E_SHEEP); }
+inline bool isBuilding(EntityType t) { return t>=E_TOWNHALL&&t<=E_DOCK; }
 inline bool isRanged(EntityType t)   { return t==E_ARCHER||t==E_CATAPULT; }
+inline bool isNaval(EntityType t)    { return t==E_FISHING_BOAT; }
 
 // ============================================================
 // DATA STRUCTURES
@@ -172,6 +173,7 @@ int     dist(int x1,int y1,int x2,int y2);
 int     mdist(int x1,int y1,int x2,int y2);
 bool    inBounds(int x,int y);
 bool    isPassable(int x,int y);
+bool    isPassableWater(int x,int y);
 void    setStatus(const std::string& msg);
 Entity* findEntity(int id);
 Entity* findDepot(Entity& e);
@@ -184,7 +186,7 @@ int     spawnEntity(EntityType type,int owner,int x,int y,bool built=true);
 // entity.cpp — projectiles / pathfinding
 void spawnProjectile(int sx,int sy,int tx,int ty,char gl,int col);
 void tickProjectiles();
-std::vector<std::pair<int,int>> findPath(int sx,int sy,int tx,int ty,int maxSteps=300);
+std::vector<std::pair<int,int>> findPath(int sx,int sy,int tx,int ty,int maxSteps=300,bool naval=false);
 
 // entity.cpp — orders
 Entity* findNearestEnemy(Entity& e,int range);
