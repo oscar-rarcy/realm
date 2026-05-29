@@ -717,6 +717,16 @@ void tickEntity(Entity& e) {
         }
         // Boats auto-fish when idle — find a fish shoal, gather, return to dock.
         if (e.type == E_FISHING_BOAT && (g.tick + e.id) % 12 == 0) {
+            // If carrying fish but no dock when we landed here, retry now (player may have rebuilt).
+            if (e.carrying > 0) {
+                Entity* dep = findDepot(e);
+                if (dep) {
+                    e.state = S_RETURNING; e.targetId = dep->id;
+                    e.targetX = dep->x; e.targetY = dep->y;
+                    e.path = findPathFor(e, dep->x, dep->y); e.pathIdx = 0;
+                    break;
+                }
+            }
             findNearbyResource(e);
         }
         break;

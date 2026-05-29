@@ -17,41 +17,28 @@ namespace C {
 
     const int DEEP_BLUE     = 17;
     const int NAVY          = 18;
-    const int BLUE          = 19;
     const int MED_BLUE      = 25;
     const int TEAL          = 30;
-    const int BRIGHT_TEAL   = 37;
-    const int CYAN          = 44;
-    const int DARK_CYAN     = 23;
     const int ICE_BLUE      = 117;
 
-    const int DARK_BROWN    = 52;
     const int BROWN         = 94;
     const int AMBER         = 130;
     const int TAN           = 137;
     const int LIGHT_TAN     = 180;
     const int DARK_GOLD     = 136;
     const int ORANGE        = 172;
-    const int DARK_ORANGE   = 166;
-    const int BRIGHT_ORANGE = 208;
 
     const int GOLD          = 178;
     const int BRIGHT_GOLD   = 220;
-    const int YELLOW        = 226;
     const int WHEAT_GOLD    = 143;
-    const int PALE_YELLOW   = 229;
 
-    const int DARK_RED      = 124;
     const int RED           = 160;
     const int BRIGHT_RED    = 196;
     const int BERRY_RED     = 125;
 
-    const int PURPLE        = 54;
-    const int MAUVE         = 96;
     const int LAVENDER      = 140;
     const int DUSK_PURPLE   = 53;
 
-    const int WHITE         = 231;
     const int SNOW_WHITE    = 255;
     const int BRIGHT_GRAY   = 252;
     const int LIGHT_GRAY    = 248;
