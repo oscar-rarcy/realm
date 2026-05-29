@@ -419,8 +419,8 @@ void renderMap() {
                 if (ent->underConstruction && g.tick%10 < 5) { ch = '#'; drawCh = (chtype)ch; }
                 // Dwarf-Fortress-style solid wall block when complete
                 if (ent->type == E_WALL && !ent->underConstruction) drawCh = ACS_CKBOARD;
-                // Recently in combat: flash an exclamation mark
-                if (ent->alertTicks > 0 && (g.tick & 2)) { ch = '!'; drawCh = (chtype)ch; }
+                // Recently in combat: gentle '!' pulse — ~1.5 Hz, not strobing
+                if (ent->alertTicks > 0 && (g.tick % 8) < 4) { ch = '!'; drawCh = (chtype)ch; }
             }
             for (auto& p : g.projectiles) {
                 if (!p.alive) continue;
@@ -472,10 +472,9 @@ void renderMap() {
         }
     }
 
-    // Weather overlay: subtle pulse of blue dots — never overlays unit/building tiles.
-    // Pulses every 4th frame so it reads as falling drops without dominating the view.
-    if (g.weather != W_CLEAR && (g.tick & 3) == 0) {
-        int density = (g.weather == W_STORM) ? 3 : 1; // percent — very sparse
+    // Weather overlay: very gentle pulse — ~1.5 Hz, never overlays units/buildings.
+    if (g.weather != W_CLEAR && (g.tick % 8) == 0) {
+        int density = (g.weather == W_STORM) ? 2 : 1; // percent — very sparse
         int frame = g.tick;
         for (int sy = 0; sy < g.viewH; sy++) for (int sx = 0; sx < g.viewW; sx++) {
             int mx = g.viewX + sx, my = g.viewY + sy;

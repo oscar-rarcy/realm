@@ -809,7 +809,7 @@ void tickEntity(Entity& e) {
                 if (nu) orderMove(*nu, e.rallyX, e.rallyY);
             }
             e.producing = E_NONE; e.state = S_IDLE;
-            if (e.owner==0 && placed) setStatus("Training complete!");
+            if (e.owner==0 && placed) { setStatus("Training complete!"); beep(); }
             // Pop the next queued unit straight into production.
             if (!e.queue.empty()) {
                 EntityType next = (EntityType)e.queue.front();
@@ -829,6 +829,7 @@ void tickEntity(Entity& e) {
             if (e.owner == 0) {
                 if (bit == R_IRON_WEAPONS) setStatus("Iron Weapons researched — militia/knights +2 atk!");
                 else if (bit == R_CROSSBOWS) setStatus("Crossbows researched — archers +2 range!");
+                beep();
             }
         }
     }
@@ -847,7 +848,7 @@ void tickEntity(Entity& e) {
             e.hp += 2;
             if (e.hp >= e.maxHp) {
                 e.hp = e.maxHp; e.underConstruction = false; updateSupply(e.owner);
-                if (e.owner==0) setStatus(std::string(STATS[e.type].name) + " complete!");
+                if (e.owner==0) { setStatus(std::string(STATS[e.type].name) + " complete!"); beep(); }
                 for (auto& o : g.entities) {
                     if (!o.alive || o.state!=S_BUILDING || o.targetId!=e.id) continue;
                     // For farms: keep tending — S_BUILDING handler routes to its farm branch.
@@ -1294,8 +1295,10 @@ void tickPaving() {
                 Terrain ter = t.terrain;
                 if (ter==T_GRASS||ter==T_TALL_GRASS||ter==T_FLOWERS||ter==T_MEADOW
                  || ter==T_SAND ||ter==T_DUNES) {
-                    if (t.wear < 60) t.wear += (ringDist <= 1) ? 2 : 1;
-                    if (t.wear >= 40 && (ter==T_GRASS||ter==T_TALL_GRASS||ter==T_FLOWERS||ter==T_MEADOW)) {
+                    int gain = (ringDist <= 1) ? 5 : (ringDist == 2) ? 3 : 1;
+                    if (t.wear < 80) t.wear += gain;
+                    // Lower threshold so visible haloes appear within ~50 seconds.
+                    if (t.wear >= 30 && (ter==T_GRASS||ter==T_TALL_GRASS||ter==T_FLOWERS||ter==T_MEADOW)) {
                         t.terrain = T_DIRT; t.preWinterTerrain = T_DIRT;
                     }
                 }
