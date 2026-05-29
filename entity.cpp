@@ -56,6 +56,7 @@ static void ensureDetectMap(int observerOwner) {
     memset(detectMap[observerOwner], 0, sizeof(detectMap[observerOwner]));
     for (auto& e : g.entities) {
         if (!e.alive || e.owner != observerOwner || e.state == S_GARRISONED) continue;
+        if (e.underConstruction) continue; // unfinished walls have no eyes yet
         // Buildings with sight: tower / castle / church / TH light up a wider radius.
         bool torch = (e.type == E_TOWER || e.type == E_CASTLE
                   || e.type == E_CHURCH || e.type == E_TOWNHALL);
@@ -329,6 +330,7 @@ void updateFog() {
     for (auto& e : g.entities) {
         if (!e.alive || e.owner >= OWNER_NATURE) continue;
         if (e.state == S_GARRISONED) continue;
+        if (e.underConstruction) continue; // scaffold doesn't see
         int r = FOG_RADIUS - nightPen;
         if (isBuilding(e.type)) r += 2;
         if (e.type == E_TOWER)  r += 4;
