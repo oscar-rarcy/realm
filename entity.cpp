@@ -33,9 +33,8 @@ bool inBounds(int x, int y)              { return x >= 0 && x < MAP_W && y >= 0 
 bool isPassable(int x, int y) {
     if (!inBounds(x, y)) return false;
     Terrain t = g.map[y][x].terrain;
-    // Rivers freeze solid in mid-to-late winter and become walkable
-    if (t == T_WATER && getSeason() == WINTER && getSeasonProgress() > 0.25f) return true;
-    return t != T_MOUNTAIN && t != T_WATER && t != T_ICE && t != T_STONE && t != T_CASTLE_WALL;
+    // Winter converts water → T_ICE (passable but slow). Glaciers from mapgen are also T_ICE.
+    return t != T_MOUNTAIN && t != T_WATER && t != T_STONE && t != T_CASTLE_WALL;
 }
 
 void setStatus(const std::string& msg) { g.statusMsg = msg; g.statusTimer = 35; }
@@ -260,6 +259,7 @@ void updateFog() {
         g.map[y][x].visible[1] = false;
     }
     int nightPen = isNight() ? 2 : (isDusk()||isDawn()) ? 1 : 0;
+    if (getSeason() == WINTER) nightPen += 1; // blizzards eat sight
     for (auto& e : g.entities) {
         if (!e.alive || e.owner >= OWNER_NATURE) continue;
         if (e.state == S_GARRISONED) continue;
@@ -578,7 +578,7 @@ void moveAlongPath(Entity& e) {
     Terrain ter = g.map[ny][nx].terrain;
     int spd = STATS[e.type].speed;
     if (ter==T_ROAD||ter==T_DIRT||ter==T_CASTLE_FLOOR) spd = std::max(1, spd-1);
-    else if (ter==T_MARSH||ter==T_SHALLOWS||ter==T_SAND||ter==T_SNOW) spd += 1;
+    else if (ter==T_MARSH||ter==T_SHALLOWS||ter==T_SAND||ter==T_SNOW||ter==T_ICE) spd += 1;
     if (getSeason() == WINTER) spd = std::max(spd, STATS[e.type].speed+1);
     e.moveCd = spd;
 }
@@ -950,6 +950,90 @@ void tickChurches() {
 }
 
 // ============================================================
+// SEASONS — winter transformation, spring thaw, hunger
+// ============================================================
+static void applyWinter() {
+    for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
+        Tile& t = g.map[y][x];
+        t.preWinterTerrain = t.terrain;
+        switch (t.terrain) {
+            case T_GRASS: case T_TALL_GRASS: case T_FLOWERS: case T_MEADOW:
+            case T_DIRT:  case T_ROAD:       case T_GRAVEL:  case T_RUINS:
+            case T_SAND:  case T_DUNES:      case T_WHEAT:   case T_BERRY:
+            case T_CASTLE_FLOOR:
+                t.terrain = T_SNOW; break;
+            case T_WATER: case T_SHALLOWS: case T_MARSH: case T_REEDS:
+                t.terrain = T_ICE; break;
+            default: break; // forests, hills, mountains, gold, walls, stone keep their look
+        }
+    }
+    // Cull a chunk of wildlife — the herd is thinned by the cold.
+    for (auto& e : g.entities) {
+        if (!e.alive || e.owner != OWNER_NATURE) continue;
+        if (e.type != E_DEER && e.type != E_SHEEP) continue;
+        if (rand() % 100 < 35) killEntity(e);
+    }
+    if (g.players[0].alive) setStatus("Winter falls. The land freezes over.");
+}
+
+void tickSeasons() {
+    int s = (int)getSeason();
+    if (s != g.prevSeason) {
+        if (s == WINTER) applyWinter();
+        if (s == SPRING && g.prevSeason == WINTER && g.players[0].alive)
+            setStatus("Spring stirs. The thaw begins.");
+        g.prevSeason = s;
+    }
+}
+
+void tickThaw() {
+    if (g.tick % 5 != 0) return;
+    if (getSeason() != SPRING) return;
+    float progress = getSeasonProgress();
+    // Patchy melt: each tile has a hash-based melt threshold; small threshold = early thaw.
+    // Start after 5% of spring, complete by 85% — leaves a hint of snow into mid-spring.
+    int threshold = std::max(0, (int)((progress - 0.05f) * 1280.0f));
+    for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
+        Tile& t = g.map[y][x];
+        if (t.terrain != T_SNOW && t.terrain != T_ICE) continue;
+        if (t.preWinterTerrain == t.terrain) continue;
+        unsigned h = ((unsigned)x * 73856093u) ^ ((unsigned)y * 19349663u);
+        if ((int)(h & 0x3ff) < threshold) t.terrain = t.preWinterTerrain;
+    }
+}
+
+void tickWinter() {
+    if (getSeason() != WINTER) return;
+    if (g.tick % 100 != 0) return;
+    for (int p = 0; p < 2; p++) {
+        if (!g.players[p].alive) continue;
+        int unitCount = 0;
+        for (auto& e : g.entities) {
+            if (!e.alive || e.owner != p || !isUnit(e.type)) continue;
+            unitCount++;
+        }
+        if (unitCount == 0) continue;
+        Player& pl = g.players[p];
+        int drain = unitCount; // 1 food per unit per 100 ticks
+        if (pl.food >= drain) {
+            pl.food -= drain;
+        } else {
+            int starve = drain - pl.food;
+            pl.food = 0;
+            // Damage `starve` random units. If any die, they're gone.
+            int hits = 0;
+            for (auto& e : g.entities) {
+                if (!e.alive || e.owner != p || !isUnit(e.type)) continue;
+                e.hp -= 3;
+                if (e.hp <= 0) killEntity(e);
+                if (++hits >= starve) break;
+            }
+            if (p == 0) setStatus("Starvation! Units are losing health.");
+        }
+    }
+}
+
+// ============================================================
 // ANIMALS
 // ============================================================
 void tickAnimals() {
@@ -973,18 +1057,23 @@ void tickAnimals() {
             }
         }
 
-        // Wolves flee settlements and only hunt isolated units far from buildings
+        // Wolves: usually flee settlements and hunt only isolated units.
+        // Winter strips their caution: they ignore settlements and hunt at longer range.
         if (e.type == E_WOLF) {
+            bool winter = (getSeason() == WINTER);
+            int huntRange = winter ? 6 : 3;
             bool nearSettlement = false;
             int fleeX = -1, fleeY = -1;
-            for (auto& o : g.entities) {
-                if (!o.alive || o.owner == OWNER_NATURE || !isBuilding(o.type)) continue;
-                int d = dist(e.x, e.y, o.x, o.y);
-                if (d <= 15) {
-                    nearSettlement = true;
-                    fleeX = std::max(1, std::min(e.x + (e.x - o.x)*4, MAP_W-2));
-                    fleeY = std::max(1, std::min(e.y + (e.y - o.y)*4, MAP_H-2));
-                    break;
+            if (!winter) {
+                for (auto& o : g.entities) {
+                    if (!o.alive || o.owner == OWNER_NATURE || !isBuilding(o.type)) continue;
+                    int d = dist(e.x, e.y, o.x, o.y);
+                    if (d <= 15) {
+                        nearSettlement = true;
+                        fleeX = std::max(1, std::min(e.x + (e.x - o.x)*4, MAP_W-2));
+                        fleeY = std::max(1, std::min(e.y + (e.y - o.y)*4, MAP_H-2));
+                        break;
+                    }
                 }
             }
             if (nearSettlement) {
@@ -995,7 +1084,7 @@ void tickAnimals() {
                 for (auto& o : g.entities) {
                     if (!o.alive || o.owner==OWNER_NATURE || !isUnit(o.type)) continue;
                     if (o.state == S_GARRISONED) continue;
-                    if (dist(e.x, e.y, o.x, o.y) <= 3) { orderAttack(e, o.id); break; }
+                    if (dist(e.x, e.y, o.x, o.y) <= huntRange) { orderAttack(e, o.id); break; }
                 }
             }
         }

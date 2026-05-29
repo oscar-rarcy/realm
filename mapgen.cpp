@@ -193,4 +193,8 @@ void generateMap() {
     clearArea(4,       MAP_H-11, 6); clearArea(MAP_W-11, MAP_H-11, 6);
     placeGold(14,         9,         5); placeGold(MAP_W-16, 9,         5);
     placeGold(14,         MAP_H-11,  5); placeGold(MAP_W-16, MAP_H-11,  5);
+
+    // Baseline snapshot used by the winter→spring thaw cycle.
+    for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++)
+        g.map[y][x].preWinterTerrain = g.map[y][x].terrain;
 }

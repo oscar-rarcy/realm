@@ -114,6 +114,7 @@ struct Projectile { float x,y,tx,ty; char glyph; int color,life; bool alive; };
 struct Tile {
     Terrain terrain; int resources;
     bool visible[2], explored[2]; Biome biome;
+    Terrain preWinterTerrain; // snapshot taken when winter arrives; restored during spring thaw
 };
 
 struct Entity {
@@ -145,6 +146,7 @@ struct Game {
     EntityType buildPending; int wallDragX, wallDragY;
     int winner, aiTimer, farmTimer;
     float dayPhase, seasonPhase;
+    int prevSeason; // for detecting season transitions
 };
 extern Game g;
 
@@ -210,6 +212,9 @@ void tickFarms();
 void tickMarkets();
 void tickChurches();
 void tickAnimals();
+void tickSeasons();
+void tickThaw();
+void tickWinter();
 void checkWin();
 void updateFog();
 
