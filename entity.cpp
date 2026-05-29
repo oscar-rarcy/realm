@@ -313,6 +313,20 @@ void updateFog() {
 // ============================================================
 // COMBAT / ORDERS
 // ============================================================
+// Research-aware combat stats.
+static int unitAtk(const Entity& e) {
+    int a = STATS[e.type].atk;
+    int r = g.players[e.owner].research;
+    if ((e.type == E_MILITIA || e.type == E_KNIGHT) && (r & R_IRON_WEAPONS)) a += 2;
+    return a;
+}
+static int unitRange(const Entity& e) {
+    int rng = STATS[e.type].range;
+    int r = g.players[e.owner].research;
+    if (e.type == E_ARCHER && (r & R_CROSSBOWS)) rng += 2;
+    return rng;
+}
+
 Entity* findNearestEnemy(Entity& e, int range) {
     Entity* best = nullptr; int bestD = range + 1;
     for (auto& o : g.entities) {
@@ -657,6 +671,7 @@ void tickEntity(Entity& e) {
         if (e.prodProgress >= e.prodTime) {
             auto& bs = STATS[e.type]; bool placed = false;
             bool produceNaval = isNaval(e.producing);
+            int newId = -1;
             for (int r = 0; r <= 4 && !placed; r++)
                 for (int dy = -r; dy <= bs.sizeH+r && !placed; dy++)
                     for (int dx = -r; dx <= bs.sizeW+r && !placed; dx++) {
@@ -664,9 +679,14 @@ void tickEntity(Entity& e) {
                         if (!inBounds(nx,ny) || entityAt(nx,ny)) continue;
                         bool ok = produceNaval ? isPassableWater(nx,ny) : isPassable(nx,ny);
                         if (!ok) continue;
-                        spawnEntity(e.producing, e.owner, nx, ny);
+                        newId = spawnEntity(e.producing, e.owner, nx, ny);
                         placed = true;
                     }
+            // Send to rally point if the building has a player-set one
+            if (placed && e.rallySet && newId >= 0) {
+                Entity* nu = findEntity(newId);
+                if (nu) orderMove(*nu, e.rallyX, e.rallyY);
+            }
             e.producing = E_NONE; e.state = S_IDLE;
             if (e.owner==0 && placed) setStatus("Training complete!");
         }
@@ -712,7 +732,7 @@ void tickEntity(Entity& e) {
     switch (e.state) {
     case S_IDLE:
         if (e.type != E_PEASANT && e.type != E_FISHING_BOAT && STATS[e.type].atk > 0) {
-            Entity* en = findNearestEnemy(e, STATS[e.type].range+1);
+            Entity* en = findNearestEnemy(e, unitRange(e)+1);
             if (en) orderAttack(e, en->id);
         }
         // Boats auto-fish when idle — find a fish shoal, gather, return to dock.
@@ -738,9 +758,9 @@ void tickEntity(Entity& e) {
         Entity* t = findEntity(e.targetId);
         if (!t || !t->alive) { e.state = S_IDLE; break; }
         int d = dist(e.x, e.y, t->x, t->y);
-        if (d <= STATS[e.type].range) {
+        if (d <= unitRange(e)) {
             if (e.atkCd <= 0) {
-                t->hp -= STATS[e.type].atk;
+                t->hp -= unitAtk(e);
                 e.atkCd = STATS[e.type].atkSpeed;
                 e.alertTicks = 12; t->alertTicks = 12;
                 if (isRanged(e.type)) {
@@ -983,7 +1003,7 @@ void tickFarms() {
     }
 
     int bonus = (getSeason() == SUMMER) ? 1 : 0;
-    for (int p = 0; p < 2; p++) {
+    for (int p = 0; p < MAX_PLAYERS; p++) {
         bool hasMill = false;
         for (auto& e : g.entities)
             if (e.alive && e.owner==p && e.type==E_MILL && !e.underConstruction) { hasMill=true; break; }
@@ -1004,7 +1024,7 @@ void tickFarms() {
 
 void tickMarkets() {
     if (g.tick % 50 != 0) return;
-    for (int p = 0; p < 2; p++) {
+    for (int p = 0; p < MAX_PLAYERS; p++) {
         int m = 0;
         for (auto& e : g.entities) if (e.alive && e.owner==p && e.type==E_MARKET && !e.underConstruction) m++;
         g.players[p].gold += m * 5;
@@ -1079,7 +1099,7 @@ void tickThaw() {
 void tickWinter() {
     if (getSeason() != WINTER) return;
     if (g.tick % 100 != 0) return;
-    for (int p = 0; p < 2; p++) {
+    for (int p = 0; p < MAX_PLAYERS; p++) {
         if (!g.players[p].alive) continue;
         int unitCount = 0;
         for (auto& e : g.entities) {
@@ -1177,12 +1197,16 @@ void tickAnimals() {
 // WIN CONDITION
 // ============================================================
 void checkWin() {
-    for (int p = 0; p < 2; p++) {
-        bool has = false;
+    int aliveCount = 0; int lastAlive = -1;
+    for (int p = 0; p < MAX_PLAYERS; p++) {
+        if (!g.players[p].alive) continue;
+        bool hasBase = false;
         for (auto& e : g.entities)
-            if (e.alive && e.owner==p && (e.type==E_TOWNHALL||e.type==E_CASTLE)) has = true;
-        if (!has) { g.players[p].alive=false; g.winner=1-p; g.mode=M_GAME_OVER; }
+            if (e.alive && e.owner==p && (e.type==E_TOWNHALL||e.type==E_CASTLE)) { hasBase=true; break; }
+        if (!hasBase) g.players[p].alive = false;
+        else { aliveCount++; lastAlive = p; }
     }
+    if (aliveCount <= 1) { g.winner = lastAlive; g.mode = M_GAME_OVER; }
 }
 
 // ============================================================
@@ -1265,11 +1289,8 @@ static int aiPickTarget(int o, Entity* attacker) {
     return best ? best->id : -1;
 }
 
-void tickAI() {
-    g.aiTimer++;
-    if (g.aiTimer < 12) return; // tick a bit more often than before
-    g.aiTimer = 0;
-    int o = 1; Player& p = g.players[o];
+static void tickAIForOwner(int o) {
+    Player& p = g.players[o];
 
     int peas = aiCount(o,E_PEASANT), mil = aiCount(o,E_MILITIA);
     int arch = aiCount(o,E_ARCHER),  kni = aiCount(o,E_KNIGHT);
@@ -1404,9 +1425,9 @@ void tickAI() {
 
     // === ATTACK RHYTHM: send waves, smart targets ===
     int army = mil + arch + kni + cat;
-    static int waveCd = 0; if (waveCd > 0) waveCd--;
+    if (p.aiWaveCd > 0) p.aiWaveCd--;
     int attackThreshold = 3;
-    if (army >= attackThreshold && waveCd == 0) {
+    if (army >= attackThreshold && p.aiWaveCd == 0) {
         Entity* anchor = nullptr;
         for (auto& e : g.entities) {
             if (!e.alive || e.owner != o) continue;
@@ -1424,7 +1445,7 @@ void tickAI() {
                     if (!isUnit(e.type) || e.type == E_PEASANT || e.type == E_FISHING_BOAT) continue;
                     if (e.state == S_IDLE) orderAttack(e, tid);
                 }
-                waveCd = 5; // re-pick target every ~5 AI ticks
+                p.aiWaveCd = 5; // re-pick target every ~5 AI ticks
             }
         }
     }
@@ -1444,5 +1465,15 @@ void tickAI() {
                 break;
             }
         }
+    }
+}
+
+void tickAI() {
+    g.aiTimer++;
+    if (g.aiTimer < 12) return;
+    g.aiTimer = 0;
+    for (int o = 1; o < MAX_PLAYERS; o++) {
+        if (!g.players[o].alive) continue;
+        tickAIForOwner(o);
     }
 }

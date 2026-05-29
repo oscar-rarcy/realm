@@ -454,7 +454,11 @@ void renderUI() {
     // Top bar
     attron(COLOR_PAIR(CP_UI_BAR)|A_BOLD); mvhline(0, 0, ' ', maxX);
     mvprintw(0, 1, " REALM "); attroff(A_BOLD);
-    mvprintw(0, 9, "Gold:%-5d Wood:%-5d Food:%-5d Pop:%d/%d", p.gold, p.wood, p.food, p.supply, p.supplyMax);
+    int idleCount = 0;
+    for (auto& e : g.entities)
+        if (e.alive && e.owner == 0 && e.type == E_PEASANT && e.state == S_IDLE) idleCount++;
+    mvprintw(0, 9, "Gold:%-5d Wood:%-5d Food:%-5d Pop:%d/%d Idle:%d",
+             p.gold, p.wood, p.food, p.supply, p.supplyMax, idleCount);
 
     int iconX = maxX - 22;
     if (getBrightness() > 0.5f) { attron(COLOR_PAIR(CP_SUN)|A_BOLD); mvprintw(0,iconX,"*"); attroff(COLOR_PAIR(CP_SUN)|A_BOLD); }

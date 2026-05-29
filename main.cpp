@@ -12,33 +12,34 @@ void initGame() {
     g.winner = -1; g.aiTimer = 0; g.farmTimer = 0; g.statusTimer = 0;
     g.buildPending = E_NONE; g.wallDragX = 0; g.wallDragY = 0;
     g.dayPhase = 0.25f; g.seasonPhase = 0.0f; g.prevSeason = -1;
-    g.players[0] = {300, 200, 100, 0, 0, true};
-    g.players[1] = {300, 200, 100, 0, 0, true};
-    g.players[OWNER_NATURE] = {0, 0, 0, 0, 0, true};
+    for (int p = 0; p < MAX_PLAYERS; p++)
+        g.players[p] = {300, 200, 100, 0, 0, true, 0, 0};
+    g.players[OWNER_NATURE] = {0, 0, 0, 0, 0, true, 0, 0};
 
     generateMap();
 
     // Four corner spawn points: thX,thY, peasant row anchor pX,pY, pDir (+1 or -1 along X)
     struct Spawn { int thX,thY, pX,pY, pDir; };
     const Spawn corners[4] = {
-        {5,        5,        9,         9,         1},   // top-left     — peasants go right
-        {MAP_W-9,  5,        MAP_W-14,  9,         1},   // top-right    — peasants go right
-        {5,        MAP_H-9,  9,         MAP_H-5,   1},   // bottom-left  — peasants go right
-        {MAP_W-9,  MAP_H-9,  MAP_W-14,  MAP_H-5,   1},   // bottom-right — peasants go right
+        {5,        5,        9,         9,         1},   // top-left
+        {MAP_W-9,  5,        MAP_W-14,  9,         1},   // top-right
+        {5,        MAP_H-9,  9,         MAP_H-5,   1},   // bottom-left
+        {MAP_W-9,  MAP_H-9,  MAP_W-14,  MAP_H-5,   1},   // bottom-right
     };
-    // Assign players to diagonally opposite corners
-    int layout = rand() % 2;  // 0: TL vs BR, 1: TR vs BL
-    int p0 = (layout == 0) ? 0 : 1;  // corner index for player 0
-    int p1 = (layout == 0) ? 3 : 2;  // corner index for player 1 (opposite)
-    if (rand() % 2) std::swap(p0, p1); // also randomly flip who gets which end
+    // Free-for-all: one human at a random corner, AIs at the rest.
+    int humanCorner = rand() % 4;
+    int aiCounter = 0;
+    for (int c = 0; c < 4; c++) {
+        int owner;
+        if (c == humanCorner) owner = 0;
+        else { owner = 1 + aiCounter++; if (owner >= MAX_PLAYERS) continue; }
+        auto& s = corners[c];
+        spawnEntity(E_TOWNHALL, owner, s.thX, s.thY);
+        for (int i = 0; i < 4; i++) spawnEntity(E_PEASANT, owner, s.pX + i*s.pDir, s.pY);
+    }
+    for (int p = 0; p < MAX_PLAYERS; p++) updateSupply(p);
 
-    auto& s0 = corners[p0]; auto& s1 = corners[p1];
-    spawnEntity(E_TOWNHALL, 0, s0.thX, s0.thY);
-    for (int i = 0; i < 4; i++) spawnEntity(E_PEASANT, 0, s0.pX + i*s0.pDir, s0.pY);
-    spawnEntity(E_TOWNHALL, 1, s1.thX, s1.thY);
-    for (int i = 0; i < 4; i++) spawnEntity(E_PEASANT, 1, s1.pX + i*s1.pDir, s1.pY);
-    updateSupply(0); updateSupply(1);
-
+    auto& s0 = corners[humanCorner];
     g.cursorX = s0.thX + 2; g.cursorY = s0.thY + 2;
     g.viewX = std::max(0, s0.thX - 10); g.viewY = std::max(0, s0.thY - 5);
 
@@ -56,11 +57,10 @@ void initGame() {
         if ((tr==T_FOREST||tr==T_PINE||tr==T_TALL_GRASS) && !entityAt(ax,ay))
             { spawnEntity(E_WOLF, OWNER_NATURE, ax, ay); i++; }
     }
-    // Domestic sheep near each player's town hall
-    for (int pi = 0; pi < 2; pi++) {
-        int bx = (pi==0 ? s0.thX : s1.thX) + 4;
-        int by = (pi==0 ? s0.thY : s1.thY) + 4;
-        for (int i = 0, t = 0; i < 5 && t < 200; t++) {
+    // Domestic sheep near each player's town hall (one cluster per occupied corner)
+    for (int c = 0; c < 4; c++) {
+        int bx = corners[c].thX + 4, by = corners[c].thY + 4;
+        for (int i = 0, t = 0; i < 4 && t < 200; t++) {
             int ax = bx+(rand()%7)-3, ay = by+(rand()%7)-3;
             ax = std::max(1, std::min(ax, MAP_W-2)); ay = std::max(1, std::min(ay, MAP_H-2));
             if (isPassable(ax,ay) && !entityAt(ax,ay)) { spawnEntity(E_SHEEP, OWNER_NATURE, ax, ay); i++; }

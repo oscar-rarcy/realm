@@ -21,7 +21,8 @@ const int GATHER_TICKS = 15;
 const int DAY_LENGTH   = 1500;
 const int SEASON_LENGTH= 3000;
 const int CARRY_MAX    = 20;
-const int OWNER_NATURE = 2;
+const int MAX_PLAYERS  = 4;
+const int OWNER_NATURE = MAX_PLAYERS;
 
 // ============================================================
 // ENUMS
@@ -54,7 +55,10 @@ enum EntityState {
     S_BUILDING, S_TRAINING, S_RETURNING, S_DEAD,
     S_ENTERING, S_GARRISONED
 };
-enum GameMode  { M_NORMAL, M_BUILD_SELECT, M_TRAIN_SELECT, M_WALL_DRAG, M_PAUSED, M_GAME_OVER };
+enum GameMode  { M_NORMAL, M_BUILD_SELECT, M_TRAIN_SELECT, M_WALL_DRAG, M_PAUSED, M_GAME_OVER, M_RALLY_SET, M_RESEARCH_SELECT };
+
+// Research bits stored in Player.research
+enum Research { R_IRON_WEAPONS = 1, R_CROSSBOWS = 2 };
 enum Biome     { B_TEMPERATE, B_DESERT, B_SNOW, B_SWAMP, B_FOREST };
 enum Season    { SPRING = 0, SUMMER, AUTUMN, WINTER };
 
@@ -114,7 +118,7 @@ struct Projectile { float x,y,tx,ty; char glyph; int color,life; bool alive; };
 
 struct Tile {
     Terrain terrain; int resources;
-    bool visible[2], explored[2]; Biome biome;
+    bool visible[MAX_PLAYERS], explored[MAX_PLAYERS]; Biome biome;
     Terrain preWinterTerrain; // snapshot taken when winter arrives; restored during spring thaw
 };
 
@@ -128,16 +132,22 @@ struct Entity {
     int carrying;
     int stuckTicks;
     int alertTicks; // > 0 = recently in combat; render flashes '!'
+    int rallySet;   // 0 = default, 1 = player-set rally point honoured on training
     std::vector<int> garrison; // unit ids currently inside this building
 };
 
-struct Player { int gold, wood, food, supply, supplyMax; bool alive; };
+struct Player {
+    int gold, wood, food, supply, supplyMax;
+    bool alive;
+    int research;     // bitmask of completed upgrades (R_*)
+    int aiWaveCd;     // per-AI rate-limit for wave dispatch
+};
 
 struct Game {
     Tile map[MAP_H][MAP_W];
     std::vector<Entity> entities;
     std::vector<Projectile> projectiles;
-    int nextId; Player players[3]; int tick;
+    int nextId; Player players[MAX_PLAYERS + 1]; int tick;
     GameMode mode; int cursorX, cursorY, viewX, viewY, viewW, viewH;
     int selectedId;
     std::vector<int> selectedIds;

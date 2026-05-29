@@ -142,6 +142,49 @@ void handleInput(int ch) {
         goto clamp;
     }
 
+    // Rally point selection — next click/Enter sets the selected building's rally.
+    if (g.mode == M_RALLY_SET) {
+        if (ch == 27) { g.mode = M_NORMAL; return; }
+        if (ch == KEY_UP)    { g.cursorY--; goto clamp; }
+        if (ch == KEY_DOWN)  { g.cursorY++; goto clamp; }
+        if (ch == KEY_LEFT)  { g.cursorX--; goto clamp; }
+        if (ch == KEY_RIGHT) { g.cursorX++; goto clamp; }
+        auto commit = [](int tx, int ty) {
+            Entity* sel = findEntity(g.selectedId);
+            if (sel && sel->alive && sel->owner == 0) {
+                sel->rallyX = tx; sel->rallyY = ty; sel->rallySet = 1;
+                setStatus("Rally point set.");
+            }
+            g.mode = M_NORMAL;
+        };
+        if (ch == '\n' || ch == '\r' || ch == KEY_ENTER) { commit(g.cursorX, g.cursorY); goto clamp; }
+        if (ch == KEY_MOUSE) {
+            MEVENT me; if (getmouse(&me) != OK) goto clamp;
+            int mapSY = me.y - 2;
+            int mapX = g.viewX + me.x, mapY = g.viewY + mapSY;
+            if (mapSY >= 0 && g.viewW > 0 && me.x < g.viewW && inBounds(mapX, mapY)) {
+                g.cursorX = mapX; g.cursorY = mapY;
+                if (me.bstate & (BUTTON1_CLICKED | BUTTON1_RELEASED | BUTTON3_CLICKED)) commit(mapX, mapY);
+            }
+        }
+        goto clamp;
+    }
+
+    // Research selection from the blacksmith.
+    if (g.mode == M_RESEARCH_SELECT) {
+        if (ch == 27) { g.mode = M_NORMAL; return; }
+        Player& pl = g.players[0];
+        auto buy = [&](int bit, int gold, int wood, const char* okMsg) {
+            if (pl.research & bit) { setStatus("Already researched."); return; }
+            if (pl.gold < gold || pl.wood < wood) { setStatus("Not enough resources!"); return; }
+            pl.gold -= gold; pl.wood -= wood; pl.research |= bit;
+            setStatus(okMsg);
+        };
+        if (ch == 'i' || ch == 'I') { buy(R_IRON_WEAPONS, 100, 100, "Iron Weapons researched (+2 atk)."); g.mode = M_NORMAL; }
+        else if (ch == 'c' || ch == 'C') { buy(R_CROSSBOWS, 80, 80, "Crossbows researched (+2 archer range)."); g.mode = M_NORMAL; }
+        return;
+    }
+
     switch (ch) {
     case KEY_UP:    g.cursorY--; break;
     case KEY_DOWN:  g.cursorY++; break;
@@ -254,6 +297,46 @@ void handleInput(int ch) {
             if (n > 0) { ejectGarrison(*sel); setStatus(std::to_string(n) + " unit(s) ejected"); }
             else setStatus("No garrison to eject");
         }
+        break;
+    }
+
+    // Rally point (production buildings) / research menu (blacksmith)
+    case 'R': case 'r': {
+        Entity* sel = findEntity(g.selectedId);
+        if (!sel || sel->owner != 0 || !isBuilding(sel->type) || sel->underConstruction) {
+            setStatus("Select a production building first.");
+            break;
+        }
+        if (sel->type == E_BLACKSMITH) {
+            g.mode = M_RESEARCH_SELECT;
+            setStatus("Research: [I]ron Weapons 100g/100w  [C]rossbows 80g/80w  [Esc]");
+        } else if (sel->type == E_TOWNHALL || sel->type == E_CASTLE
+                || sel->type == E_BARRACKS || sel->type == E_STABLE || sel->type == E_DOCK) {
+            g.mode = M_RALLY_SET;
+            setStatus("Click a tile (or move cursor + Enter) to set rally. [Esc]");
+        } else {
+            setStatus("Nothing to rally or research here.");
+        }
+        break;
+    }
+
+    // Cycle to the next idle peasant
+    case '.': case ',': {
+        int sid = g.selectedId; bool past = (sid < 0); Entity* pick = nullptr;
+        for (auto& e : g.entities) {
+            if (!e.alive || e.owner != 0 || e.type != E_PEASANT || e.state != S_IDLE) continue;
+            if (!past) { if (e.id == sid) past = true; continue; }
+            pick = &e; break;
+        }
+        if (!pick) for (auto& e : g.entities) {
+            if (!e.alive || e.owner != 0 || e.type != E_PEASANT || e.state != S_IDLE) continue;
+            pick = &e; break;
+        }
+        if (pick) {
+            g.selectedId = pick->id; g.selectedIds.clear();
+            g.cursorX = pick->x; g.cursorY = pick->y;
+            setStatus("Idle peasant selected");
+        } else setStatus("No idle peasants");
         break;
     }
 
