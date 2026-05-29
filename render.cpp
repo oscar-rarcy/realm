@@ -384,6 +384,9 @@ void renderMap() {
             if (wallPrev[my][mx]) drawCh = ACS_CKBOARD;
 
             Entity* ent = entityAt(mx, my);
+            // Cloaking: enemy units fade at night/storm unless a friendly eye is close.
+            if (ent && ent->alive && ent->owner != 0 && ent->owner < MAX_PLAYERS
+                && isConcealing() && !isDetectedBy(mx, my, 0)) ent = nullptr;
             if (ent && ent->alive) {
                 ch = STATS[ent->type].glyph;
                 drawCh = (chtype)ch;
@@ -527,11 +530,14 @@ void renderUI() {
         }
         if (g.map[mapY][mapX].visible[0]) {
             Entity* ent = entityAt(mapX, mapY);
+            // Hide cloaked enemies from the minimap as well.
+            if (ent && ent->alive && ent->owner != 0 && ent->owner < MAX_PLAYERS
+                && isConcealing() && !isDetectedBy(mapX, mapY, 0)) ent = nullptr;
             if (ent && ent->alive) {
                 mch = isBuilding(ent->type) ? '#' : '*';
-                if      (ent->owner == 0) mcp = CP_MM_PLAYER;
-                else if (ent->owner == 1) mcp = CP_MM_ENEMY;
-                else                      mcp = CP_MM_ANIMAL;
+                if      (ent->owner == 0)            mcp = CP_MM_PLAYER;
+                else if (ent->owner < MAX_PLAYERS)   mcp = CP_MM_ENEMY;
+                else                                  mcp = CP_MM_ANIMAL;
             }
         }
         attron(COLOR_PAIR(mcp)); mvaddch(mmY+my, panelX+1+mx, mch); attroff(COLOR_PAIR(mcp));

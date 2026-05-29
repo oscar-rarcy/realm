@@ -189,6 +189,8 @@ int     mdist(int x1,int y1,int x2,int y2);
 bool    inBounds(int x,int y);
 bool    isPassable(int x,int y);
 bool    isPassableWater(int x,int y);
+bool    isDetectedBy(int x,int y,int observerOwner);
+bool    isConcealing();
 void    setStatus(const std::string& msg);
 Entity* findEntity(int id);
 Entity* findDepot(Entity& e);

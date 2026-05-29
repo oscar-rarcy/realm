@@ -44,6 +44,41 @@ bool isPassableWater(int x, int y) {
     return t == T_WATER || t == T_SHALLOWS || t == T_REEDS || t == T_FISH;
 }
 
+// Cloaking: at night or under storm, only short-range or torch-lit eyes see enemies.
+bool isConcealing() { return isNight() || g.weather == W_STORM; }
+
+static bool detectMap[MAX_PLAYERS][MAP_H][MAP_W];
+static int  detectMapTick[MAX_PLAYERS] = {-1,-1,-1,-1};
+
+static void ensureDetectMap(int observerOwner) {
+    if (observerOwner < 0 || observerOwner >= MAX_PLAYERS) return;
+    if (detectMapTick[observerOwner] == g.tick) return;
+    memset(detectMap[observerOwner], 0, sizeof(detectMap[observerOwner]));
+    for (auto& e : g.entities) {
+        if (!e.alive || e.owner != observerOwner || e.state == S_GARRISONED) continue;
+        // Buildings with sight: tower / castle / church / TH light up a wider radius.
+        bool torch = (e.type == E_TOWER || e.type == E_CASTLE
+                  || e.type == E_CHURCH || e.type == E_TOWNHALL);
+        int range = torch ? 7 : 3;
+        auto& s = STATS[e.type];
+        int cx = e.x + s.sizeW/2, cy = e.y + s.sizeH/2;
+        for (int dy = -range; dy <= range; dy++) for (int dx = -range; dx <= range; dx++) {
+            int nx = cx+dx, ny = cy+dy;
+            if (!inBounds(nx,ny)) continue;
+            if (dx*dx + dy*dy <= range*range) detectMap[observerOwner][ny][nx] = true;
+        }
+    }
+    detectMapTick[observerOwner] = g.tick;
+}
+
+bool isDetectedBy(int x, int y, int observerOwner) {
+    if (!isConcealing()) return true;
+    if (observerOwner < 0 || observerOwner >= MAX_PLAYERS) return true;
+    if (!inBounds(x, y)) return false;
+    ensureDetectMap(observerOwner);
+    return detectMap[observerOwner][y][x];
+}
+
 void setStatus(const std::string& msg) { g.statusMsg = msg; g.statusTimer = 35; }
 
 Entity* findEntity(int id) {
@@ -331,11 +366,15 @@ static int unitRange(const Entity& e) {
 
 Entity* findNearestEnemy(Entity& e, int range) {
     Entity* best = nullptr; int bestD = range + 1;
+    bool concealing = isConcealing();
     for (auto& o : g.entities) {
         if (!o.alive || o.owner == e.owner) continue;
         if (o.state == S_GARRISONED) continue;
         // Non-nature units do not auto-attack nature entities (deer/wolf/sheep)
         if (e.owner != OWNER_NATURE && o.owner == OWNER_NATURE) continue;
+        // Cloaking: if it's night/storm and no friendly eye is near the target, can't engage.
+        if (concealing && o.owner != OWNER_NATURE && e.owner < MAX_PLAYERS
+            && !isDetectedBy(o.x, o.y, e.owner)) continue;
         int d = dist(e.x, e.y, o.x, o.y);
         if (d < bestD) { bestD = d; best = &o; }
     }
