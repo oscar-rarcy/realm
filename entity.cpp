@@ -733,6 +733,7 @@ void moveAlongPath(Entity& e) {
     int spd = STATS[e.type].speed;
     if (ter==T_ROAD||ter==T_DIRT||ter==T_CASTLE_FLOOR) spd = std::max(1, spd-1);
     else if (ter==T_MARSH||ter==T_SHALLOWS||ter==T_SAND||ter==T_SNOW||ter==T_ICE) spd += 1;
+    else if (ter==T_MUD) spd += 2; // bogged down
     if (getSeason() == WINTER) spd = std::max(spd, STATS[e.type].speed+1);
     // Weather: rain and storm bog down movement on natural ground.
     if (g.weather != W_CLEAR && (ter==T_GRASS||ter==T_TALL_GRASS||ter==T_FLOWERS
@@ -1231,9 +1232,8 @@ void tickThaw() {
     if (g.tick % 5 != 0) return;
     if (getSeason() != SPRING) return;
     float progress = getSeasonProgress();
-    // Patchy melt: each tile has a hash-based melt threshold; small threshold = early thaw.
-    // Start after 5% of spring, complete by 85% — leaves a hint of snow into mid-spring.
-    int threshold = std::max(0, (int)((progress - 0.05f) * 1280.0f));
+    // Patchy melt completes by ~60% of spring so the world looks alive by mid-season.
+    int threshold = std::max(0, (int)(progress * 1700.0f));
     for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
         Tile& t = g.map[y][x];
         if (t.terrain != T_SNOW && t.terrain != T_ICE) continue;
@@ -1322,6 +1322,27 @@ void tickPaving() {
 // WEATHER
 // ============================================================
 void tickWeather() {
+    // Mud creation/drying happens on its own cadence regardless of state changes.
+    if (g.tick % 50 == 0) {
+        if (g.weather == W_RAIN || g.weather == W_STORM) {
+            int hits = (g.weather == W_STORM) ? 60 : 30;
+            for (int i = 0; i < hits; i++) {
+                int x = rand() % MAP_W, y = rand() % MAP_H;
+                Tile& t = g.map[y][x];
+                if (t.terrain == T_GRASS || t.terrain == T_MEADOW
+                 || t.terrain == T_DIRT  || t.terrain == T_TALL_GRASS) {
+                    t.terrain = T_MUD;
+                }
+            }
+        } else {
+            // Drying — mud reverts to dirt over time once skies clear.
+            for (int i = 0; i < 40; i++) {
+                int x = rand() % MAP_W, y = rand() % MAP_H;
+                Tile& t = g.map[y][x];
+                if (t.terrain == T_MUD) t.terrain = T_DIRT;
+            }
+        }
+    }
     if (g.weatherTimer > 0) { g.weatherTimer--; return; }
     // Roll for transition. Season biases the result.
     int roll = rand() % 100;

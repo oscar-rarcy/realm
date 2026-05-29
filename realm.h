@@ -35,7 +35,7 @@ enum Terrain {
     T_GOLD,
     T_SAND, T_DUNES,
     T_SNOW, T_ICE,
-    T_DIRT, T_ROAD,
+    T_DIRT, T_ROAD, T_MUD,
     T_WHEAT, T_BERRY, T_FISH,
     T_RUINS, T_GRAVEL,
     T_CASTLE_WALL, T_CASTLE_FLOOR, T_CASTLE_GATE

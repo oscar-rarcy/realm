@@ -150,7 +150,8 @@ void initColors() {
     init_pair(CP_UI_ACCENT,      C::UI_ACCENT,    bg);
     init_pair(CP_FOG,            C::DARKER_GRAY,  bg);
     init_pair(CP_FOG_EXPLORED,   C::DARK_GRAY,    bg);
-    init_pair(CP_CURSOR,         C::NEAR_BLACK,   C::SNOW_WHITE);
+    // Cursor: black-on-gold pops on snow, grass, water, and dark biomes alike.
+    init_pair(CP_CURSOR,         C::NEAR_BLACK,   C::BRIGHT_GOLD);
     init_pair(CP_HP_GREEN,       C::BRIGHT_GREEN, bg);
     init_pair(CP_HP_YELLOW,      C::BRIGHT_GOLD,  bg);
     init_pair(CP_HP_RED,         C::RED,          bg);
@@ -211,6 +212,7 @@ void getTerrainVisual(Terrain t, int x, int y, char& ch, int& cp) {
     case T_ICE:          ch='='; cp=CP_ICE;         break;
     case T_DIRT:         ch='.'; cp=CP_DIRT;        break;
     case T_ROAD:         ch='#'; cp=CP_ROAD;        break;
+    case T_MUD:          ch=','; cp=CP_DIRT;        break;
     case T_WHEAT:        ch='%'; cp=CP_WHEAT;       break;
     case T_BERRY:        ch='*'; cp=CP_BERRY;       break;
     case T_FISH:         ch=(g.tick%30<15)?'~':'"'; cp=CP_SHALLOWS; break;
@@ -470,24 +472,20 @@ void renderMap() {
         }
     }
 
-    // Weather overlay: scattered rain dots / storm slashes drawn on visible map tiles.
-    if (g.weather != W_CLEAR) {
-        int density = (g.weather == W_STORM) ? 14 : 7; // percent of cells with a drop this frame
+    // Weather overlay: subtle pulse of blue dots — never overlays unit/building tiles.
+    // Pulses every 4th frame so it reads as falling drops without dominating the view.
+    if (g.weather != W_CLEAR && (g.tick & 3) == 0) {
+        int density = (g.weather == W_STORM) ? 3 : 1; // percent — very sparse
         int frame = g.tick;
         for (int sy = 0; sy < g.viewH; sy++) for (int sx = 0; sx < g.viewW; sx++) {
             int mx = g.viewX + sx, my = g.viewY + sy;
             if (!inBounds(mx,my) || !g.map[my][mx].visible[0]) continue;
+            if (entityAt(mx, my)) continue; // don't paint over units/buildings
             unsigned h = ((unsigned)(mx*73856093u) ^ (unsigned)(my*19349663u) ^ (unsigned)(frame*83492791u));
             if ((int)(h % 100) >= density) continue;
-            char rch = (g.weather == W_STORM) ? ((h & 1) ? '/' : '\\') : '.';
-            attron(COLOR_PAIR(CP_WATER_SHIMMER)); mvaddch(sy+2, sx, rch); attroff(COLOR_PAIR(CP_WATER_SHIMMER));
-        }
-        // Occasional lightning flash during storms — paint a vertical streak.
-        if (g.weather == W_STORM && (g.tick % 137) == 0) {
-            int fx = rand() % g.viewW;
-            for (int sy = 0; sy < g.viewH; sy++) {
-                attron(COLOR_PAIR(CP_SUN)|A_BOLD); mvaddch(sy+2, fx, '|'); attroff(COLOR_PAIR(CP_SUN)|A_BOLD);
-            }
+            attron(COLOR_PAIR(CP_WATER_SHIMMER)|A_DIM);
+            mvaddch(sy+2, sx, '.');
+            attroff(COLOR_PAIR(CP_WATER_SHIMMER)|A_DIM);
         }
     }
 }
@@ -532,7 +530,7 @@ void renderUI() {
         const char* tn[] = {"Grassland","Tall Grass","Wildflowers","Meadow","Oak Forest","Pine Forest",
             "Palm Grove","Dead Tree","Mountain","Rolling Hills","Stone","Deep Water","Shallows",
             "Marshland","Reed Bed","Gold Deposit","Sandy Ground","Sand Dunes","Snow Cover","Frozen Ice",
-            "Bare Earth","Stone Road","Wheat Field","Berry Bush","Fish Shoal","Ancient Ruins","Gravel",
+            "Bare Earth","Stone Road","Mud","Wheat Field","Berry Bush","Fish Shoal","Ancient Ruins","Gravel",
             "Castle Wall","Castle Floor","Castle Gate"};
         attron(COLOR_PAIR(CP_UI_TEXT)); mvprintw(1, 1, "%-16s", tn[ct.terrain]); attroff(COLOR_PAIR(CP_UI_TEXT));
         attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(1, 18, "[%s]", bn[ct.biome]); attroff(COLOR_PAIR(CP_UI_DIM));
