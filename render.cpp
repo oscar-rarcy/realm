@@ -138,6 +138,10 @@ void initColors() {
     init_pair(CP_PLAYER_NIGHT,   C::PLAYER_DIM,   bg);
     init_pair(CP_ENEMY,          C::ENEMY_RED,    bg);
     init_pair(CP_ENEMY_NIGHT,    C::ENEMY_DIM,    bg);
+    // Ship deck: glyph sits on a wood-brown background tile so boats read as
+    // solid hulls instead of single floating characters on open water.
+    init_pair(CP_SHIP_PLAYER,    C::PLAYER_CYAN,  C::BROWN);
+    init_pair(CP_SHIP_ENEMY,     C::ENEMY_RED,    C::BROWN);
 
     init_pair(CP_PROJ_ARROW,     C::BRIGHT_GOLD,  bg);
     init_pair(CP_PROJ_BOULDER,   C::BRIGHT_GRAY,  bg);
@@ -411,6 +415,8 @@ void renderMap() {
                 else if (ent->type == E_WOLF) cp = CP_WOLF;
                 else if (ent->type == E_SHEEP)cp = CP_SHEEP;
                 else                          cp = CP_DEER;
+                // Ships override with a wood-deck background so they read as solid hulls.
+                if (isNaval(ent->type)) cp = (ent->owner == 0) ? CP_SHIP_PLAYER : CP_SHIP_ENEMY;
                 // Gate: glyph reflects open/closed state
                 if (ent->type == E_GATE && !ent->underConstruction) {
                     ch = (ent->carrying > 0) ? '-' : '|';
