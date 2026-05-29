@@ -61,6 +61,7 @@ enum GameMode  { M_NORMAL, M_BUILD_SELECT, M_TRAIN_SELECT, M_WALL_DRAG, M_PAUSED
 enum Research { R_IRON_WEAPONS = 1, R_CROSSBOWS = 2 };
 enum Biome     { B_TEMPERATE, B_DESERT, B_SNOW, B_SWAMP, B_FOREST };
 enum Season    { SPRING = 0, SUMMER, AUTUMN, WINTER };
+enum Weather   { W_CLEAR = 0, W_RAIN, W_STORM };
 
 // ============================================================
 // COLOR PAIR IDS  (used in both entity.cpp and render.cpp)
@@ -120,6 +121,7 @@ struct Tile {
     Terrain terrain; int resources;
     bool visible[MAX_PLAYERS], explored[MAX_PLAYERS]; Biome biome;
     Terrain preWinterTerrain; // snapshot taken when winter arrives; restored during spring thaw
+    int wear;        // 0-100: traffic + creep. Drives dirt/road transitions and decay.
 };
 
 struct Entity {
@@ -159,6 +161,8 @@ struct Game {
     int winner, aiTimer, farmTimer;
     float dayPhase, seasonPhase;
     int prevSeason; // for detecting season transitions
+    int weather;       // current Weather state
+    int weatherTimer;  // ticks until next weather change roll
 };
 extern Game g;
 
@@ -228,6 +232,8 @@ void tickAnimals();
 void tickSeasons();
 void tickThaw();
 void tickWinter();
+void tickPaving();
+void tickWeather();
 void checkWin();
 void updateFog();
 

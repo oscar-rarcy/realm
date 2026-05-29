@@ -316,6 +316,7 @@ void renderMap() {
     int maxY, maxX; getmaxyx(stdscr, maxY, maxX);
     int panelW = 24; g.viewW = maxX - panelW - 1; g.viewH = maxY - 4;
     if (g.viewW < 30) g.viewW = maxX; if (g.viewH < 10) g.viewH = maxY - 2;
+    g.viewW = std::min(g.viewW, MAP_W); g.viewH = std::min(g.viewH, MAP_H);
 
     if (g.cursorX < g.viewX+3)            g.viewX = g.cursorX - 3;
     if (g.cursorX > g.viewX+g.viewW-4)    g.viewX = g.cursorX - g.viewW + 4;
@@ -442,6 +443,27 @@ void renderMap() {
             }
         }
     }
+
+    // Weather overlay: scattered rain dots / storm slashes drawn on visible map tiles.
+    if (g.weather != W_CLEAR) {
+        int density = (g.weather == W_STORM) ? 14 : 7; // percent of cells with a drop this frame
+        int frame = g.tick;
+        for (int sy = 0; sy < g.viewH; sy++) for (int sx = 0; sx < g.viewW; sx++) {
+            int mx = g.viewX + sx, my = g.viewY + sy;
+            if (!inBounds(mx,my) || !g.map[my][mx].visible[0]) continue;
+            unsigned h = ((unsigned)(mx*73856093u) ^ (unsigned)(my*19349663u) ^ (unsigned)(frame*83492791u));
+            if ((int)(h % 100) >= density) continue;
+            char rch = (g.weather == W_STORM) ? ((h & 1) ? '/' : '\\') : '.';
+            attron(COLOR_PAIR(CP_WATER_SHIMMER)); mvaddch(sy+2, sx, rch); attroff(COLOR_PAIR(CP_WATER_SHIMMER));
+        }
+        // Occasional lightning flash during storms — paint a vertical streak.
+        if (g.weather == W_STORM && (g.tick % 137) == 0) {
+            int fx = rand() % g.viewW;
+            for (int sy = 0; sy < g.viewH; sy++) {
+                attron(COLOR_PAIR(CP_SUN)|A_BOLD); mvaddch(sy+2, fx, '|'); attroff(COLOR_PAIR(CP_SUN)|A_BOLD);
+            }
+        }
+    }
 }
 
 // ============================================================
@@ -464,7 +486,8 @@ void renderUI() {
     if (getBrightness() > 0.5f) { attron(COLOR_PAIR(CP_SUN)|A_BOLD); mvprintw(0,iconX,"*"); attroff(COLOR_PAIR(CP_SUN)|A_BOLD); }
     else { attron(COLOR_PAIR(CP_MOON)); mvprintw(0,iconX,"o"); attroff(COLOR_PAIR(CP_MOON)); }
     attron(COLOR_PAIR(CP_UI_BAR));
-    mvprintw(0, iconX+1, " %-5s %-6s", getTimeName(), getSeasonName());
+    const char* wn = (g.weather == W_STORM) ? "Storm" : (g.weather == W_RAIN) ? "Rain " : "Clear";
+    mvprintw(0, iconX+1, " %-5s %-6s %s", getTimeName(), getSeasonName(), wn);
     attroff(COLOR_PAIR(CP_UI_BAR));
 
     // Terrain info bar

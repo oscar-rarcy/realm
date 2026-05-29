@@ -289,6 +289,8 @@ void updateFog() {
     }
     int nightPen = isNight() ? 2 : (isDusk()||isDawn()) ? 1 : 0;
     if (getSeason() == WINTER) nightPen += 1; // blizzards eat sight
+    if (g.weather == W_STORM) nightPen += 1;
+    else if (g.weather == W_RAIN) nightPen += (nightPen > 0 ? 0 : 1); // mild rain dimming by day
     for (auto& e : g.entities) {
         if (!e.alive || e.owner >= OWNER_NATURE) continue;
         if (e.state == S_GARRISONED) continue;
@@ -525,11 +527,25 @@ void ejectGarrison(Entity& bld) {
     updateSupply(bld.owner);
 }
 
-// Centralized death handler: marks dead, ejects garrison, updates supply.
+// Centralized death handler: marks dead, ejects garrison, ruins terrain, updates supply.
 static void killEntity(Entity& t) {
     if (!t.alive) return;
     t.alive = false; t.state = S_DEAD;
-    if (isBuilding(t.type)) ejectGarrison(t);
+    if (isBuilding(t.type)) {
+        ejectGarrison(t);
+        // Large buildings leave a permanent scar — the floor goes to ruins.
+        auto& s = STATS[t.type];
+        if (s.sizeW * s.sizeH >= 4 && t.type != E_FARM) {
+            for (int dy = 0; dy < s.sizeH; dy++) for (int dx = 0; dx < s.sizeW; dx++) {
+                int nx = t.x+dx, ny = t.y+dy;
+                if (inBounds(nx,ny)) {
+                    g.map[ny][nx].terrain = T_RUINS;
+                    g.map[ny][nx].preWinterTerrain = T_RUINS;
+                    g.map[ny][nx].wear = 0;
+                }
+            }
+        }
+    }
     updateSupply(t.owner);
 }
 
@@ -631,7 +647,24 @@ void moveAlongPath(Entity& e) {
     if (ter==T_ROAD||ter==T_DIRT||ter==T_CASTLE_FLOOR) spd = std::max(1, spd-1);
     else if (ter==T_MARSH||ter==T_SHALLOWS||ter==T_SAND||ter==T_SNOW||ter==T_ICE) spd += 1;
     if (getSeason() == WINTER) spd = std::max(spd, STATS[e.type].speed+1);
+    // Weather: rain and storm bog down movement on natural ground.
+    if (g.weather != W_CLEAR && (ter==T_GRASS||ter==T_TALL_GRASS||ter==T_FLOWERS
+            ||ter==T_MEADOW||ter==T_DIRT||ter==T_SAND||ter==T_DUNES))
+        spd += (g.weather == W_STORM) ? 2 : 1;
     e.moveCd = spd;
+
+    // Path wear — natural ground gets compacted into dirt then road by repeated traffic.
+    Tile& tt = g.map[ny][nx];
+    bool pavable = (ter==T_GRASS||ter==T_TALL_GRASS||ter==T_FLOWERS||ter==T_MEADOW
+                 ||ter==T_DIRT||ter==T_SAND||ter==T_DUNES);
+    if (pavable && tt.wear < 100) {
+        tt.wear += 1;
+        if (tt.wear >= 80 && ter != T_ROAD) {
+            tt.terrain = T_ROAD; tt.preWinterTerrain = T_ROAD;
+        } else if (tt.wear >= 40 && (ter==T_GRASS||ter==T_TALL_GRASS||ter==T_FLOWERS||ter==T_MEADOW)) {
+            tt.terrain = T_DIRT; tt.preWinterTerrain = T_DIRT;
+        }
+    }
 }
 
 // Scan explored/visible tiles for a resource matching e.gatherType; re-issue gather if found.
@@ -1124,6 +1157,78 @@ void tickWinter() {
             }
             if (p == 0) setStatus("Starvation! Units are losing health.");
         }
+    }
+}
+
+// ============================================================
+// PAVING — building creep + path wear + decay
+// ============================================================
+void tickPaving() {
+    // Buildings emit creep into adjacent natural ground.
+    if (g.tick % 100 == 0) {
+        for (auto& e : g.entities) {
+            if (!e.alive || !isBuilding(e.type) || e.underConstruction) continue;
+            auto& s = STATS[e.type];
+            for (int dy = -3; dy <= s.sizeH+2; dy++) for (int dx = -3; dx <= s.sizeW+2; dx++) {
+                if (dx >= 0 && dx < s.sizeW && dy >= 0 && dy < s.sizeH) continue;
+                int nx = e.x+dx, ny = e.y+dy;
+                if (!inBounds(nx,ny)) continue;
+                int ringDist = std::max(std::max(0, -dx), std::max(0, dx-s.sizeW+1))
+                             + std::max(std::max(0, -dy), std::max(0, dy-s.sizeH+1));
+                if (ringDist > 3) continue;
+                Tile& t = g.map[ny][nx];
+                Terrain ter = t.terrain;
+                if (ter==T_GRASS||ter==T_TALL_GRASS||ter==T_FLOWERS||ter==T_MEADOW
+                 || ter==T_SAND ||ter==T_DUNES) {
+                    if (t.wear < 60) t.wear += (ringDist <= 1) ? 2 : 1;
+                    if (t.wear >= 40 && (ter==T_GRASS||ter==T_TALL_GRASS||ter==T_FLOWERS||ter==T_MEADOW)) {
+                        t.terrain = T_DIRT; t.preWinterTerrain = T_DIRT;
+                    }
+                }
+            }
+        }
+    }
+    // Decay: unused paving gradually returns to nature.
+    if (g.tick % 250 == 0) {
+        for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
+            Tile& t = g.map[y][x];
+            if (t.wear > 0) t.wear--;
+            if (t.wear == 0 && t.terrain == T_ROAD) {
+                t.terrain = T_DIRT; t.preWinterTerrain = T_DIRT;
+            }
+            // Dirt slowly regrows — patches of grass return after long disuse
+            if (t.wear == 0 && t.terrain == T_DIRT && (rand() % 500) == 0) {
+                t.terrain = T_GRASS; t.preWinterTerrain = T_GRASS;
+            }
+        }
+    }
+}
+
+// ============================================================
+// WEATHER
+// ============================================================
+void tickWeather() {
+    if (g.weatherTimer > 0) { g.weatherTimer--; return; }
+    // Roll for transition. Season biases the result.
+    int roll = rand() % 100;
+    Season s = getSeason();
+    int rainBias = (s == AUTUMN) ? 50 : (s == SPRING) ? 35 : (s == WINTER) ? 20 : 25;
+    int stormBias = (s == AUTUMN) ? 15 : 8;
+    if (g.weather == W_CLEAR) {
+        if (roll < stormBias)              g.weather = W_STORM;
+        else if (roll < rainBias)          g.weather = W_RAIN;
+        g.weatherTimer = 400 + rand() % 800; // ~30s-100s
+    } else {
+        // Rain/storm linger then break.
+        if (roll < 60) g.weather = W_CLEAR;
+        else if (g.weather == W_RAIN && roll < 75) g.weather = W_STORM;
+        else if (g.weather == W_STORM && roll < 80) g.weather = W_RAIN;
+        g.weatherTimer = 300 + rand() % 600;
+    }
+    if (g.players[0].alive) {
+        if (g.weather == W_RAIN)  setStatus("Rain begins.");
+        else if (g.weather == W_STORM) setStatus("A storm rolls in!");
+        else                       setStatus("The skies clear.");
     }
 }
 

@@ -106,6 +106,7 @@ int main() {
                 if (g.seasonPhase >= 4.0f) g.seasonPhase -= 4.0f;
                 for (int i = 0; i < (int)g.entities.size(); i++) tickEntity(g.entities[i]);
                 tickSeasons(); tickThaw(); tickWinter();
+                tickWeather(); tickPaving();
                 tickTowers(); tickGates(); tickProjectiles(); tickFarms(); tickMarkets();
                 tickChurches(); tickAnimals(); tickAI(); updateFog();
                 if (g.tick % 100 == 0) {

@@ -37,7 +37,8 @@ static void placeCastleRuin(int cx, int cy, int size) {
 void generateMap() {
     initNoise();
     for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
-        float n1 = sampleNoise(x*0.08f, y*0.08f), n2 = sampleNoise(x*0.05f+10, y*0.05f+10);
+        // Larger biome patches: scale halved for more distinct identity.
+        float n1 = sampleNoise(x*0.04f, y*0.04f), n2 = sampleNoise(x*0.025f+10, y*0.025f+10);
         Biome b = B_TEMPERATE;
         if (n1 > 0.7f) b = B_DESERT;
         else if (n1 < 0.25f) b = B_SNOW;
