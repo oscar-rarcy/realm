@@ -437,11 +437,15 @@ void renderMap() {
 
             if (isCur) {
                 attron(COLOR_PAIR(CP_CURSOR)); mvaddch(scY, scX, drawCh); attroff(COLOR_PAIR(CP_CURSOR));
+            } else if (onBoxBorder) {
+                // Vivid selection-box border that pops on any terrain.
+                attron(COLOR_PAIR(CP_SUN)|A_BOLD|A_REVERSE);
+                mvaddch(scY, scX, drawCh);
+                attroff(COLOR_PAIR(CP_SUN)|A_BOLD|A_REVERSE);
             } else {
                 int attr = COLOR_PAIR(cp);
                 if (ent && ent->alive) attr |= A_BOLD;
                 if (isSel)        attr |= A_UNDERLINE;
-                if (onBoxBorder)  attr |= A_REVERSE;
                 attron(attr); mvaddch(scY, scX, drawCh); attroff(attr);
             }
         }
@@ -625,6 +629,25 @@ void renderUI() {
                 iy++;
                 int pp = sel->prodProgress * 100 / std::max(1, sel->prodTime);
                 attron(COLOR_PAIR(CP_UI_HIGH)); mvprintw(iy++, panelX+1, "Training: %s", STATS[sel->producing].name);
+                int pb = panelW-4, pf = pp*pb/100;
+                for (int i = 0; i < pb; i++) { int c=(i<pf)?CP_UI_HIGH:CP_FOG; attron(COLOR_PAIR(c)); mvaddch(iy, panelX+1+i, (i<pf)?'=':'-'); attroff(COLOR_PAIR(c)); }
+                iy++; mvprintw(iy++, panelX+1, "%d%%", pp); attroff(COLOR_PAIR(CP_UI_HIGH));
+            }
+            if (!sel->queue.empty()) {
+                attron(COLOR_PAIR(CP_UI_DIM));
+                mvprintw(iy++, panelX+1, "Queue: %d", (int)sel->queue.size());
+                int n = std::min((int)sel->queue.size(), panelW-4);
+                for (int i = 0; i < n; i++)
+                    mvaddch(iy, panelX+1+i, STATS[(EntityType)sel->queue[i]].glyph);
+                iy++;
+                attroff(COLOR_PAIR(CP_UI_DIM));
+            }
+            if (sel->researching != 0) {
+                iy++;
+                int pp = sel->prodProgress * 100 / std::max(1, sel->prodTime);
+                const char* rn = (sel->researching == R_IRON_WEAPONS) ? "Iron Weapons" :
+                                 (sel->researching == R_CROSSBOWS)   ? "Crossbows"    : "Research";
+                attron(COLOR_PAIR(CP_UI_HIGH)); mvprintw(iy++, panelX+1, "Researching: %s", rn);
                 int pb = panelW-4, pf = pp*pb/100;
                 for (int i = 0; i < pb; i++) { int c=(i<pf)?CP_UI_HIGH:CP_FOG; attron(COLOR_PAIR(c)); mvaddch(iy, panelX+1+i, (i<pf)?'=':'-'); attroff(COLOR_PAIR(c)); }
                 iy++; mvprintw(iy++, panelX+1, "%d%%", pp); attroff(COLOR_PAIR(CP_UI_HIGH));

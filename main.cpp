@@ -82,6 +82,8 @@ int main() {
     using Ms    = std::chrono::milliseconds;
     auto nextTick = Clock::now() + Ms(TICK_MS);
 
+    int lastCx = g.cursorX, lastCy = g.cursorY;
+    bool lastDrag = g.dragging;
     while (true) {
         // Block only as long as needed to reach the next game tick
         int wait = (int)std::chrono::duration_cast<Ms>(nextTick - Clock::now()).count();
@@ -96,6 +98,7 @@ int main() {
         while ((extra = getch()) != ERR) handleInput(extra);
 
         // Tick and render at fixed rate regardless of input volume
+        bool ticked = false;
         if (Clock::now() >= nextTick) {
             nextTick += Ms(TICK_MS);
             if (g.mode != M_PAUSED && g.mode != M_GAME_OVER) {
@@ -116,7 +119,12 @@ int main() {
                 }
             }
             render();
+            ticked = true;
         }
+        // Snappy cursor: redraw between ticks when the mouse moved or a drag updated.
+        bool cursorMoved = (g.cursorX != lastCx || g.cursorY != lastCy || g.dragging != lastDrag);
+        if (!ticked && cursorMoved) render();
+        lastCx = g.cursorX; lastCy = g.cursorY; lastDrag = g.dragging;
     }
     endwin();
     return 0;

@@ -174,14 +174,21 @@ void handleInput(int ch) {
     if (g.mode == M_RESEARCH_SELECT) {
         if (ch == 27) { g.mode = M_NORMAL; return; }
         Player& pl = g.players[0];
-        auto buy = [&](int bit, int gold, int wood, const char* okMsg) {
+        Entity* bs = findEntity(g.selectedId);
+        if (!bs || bs->type != E_BLACKSMITH || bs->underConstruction) {
+            g.mode = M_NORMAL; return;
+        }
+        auto startResearch = [&](int bit, int gold, int wood, int ticks, const char* startMsg) {
             if (pl.research & bit) { setStatus("Already researched."); return; }
+            if (bs->researching != 0) { setStatus("Already researching."); return; }
             if (pl.gold < gold || pl.wood < wood) { setStatus("Not enough resources!"); return; }
-            pl.gold -= gold; pl.wood -= wood; pl.research |= bit;
-            setStatus(okMsg);
+            pl.gold -= gold; pl.wood -= wood;
+            bs->researching = bit; bs->prodProgress = 0; bs->prodTime = ticks;
+            setStatus(startMsg);
         };
-        if (ch == 'i' || ch == 'I') { buy(R_IRON_WEAPONS, 100, 100, "Iron Weapons researched (+2 atk)."); g.mode = M_NORMAL; }
-        else if (ch == 'c' || ch == 'C') { buy(R_CROSSBOWS, 80, 80, "Crossbows researched (+2 archer range)."); g.mode = M_NORMAL; }
+        // ~75 sec at 80 ms tick = 940 ticks.
+        if (ch == 'i' || ch == 'I') { startResearch(R_IRON_WEAPONS, 100, 100, 940, "Researching Iron Weapons..."); g.mode = M_NORMAL; }
+        else if (ch == 'c' || ch == 'C') { startResearch(R_CROSSBOWS, 80, 80, 820, "Researching Crossbows..."); g.mode = M_NORMAL; }
         return;
     }
 
@@ -455,6 +462,25 @@ void handleInput(int ch) {
         int mapSY = me.y - 2;
         int mapX  = g.viewX + me.x;
         int mapY  = g.viewY + mapSY;
+        // Minimap click → jump viewport. Minimap sits at panelX+1..+mmW, mmY..+mmH.
+        {
+            int maxY2, maxX2; getmaxyx(stdscr, maxY2, maxX2); (void)maxY2;
+            int panelW = 24, panelX = maxX2 - panelW;
+            int mmX = panelX + 1, mmY = 1, mmW = panelW - 2;
+            int mmH = std::min(g.viewH/3, 14);
+            if (me.x >= mmX && me.x < mmX+mmW && me.y >= mmY && me.y < mmY+mmH) {
+                if (me.bstate & (BUTTON1_CLICKED | BUTTON1_PRESSED | BUTTON1_RELEASED
+                              | BUTTON3_CLICKED | BUTTON3_PRESSED)) {
+                    int mx = (me.x - mmX) * MAP_W / mmW;
+                    int my = (me.y - mmY) * MAP_H / mmH;
+                    g.viewX = std::max(0, std::min(mx - g.viewW/2, MAP_W - g.viewW));
+                    g.viewY = std::max(0, std::min(my - g.viewH/2, MAP_H - g.viewH));
+                    g.cursorX = mx; g.cursorY = my;
+                    g.dragging = false;
+                }
+                break;
+            }
+        }
         bool inMap = (mapSY >= 0 && g.viewW > 0 && me.x < g.viewW && inBounds(mapX, mapY));
         if (!inMap) { g.dragging = false; break; }
 

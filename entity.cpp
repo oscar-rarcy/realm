@@ -457,7 +457,10 @@ void orderBuild(Entity& e, EntityType bt, int bx, int by) {
 
 void orderTrain(Entity& bld, EntityType ut) {
     if (!isBuilding(bld.type) || bld.underConstruction) return;
-    if (bld.producing != E_NONE) { if (bld.owner==0) setStatus("Already training!"); return; }
+    // Queue if busy; reject only when queue is full.
+    if (bld.producing != E_NONE && (int)bld.queue.size() >= 5) {
+        if (bld.owner==0) setStatus("Queue full!"); return;
+    }
     Player& p = g.players[bld.owner];
     if (p.gold < STATS[ut].costGold || p.wood < STATS[ut].costWood) {
         if (bld.owner==0) setStatus("Not enough resources!"); return;
@@ -472,8 +475,13 @@ void orderTrain(Entity& bld, EntityType ut) {
     if (p.food < foodCost) { if (bld.owner==0) setStatus("Need more food!"); return; }
     p.food -= foodCost;
     p.gold -= STATS[ut].costGold; p.wood -= STATS[ut].costWood;
-    bld.producing = ut; bld.prodProgress = 0; bld.prodTime = STATS[ut].trainTime;
-    bld.state = S_TRAINING;
+    if (bld.producing == E_NONE) {
+        bld.producing = ut; bld.prodProgress = 0; bld.prodTime = STATS[ut].trainTime;
+        bld.state = S_TRAINING;
+    } else {
+        bld.queue.push_back((int)ut);
+        if (bld.owner == 0) setStatus("Queued.");
+    }
 }
 
 void orderGroupMove(int tx, int ty) {
@@ -763,6 +771,26 @@ void tickEntity(Entity& e) {
             }
             e.producing = E_NONE; e.state = S_IDLE;
             if (e.owner==0 && placed) setStatus("Training complete!");
+            // Pop the next queued unit straight into production.
+            if (!e.queue.empty()) {
+                EntityType next = (EntityType)e.queue.front();
+                e.queue.erase(e.queue.begin());
+                e.producing = next; e.prodProgress = 0;
+                e.prodTime = STATS[next].trainTime; e.state = S_TRAINING;
+            }
+        }
+    }
+    // Research progress (Blacksmith). Independent of unit production.
+    if (e.researching != 0 && !e.underConstruction) {
+        e.prodProgress += 1;
+        if (e.prodProgress >= e.prodTime) {
+            g.players[e.owner].research |= e.researching;
+            int bit = e.researching;
+            e.researching = 0; e.prodProgress = 0; e.prodTime = 0;
+            if (e.owner == 0) {
+                if (bit == R_IRON_WEAPONS) setStatus("Iron Weapons researched — militia/knights +2 atk!");
+                else if (bit == R_CROSSBOWS) setStatus("Crossbows researched — archers +2 range!");
+            }
         }
     }
     // Construction progress

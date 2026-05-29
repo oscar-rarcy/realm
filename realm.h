@@ -135,6 +135,8 @@ struct Entity {
     int stuckTicks;
     int alertTicks; // > 0 = recently in combat; render flashes '!'
     int rallySet;   // 0 = default, 1 = player-set rally point honoured on training
+    int researching; // Research bit currently being researched (Blacksmith only); 0 = none
+    std::vector<int> queue;    // pending EntityTypes to train (FIFO, max 5)
     std::vector<int> garrison; // unit ids currently inside this building
 };
 
