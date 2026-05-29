@@ -178,6 +178,25 @@ void initColors() {
     init_pair(CP_MM_ANIMAL,      C::TAN,          C::NEAR_BLACK);
 }
 
+// Safe entity-state display name. EntityState has more values than the old
+// hard-coded array covered (notably S_ENTERING and S_GARRISONED), so any
+// non-peasant selected mid-board would index past the array.
+static const char* stateName(EntityState s) {
+    switch (s) {
+        case S_IDLE:       return "Idle";
+        case S_MOVING:     return "Moving";
+        case S_ATTACKING:  return "Attacking";
+        case S_GATHERING:  return "Gathering";
+        case S_BUILDING:   return "Building";
+        case S_TRAINING:   return "Training";
+        case S_RETURNING:  return "Returning";
+        case S_DEAD:       return "Dead";
+        case S_ENTERING:   return "Boarding";
+        case S_GARRISONED: return "Garrisoned";
+    }
+    return "Unknown";
+}
+
 // ============================================================
 // TERRAIN VISUALS
 // ============================================================
@@ -411,7 +430,8 @@ void renderMap() {
                 // Farms use natural wheat colouring regardless of owner
                 if (ent->type == E_FARM)      cp = (g.tick%40 < 20) ? CP_WHEAT : CP_WHEAT_GOLD;
                 else if (ent->owner == 0)     cp = night ? CP_PLAYER_NIGHT : CP_PLAYER;
-                else if (ent->owner == 1)     cp = night ? CP_ENEMY_NIGHT  : CP_ENEMY;
+                else if (ent->owner > 0 && ent->owner < MAX_PLAYERS)
+                                              cp = night ? CP_ENEMY_NIGHT  : CP_ENEMY;
                 else if (ent->type == E_WOLF) cp = CP_WOLF;
                 else if (ent->type == E_SHEEP)cp = CP_SHEEP;
                 else                          cp = CP_DEER;
@@ -634,24 +654,33 @@ void renderUI() {
                     case S_IDLE:      stDesc = "Idle"; break;
                     case S_MOVING:    stDesc = "Moving"; break;
                     case S_ATTACKING: stDesc = "Fighting"; break;
-                    case S_GATHERING: stDesc = (sel->gatherType==0) ? "Mining gold" : "Chopping wood"; break;
+                    case S_GATHERING:
+                        if      (sel->gatherType == 0) stDesc = "Mining gold";
+                        else if (sel->gatherType == 1) stDesc = "Chopping wood";
+                        else                           stDesc = "Picking berries";
+                        break;
                     case S_BUILDING:  { Entity* b = findEntity(sel->targetId);
                                         if (b && !b->underConstruction && b->type==E_FARM)
                                             stDesc = "Tending farm";
                                         else
                                             stDesc = b ? (std::string("Building ") + STATS[b->type].name) : "Building";
                                         break; }
-                    case S_RETURNING: stDesc = (sel->gatherType==0) ? "Carrying gold" : "Carrying wood"; break;
+                    case S_RETURNING:
+                        if      (sel->gatherType == 0) stDesc = "Carrying gold";
+                        else if (sel->gatherType == 1) stDesc = "Carrying wood";
+                        else                           stDesc = "Carrying food";
+                        break;
                     default:          stDesc = "Idle"; break;
                     }
                 } else {
-                    const char* sn[] = {"Idle","Moving","Attacking","Gathering","Building","Training","Returning","Dead"};
-                    stDesc = sn[sel->state];
+                    stDesc = stateName(sel->state);
                 }
                 attron(COLOR_PAIR(CP_UI_ACCENT)); mvprintw(iy++, panelX+1, "%s", stDesc.c_str()); attroff(COLOR_PAIR(CP_UI_ACCENT));
                 if (sel->carrying > 0) {
+                    const char* what = (sel->gatherType==0) ? "gold"
+                                     : (sel->gatherType==1) ? "wood" : "food";
                     attron(COLOR_PAIR(CP_UI_HIGH));
-                    mvprintw(iy++, panelX+1, "Carrying: %d %s", sel->carrying, sel->gatherType==0?"gold":"wood");
+                    mvprintw(iy++, panelX+1, "Carrying: %d %s", sel->carrying, what);
                     attroff(COLOR_PAIR(CP_UI_HIGH));
                 }
                 // Transport cargo display + unload hint

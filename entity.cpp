@@ -128,6 +128,9 @@ Entity* entityAtOwner(int x, int y, int owner) {
 
 bool canPlace(EntityType type, int x, int y, int owner) {
     (void)owner;
+    // Top-level bounds check protects every g.map read below, including the
+    // farm-only terrain read that previously ran before any inBounds check.
+    if (!inBounds(x, y)) return false;
     // Farms can only be sown on open ground, not in winter
     if (type == E_FARM) {
         if (getSeason() == WINTER) return false;
@@ -138,7 +141,10 @@ bool canPlace(EntityType type, int x, int y, int owner) {
     for (int dy = 0; dy < s.sizeH; dy++) for (int dx = 0; dx < s.sizeW; dx++) {
         int nx = x+dx, ny = y+dy;
         if (!inBounds(nx,ny) || !isPassable(nx,ny)) return false;
-        if (g.map[ny][nx].terrain == T_GOLD) return false;
+        Terrain ter = g.map[ny][nx].terrain;
+        if (ter == T_GOLD) return false;
+        // Forests are resource terrain — chop the trees before you can build here.
+        if (ter==T_FOREST||ter==T_PINE||ter==T_PALM||ter==T_DEAD_TREE) return false;
         if (entityAt(nx,ny)) return false;
     }
     // Docks must sit on the shoreline — at least one neighbouring tile must be water.
@@ -164,6 +170,22 @@ void updateSupply(int owner) {
     }
     g.players[owner].supplyMax = mx;
     g.players[owner].supply    = used;
+}
+
+// Supply already in use plus everything currently producing or queued. Used by
+// orderTrain so a flurry of queued units can't push live supply over the cap
+// once they all spawn.
+static int reservedSupply(int owner) {
+    int used = 0;
+    for (auto& e : g.entities) {
+        if (!e.alive || e.owner != owner) continue;
+        used += STATS[e.type].supplyUsed;
+        if (isBuilding(e.type) && !e.underConstruction) {
+            if (e.producing != E_NONE) used += STATS[e.producing].supplyUsed;
+            for (int q : e.queue) used += STATS[(EntityType)q].supplyUsed;
+        }
+    }
+    return used;
 }
 
 // ============================================================
@@ -410,12 +432,13 @@ void orderAttack(Entity& e, int tid) {
 
 void orderGather(Entity& e, int tx, int ty) {
     Terrain ter = g.map[ty][tx].terrain;
-    bool isW    = (ter==T_FOREST||ter==T_PINE||ter==T_PALM||ter==T_DEAD_TREE);
+    bool isW     = (ter==T_FOREST||ter==T_PINE||ter==T_PALM||ter==T_DEAD_TREE);
+    bool isBerry = (ter == T_BERRY);
     bool isFishT = (ter == T_FISH);
-    // Peasants gather wood/gold; boats fish.
+    // Peasants gather wood/gold/berries; boats fish.
     if (e.type == E_PEASANT) {
-        if (ter != T_GOLD && !isW) return;
-        e.gatherType = (ter == T_GOLD) ? 0 : 1;
+        if (ter != T_GOLD && !isW && !isBerry) return;
+        e.gatherType = (ter == T_GOLD) ? 0 : isBerry ? 3 : 1;
     } else if (e.type == E_FISHING_BOAT) {
         if (!isFishT) return;
         e.gatherType = 2;
@@ -474,7 +497,7 @@ void orderTrain(Entity& bld, EntityType ut) {
     if (p.gold < STATS[ut].costGold || p.wood < STATS[ut].costWood) {
         if (bld.owner==0) setStatus("Not enough resources!"); return;
     }
-    if (p.supply + STATS[ut].supplyUsed > p.supplyMax) {
+    if (reservedSupply(bld.owner) + STATS[ut].supplyUsed > p.supplyMax) {
         if (bld.owner==0) setStatus("Need more houses!"); return;
     }
     int foodCost = 0;
@@ -776,6 +799,7 @@ static bool findNearbyResource(Entity& e) {
         if      (e.gatherType == 0) match = (t == T_GOLD);
         else if (e.gatherType == 1) match = (t==T_FOREST||t==T_PINE||t==T_PALM||t==T_DEAD_TREE);
         else if (e.gatherType == 2) match = (t == T_FISH);
+        else if (e.gatherType == 3) match = (t == T_BERRY);
         if (!match) continue;
         int d = mdist(e.x, e.y, nx, ny);
         if (d < bestD) { bestD = d; bx = nx; by = ny; }
@@ -975,15 +999,17 @@ void tickEntity(Entity& e) {
         int d = dist(e.x, e.y, e.targetX, e.targetY);
         if (d <= 1) {
             Tile& tile = g.map[e.targetY][e.targetX];
-            bool isW    = (tile.terrain==T_FOREST||tile.terrain==T_PINE||tile.terrain==T_PALM||tile.terrain==T_DEAD_TREE);
+            bool isW     = (tile.terrain==T_FOREST||tile.terrain==T_PINE||tile.terrain==T_PALM||tile.terrain==T_DEAD_TREE);
+            bool isBerry = (tile.terrain == T_BERRY);
             bool isFishT = (tile.terrain == T_FISH);
-            if ((tile.terrain==T_GOLD||isW||isFishT) && tile.resources > 0) {
+            if ((tile.terrain==T_GOLD||isW||isBerry||isFishT) && tile.resources > 0) {
                 e.gatherCd++;
                 if (e.gatherCd >= GATHER_TICKS) {
                     e.gatherCd = 0;
                     int amt = std::min(GATHER_RATE, tile.resources);
                     tile.resources -= amt; e.carrying += amt;
-                    if (tile.resources <= 0) tile.terrain = isFishT ? T_WATER : T_DIRT;
+                    if (tile.resources <= 0)
+                        tile.terrain = isFishT ? T_WATER : isBerry ? T_GRASS : T_DIRT;
                     if (e.carrying >= CARRY_MAX || tile.resources <= 0) {
                         Entity* dep = findDepot(e);
                         if (dep) {
@@ -1022,8 +1048,9 @@ void tickEntity(Entity& e) {
             e.carrying = 0;
             Tile& rt = g.map[e.rallyY][e.rallyX];
             bool isW = (rt.terrain==T_FOREST||rt.terrain==T_PINE||rt.terrain==T_PALM||rt.terrain==T_DEAD_TREE);
+            bool isBerry = (rt.terrain == T_BERRY);
             bool isFishT = (rt.terrain == T_FISH);
-            if ((rt.terrain==T_GOLD||isW||isFishT) && rt.resources > 0) {
+            if ((rt.terrain==T_GOLD||isW||isBerry||isFishT) && rt.resources > 0) {
                 e.state = S_GATHERING; e.targetX = e.rallyX; e.targetY = e.rallyY;
                 e.path = findPathFor(e, e.rallyX, e.rallyY); e.pathIdx = 0;
             } else {
@@ -1491,6 +1518,21 @@ void checkWin() {
 int     aiCount(int o, EntityType t)    { int c=0; for(auto& e:g.entities) if(e.alive&&e.owner==o&&e.type==t&&!e.underConstruction)c++; return c; }
 int     aiCountAll(int o, EntityType t) { int c=0; for(auto& e:g.entities) if(e.alive&&e.owner==o&&e.type==t)c++;                    return c; }
 Entity* aiIdle(int o, EntityType t)     { for(auto& e:g.entities) if(e.alive&&e.owner==o&&e.type==t&&e.state==S_IDLE&&!e.underConstruction)return &e; return nullptr; }
+
+// Worker selection for AI construction. Prefers idle peasants; if none exist,
+// pulls one off gathering/returning so the AI doesn't deadlock at 10/10
+// population because aiGather() consumed every idle worker before the build
+// pass ran.
+static Entity* aiWorker(int o) {
+    for (auto& e : g.entities)
+        if (e.alive && e.owner == o && e.type == E_PEASANT
+            && e.state == S_IDLE && !e.underConstruction) return &e;
+    for (auto& e : g.entities)
+        if (e.alive && e.owner == o && e.type == E_PEASANT
+            && !e.underConstruction
+            && (e.state == S_GATHERING || e.state == S_RETURNING)) return &e;
+    return nullptr;
+}
 Entity* aiBldg(int o, EntityType t)     { for(auto& e:g.entities) if(e.alive&&e.owner==o&&e.type==t&&!e.underConstruction)return &e; return nullptr; }
 
 void aiGather(int o) {
@@ -1499,7 +1541,7 @@ void aiGather(int o) {
         int bestD = 9999, bx = -1, by = -1;
         for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
             Terrain t = g.map[y][x].terrain;
-            bool isR = (t==T_GOLD||t==T_FOREST||t==T_PINE||t==T_PALM||t==T_DEAD_TREE);
+            bool isR = (t==T_GOLD||t==T_FOREST||t==T_PINE||t==T_PALM||t==T_DEAD_TREE||t==T_BERRY);
             if (isR && g.map[y][x].resources > 0) {
                 int d = mdist(e.x, e.y, x, y);
                 if (d < bestD) { bestD=d; bx=x; by=y; }
@@ -1596,26 +1638,26 @@ static void tickAIForOwner(int o) {
 
     // === SUPPLY: keep houses ahead of training ===
     if (p.supply + 4 >= p.supplyMax && hous < 12 && p.wood >= 50) {
-        Entity* b = aiIdle(o, E_PEASANT);
+        Entity* b = aiWorker(o);
         if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_HOUSE,bx,by); if(bx>=0) orderBuild(*b,E_HOUSE,bx,by); }
     }
 
     // === MILITARY BUILDINGS ===
     if (bar == 0 && p.wood >= 150 && peas >= 2) {
-        Entity* b = aiIdle(o, E_PEASANT);
+        Entity* b = aiWorker(o);
         if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_BARRACKS,bx,by); if(bx>=0) orderBuild(*b,E_BARRACKS,bx,by); }
     }
     if (bar == 1 && peas >= 6 && p.wood >= 150 && p.gold >= 100) {
         // Second barracks doubles training throughput.
-        Entity* b = aiIdle(o, E_PEASANT);
+        Entity* b = aiWorker(o);
         if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_BARRACKS,bx,by); if(bx>=0) orderBuild(*b,E_BARRACKS,bx,by); }
     }
     if (aiCount(o,E_BLACKSMITH) == 0 && bar > 0 && p.wood >= 120) {
-        Entity* b = aiIdle(o, E_PEASANT);
+        Entity* b = aiWorker(o);
         if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_BLACKSMITH,bx,by); if(bx>=0) orderBuild(*b,E_BLACKSMITH,bx,by); }
     }
     if (stb == 0 && mil >= 3 && p.wood >= 200) {
-        Entity* b = aiIdle(o, E_PEASANT);
+        Entity* b = aiWorker(o);
         if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_STABLE,bx,by); if(bx>=0) orderBuild(*b,E_STABLE,bx,by); }
     }
 
@@ -1636,18 +1678,18 @@ static void tickAIForOwner(int o) {
 
     // === DEFENSE: towers scaled to threat ===
     if (aiCountAll(o,E_TOWER) < towerCap && mil >= 2 && p.wood >= 100 && p.gold >= 50) {
-        Entity* b = aiIdle(o, E_PEASANT);
+        Entity* b = aiWorker(o);
         if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_TOWER,bx,by); if(bx>=0) orderBuild(*b,E_TOWER,bx,by); }
     }
 
     // === FOOD: mill + farms scale up before winter ===
     if (aiCountAll(o,E_MILL) == 0 && p.wood >= 100) {
-        Entity* b = aiIdle(o, E_PEASANT);
+        Entity* b = aiWorker(o);
         if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_MILL,bx,by); if(bx>=0) orderBuild(*b,E_MILL,bx,by); }
     }
     int wantFarms = (getSeason() == AUTUMN) ? 8 : 4;
     if (aiCountAll(o,E_MILL) > 0 && aiCountAll(o,E_FARM) < wantFarms && getSeason() != WINTER) {
-        Entity* b = aiIdle(o, E_PEASANT);
+        Entity* b = aiWorker(o);
         if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_FARM,bx,by); if(bx>=0) orderBuild(*b,E_FARM,bx,by); }
     }
 
@@ -1657,7 +1699,7 @@ static void tickAIForOwner(int o) {
         if (th) {
             int bx=-1,by=-1; aiBuildSpotNear(o, E_DOCK, th->x, th->y, bx, by);
             if (bx >= 0) {
-                Entity* b = aiIdle(o, E_PEASANT);
+                Entity* b = aiWorker(o);
                 if (b) orderBuild(*b, E_DOCK, bx, by);
             }
         }
@@ -1680,7 +1722,7 @@ static void tickAIForOwner(int o) {
             int fy = (myTh->y + intel.playerTH->y) / 2;
             int bx=-1, by=-1; aiBuildSpotNear(o, E_TOWNHALL, fx, fy, bx, by);
             if (bx >= 0) {
-                Entity* b = aiIdle(o, E_PEASANT);
+                Entity* b = aiWorker(o);
                 if (b) orderBuild(*b, E_TOWNHALL, bx, by);
             }
         }

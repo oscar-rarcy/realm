@@ -299,9 +299,10 @@ void handleInput(int ch) {
             } else if (sel->type == E_PEASANT) {
                 Terrain ter = g.map[g.cursorY][g.cursorX].terrain;
                 bool isW = (ter==T_FOREST||ter==T_PINE||ter==T_PALM||ter==T_DEAD_TREE);
-                if ((ter==T_GOLD||isW) && g.map[g.cursorY][g.cursorX].resources > 0) {
+                if ((ter==T_GOLD||isW||ter==T_BERRY) && g.map[g.cursorY][g.cursorX].resources > 0) {
                     orderGather(*sel, g.cursorX, g.cursorY);
-                    setStatus(ter==T_GOLD ? "Mining gold..." : "Chopping wood...");
+                    setStatus(ter==T_GOLD ? "Mining gold..."
+                            : ter==T_BERRY ? "Picking berries..." : "Chopping wood...");
                 } else if (ter == T_WHEAT && !tgt && canPlace(E_FARM, g.cursorX, g.cursorY, 0)) {
                     int fid = spawnEntity(E_FARM, 0, g.cursorX, g.cursorY, true);
                     orderHelp(*sel, fid);
@@ -685,9 +686,10 @@ void handleInput(int ch) {
                 } else if (sel->type == E_PEASANT) {
                     Terrain ter = g.map[mapY][mapX].terrain;
                     bool isW = (ter==T_FOREST||ter==T_PINE||ter==T_PALM||ter==T_DEAD_TREE);
-                    if ((ter==T_GOLD||isW) && g.map[mapY][mapX].resources > 0) {
+                    if ((ter==T_GOLD||isW||ter==T_BERRY) && g.map[mapY][mapX].resources > 0) {
                         orderGather(*sel, mapX, mapY);
-                        setStatus(ter==T_GOLD ? "Mining gold..." : "Chopping wood...");
+                        setStatus(ter==T_GOLD ? "Mining gold..."
+                                : ter==T_BERRY ? "Picking berries..." : "Chopping wood...");
                     } else if (ter == T_WHEAT && !tgt && canPlace(E_FARM, mapX, mapY, 0)) {
                         int fid = spawnEntity(E_FARM, 0, mapX, mapY, true);
                         orderHelp(*sel, fid);

@@ -79,7 +79,7 @@ void generateMap() {
         case B_FOREST:
             if (r<40)      { t.terrain = T_FOREST; t.resources = 100 + rand() % 100; }
             else if (r<55) { t.terrain = T_PINE;   t.resources = 80  + rand() % 60;  }
-            else if (r<60) t.terrain = T_BERRY;
+            else if (r<60) { t.terrain = T_BERRY;  t.resources = 50  + rand() % 40;  }
             else if (r<65) t.terrain = T_TALL_GRASS;
             else           t.terrain = T_GRASS;
             break;
