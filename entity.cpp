@@ -803,19 +803,25 @@ void tickEntity(Entity& e) {
                         newId = spawnEntity(e.producing, e.owner, nx, ny);
                         placed = true;
                     }
-            // Send to rally point if the building has a player-set one
-            if (placed && e.rallySet && newId >= 0) {
-                Entity* nu = findEntity(newId);
-                if (nu) orderMove(*nu, e.rallyX, e.rallyY);
-            }
-            e.producing = E_NONE; e.state = S_IDLE;
-            if (e.owner==0 && placed) { setStatus("Training complete!"); beep(); }
-            // Pop the next queued unit straight into production.
-            if (!e.queue.empty()) {
-                EntityType next = (EntityType)e.queue.front();
-                e.queue.erase(e.queue.begin());
-                e.producing = next; e.prodProgress = 0;
-                e.prodTime = STATS[next].trainTime; e.state = S_TRAINING;
+            // If no spawn spot was found, keep the unit queued and retry next tick
+            // instead of silently consuming it — resources were already spent.
+            if (!placed) {
+                e.prodProgress = e.prodTime; // stay at completion threshold
+            } else {
+                // Send to rally point if the building has a player-set one
+                if (e.rallySet && newId >= 0) {
+                    Entity* nu = findEntity(newId);
+                    if (nu) orderMove(*nu, e.rallyX, e.rallyY);
+                }
+                e.producing = E_NONE; e.state = S_IDLE;
+                if (e.owner==0) { setStatus("Training complete!"); beep(); }
+                // Pop the next queued unit straight into production.
+                if (!e.queue.empty()) {
+                    EntityType next = (EntityType)e.queue.front();
+                    e.queue.erase(e.queue.begin());
+                    e.producing = next; e.prodProgress = 0;
+                    e.prodTime = STATS[next].trainTime; e.state = S_TRAINING;
+                }
             }
         }
     }
