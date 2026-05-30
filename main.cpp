@@ -156,9 +156,21 @@ int main() {
                 tickWeather(); tickPaving();
                 tickTowers(); tickGates(); tickProjectiles(); tickFarms(); tickMarkets();
                 tickChurches(); tickAnimals(); tickAI(); updateFog();
+                // Prune dead IDs from selection + control groups so UI counts
+                // ("Group: N units") stay honest as casualties pile up.
+                auto pruneDead = [](std::vector<int>& v) {
+                    v.erase(std::remove_if(v.begin(), v.end(),
+                        [](int id){ return findEntity(id) == nullptr; }), v.end());
+                };
+                pruneDead(g.selectedIds);
+                for (int i = 0; i < 9; i++) pruneDead(g.controlGroups[i]);
+                if (g.selectedId >= 0 && !findEntity(g.selectedId)) g.selectedId = -1;
                 if (g.tick % 100 == 0) {
                     g.entities.erase(std::remove_if(g.entities.begin(), g.entities.end(),
                         [](const Entity& e){ return !e.alive && e.state==S_DEAD; }), g.entities.end());
+                    // Defensive: rebuild supply totals so any kill path that
+                    // missed updateSupply gets reconciled within ~8 seconds.
+                    for (int p = 0; p < MAX_PLAYERS; p++) updateSupply(p);
                     checkWin();
                 }
             }
