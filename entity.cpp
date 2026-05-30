@@ -914,10 +914,33 @@ void tickEntity(Entity& e) {
     }
     if (!isUnit(e.type)) return;
 
+    // Peasants flee to the nearest free garrisonable building when wounded.
+    // alertTicks is set on any incoming damage and decays each tick, so this
+    // only fires while combat is fresh.
+    if (e.type == E_PEASANT && e.alertTicks > 0
+        && e.state != S_ENTERING && e.state != S_GARRISONED) {
+        Entity* shelter = nullptr; int bestD = 99999;
+        int range = FOG_RADIUS + 3; // a bit past line of sight
+        for (auto& b : g.entities) {
+            if (!b.alive || b.owner != e.owner) continue;
+            if (b.underConstruction) continue;
+            if (!canGarrisonIn(b.type) || b.type == E_TRANSPORT) continue;
+            if ((int)b.garrison.size() >= garrisonCap(b.type)) continue;
+            int d = mdist(e.x, e.y, b.x, b.y);
+            if (d > range) continue;
+            if (d < bestD) { bestD = d; shelter = &b; }
+        }
+        if (shelter) orderGarrison(e, shelter->id);
+    }
+
     switch (e.state) {
     case S_IDLE:
-        if (!e.holdPosition && e.type != E_PEASANT && e.type != E_FISHING_BOAT && STATS[e.type].atk > 0) {
-            Entity* en = findNearestEnemy(e, unitRange(e)+1);
+        // Military auto-engages anything visible within fog radius — units now
+        // close in on threats they can see rather than waiting to be poked.
+        if (!e.holdPosition && e.type != E_PEASANT && e.type != E_FISHING_BOAT
+            && e.type != E_TRANSPORT && STATS[e.type].atk > 0) {
+            int aggroRange = std::max(FOG_RADIUS, unitRange(e) + 1);
+            Entity* en = findNearestEnemy(e, aggroRange);
             if (en) orderAttack(e, en->id);
         }
         // Boats auto-fish when idle — find a fish shoal, gather, return to dock.
@@ -949,6 +972,10 @@ void tickEntity(Entity& e) {
     case S_ATTACKING: {
         Entity* t = findEntity(e.targetId);
         if (!t || !t->alive) { e.state = S_IDLE; break; }
+        // Target ducked into a building — they're untouchable, go idle. Without
+        // this the attacker keeps swinging at the garrisoned position and the
+        // target dies inside the safe building.
+        if (t->state == S_GARRISONED) { e.state = S_IDLE; e.targetId = -1; break; }
         int d = dist(e.x, e.y, t->x, t->y);
         if (d <= unitRange(e)) {
             if (e.atkCd <= 0) {
