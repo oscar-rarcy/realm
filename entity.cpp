@@ -914,25 +914,6 @@ void tickEntity(Entity& e) {
     }
     if (!isUnit(e.type)) return;
 
-    // Peasants flee to the nearest free garrisonable building when wounded.
-    // alertTicks is set on any incoming damage and decays each tick, so this
-    // only fires while combat is fresh.
-    if (e.type == E_PEASANT && e.alertTicks > 0
-        && e.state != S_ENTERING && e.state != S_GARRISONED) {
-        Entity* shelter = nullptr; int bestD = 99999;
-        int range = FOG_RADIUS + 3; // a bit past line of sight
-        for (auto& b : g.entities) {
-            if (!b.alive || b.owner != e.owner) continue;
-            if (b.underConstruction) continue;
-            if (!canGarrisonIn(b.type) || b.type == E_TRANSPORT) continue;
-            if ((int)b.garrison.size() >= garrisonCap(b.type)) continue;
-            int d = mdist(e.x, e.y, b.x, b.y);
-            if (d > range) continue;
-            if (d < bestD) { bestD = d; shelter = &b; }
-        }
-        if (shelter) orderGarrison(e, shelter->id);
-    }
-
     switch (e.state) {
     case S_IDLE:
         // Military auto-engages anything visible within fog radius — units now
@@ -1543,21 +1524,21 @@ void tickAnimals() {
             }
         }
 
-        // Wolves: usually flee settlements and hunt only isolated units.
-        // Winter strips their caution: they ignore settlements and hunt at longer range.
+        // Wolves: give buildings a modest berth in summer/spring; bolder in autumn/winter.
         if (e.type == E_WOLF) {
             bool winter = (getSeason() == WINTER);
-            int huntRange = winter ? 6 : 3;
+            int huntRange = winter ? 8 : 5;
+            int settleAvoid = winter ? 0 : 8; // smaller avoid radius — wolves press closer
             bool nearSettlement = false;
             int fleeX = -1, fleeY = -1;
-            if (!winter) {
+            if (settleAvoid > 0) {
                 for (auto& o : g.entities) {
                     if (!o.alive || o.owner == OWNER_NATURE || !isBuilding(o.type)) continue;
                     int d = dist(e.x, e.y, o.x, o.y);
-                    if (d <= 15) {
+                    if (d <= settleAvoid) {
                         nearSettlement = true;
-                        fleeX = std::max(1, std::min(e.x + (e.x - o.x)*4, MAP_W-2));
-                        fleeY = std::max(1, std::min(e.y + (e.y - o.y)*4, MAP_H-2));
+                        fleeX = std::max(1, std::min(e.x + (e.x - o.x)*3, MAP_W-2));
+                        fleeY = std::max(1, std::min(e.y + (e.y - o.y)*3, MAP_H-2));
                         break;
                     }
                 }

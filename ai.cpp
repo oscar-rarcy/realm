@@ -236,8 +236,8 @@ static void tickAIForOwner(int o) {
     if (p.aiWaveCd > 0) p.aiWaveCd--;
     // Grace period: AI doesn't attack for the first ~2 minutes, giving the
     // player time to set up. Threshold also requires a real force (6+).
-    const int graceTicks = 1500;
-    int attackThreshold = (g.tick < graceTicks) ? 999 : 6;
+    const int graceTicks = 900;
+    int attackThreshold = (g.tick < graceTicks) ? 999 : 4;
     if (army >= attackThreshold && p.aiWaveCd == 0) {
         Entity* anchor = nullptr;
         for (auto& e : g.entities) {
@@ -253,7 +253,7 @@ static void tickAIForOwner(int o) {
             if (tid >= 0) {
                 // Send ~60% of the army, keep the rest at home for defense.
                 // Floor of 3 means waves always feel like raids, not lone scouts.
-                int sendCap = std::max(3, (army * 6 + 5) / 10);
+                int sendCap = std::max(3, (army * 7 + 5) / 10);
                 int sent = 0;
                 for (auto& e : g.entities) {
                     if (sent >= sendCap) break;
