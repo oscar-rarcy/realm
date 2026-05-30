@@ -1,4 +1,5 @@
 #include "realm.h"
+#include "display.h"
 
 // ============================================================
 // 256-COLOR PALETTE
@@ -60,100 +61,154 @@ namespace C {
     const int UI_DIM        = 240;
 }
 
+// Extra colour pair IDs used only by emoji mode. Kept high to avoid
+// colliding with the project's CP_* enum. Valid on normal 256-pair terminals.
+// These pairs are deliberately terrain/biome backgrounds first; resources such
+// as gold/trees/wheat use their emoji glyph but stay on the underlying biome bg.
+static constexpr int CP_EMOJI_TEMP_0     = 220;
+static constexpr int CP_EMOJI_TEMP_1     = 221;
+static constexpr int CP_EMOJI_TEMP_2     = 222;
+static constexpr int CP_EMOJI_TEMP_3     = 223;
+static constexpr int CP_EMOJI_TEMP_4     = 224;
+static constexpr int CP_EMOJI_TEMP_5     = 225;
+static constexpr int CP_EMOJI_FOREST_0   = 226;
+static constexpr int CP_EMOJI_FOREST_1   = 227;
+static constexpr int CP_EMOJI_FOREST_2   = 228;
+static constexpr int CP_EMOJI_FOREST_3   = 229;
+static constexpr int CP_EMOJI_FOREST_4   = 230;
+static constexpr int CP_EMOJI_FOREST_5   = 231;
+static constexpr int CP_EMOJI_DESERT_0   = 232;
+static constexpr int CP_EMOJI_DESERT_1   = 233;
+static constexpr int CP_EMOJI_DESERT_2   = 234;
+static constexpr int CP_EMOJI_DESERT_3   = 235;
+static constexpr int CP_EMOJI_SNOW_0     = 236;
+static constexpr int CP_EMOJI_SNOW_1     = 237;
+static constexpr int CP_EMOJI_SNOW_2     = 238;
+static constexpr int CP_EMOJI_SNOW_3     = 239;
+static constexpr int CP_EMOJI_SWAMP_0    = 240;
+static constexpr int CP_EMOJI_SWAMP_1    = 241;
+static constexpr int CP_EMOJI_SWAMP_2    = 242;
+static constexpr int CP_EMOJI_SWAMP_3    = 243;
+static constexpr int CP_EMOJI_VOLCANIC_0 = 244;
+static constexpr int CP_EMOJI_VOLCANIC_1 = 245;
+static constexpr int CP_EMOJI_VOLCANIC_2 = 246;
+static constexpr int CP_EMOJI_VOLCANIC_3 = 247;
+static constexpr int CP_EMOJI_OCEAN_0    = 248;
+static constexpr int CP_EMOJI_OCEAN_1    = 249;
+static constexpr int CP_EMOJI_OCEAN_2    = 250;
+static constexpr int CP_EMOJI_OCEAN_3    = 251;
+static constexpr int CP_EMOJI_WATER      = 252;
+static constexpr int CP_EMOJI_SHALLOWS   = 253;
+static constexpr int CP_EMOJI_DARK       = 254;
+static constexpr int CP_EMOJI_EDGE       = 255;
+static constexpr int CP_EMOJI_MAX        = CP_EMOJI_EDGE;
+static bool gEmojiBiomePairsReady = false;
+
 // ============================================================
 // COLOR INIT
 // ============================================================
 void initColors() {
     start_color();
     use_default_colors();
-    int bg = -1;
 
-    init_pair(CP_GRASS,         C::GREEN,        bg);
-    init_pair(CP_GRASS_LIGHT,   C::BRIGHT_GREEN, bg);
-    init_pair(CP_GRASS_DRY,     C::YELLOW_GREEN, bg);
-    init_pair(CP_TALL_GRASS,    C::MED_GREEN,    bg);
-    init_pair(CP_FLOWERS,        C::LAVENDER,     bg);
-    init_pair(CP_FLOWERS_BLUE,   C::MED_BLUE,     bg);
-    init_pair(CP_FLOWERS_YELLOW, C::BRIGHT_GOLD,  bg);
-    init_pair(CP_FLOWERS_RED,    C::BERRY_RED,    bg);
-    init_pair(CP_MEADOW,        C::PALE_GREEN,   bg);
+    const int bg = -1;
+    const bool emojiTiles = (displayMode == DM_EMOJI);
 
-    init_pair(CP_FOREST,        C::MED_GREEN,    bg);
-    init_pair(CP_FOREST_DARK,   C::DARK_GREEN,   bg);
-    init_pair(CP_PINE,          C::PINE_GREEN,   bg);
-    init_pair(CP_PALM,          C::GREEN,        bg);
-    init_pair(CP_DEAD_TREE,     C::GRAY,         bg);
+    // In ASCII mode, keep the original mostly-transparent backgrounds.
+    // In full emoji mode, each map tile is two terminal cells wide, so give
+    // terrain/entity colour pairs real backgrounds and paint both cells before
+    // writing the emoji.
+    auto tileBg = [&](int emojiBg) -> int {
+        return emojiTiles ? emojiBg : bg;
+    };
 
-    init_pair(CP_MOUNTAIN,      C::LIGHT_GRAY,   bg);
-    init_pair(CP_HILLS,         C::OLIVE,        bg);
-    init_pair(CP_STONE,         C::MED_GRAY,     bg);
+    init_pair(CP_GRASS,         C::GREEN,        tileBg(C::DARK_GREEN));
+    init_pair(CP_GRASS_LIGHT,   C::BRIGHT_GREEN, tileBg(C::MED_GREEN));
+    init_pair(CP_GRASS_DRY,     C::YELLOW_GREEN, tileBg(C::OLIVE));
+    init_pair(CP_TALL_GRASS,    C::MED_GREEN,    tileBg(C::DARK_GREEN));
+    init_pair(CP_FLOWERS,       C::LAVENDER,     tileBg(C::MED_GREEN));
+    init_pair(CP_FLOWERS_BLUE,  C::MED_BLUE,     tileBg(C::MED_GREEN));
+    init_pair(CP_FLOWERS_YELLOW,C::BRIGHT_GOLD,  tileBg(C::MED_GREEN));
+    init_pair(CP_FLOWERS_RED,   C::BERRY_RED,    tileBg(C::MED_GREEN));
+    init_pair(CP_MEADOW,        C::PALE_GREEN,   tileBg(C::GREEN));
+
+    init_pair(CP_FOREST,        C::MED_GREEN,    tileBg(C::DARK_GREEN));
+    init_pair(CP_FOREST_DARK,   C::DARK_GREEN,   tileBg(C::PINE_GREEN));
+    init_pair(CP_PINE,          C::PINE_GREEN,   tileBg(C::DARK_GREEN));
+    init_pair(CP_PALM,          C::GREEN,        tileBg(C::DARK_GREEN));
+    init_pair(CP_DEAD_TREE,     C::GRAY,         tileBg(C::BROWN));
+
+    init_pair(CP_MOUNTAIN,      C::LIGHT_GRAY,   tileBg(C::MED_GRAY));
+    init_pair(CP_HILLS,         C::OLIVE,        tileBg(C::BROWN));
+    init_pair(CP_STONE,         C::MED_GRAY,     tileBg(C::DARK_GRAY));
 
     init_pair(CP_WATER,         C::ICE_BLUE,     C::DEEP_BLUE);
     init_pair(CP_WATER_SHIMMER, C::SNOW_WHITE,   C::DEEP_BLUE);
     init_pair(CP_SHALLOWS,      C::SNOW_WHITE,   C::TEAL);
-    init_pair(CP_MARSH,         C::SWAMP_GREEN,  bg);
-    init_pair(CP_REEDS,         C::DARK_GOLD,    bg);
+    init_pair(CP_MARSH,         C::SWAMP_GREEN,  tileBg(C::SWAMP_GREEN));
+    init_pair(CP_REEDS,         C::DARK_GOLD,    tileBg(C::SWAMP_GREEN));
 
-    init_pair(CP_GOLD,          C::BRIGHT_GOLD,  bg);
-    init_pair(CP_GOLD_SHIMMER,  C::GOLD,         bg);
+    init_pair(CP_GOLD,          C::BRIGHT_GOLD,  tileBg(C::DARK_GOLD));
+    init_pair(CP_GOLD_SHIMMER,  C::GOLD,         tileBg(C::DARK_GOLD));
 
-    init_pair(CP_SAND,          C::TAN,          bg);
-    init_pair(CP_DUNES,         C::LIGHT_TAN,    bg);
+    init_pair(CP_SAND,          C::TAN,          tileBg(C::TAN));
+    init_pair(CP_DUNES,         C::LIGHT_TAN,    tileBg(C::LIGHT_TAN));
     init_pair(CP_SNOW_GROUND,   C::LIGHT_GRAY,   C::SNOW_WHITE);
     init_pair(CP_ICE,           C::MED_BLUE,     C::ICE_BLUE);
 
-    init_pair(CP_DIRT,          C::BROWN,        bg);
-    init_pair(CP_ROAD,          C::LIGHT_GRAY,   bg);
+    init_pair(CP_DIRT,          C::BROWN,        tileBg(C::BROWN));
+    init_pair(CP_ROAD,          C::LIGHT_GRAY,   tileBg(C::DARK_GRAY));
 
-    init_pair(CP_WHEAT,         C::WHEAT_GOLD,   bg);
-    init_pair(CP_WHEAT_GOLD,    C::BRIGHT_GOLD,  bg);
+    init_pair(CP_WHEAT,         C::WHEAT_GOLD,   tileBg(C::DARK_GOLD));
+    init_pair(CP_WHEAT_GOLD,    C::BRIGHT_GOLD,  tileBg(C::DARK_GOLD));
     init_pair(CP_BERRY,         C::BERRY_RED,    C::DARK_GREEN);
 
-    init_pair(CP_RUINS,         C::GRAY,         bg);
-    init_pair(CP_GRAVEL,        C::MED_GRAY,     bg);
+    init_pair(CP_RUINS,         C::GRAY,         tileBg(C::DARK_GRAY));
+    init_pair(CP_GRAVEL,        C::MED_GRAY,     tileBg(C::GRAY));
 
-    init_pair(CP_CASTLE_WALL,   C::BRIGHT_GRAY,  bg);
-    init_pair(CP_CASTLE_FLOOR,  C::DARK_GOLD,    bg);
-    init_pair(CP_CASTLE_GATE,   C::AMBER,        bg);
+    init_pair(CP_CASTLE_WALL,   C::BRIGHT_GRAY,  tileBg(C::DARK_GRAY));
+    init_pair(CP_CASTLE_FLOOR,  C::DARK_GOLD,    tileBg(C::BROWN));
+    init_pair(CP_CASTLE_GATE,   C::AMBER,        tileBg(C::DARK_GRAY));
 
-    init_pair(CP_AUT_TREE_EARLY, C::YELLOW_GREEN, bg);
-    init_pair(CP_AUT_TREE_MID,   C::ORANGE,       bg);
-    init_pair(CP_AUT_TREE_LATE,  C::BROWN,        bg);
-    init_pair(CP_AUT_TREE_GOLD,  C::BRIGHT_GOLD,  bg);
-    init_pair(CP_AUT_TREE_RED,   C::RED,          bg);
-    init_pair(CP_AUT_GRASS,      C::OLIVE,        bg);
-    init_pair(CP_AUT_GRASS_LATE, C::BROWN,        bg);
+    init_pair(CP_AUT_TREE_EARLY, C::YELLOW_GREEN, tileBg(C::OLIVE));
+    init_pair(CP_AUT_TREE_MID,   C::ORANGE,       tileBg(C::BROWN));
+    init_pair(CP_AUT_TREE_LATE,  C::BROWN,        tileBg(C::BROWN));
+    init_pair(CP_AUT_TREE_GOLD,  C::BRIGHT_GOLD,  tileBg(C::DARK_GOLD));
+    init_pair(CP_AUT_TREE_RED,   C::RED,          tileBg(C::BROWN));
+    init_pair(CP_AUT_GRASS,      C::OLIVE,        tileBg(C::OLIVE));
+    init_pair(CP_AUT_GRASS_LATE, C::BROWN,        tileBg(C::BROWN));
 
     init_pair(CP_WIN_GROUND,     C::LIGHT_GRAY,   C::SNOW_WHITE);
     init_pair(CP_WIN_TREE,       C::DARK_GREEN,   C::SNOW_WHITE);
     init_pair(CP_WIN_PINE,       C::PINE_GREEN,   C::SNOW_WHITE);
     init_pair(CP_WIN_ICE,        C::ICE_BLUE,     C::NAVY);
 
-    init_pair(CP_NIGHT_GRASS,    C::DARK_GREEN,   bg);
-    init_pair(CP_NIGHT_TREE,     C::DARK_GREEN,   bg);
+    init_pair(CP_NIGHT_GRASS,    C::DARK_GREEN,   tileBg(C::NEAR_BLACK));
+    init_pair(CP_NIGHT_TREE,     C::DARK_GREEN,   tileBg(C::NEAR_BLACK));
     init_pair(CP_NIGHT_WATER,    C::NAVY,         C::NEAR_BLACK);
-    init_pair(CP_NIGHT_GROUND,   C::DARKER_GRAY,  bg);
-    init_pair(CP_NIGHT_GOLD,     C::DARK_GOLD,    bg);
+    init_pair(CP_NIGHT_GROUND,   C::DARKER_GRAY,  tileBg(C::NEAR_BLACK));
+    init_pair(CP_NIGHT_GOLD,     C::DARK_GOLD,    tileBg(C::NEAR_BLACK));
     init_pair(CP_NIGHT_SNOW,     C::LIGHT_GRAY,   C::DARKER_GRAY);
 
     init_pair(CP_DAWN_SKY,       C::ORANGE,       bg);
     init_pair(CP_DUSK_SKY,       C::DUSK_PURPLE,  bg);
 
-    init_pair(CP_PLAYER,         C::PLAYER_CYAN,  bg);
-    init_pair(CP_PLAYER_NIGHT,   C::PLAYER_DIM,   bg);
-    init_pair(CP_ENEMY,          C::ENEMY_RED,    bg);
-    init_pair(CP_ENEMY_NIGHT,    C::ENEMY_DIM,    bg);
+    init_pair(CP_PLAYER,         C::PLAYER_CYAN,  tileBg(C::NEAR_BLACK));
+    init_pair(CP_PLAYER_NIGHT,   C::PLAYER_DIM,   tileBg(C::NEAR_BLACK));
+    init_pair(CP_ENEMY,          C::ENEMY_RED,    tileBg(C::NEAR_BLACK));
+    init_pair(CP_ENEMY_NIGHT,    C::ENEMY_DIM,    tileBg(C::NEAR_BLACK));
+
     // Ship deck: glyph sits on a wood-brown background tile so boats read as
     // solid hulls instead of single floating characters on open water.
     init_pair(CP_SHIP_PLAYER,    C::PLAYER_CYAN,  C::BROWN);
     init_pair(CP_SHIP_ENEMY,     C::ENEMY_RED,    C::BROWN);
 
-    init_pair(CP_PROJ_ARROW,     C::BRIGHT_GOLD,  bg);
-    init_pair(CP_PROJ_BOULDER,   C::BRIGHT_GRAY,  bg);
-    init_pair(CP_PROJ_TOWER,     C::BRIGHT_RED,   bg);
-    // Rain: a transparent blue dot — foreground colour only, no background fill.
+    init_pair(CP_PROJ_ARROW,     C::BRIGHT_GOLD,  tileBg(C::NEAR_BLACK));
+    init_pair(CP_PROJ_BOULDER,   C::BRIGHT_GRAY,  tileBg(C::NEAR_BLACK));
+    init_pair(CP_PROJ_TOWER,     C::BRIGHT_RED,   tileBg(C::NEAR_BLACK));
+
+    // Weather overlays remain transparent so they do not repaint terrain.
     init_pair(CP_RAIN,           C::ICE_BLUE,     bg);
-    // Falling snow: white glyph on transparent bg so flakes take the terrain's background.
     init_pair(CP_SNOW_FALL,      C::SNOW_WHITE,   bg);
 
     init_pair(CP_UI_BAR,         C::UI_TEXT,      C::UI_BG);
@@ -162,7 +217,8 @@ void initColors() {
     init_pair(CP_UI_DIM,         C::UI_DIM,       bg);
     init_pair(CP_UI_ACCENT,      C::UI_ACCENT,    bg);
     init_pair(CP_FOG,            C::DARKER_GRAY,  bg);
-    init_pair(CP_FOG_EXPLORED,   C::DARK_GRAY,    bg);
+    init_pair(CP_FOG_EXPLORED,   C::DARK_GRAY,    tileBg(C::NEAR_BLACK));
+
     // Cursor: black-on-gold pops on snow, grass, water, and dark biomes alike.
     init_pair(CP_CURSOR,         C::NEAR_BLACK,   C::BRIGHT_GOLD);
     init_pair(CP_HP_GREEN,       C::BRIGHT_GREEN, bg);
@@ -170,6 +226,7 @@ void initColors() {
     init_pair(CP_HP_RED,         C::RED,          bg);
     init_pair(CP_SUN,            C::BRIGHT_GOLD,  C::UI_BG);
     init_pair(CP_MOON,           C::SNOW_WHITE,   C::UI_BG);
+
     init_pair(CP_MM_PLAYER,      C::PLAYER_CYAN,  C::NEAR_BLACK);
     init_pair(CP_MM_ENEMY,       C::ENEMY_RED,    C::NEAR_BLACK);
     init_pair(CP_MM_WATER,       C::MED_BLUE,     C::NEAR_BLACK);
@@ -179,16 +236,356 @@ void initColors() {
     init_pair(CP_MM_SNOW,        C::SNOW_WHITE,   C::NEAR_BLACK);
     init_pair(CP_MM_MTN,         C::LIGHT_GRAY,   C::NEAR_BLACK);
     init_pair(CP_MM_CASTLE,      C::BRIGHT_GRAY,  C::NEAR_BLACK);
-    init_pair(CP_SPRING_FLOWER,  C::LAVENDER,     bg);
+
+    init_pair(CP_SPRING_FLOWER,  C::LAVENDER,     tileBg(C::MED_GREEN));
 
     init_pair(CP_LAVA,           C::ORANGE,       C::RED);
     init_pair(CP_LAVA_HOT,       C::BRIGHT_GOLD,  C::RED);
-    init_pair(CP_ASH,            C::DARK_GRAY,    bg);
-    init_pair(CP_DEER,           C::TAN,          bg);
-    init_pair(CP_WOLF,           C::LIGHT_GRAY,   bg);
-    init_pair(CP_SHEEP,          C::SNOW_WHITE,   bg);
-    init_pair(CP_BOAR,           C::BROWN,        bg);
+    init_pair(CP_ASH,            C::DARK_GRAY,    tileBg(C::NEAR_BLACK));
+
+    // Neutral animals do not get player ownership colours, but in emoji mode
+    // still get a real terrain-like background so the tile stays filled.
+    init_pair(CP_DEER,           C::TAN,          tileBg(C::DARK_GREEN));
+    init_pair(CP_WOLF,           C::LIGHT_GRAY,   tileBg(C::DARK_GREEN));
+    init_pair(CP_SHEEP,          C::SNOW_WHITE,   tileBg(C::DARK_GREEN));
+    init_pair(CP_BOAR,           C::BROWN,        tileBg(C::DARK_GREEN));
     init_pair(CP_MM_ANIMAL,      C::TAN,          C::NEAR_BLACK);
+
+    // Ownership background colour pairs.
+    // Land units and buildings display the owner's colour as the BACKGROUND
+    // so ownership is visible regardless of what glyph mode (ASCII/emoji)
+    // is active. Ships keep CP_SHIP_* (wood deck bg) for their hull look.
+    init_pair(CP_OWN_P0,       C::SNOW_WHITE,   C::PLAYER_CYAN);
+    init_pair(CP_OWN_P0_NIGHT, C::LIGHT_GRAY,   C::PLAYER_DIM);
+    init_pair(CP_OWN_P1,       C::SNOW_WHITE,   C::ENEMY_RED);
+    init_pair(CP_OWN_P1_NIGHT, C::LIGHT_GRAY,   C::ENEMY_DIM);
+    init_pair(CP_OWN_P2,       C::NEAR_BLACK,   C::ORANGE);
+    init_pair(CP_OWN_P2_NIGHT, C::NEAR_BLACK,   C::AMBER);
+    init_pair(CP_OWN_P3,       C::SNOW_WHITE,   C::DUSK_PURPLE);
+    init_pair(CP_OWN_P3_NIGHT, C::LIGHT_GRAY,   C::GRAY);
+
+    gEmojiBiomePairsReady = false;
+    if (COLOR_PAIRS > CP_EMOJI_MAX) {
+        // Temperate: six subtly different greens/olive tones. Later seasonal
+        // selection chooses warmer/winter variants from the same range.
+        init_pair(CP_EMOJI_TEMP_0,     C::GREEN,        C::DARK_GREEN);
+        init_pair(CP_EMOJI_TEMP_1,     C::BRIGHT_GREEN, C::MED_GREEN);
+        init_pair(CP_EMOJI_TEMP_2,     C::PALE_GREEN,   C::GREEN);
+        init_pair(CP_EMOJI_TEMP_3,     C::YELLOW_GREEN, C::OLIVE);
+        init_pair(CP_EMOJI_TEMP_4,     C::WHEAT_GOLD,   C::OLIVE);
+        init_pair(CP_EMOJI_TEMP_5,     C::LIGHT_GRAY,   C::BROWN);
+
+        // Forest: deep canopy, brighter clearings, autumn browns/golds.
+        init_pair(CP_EMOJI_FOREST_0,   C::DARK_GREEN,   C::PINE_GREEN);
+        init_pair(CP_EMOJI_FOREST_1,   C::GREEN,        C::DARK_GREEN);
+        init_pair(CP_EMOJI_FOREST_2,   C::BRIGHT_GREEN, C::MED_GREEN);
+        init_pair(CP_EMOJI_FOREST_3,   C::YELLOW_GREEN, C::OLIVE);
+        init_pair(CP_EMOJI_FOREST_4,   C::ORANGE,       C::BROWN);
+        init_pair(CP_EMOJI_FOREST_5,   C::BRIGHT_GOLD,  C::BROWN);
+
+        // Other biomes get four variants each.
+        init_pair(CP_EMOJI_DESERT_0,   C::BROWN,        C::TAN);
+        init_pair(CP_EMOJI_DESERT_1,   C::NEAR_BLACK,   C::LIGHT_TAN);
+        init_pair(CP_EMOJI_DESERT_2,   C::DARK_GOLD,    C::TAN);
+        init_pair(CP_EMOJI_DESERT_3,   C::BRIGHT_GOLD,  C::LIGHT_TAN);
+
+        init_pair(CP_EMOJI_SNOW_0,     C::LIGHT_GRAY,   C::SNOW_WHITE);
+        init_pair(CP_EMOJI_SNOW_1,     C::MED_GRAY,     C::LIGHT_GRAY);
+        init_pair(CP_EMOJI_SNOW_2,     C::ICE_BLUE,     C::SNOW_WHITE);
+        init_pair(CP_EMOJI_SNOW_3,     C::NEAR_BLACK,   C::SNOW_WHITE);
+
+        init_pair(CP_EMOJI_SWAMP_0,    C::DARK_GREEN,   C::SWAMP_GREEN);
+        init_pair(CP_EMOJI_SWAMP_1,    C::BRIGHT_GREEN, C::DARK_GREEN);
+        init_pair(CP_EMOJI_SWAMP_2,    C::OLIVE,        C::SWAMP_GREEN);
+        init_pair(CP_EMOJI_SWAMP_3,    C::DARK_GOLD,    C::SWAMP_GREEN);
+
+        init_pair(CP_EMOJI_VOLCANIC_0, C::DARK_GRAY,    C::NEAR_BLACK);
+        init_pair(CP_EMOJI_VOLCANIC_1, C::ORANGE,       C::DARKER_GRAY);
+        init_pair(CP_EMOJI_VOLCANIC_2, C::RED,          C::NEAR_BLACK);
+        init_pair(CP_EMOJI_VOLCANIC_3, C::BRIGHT_GOLD,  C::RED);
+
+        init_pair(CP_EMOJI_OCEAN_0,    C::MED_BLUE,     C::DEEP_BLUE);
+        init_pair(CP_EMOJI_OCEAN_1,    C::ICE_BLUE,     C::NAVY);
+        init_pair(CP_EMOJI_OCEAN_2,    C::SNOW_WHITE,   C::TEAL);
+        init_pair(CP_EMOJI_OCEAN_3,    C::TEAL,         C::DEEP_BLUE);
+
+        init_pair(CP_EMOJI_WATER,      C::ICE_BLUE,     C::DEEP_BLUE);
+        init_pair(CP_EMOJI_SHALLOWS,   C::SNOW_WHITE,   C::TEAL);
+        init_pair(CP_EMOJI_DARK,       C::DARK_GRAY,    C::NEAR_BLACK);
+        init_pair(CP_EMOJI_EDGE,       C::BRIGHT_GOLD,  C::DARK_GREEN);
+        gEmojiBiomePairsReady = true;
+    }
+}
+
+// ============================================================
+// OWNERSHIP COLOUR HELPER
+// Returns the colour pair that should be applied to a land unit
+// or building based on its owner.  Ships are excluded (callers
+// handle CP_SHIP_* separately).  Animals/Gaia use their own
+// type-specific pairs and are never passed here.
+// ============================================================
+static int ownerColorPair(int owner, bool night) {
+    if (night) {
+        switch (owner) {
+            case 0:  return CP_OWN_P0_NIGHT;
+            case 1:  return CP_OWN_P1_NIGHT;
+            case 2:  return CP_OWN_P2_NIGHT;
+            default: return CP_OWN_P3_NIGHT;
+        }
+    }
+    switch (owner) {
+        case 0:  return CP_OWN_P0;
+        case 1:  return CP_OWN_P1;
+        case 2:  return CP_OWN_P2;
+        default: return CP_OWN_P3;
+    }
+}
+
+static unsigned tileHash(int x, int y, unsigned salt = 0) {
+    unsigned h = (unsigned)x * 374761393u + (unsigned)y * 668265263u + salt * 1442695041u;
+    h = (h ^ (h >> 13)) * 1274126177u;
+    return h ^ (h >> 16);
+}
+
+static float hash01(int x, int y, unsigned salt = 0) {
+    return (tileHash(x, y, salt) & 0xFFFFu) / 65535.0f;
+}
+
+static float smooth01(float t) {
+    return t * t * (3.0f - 2.0f * t);
+}
+
+static float paintedNoise(int x, int y, int scale, unsigned salt) {
+    int x0 = x / scale, y0 = y / scale;
+    float fx = (float)(x % scale) / (float)scale;
+    float fy = (float)(y % scale) / (float)scale;
+    fx = smooth01(fx); fy = smooth01(fy);
+
+    float a = hash01(x0,   y0,   salt);
+    float b = hash01(x0+1, y0,   salt);
+    float c = hash01(x0,   y0+1, salt);
+    float d = hash01(x0+1, y0+1, salt);
+    float ab = a + (b - a) * fx;
+    float cd = c + (d - c) * fx;
+    return ab + (cd - ab) * fy;
+}
+
+static int biomeBoundaryCount(int x, int y, Biome b) {
+    int count = 0;
+    for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
+        if (dx == 0 && dy == 0) continue;
+        int nx = x + dx, ny = y + dy;
+        if (!inBounds(nx, ny)) continue;
+        if (g.map[ny][nx].biome != b) count++;
+    }
+    return count;
+}
+
+static int terrainBoundaryCount(int x, int y, Terrain t) {
+    int count = 0;
+    for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
+        if (dx == 0 && dy == 0) continue;
+        int nx = x + dx, ny = y + dy;
+        if (!inBounds(nx, ny)) continue;
+        if (g.map[ny][nx].terrain != t) count++;
+    }
+    return count;
+}
+
+static int clampShade(int v, int maxShade) {
+    return std::max(0, std::min(v, maxShade));
+}
+
+static int paintedShadeFor(const Tile& tile, int x, int y, int maxShade) {
+    // Two broad value-noise layers give airbrushed colour fields; a small hash
+    // adds pixel-level hand-painted variation without making the board noisy.
+    float broad  = paintedNoise(x, y, 16, 3);
+    float detail = paintedNoise(x, y,  6, 9);
+    float grain  = hash01(x, y, 17);
+    float v = broad * 0.60f + detail * 0.30f + grain * 0.10f;
+
+    int shade = (int)(v * (float)(maxShade + 1));
+    shade = clampShade(shade, maxShade);
+
+    // Boundaries get a little more contrast so biomes/terrain masses read
+    // clearly. The sign is deterministic so it looks painted, not random.
+    int biomeEdge = biomeBoundaryCount(x, y, tile.biome);
+    int terrainEdge = terrainBoundaryCount(x, y, tile.terrain);
+    if (biomeEdge > 0 || terrainEdge >= 5) {
+        int push = (biomeEdge >= 3 || terrainEdge >= 6) ? 2 : 1;
+        if (hash01(x, y, 27) < 0.55f) shade += push;
+        else                          shade -= 1;
+    }
+    return clampShade(shade, maxShade);
+}
+
+static int emojiTerrainColorPair(const Tile& tile, int x, int y, bool night) {
+    if (!gEmojiBiomePairsReady) {
+        switch (tile.biome) {
+            case B_DESERT:   return CP_SAND;
+            case B_SNOW:     return CP_SNOW_GROUND;
+            case B_SWAMP:    return CP_MARSH;
+            case B_FOREST:   return CP_FOREST;
+            case B_VOLCANIC: return CP_ASH;
+            case B_OCEAN:    return CP_WATER;
+            case B_TEMPERATE:
+            default:         return CP_GRASS;
+        }
+    }
+
+    // Strong physical surfaces keep their terrain colour. Resource overlays
+    // such as gold, trees, wheat, berries, and fish deliberately do not change
+    // the background; they sit on the underlying biome/ground colour.
+    switch (tile.terrain) {
+        case T_WATER:
+        case T_FISH:
+            return (paintedShadeFor(tile, x, y, 3) >= 2) ? CP_EMOJI_OCEAN_1 : CP_EMOJI_WATER;
+        case T_SHALLOWS:
+            return CP_EMOJI_SHALLOWS;
+        case T_ICE:
+            return (hash01(x, y, 39) < 0.5f) ? CP_EMOJI_SNOW_2 : CP_EMOJI_WATER;
+        case T_SNOW:
+            return CP_EMOJI_SNOW_0 + paintedShadeFor(tile, x, y, 3);
+        case T_LAVA:
+            return CP_EMOJI_VOLCANIC_2 + (int)(hash01(x, y, 41) < 0.35f);
+        case T_ASH:
+            return CP_EMOJI_VOLCANIC_0 + std::min(1, paintedShadeFor(tile, x, y, 3));
+        default:
+            break;
+    }
+
+    Season season = getSeason();
+    int shade;
+    if (night) return CP_EMOJI_DARK;
+
+    switch (tile.biome) {
+        case B_DESERT:
+            shade = paintedShadeFor(tile, x, y, 3);
+            return CP_EMOJI_DESERT_0 + shade;
+
+        case B_SNOW:
+            shade = paintedShadeFor(tile, x, y, 3);
+            if (season == SUMMER && tile.terrain != T_SNOW) return CP_EMOJI_TEMP_1 + std::min(2, shade);
+            if (season == SPRING && tile.terrain != T_SNOW && hash01(x,y,52) < 0.35f) return CP_EMOJI_TEMP_0 + std::min(2, shade);
+            return CP_EMOJI_SNOW_0 + shade;
+
+        case B_SWAMP:
+            shade = paintedShadeFor(tile, x, y, 3);
+            return CP_EMOJI_SWAMP_0 + shade;
+
+        case B_FOREST:
+            shade = paintedShadeFor(tile, x, y, 5);
+            if (season == AUTUMN) shade = std::max(shade, 3);
+            else if (season == WINTER && hash01(x,y,61) < 0.35f) return CP_EMOJI_SNOW_1 + std::min(2, shade % 3);
+            else if (season == SPRING) shade = std::min(3, shade + 1);
+            return CP_EMOJI_FOREST_0 + clampShade(shade, 5);
+
+        case B_VOLCANIC:
+            shade = paintedShadeFor(tile, x, y, 3);
+            return CP_EMOJI_VOLCANIC_0 + shade;
+
+        case B_OCEAN:
+            shade = paintedShadeFor(tile, x, y, 3);
+            return CP_EMOJI_OCEAN_0 + shade;
+
+        case B_TEMPERATE:
+        default:
+            shade = paintedShadeFor(tile, x, y, 5);
+            if (season == SPRING) shade = std::min(3, shade + 1);
+            else if (season == SUMMER) shade = std::min(4, shade + (hash01(x,y,71) < 0.35f ? 1 : 0));
+            else if (season == AUTUMN) shade = std::max(shade, 3);
+            else if (season == WINTER && hash01(x,y,73) < 0.25f) return CP_EMOJI_SNOW_1 + std::min(2, shade % 3);
+            return CP_EMOJI_TEMP_0 + clampShade(shade, 5);
+    }
+}
+
+static const char* terrainSymbolVariant(Terrain t, char ch, int x, int y) {
+    // Real resources/objects get emojis. Decorative ground keeps simple symbols.
+    unsigned h = tileHash(x, y, 101) + (unsigned)(g.tick / 24);
+    switch (t) {
+        case T_FOREST:       return (ch == 't') ? u8"🪵" : ((h & 1u) ? u8"🌳" : u8"🌲");
+        case T_PINE:         return u8"🌲";
+        case T_PALM:         return u8"🌴";
+        case T_DEAD_TREE:    return u8"🪵";
+        case T_GOLD:         return u8"🪙";
+        case T_WHEAT:        return u8"🌾";
+        case T_BERRY:        return u8"🫐";
+        case T_FISH:         return u8"🐟";
+
+        case T_GRASS: {
+            static const char* v[] = {u8"·", u8"∙", u8"ˑ", u8" "};
+            return v[tileHash(x,y,111) % 4];
+        }
+        case T_TALL_GRASS: {
+            static const char* v[] = {u8"╎", u8"╏", u8"⁝", u8"┆"};
+            return v[(tileHash(x,y,113) + (unsigned)(g.tick/16)) % 4];
+        }
+        case T_FLOWERS: {
+            static const char* v[] = {u8"✿", u8"✣", u8"✽", u8"·"};
+            return v[tileHash(x,y,115) % 4];
+        }
+        case T_MEADOW: {
+            static const char* v[] = {u8"∙", u8"·", u8"ˑ", u8"∴"};
+            return v[tileHash(x,y,117) % 4];
+        }
+        case T_MOUNTAIN:     return (hash01(x,y,119) < 0.5f) ? u8"▲" : u8"△";
+        case T_HILLS:        return (hash01(x,y,121) < 0.5f) ? u8"⌒" : u8"⌁";
+        case T_STONE:        return (hash01(x,y,123) < 0.5f) ? u8"▪" : u8"▫";
+        case T_WATER: {
+            static const char* v[] = {u8"≈", u8"∼", u8"≋", u8"≈"};
+            return v[(tileHash(x,y,125) + (unsigned)(g.tick/10)) % 4];
+        }
+        case T_SHALLOWS: {
+            static const char* v[] = {u8"∼", u8"≈", u8"⌁", u8"∼"};
+            return v[(tileHash(x,y,127) + (unsigned)(g.tick/12)) % 4];
+        }
+        case T_MARSH:        return (ch == '-') ? u8"∼" : ((h & 1u) ? u8"≋" : u8"⌁");
+        case T_REEDS:        return (ch == '/') ? u8"╱" : (ch == '\\') ? u8"╲" : ((h & 1u) ? u8"╎" : u8"╏");
+        case T_SAND: {
+            static const char* v[] = {u8"·", u8"ˑ", u8"∴", u8" "};
+            return v[tileHash(x,y,129) % 4];
+        }
+        case T_DUNES:        return (hash01(x,y,131) < 0.5f) ? u8"∿" : u8"⌒";
+        case T_SNOW:         return (hash01(x,y,133) < 0.35f) ? u8"˚" : u8"·";
+        case T_ICE:          return (hash01(x,y,135) < 0.5f) ? u8"═" : u8"─";
+        case T_DIRT:         return (hash01(x,y,137) < 0.5f) ? u8"·" : u8"∙";
+        case T_ROAD:         return (hash01(x,y,139) < 0.5f) ? u8"─" : u8"━";
+        case T_MUD:          return (hash01(x,y,141) < 0.5f) ? u8"∙" : u8"⁘";
+        case T_RUINS:        return (hash01(x,y,143) < 0.5f) ? u8"⌂" : u8"⌐";
+        case T_GRAVEL:       return (hash01(x,y,145) < 0.5f) ? u8"⁘" : u8"▫";
+        case T_LAVA:         return (ch == '*') ? u8"✦" : (ch == '=') ? u8"≋" : u8"≈";
+        case T_ASH:          return (hash01(x,y,147) < 0.5f) ? u8"░" : u8"·";
+        case T_CASTLE_WALL:  return u8"▓";
+        case T_CASTLE_FLOOR: return (hash01(x,y,149) < 0.5f) ? u8"·" : u8"∙";
+        case T_CASTLE_GATE:  return u8"▣";
+    }
+    return getCharEmoji(ch);
+}
+
+static int ownerPersonVariant(int owner) {
+    if (owner < 0) return 0;
+    return owner % 3;
+}
+
+static const char* peasantEmojiForState(const Entity& e) {
+    static const char* standing[3] = { u8"🧍‍♂️", u8"🧍", u8"🧍‍♀️" };
+    static const char* walking [3] = { u8"🚶‍♂️", u8"🚶", u8"🚶‍♀️" };
+    static const char* kneeling[3] = { u8"🧎‍♂️", u8"🧎", u8"🧎‍♀️" };
+    static const char* working [3] = { u8"🏌️‍♂️", u8"🏌️", u8"🏌️‍♀️" };
+
+    int v = ownerPersonVariant(e.owner);
+    if (e.state == S_MOVING || e.state == S_RETURNING || e.state == S_ENTERING)
+        return walking[v];
+    if (e.state == S_GATHERING && e.gatherType == 2)
+        return kneeling[v];
+    if (e.state == S_GATHERING || e.state == S_BUILDING || e.state == S_ATTACKING)
+        return working[v];
+    return standing[v];
+}
+
+static const char* emojiForEntityOnMap(const Entity& e) {
+    if (e.type == E_PEASANT) return peasantEmojiForState(e);
+    return getEntityEmoji(e.type);
 }
 
 // Safe entity-state display name. EntityState has more values than the old
@@ -409,9 +806,12 @@ void getTerrainVisual(Terrain t, int x, int y, char& ch, int& cp) {
 // ============================================================
 void renderMap() {
     int maxY, maxX; getmaxyx(stdscr, maxY, maxX);
-    int panelW = 24; g.viewW = maxX - panelW - 1; g.viewH = maxY - 4;
-    if (g.viewW < 30) g.viewW = maxX; if (g.viewH < 10) g.viewH = maxY - 2;
-    g.viewW = std::min(g.viewW, MAP_W); g.viewH = std::min(g.viewH, MAP_H);
+    int panelW = 24;
+    int tileW = (displayMode == DM_EMOJI) ? 2 : 1;
+    int mapCols = maxX - panelW - 1;
+    g.viewW = mapCols / tileW; g.viewH = maxY - 4;
+    if (g.viewW < 30) g.viewW = maxX / tileW; if (g.viewH < 10) g.viewH = maxY - 2;
+    g.viewW = std::max(1, std::min(g.viewW, MAP_W)); g.viewH = std::min(g.viewH, MAP_H);
 
     if (g.cursorX < g.viewX+3)            g.viewX = g.cursorX - 3;
     if (g.cursorX > g.viewX+g.viewW-4)    g.viewX = g.cursorX - g.viewW + 4;
@@ -462,31 +862,47 @@ void renderMap() {
 
     for (int sy = 0; sy < g.viewH; sy++) { int my = g.viewY + sy;
         for (int sx = 0; sx < g.viewW; sx++) { int mx = g.viewX + sx;
-            int scY = sy+2, scX = sx;
-            if (!inBounds(mx, my)) { mvaddch(scY, scX, ' '); continue; }
+            int scY = sy+2, scX = sx * tileW;
+            auto clearTile = [&](int y, int x) {
+                if (displayMode == DM_ASCII) mvaddch(y, x, ' ');
+                else                         mvaddstr(y, x, "  ");
+            };
+            if (!inBounds(mx, my)) { clearTile(scY, scX); continue; }
             Tile& tile = g.map[my][mx];
             bool vis = tile.visible[0], expl = tile.explored[0];
             bool isCur = (mx == g.cursorX && my == g.cursorY);
 
             if (!expl) {
-                if (isCur) { attron(COLOR_PAIR(CP_CURSOR)); mvaddch(scY, scX, ' '); attroff(COLOR_PAIR(CP_CURSOR)); }
-                else { mvaddch(scY, scX, ' '); }
+                if (isCur) { attron(COLOR_PAIR(CP_CURSOR)); clearTile(scY, scX); attroff(COLOR_PAIR(CP_CURSOR)); }
+                else { clearTile(scY, scX); }
                 continue;
             }
 
             char ch; int cp;
             getTerrainVisual(tile.terrain, mx, my, ch, cp);
+            int terrainCp = (displayMode == DM_EMOJI) ? emojiTerrainColorPair(tile, mx, my, night) : cp;
+            if (displayMode == DM_EMOJI) cp = terrainCp;
 
             if (!vis) {
-                if (isCur) { attron(COLOR_PAIR(CP_CURSOR)); mvaddch(scY, scX, ch); attroff(COLOR_PAIR(CP_CURSOR)); }
-                else { attron(COLOR_PAIR(CP_FOG_EXPLORED)); mvaddch(scY, scX, ch); attroff(COLOR_PAIR(CP_FOG_EXPLORED)); }
+                if (isCur) {
+                    attron(COLOR_PAIR(CP_CURSOR));
+                    if (displayMode == DM_ASCII) mvaddch(scY, scX, ch);
+                    else { mvaddstr(scY, scX, "  "); mvprintw(scY, scX, "%s", terrainSymbolVariant(tile.terrain, ch, mx, my)); }
+                    attroff(COLOR_PAIR(CP_CURSOR));
+                } else {
+                    attron(COLOR_PAIR(CP_FOG_EXPLORED));
+                    if (displayMode == DM_ASCII) mvaddch(scY, scX, ch);
+                    else { mvaddstr(scY, scX, "  "); mvprintw(scY, scX, "%s", terrainSymbolVariant(tile.terrain, ch, mx, my)); }
+                    attroff(COLOR_PAIR(CP_FOG_EXPLORED));
+                }
                 continue;
             }
 
-            // Wall drag preview overrides terrain
-            if (wallPrev[my][mx]) { ch = '#'; cp = CP_PLAYER; }
+            // Wall drag preview overrides terrain.
+            // Emoji mode shows ■ (solid block) matching the completed wall glyph.
+            if (wallPrev[my][mx]) { ch = '#'; cp = (displayMode == DM_EMOJI) ? ownerColorPair(0, night) : CP_PLAYER; }
 
-            // Use a chtype-wide draw glyph so completed walls can use the ACS solid block
+            // Use a chtype-wide draw glyph so completed walls can use the ACS solid block.
             chtype drawCh = (chtype)ch;
             if (wallPrev[my][mx]) drawCh = ACS_CKBOARD;
 
@@ -516,47 +932,84 @@ void renderMap() {
                     if (prio == 0) { ent = &other; prio = 1; }
                 }
             }
+            // emojiStr: the UTF-8 string to display in emoji mode.
+            // Initialised to terrain glyph; overridden when an entity is present.
+            const char* emojiStr = nullptr;
+
             if (ent && ent->alive) {
                 ch = STATS[ent->type].glyph;
-                // Uppercase the glyph when 2+ military stack so the player can
-                // tell something's there even though only one fits in the cell.
-                if (stackedMil >= 2 && ch >= 'a' && ch <= 'z') ch = ch - 'a' + 'A';
+                // ASCII mode: uppercase glyph signals a stack of 2+ military.
+                // Emoji mode: no uppercase equivalent — stack not indicated.
+                if (displayMode == DM_ASCII && stackedMil >= 2 && ch >= 'a' && ch <= 'z')
+                    ch = ch - 'a' + 'A';
                 drawCh = (chtype)ch;
-                // Farms use natural wheat colouring regardless of owner
-                if (ent->type == E_FARM)      cp = (g.tick%40 < 20) ? CP_WHEAT : CP_WHEAT_GOLD;
-                else if (ent->owner == 0)     cp = night ? CP_PLAYER_NIGHT : CP_PLAYER;
-                else if (ent->owner > 0 && ent->owner < MAX_PLAYERS)
-                                              cp = night ? CP_ENEMY_NIGHT  : CP_ENEMY;
-                else if (ent->type == E_WOLF)  cp = CP_WOLF;
-                else if (ent->type == E_SHEEP) cp = CP_SHEEP;
-                else if (ent->type == E_BOAR)  cp = CP_BOAR;
-                else                           cp = CP_DEER;
-                // Ships override with a wood-deck background so they read as solid hulls.
-                if (isNaval(ent->type)) cp = (ent->owner == 0) ? CP_SHIP_PLAYER : CP_SHIP_ENEMY;
-                // Gate: glyph reflects open/closed state
+
+                // Default emoji is the entity's body symbol. Peasants get
+                // state/owner-specific standing/walking/kneeling/working glyphs.
+                emojiStr = emojiForEntityOnMap(*ent);
+
+                // Colour pair: player-owned units/buildings use owner colour
+                // backgrounds. Gaia animals keep the terrain/biome background.
+                // ASCII mode preserves the older animal/ship colour treatment.
+                if (ent->owner == OWNER_NATURE) {
+                    if (displayMode == DM_EMOJI) {
+                        cp = terrainCp;
+                    } else {
+                        if      (ent->type == E_WOLF)  cp = CP_WOLF;
+                        else if (ent->type == E_SHEEP) cp = CP_SHEEP;
+                        else if (ent->type == E_BOAR)  cp = CP_BOAR;
+                        else                           cp = CP_DEER;
+                    }
+                } else {
+                    cp = ownerColorPair(ent->owner, night);
+                }
+                if (displayMode == DM_ASCII && isNaval(ent->type))
+                    cp = (ent->owner == 0) ? CP_SHIP_PLAYER : CP_SHIP_ENEMY;
+
+                // State-specific glyph overrides (gate, construction, siege engines, alert).
                 if (ent->type == E_GATE && !ent->underConstruction) {
                     ch = ent->gateOpen ? '-' : '|';
                     drawCh = (chtype)ch;
+                    emojiStr = u8"🚪";
                 }
-                if (ent->underConstruction && g.tick%10 < 5) { ch = '#'; drawCh = (chtype)ch; }
-                // Dwarf-Fortress-style solid wall block when complete
-                if (ent->type == E_WALL && !ent->underConstruction) drawCh = ACS_CKBOARD;
-                // Siege engine arm animation: catapult '-'→'/' on fire; ram '-'→'=' on ram
-                if (ent->type == E_CATAPULT) {
+                if (ent->underConstruction && g.tick%10 < 5) {
+                    ch = '#'; drawCh = (chtype)ch;
+                    emojiStr = u8"🚧";  // pulsing during construction
+                }
+                // Dwarf-Fortress-style solid wall block when complete.
+                // Emoji mode uses ■ (same visual intent, but valid UTF-8).
+                if (ent->type == E_WALL && !ent->underConstruction) {
+                    drawCh = ACS_CKBOARD;
+                    emojiStr = u8"🧱";
+                }
+                // Siege engine arm animations stay ASCII-only. Emoji mode uses
+                // one proper unit emoji in the entity's single 2-column tile.
+                if (displayMode == DM_ASCII && ent->type == E_CATAPULT) {
                     bool firing = ent->state==S_ATTACKING && ent->atkCd > STATS[E_CATAPULT].atkSpeed*2/3;
                     ch = firing ? '/' : '-'; drawCh = (chtype)ch;
                 }
-                if (ent->type == E_RAM) {
+                if (displayMode == DM_ASCII && ent->type == E_RAM) {
                     bool ramming = ent->state==S_ATTACKING && ent->atkCd > STATS[E_RAM].atkSpeed*2/3;
                     ch = ramming ? '=' : '-'; drawCh = (chtype)ch;
                 }
-                // Recently in combat: gentle '!' pulse — ~1.5 Hz, not strobing
-                if (ent->alertTicks > 0 && (g.tick % 8) < 4) { ch = '!'; drawCh = (chtype)ch; }
+                // Recently in combat: gentle '!' pulse — ~1.5 Hz, not strobing.
+                if (ent->alertTicks > 0 && (g.tick % 8) < 4) {
+                    ch = '!'; drawCh = (chtype)ch;
+                    emojiStr = "!";
+                }
             }
+            // Projectile overwrites terrain/entity glyph; keep ASCII char for colour lookup.
             for (auto& p : g.projectiles) {
                 if (!p.alive) continue;
-                if ((int)roundf(p.x)==mx && (int)roundf(p.y)==my) { ch=p.glyph; cp=p.color; drawCh=(chtype)ch; }
+                if ((int)roundf(p.x)==mx && (int)roundf(p.y)==my) {
+                    ch = p.glyph; cp = (displayMode == DM_EMOJI) ? terrainCp : p.color; drawCh = (chtype)ch;
+                    // Projectiles sit on the underlying biome background.
+                    emojiStr = (p.color == CP_PROJ_BOULDER) ? u8"🪨" : u8"•";
+                }
             }
+
+            // When no entity is present, terrain drives the emoji/symbol string.
+            if (!emojiStr) emojiStr = (displayMode == DM_EMOJI) ? terrainSymbolVariant(tile.terrain, ch, mx, my) : getCharEmoji(ch);
 
             bool isSel = false;
 
@@ -582,32 +1035,65 @@ void renderMap() {
             bool onRangeRing = (ringR > 0)
                 && std::max(std::abs(mx - ringX), std::abs(my - ringY)) == ringR;
 
+            // Unified draw: ASCII uses mvaddch/chtype; emoji uses mvprintw with UTF-8.
+            // All subsequent positions use absolute mv* coords so ncurses' internal
+            // cursor model (which counts bytes, not columns) doesn't accumulate.
+            auto drawAt = [&](int y, int x, chtype dch, const char* estr) {
+                if (displayMode == DM_ASCII) {
+                    mvaddch(y, x, dch);
+                } else {
+                    // Full emoji cells are two terminal columns wide. Paint both
+                    // cells first so the background colour fills the whole tile,
+                    // then write the emoji over that coloured tile.
+                    mvaddstr(y, x, "  ");
+                    mvprintw(y, x, "%s", estr);
+                }
+            };
+
             if (isCur) {
-                attron(COLOR_PAIR(CP_CURSOR)); mvaddch(scY, scX, drawCh); attroff(COLOR_PAIR(CP_CURSOR));
+                attron(COLOR_PAIR(CP_CURSOR));
+                drawAt(scY, scX, drawCh, emojiStr);
+                attroff(COLOR_PAIR(CP_CURSOR));
             } else if (onBoxBorder) {
                 // Vivid selection-box border that pops on any terrain.
                 attron(COLOR_PAIR(CP_SUN)|A_BOLD|A_REVERSE);
-                mvaddch(scY, scX, drawCh);
+                drawAt(scY, scX, drawCh, emojiStr);
                 attroff(COLOR_PAIR(CP_SUN)|A_BOLD|A_REVERSE);
             } else if (onRangeRing && !ent) {
                 // Subtle range-ring marker on empty tiles only.
                 attron(COLOR_PAIR(CP_UI_HIGH)|A_DIM);
-                mvaddch(scY, scX, '.');
+                drawAt(scY, scX, '.', u8"·");
                 attroff(COLOR_PAIR(CP_UI_HIGH)|A_DIM);
             } else {
                 int attr = COLOR_PAIR(cp);
                 if (ent && ent->alive) attr |= A_BOLD;
-                if (isSel)        attr |= A_UNDERLINE;
-                attron(attr); mvaddch(scY, scX, drawCh); attroff(attr);
+                // Selection highlight: A_REVERSE swaps owner bg ↔ fg so the
+                // player/enemy colour becomes the cell foreground — distinct
+                // from the ownership background on surrounding tiles.
+                if (isSel) attr |= A_REVERSE;
+                attron(attr);
+                drawAt(scY, scX, drawCh, emojiStr);
+                attroff(attr);
             }
 
-            // Siege engines render as 2 chars: arm ('-'/'/' or '-'/'=') + body ('c'/'r')
-            if (ent && ent->alive && (ent->type==E_CATAPULT||ent->type==E_RAM)
+            // ASCII siege engines render as 2 chars: arm then body.
+            // Emoji mode uses one proper unit emoji in one 2-column tile.
+            if (displayMode == DM_ASCII && ent && ent->alive && (ent->type==E_CATAPULT||ent->type==E_RAM)
                     && sx+1 < g.viewW && !entityAt(mx+1, my)) {
                 char sc = (ent->type==E_CATAPULT) ? 'c' : 'r';
+                const char* bodyEmoji = (ent->type==E_CATAPULT)
+                    ? "\xe2\x8a\x99"   // ⊙ U+2299 catapult barrel
+                    : "\xe2\x96\xac";  // ▬ U+25AC ram body
                 int sattr = COLOR_PAIR(cp) | A_BOLD;
-                if (isSel) sattr |= A_UNDERLINE;
-                attron(sattr); mvaddch(scY, scX+1, sc); attroff(sattr);
+                if (isSel) sattr |= A_REVERSE;
+                attron(sattr);
+                if (displayMode == DM_ASCII) {
+                    mvaddch(scY, scX+tileW, sc);
+                } else {
+                    mvaddstr(scY, scX+tileW, "  ");
+                    mvprintw(scY, scX+tileW, "%s", bodyEmoji);
+                }
+                attroff(sattr);
             }
         }
     }
@@ -626,11 +1112,13 @@ void renderMap() {
             if (snowWeather) {
                 // Transparent-bg white glyph: flake adopts whatever terrain colour is beneath it.
                 attron(COLOR_PAIR(CP_SNOW_FALL)|A_BOLD);
-                mvaddch(sy+2, sx, '*');
+                if (displayMode == DM_ASCII) mvaddch(sy+2, sx * tileW, '*');
+                else                         mvprintw(sy+2, sx * tileW, u8"✦");
                 attroff(COLOR_PAIR(CP_SNOW_FALL)|A_BOLD);
             } else {
                 attron(COLOR_PAIR(CP_RAIN)|A_BOLD);
-                mvaddch(sy+2, sx, '.');
+                if (displayMode == DM_ASCII) mvaddch(sy+2, sx * tileW, '.');
+                else                         mvprintw(sy+2, sx * tileW, u8"·");
                 attroff(COLOR_PAIR(CP_RAIN)|A_BOLD);
             }
         }
@@ -662,8 +1150,15 @@ void renderUI() {
              p.gold, p.wood, p.food, p.supply, p.supplyMax, popForecast, idleCount, idleBldg);
 
     int iconX = maxX - 22;
-    if (getBrightness() > 0.5f) { attron(COLOR_PAIR(CP_SUN)|A_BOLD); mvprintw(0,iconX,"*"); attroff(COLOR_PAIR(CP_SUN)|A_BOLD); }
-    else { attron(COLOR_PAIR(CP_MOON)); mvprintw(0,iconX,"o"); attroff(COLOR_PAIR(CP_MOON)); }
+    if (getBrightness() > 0.5f) {
+        attron(COLOR_PAIR(CP_SUN)|A_BOLD);
+        mvprintw(0, iconX, (displayMode == DM_EMOJI) ? "☀️" : "*");
+        attroff(COLOR_PAIR(CP_SUN)|A_BOLD);
+    } else {
+        attron(COLOR_PAIR(CP_MOON));
+        mvprintw(0, iconX, (displayMode == DM_EMOJI) ? "🌙" : "o");
+        attroff(COLOR_PAIR(CP_MOON));
+    }
     attron(COLOR_PAIR(CP_UI_BAR));
     const char* wn = (g.weather == W_STORM) ? "Storm" : (g.weather == W_RAIN) ? "Rain " : (g.weather == W_SNOW) ? "Snow " : "Clear";
     mvprintw(0, iconX+1, " %-5s %-6s %s", getTimeName(), getSeasonName(), wn);
@@ -742,15 +1237,16 @@ void renderUI() {
             case E_CATAPULT: counts[4]++; break; default: counts[5]++; break;
             }
         }
-        attron(COLOR_PAIR(CP_PLAYER)|A_BOLD);
+        attron(COLOR_PAIR(CP_OWN_P0)|A_BOLD);
         mvprintw(iy++, panelX+1, "Group: %d units", (int)g.selectedIds.size());
-        attroff(COLOR_PAIR(CP_PLAYER)|A_BOLD);
+        attroff(COLOR_PAIR(CP_OWN_P0)|A_BOLD);
         attron(COLOR_PAIR(CP_UI_TEXT));
-        if (counts[0]) mvprintw(iy++, panelX+1, "  p x%d Peasant",  counts[0]);
-        if (counts[1]) mvprintw(iy++, panelX+1, "  m x%d Militia",  counts[1]);
-        if (counts[2]) mvprintw(iy++, panelX+1, "  a x%d Archer",   counts[2]);
-        if (counts[3]) mvprintw(iy++, panelX+1, "  k x%d Knight",   counts[3]);
-        if (counts[4]) mvprintw(iy++, panelX+1, "  c x%d Catapult", counts[4]);
+        // Use the entity glyph/emoji for each unit type in the group summary.
+        if (counts[0]) mvprintw(iy++, panelX+1, "  %s x%d Peasant",  getEntityEmoji(E_PEASANT),  counts[0]);
+        if (counts[1]) mvprintw(iy++, panelX+1, "  %s x%d Militia",  getEntityEmoji(E_MILITIA),  counts[1]);
+        if (counts[2]) mvprintw(iy++, panelX+1, "  %s x%d Archer",   getEntityEmoji(E_ARCHER),   counts[2]);
+        if (counts[3]) mvprintw(iy++, panelX+1, "  %s x%d Knight",   getEntityEmoji(E_KNIGHT),   counts[3]);
+        if (counts[4]) mvprintw(iy++, panelX+1, "  %s x%d Catapult", getEntityEmoji(E_CATAPULT), counts[4]);
         if (counts[5]) mvprintw(iy++, panelX+1, "  + x%d Other",    counts[5]);
         attroff(COLOR_PAIR(CP_UI_TEXT));
         iy++;
@@ -835,8 +1331,13 @@ void renderUI() {
                 attron(COLOR_PAIR(CP_UI_DIM));
                 mvprintw(iy++, panelX+1, "Queue: %d", (int)sel->queue.size());
                 int n = std::min((int)sel->queue.size(), panelW-4);
-                for (int i = 0; i < n; i++)
-                    mvaddch(iy, panelX+1+i, STATS[(EntityType)sel->queue[i]].glyph);
+                int qStep = (displayMode == DM_EMOJI) ? 2 : 1;
+                for (int i = 0; i < n; i++) {
+                    if (displayMode == DM_ASCII)
+                        mvaddch(iy, panelX+1+i*qStep, STATS[(EntityType)sel->queue[i]].glyph);
+                    else
+                        mvprintw(iy, panelX+1+i*qStep, "%s", getEntityEmoji(sel->queue[i]));
+                }
                 iy++;
                 attroff(COLOR_PAIR(CP_UI_DIM));
             }
@@ -889,23 +1390,63 @@ void renderUI() {
         } else {
             attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(iy, panelX+1, "No selection"); attroff(COLOR_PAIR(CP_UI_DIM));
             iy += 2;
-            attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(iy++, panelX+1, "-- Legend --"); attroff(COLOR_PAIR(CP_UI_DIM));
-            attron(COLOR_PAIR(CP_UI_TEXT));
-            mvprintw(iy++, panelX+1, "$ Gold   T Oak");
-            mvprintw(iy++, panelX+1, "^ Mtn    Y Pine");
-            mvprintw(iy++, panelX+1, "~ Water  n Hills");
-            mvprintw(iy++, panelX+1, ": Berry  %% Wheat");
-            mvprintw(iy++, panelX+1, "# Castle & Ruins");
-            attroff(COLOR_PAIR(CP_UI_TEXT)); iy++;
-            attron(COLOR_PAIR(CP_PLAYER));
-            mvprintw(iy++, panelX+1, "p Peasant  m Militia");
-            mvprintw(iy++, panelX+1, "a Archer   k Knight");
-            mvprintw(iy++, panelX+1, "c Catapult");
-            attroff(COLOR_PAIR(CP_PLAYER)); iy++;
-            attron(COLOR_PAIR(CP_DEER));
-            mvprintw(iy++, panelX+1, "d Deer  s Sheep");
-            mvprintw(iy++, panelX+1, "w Wolf  o Boar");
-            attroff(COLOR_PAIR(CP_DEER));
+            if (displayMode == DM_ASCII) {
+                attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(iy++, panelX+1, "-- Legend (ASCII) --"); attroff(COLOR_PAIR(CP_UI_DIM));
+                attron(COLOR_PAIR(CP_UI_TEXT));
+                mvprintw(iy++, panelX+1, "$ Gold   T Oak");
+                mvprintw(iy++, panelX+1, "^ Mtn    Y Pine");
+                mvprintw(iy++, panelX+1, "~ Water  n Hills");
+                mvprintw(iy++, panelX+1, ": Berry  %% Wheat");
+                mvprintw(iy++, panelX+1, "# Castle & Ruins");
+                attroff(COLOR_PAIR(CP_UI_TEXT)); iy++;
+                attron(COLOR_PAIR(CP_OWN_P0));
+                mvprintw(iy++, panelX+1, "p Peasant  m Militia");
+                mvprintw(iy++, panelX+1, "a Archer   k Knight");
+                mvprintw(iy++, panelX+1, "c Catapult");
+                attroff(COLOR_PAIR(CP_OWN_P0)); iy++;
+                attron(COLOR_PAIR(CP_DEER));
+                mvprintw(iy++, panelX+1, "d Deer  s Sheep");
+                mvprintw(iy++, panelX+1, "w Wolf  o Boar");
+                attroff(COLOR_PAIR(CP_DEER));
+            } else {
+                // Emoji legend: resources/useful things get emojis; decorative
+                // terrain stays symbolic on biome-coloured backgrounds.
+                attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(iy++, panelX+1, "-- Legend (Emoji) --"); attroff(COLOR_PAIR(CP_UI_DIM));
+                attron(COLOR_PAIR(CP_UI_TEXT));
+                mvprintw(iy,   panelX+1,  "🪙 Gold");
+                mvprintw(iy++, panelX+10, "🌳 Wood");
+                mvprintw(iy,   panelX+1,  "🫐 Berry");
+                mvprintw(iy++, panelX+10, "🌾 Wheat");
+                mvprintw(iy,   panelX+1,  "≈ Water");
+                mvprintw(iy++, panelX+10, "▲ Mtn");
+                mvprintw(iy,   panelX+1,  "· Grass");
+                mvprintw(iy++, panelX+10, "⌂ Ruins");
+                attroff(COLOR_PAIR(CP_UI_TEXT)); iy++;
+                attron(COLOR_PAIR(CP_OWN_P0)|A_BOLD);
+                mvprintw(iy,   panelX+1,  "🧍‍♂️ Peas");
+                mvprintw(iy++, panelX+12, "🤺 Mil");
+                mvprintw(iy,   panelX+1,  "🏹 Arch");
+                mvprintw(iy++, panelX+12, "🐎 Cav");
+                mvprintw(iy++, panelX+1,  "🛞 Catapult");
+                attroff(COLOR_PAIR(CP_OWN_P0)|A_BOLD); iy++;
+                attron(COLOR_PAIR(CP_UI_TEXT));
+                mvprintw(iy,   panelX+1,  "🦌 Deer");
+                mvprintw(iy++, panelX+10, "🐑 Sheep");
+                mvprintw(iy,   panelX+1,  "🐺 Wolf");
+                mvprintw(iy++, panelX+10, "🐗 Boar");
+                attroff(COLOR_PAIR(CP_UI_TEXT)); iy++;
+                attron(COLOR_PAIR(CP_UI_DIM));
+                mvprintw(iy++, panelX+1, "Bg=biome; units=owner");
+                attroff(COLOR_PAIR(CP_UI_DIM));
+                attron(COLOR_PAIR(CP_OWN_P0)); mvprintw(iy, panelX+1, "You"); attroff(COLOR_PAIR(CP_OWN_P0));
+                attron(COLOR_PAIR(CP_OWN_P1)); mvprintw(iy, panelX+5, "P2");  attroff(COLOR_PAIR(CP_OWN_P1));
+                attron(COLOR_PAIR(CP_OWN_P2)); mvprintw(iy, panelX+8, "P3");  attroff(COLOR_PAIR(CP_OWN_P2));
+                attron(COLOR_PAIR(CP_OWN_P3)); mvprintw(iy, panelX+11,"P4");  attroff(COLOR_PAIR(CP_OWN_P3));
+                iy++;
+                attron(COLOR_PAIR(CP_UI_DIM));
+                mvprintw(iy++, panelX+1, "Sel=reversed bg");
+                attroff(COLOR_PAIR(CP_UI_DIM));
+            }
         }
     }
 

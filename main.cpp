@@ -1,7 +1,42 @@
 #include "realm.h"
 #include <chrono>
+#include <cstdlib>
+#include <cstring>
+#include <locale.h>
+#if defined(_WIN32)
+#include <windows.h>
+#endif
 
-// Full splash screen. Sets g.biomeChoice. Returns numAIs.
+static bool isUtf8LocaleName(const char* name) {
+    if (!name) return false;
+    return std::strstr(name, "UTF-8") || std::strstr(name, "utf8")
+        || std::strstr(name, "UTF8")  || std::strstr(name, "65001");
+}
+
+static void forceUtf8Locale() {
+#if defined(_WIN32)
+    SetConsoleOutputCP(CP_UTF8);
+    SetConsoleCP(CP_UTF8);
+#endif
+
+    const char* loc = setlocale(LC_ALL, "");
+    if (isUtf8LocaleName(loc)) return;
+
+    loc = setlocale(LC_ALL, "C.UTF-8");
+    if (isUtf8LocaleName(loc)) return;
+
+    loc = setlocale(LC_ALL, "en_US.UTF-8");
+    if (isUtf8LocaleName(loc)) return;
+
+    loc = setlocale(LC_ALL, ".UTF-8");
+    if (isUtf8LocaleName(loc)) return;
+
+    loc = setlocale(LC_ALL, ".UTF8");
+    if (isUtf8LocaleName(loc)) return;
+}
+
+
+// Full splash screen. Sets g.biomeChoice and displayMode. Returns numAIs.
 static int showSplash() {
     static const char* biomeNames[] = {
         "Temperate","Desert","Snow","Swamp","Forest","Volcanic","Ocean","Random"
@@ -15,7 +50,7 @@ static int showSplash() {
         erase();
 
         int col = std::max(2, maxX/2 - 34);
-        int row = std::max(0, maxY/2 - 14);
+        int row = std::max(0, maxY/2 - 15);
 
         auto pr = [&](int r, int c, const char* fmt, ...) {
             va_list ap; va_start(ap, fmt);
@@ -61,6 +96,11 @@ static int showSplash() {
         pr(row++, col, "  [V] Volcanic  [C] Coastal");
 
         row++;
+        attron(A_BOLD); pr(row++, col, "DISPLAY"); attroff(A_BOLD);
+        pr(row++, col, "  [4] ASCII     [5] Emoji");
+        pr(row++, col, "  > Display: %s", displayMode == DM_EMOJI ? "Emoji" : "ASCII");
+
+        row++;
         attron(A_BOLD);
         pr(row++, col, "  > Opponents: %d    Biome: %s", numAIs, biomeNames[biomeIdx]);
         attroff(A_BOLD);
@@ -83,6 +123,8 @@ static int showSplash() {
         else if (ch=='f'||ch=='F') biomeIdx=4;
         else if (ch=='v'||ch=='V') biomeIdx=5;
         else if (ch=='c'||ch=='C') biomeIdx=6;
+        else if (ch=='4') displayMode = DM_ASCII;
+        else if (ch=='5') displayMode = DM_EMOJI;
     }
     g.biomeChoice = (biomeIdx == 7) ? -1 : biomeIdx;
     return numAIs;
@@ -198,6 +240,7 @@ void initGame(int numAIs) {
 }
 
 int main() {
+    forceUtf8Locale();
     initscr(); cbreak(); noecho(); keypad(stdscr, TRUE); curs_set(0);
     // REPORT_MOUSE_POSITION gives continuous hover events for live cursor tracking
     mousemask(ALL_MOUSE_EVENTS | REPORT_MOUSE_POSITION, NULL);
@@ -208,6 +251,12 @@ int main() {
 
     while (true) {
         int numAIs = showSplash();
+
+        // Display mode is selected on the splash screen. Reinitialise colour
+        // pairs here so emoji mode can use filled terrain backgrounds while
+        // ASCII mode keeps the original mostly-transparent look.
+        initColors();
+
         initGame(numAIs);
         setStatus("Dawn breaks over the realm. Select peasants [Space] and gather [Enter]. [A]=select all military.");
 
