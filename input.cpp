@@ -413,16 +413,19 @@ void handleInput(int ch) {
         break;
     }
 
-    // Gate toggle: cycle auto / locked-open / locked-closed
+    // Gate toggle: cycle auto -> locked-open -> locked-closed -> auto
     case 'O': {
         Entity* sel = findEntity(g.selectedId);
         if (sel && sel->alive && sel->owner==0 && sel->type==E_GATE && !sel->underConstruction) {
             if (!sel->gateLocked) {
-                sel->gateLocked = true; // enter manual lock in current state
-                setStatus(sel->gateOpen ? "Gate locked open" : "Gate locked closed");
+                sel->gateLocked = true; sel->gateOpen = true;
+                setStatus("Gate locked open");
+            } else if (sel->gateOpen) {
+                sel->gateOpen = false;
+                setStatus("Gate locked closed");
             } else {
-                sel->gateOpen = !sel->gateOpen; // toggle state
-                setStatus(sel->gateOpen ? "Gate locked open" : "Gate locked closed");
+                sel->gateLocked = false;
+                setStatus("Gate auto");
             }
         }
         break;

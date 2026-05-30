@@ -429,11 +429,10 @@ trained unit was silently consumed.
 
 * [ ] Build a gate. By default it auto-opens when an ally is within 2
       tiles, closes otherwise.
-* [ ] Press `O` while gate is selected — gate locks in current state
-      ("Mode: Locked").
-* [ ] Press `O` again — toggles open/closed while staying locked.
-* [ ] Press `O` a third time —... currently no path back to auto. (Known
-      gap.)
+* [ ] Press `O` once → "Gate locked open" (forced open, no longer auto).
+* [ ] Press `O` again → "Gate locked closed" (forced closed).
+* [ ] Press `O` a third time → "Gate auto" (back to ally-proximity rule).
+* [ ] Side panel mirrors state and mode correctly throughout.
 
 ### 9.5 Right-click symmetry
 
