@@ -86,12 +86,28 @@ void initGame(int numAIs) {
     g.cursorX = s0.thX + 2; g.cursorY = s0.thY + 2;
     g.viewX = std::max(0, s0.thX - 10); g.viewY = std::max(0, s0.thY - 5);
 
-    // Wild deer in open terrain
-    for (int i = 0, t = 0; i < 25 && t < 600; t++) {
-        int ax = 10 + rand()%(MAP_W-20), ay = 10 + rand()%(MAP_H-20);
-        Terrain tr = g.map[ay][ax].terrain;
-        if ((tr==T_GRASS||tr==T_MEADOW||tr==T_TALL_GRASS||tr==T_FOREST) && !entityAt(ax,ay))
-            { spawnEntity(E_DEER, OWNER_NATURE, ax, ay); i++; }
+    // Wild deer in herds of 3-6, each herd anchored to a random open spot.
+    {
+        int total = 0;
+        for (int h = 0; h < 7 && total < 30; h++) {
+            int hx = -1, hy = -1;
+            for (int t = 0; t < 300 && hx < 0; t++) {
+                int ax = 10 + rand()%(MAP_W-20), ay = 10 + rand()%(MAP_H-20);
+                Terrain tr = g.map[ay][ax].terrain;
+                if (tr==T_GRASS||tr==T_MEADOW||tr==T_TALL_GRASS||tr==T_FOREST)
+                    { hx=ax; hy=ay; }
+            }
+            if (hx < 0) continue;
+            int herdSize = 3 + rand()%4;
+            for (int i = 0, t = 0; i < herdSize && t < 100; t++) {
+                int ax = hx+(rand()%9)-4, ay = hy+(rand()%9)-4;
+                ax = std::max(1, std::min(ax, MAP_W-2));
+                ay = std::max(1, std::min(ay, MAP_H-2));
+                Terrain tr = g.map[ay][ax].terrain;
+                if ((tr==T_GRASS||tr==T_MEADOW||tr==T_TALL_GRASS||tr==T_FOREST) && !entityAt(ax,ay))
+                    { spawnEntity(E_DEER, OWNER_NATURE, ax, ay); i++; total++; }
+            }
+        }
     }
     // Wolves in forested areas
     for (int i = 0, t = 0; i < 5 && t < 600; t++) {
@@ -99,6 +115,15 @@ void initGame(int numAIs) {
         Terrain tr = g.map[ay][ax].terrain;
         if ((tr==T_FOREST||tr==T_PINE||tr==T_TALL_GRASS) && !entityAt(ax,ay))
             { spawnEntity(E_WOLF, OWNER_NATURE, ax, ay); i++; }
+    }
+    // Boars in temperate woodland and forest biomes
+    for (int i = 0, t = 0; i < 14 && t < 800; t++) {
+        int ax = 10 + rand()%(MAP_W-20), ay = 10 + rand()%(MAP_H-20);
+        Terrain tr = g.map[ay][ax].terrain;
+        Biome  b  = g.map[ay][ax].biome;
+        if ((tr==T_FOREST||tr==T_PINE||tr==T_TALL_GRASS||tr==T_GRASS)
+            && (b==B_TEMPERATE||b==B_FOREST) && !entityAt(ax,ay))
+            { spawnEntity(E_BOAR, OWNER_NATURE, ax, ay); i++; }
     }
     // Domestic sheep near each player's town hall (one cluster per occupied corner)
     for (int c = 0; c < 4; c++) {

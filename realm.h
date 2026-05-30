@@ -48,7 +48,7 @@ enum EntityType {
     E_TOWNHALL, E_HOUSE, E_BARRACKS, E_STABLE, E_TOWER,
     E_FARM, E_BLACKSMITH, E_CHURCH, E_MARKET, E_WALL, E_GATE, E_CASTLE,
     E_LUMBER_CAMP, E_MINING_CAMP, E_MILL, E_DOCK,
-    E_DEER, E_WOLF, E_SHEEP
+    E_DEER, E_WOLF, E_SHEEP, E_BOAR
 };
 
 enum EntityState {
@@ -69,7 +69,7 @@ enum Weather   { W_CLEAR = 0, W_RAIN, W_STORM, W_SNOW };
 // ============================================================
 enum {
     CP_GRASS = 1, CP_GRASS_LIGHT, CP_GRASS_DRY, CP_TALL_GRASS,
-    CP_FLOWERS, CP_FLOWERS_BLUE, CP_MEADOW,
+    CP_FLOWERS, CP_FLOWERS_BLUE, CP_FLOWERS_YELLOW, CP_FLOWERS_RED, CP_MEADOW,
     CP_FOREST, CP_FOREST_DARK, CP_PINE, CP_PALM, CP_DEAD_TREE,
     CP_MOUNTAIN, CP_HILLS, CP_STONE,
     CP_WATER, CP_WATER_SHIMMER, CP_SHALLOWS, CP_MARSH, CP_REEDS,
@@ -96,7 +96,7 @@ enum {
     CP_MM_PLAYER, CP_MM_ENEMY, CP_MM_WATER, CP_MM_FOREST,
     CP_MM_GOLD, CP_MM_SAND, CP_MM_SNOW, CP_MM_MTN, CP_MM_CASTLE,
     CP_SPRING_FLOWER,
-    CP_DEER, CP_WOLF, CP_SHEEP, CP_MM_ANIMAL,
+    CP_DEER, CP_WOLF, CP_SHEEP, CP_BOAR, CP_MM_ANIMAL,
     CP_COUNT
 };
 
@@ -110,7 +110,7 @@ struct EntityStats {
 };
 extern const EntityStats STATS[];
 
-inline bool isUnit(EntityType t)     { return (t>=E_PEASANT&&t<=E_TRANSPORT)||(t>=E_DEER&&t<=E_SHEEP); }
+inline bool isUnit(EntityType t)     { return (t>=E_PEASANT&&t<=E_TRANSPORT)||(t>=E_DEER&&t<=E_BOAR); }
 inline bool isBuilding(EntityType t) { return t>=E_TOWNHALL&&t<=E_DOCK; }
 inline bool isRanged(EntityType t)   { return t==E_ARCHER||t==E_CATAPULT||t==E_WARSHIP; }
 inline bool isNaval(EntityType t)    { return t==E_FISHING_BOAT||t==E_WARSHIP||t==E_TRANSPORT; }

@@ -991,7 +991,7 @@ void tickEntity(Entity& e) {
                 }
                 if (t->hp <= 0) {
                     if (t->owner == OWNER_NATURE && e.owner < OWNER_NATURE) {
-                        int food = (t->type==E_SHEEP)?80:(t->type==E_DEER)?120:30;
+                        int food = (t->type==E_SHEEP)?80:(t->type==E_DEER)?120:(t->type==E_BOAR)?100:30;
                         g.players[e.owner].food += food;
                         if (e.owner==0) setStatus(std::string("Got ") + std::to_string(food) + " food!");
                     }
@@ -1292,7 +1292,7 @@ static void applyWinter() {
     // Cull a chunk of wildlife — the herd is thinned by the cold.
     for (auto& e : g.entities) {
         if (!e.alive || e.owner != OWNER_NATURE) continue;
-        if (e.type != E_DEER && e.type != E_SHEEP) continue;
+        if (e.type != E_DEER && e.type != E_SHEEP && e.type != E_BOAR) continue;
         if (rand() % 100 < 35) killEntity(e);
     }
     if (g.players[0].alive) setStatus("Winter falls. The land freezes over.");
@@ -1508,8 +1508,35 @@ void tickAnimals() {
     for (auto& e : g.entities) {
         if (!e.alive || e.owner != OWNER_NATURE) continue;
 
-        // Deer and sheep flee from nearby player units
-        if (e.type == E_DEER || e.type == E_SHEEP) {
+        // Deer flee in herds: one spooked deer panics nearby deer in the same direction.
+        if (e.type == E_DEER) {
+            if (e.state != S_MOVING || e.path.empty()) {
+                for (auto& o : g.entities) {
+                    if (!o.alive || o.owner==OWNER_NATURE || !isUnit(o.type)) continue;
+                    if (o.state == S_GARRISONED) continue;
+                    if (dist(e.x, e.y, o.x, o.y) <= 5) {
+                        int fx = std::max(1, std::min(e.x + (e.x-o.x)*4, MAP_W-2));
+                        int fy = std::max(1, std::min(e.y + (e.y-o.y)*4, MAP_H-2));
+                        if (isPassable(fx, fy)) {
+                            orderMove(e, fx, fy);
+                            // Spook nearby herd members to bolt the same way.
+                            for (auto& nb : g.entities) {
+                                if (!nb.alive || nb.type != E_DEER || nb.id == e.id) continue;
+                                if (nb.state == S_MOVING && !nb.path.empty()) continue;
+                                if (dist(e.x, e.y, nb.x, nb.y) > 6) continue;
+                                int nbfx = std::max(1, std::min(nb.x+(nb.x-o.x)*4, MAP_W-2));
+                                int nbfy = std::max(1, std::min(nb.y+(nb.y-o.y)*4, MAP_H-2));
+                                if (isPassable(nbfx, nbfy)) orderMove(nb, nbfx, nbfy);
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Sheep still flee individually.
+        if (e.type == E_SHEEP) {
             if (e.state != S_MOVING || e.path.empty()) {
                 for (auto& o : g.entities) {
                     if (!o.alive || o.owner==OWNER_NATURE || !isUnit(o.type)) continue;
@@ -1520,6 +1547,17 @@ void tickAnimals() {
                         if (isPassable(fx, fy)) orderMove(e, fx, fy);
                         break;
                     }
+                }
+            }
+        }
+
+        // Boars charge any unit that comes within 3 tiles.
+        if (e.type == E_BOAR) {
+            if (e.state == S_IDLE || (e.state == S_MOVING && e.path.empty())) {
+                for (auto& o : g.entities) {
+                    if (!o.alive || o.owner == OWNER_NATURE || !isUnit(o.type)) continue;
+                    if (o.state == S_GARRISONED) continue;
+                    if (dist(e.x, e.y, o.x, o.y) <= 3) { orderAttack(e, o.id); break; }
                 }
             }
         }

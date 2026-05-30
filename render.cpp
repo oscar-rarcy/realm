@@ -72,8 +72,10 @@ void initColors() {
     init_pair(CP_GRASS_LIGHT,   C::BRIGHT_GREEN, bg);
     init_pair(CP_GRASS_DRY,     C::YELLOW_GREEN, bg);
     init_pair(CP_TALL_GRASS,    C::MED_GREEN,    bg);
-    init_pair(CP_FLOWERS,       C::LAVENDER,     bg);
-    init_pair(CP_FLOWERS_BLUE,  C::MED_BLUE,     bg);
+    init_pair(CP_FLOWERS,        C::LAVENDER,     bg);
+    init_pair(CP_FLOWERS_BLUE,   C::MED_BLUE,     bg);
+    init_pair(CP_FLOWERS_YELLOW, C::BRIGHT_GOLD,  bg);
+    init_pair(CP_FLOWERS_RED,    C::BERRY_RED,    bg);
     init_pair(CP_MEADOW,        C::PALE_GREEN,   bg);
 
     init_pair(CP_FOREST,        C::MED_GREEN,    bg);
@@ -177,6 +179,7 @@ void initColors() {
     init_pair(CP_DEER,           C::TAN,          bg);
     init_pair(CP_WOLF,           C::LIGHT_GRAY,   bg);
     init_pair(CP_SHEEP,          C::SNOW_WHITE,   bg);
+    init_pair(CP_BOAR,           C::BROWN,        bg);
     init_pair(CP_MM_ANIMAL,      C::TAN,          C::NEAR_BLACK);
 }
 
@@ -217,7 +220,12 @@ void getTerrainVisual(Terrain t, int x, int y, char& ch, int& cp) {
     switch (t) {
     case T_GRASS:        ch='.'; cp=CP_GRASS;       break;
     case T_TALL_GRASS:   ch='"'; cp=CP_TALL_GRASS;  break;
-    case T_FLOWERS:      ch='*'; cp=CP_FLOWERS;     break;
+    case T_FLOWERS: {
+        ch='*';
+        static const int fcp[] = {CP_FLOWERS, CP_FLOWERS_BLUE, CP_FLOWERS_YELLOW, CP_FLOWERS_RED};
+        cp = fcp[((unsigned)(x*7+y*13)^(unsigned)(x*3+y)) % 4];
+        break;
+    }
     case T_MEADOW:       ch=','; cp=CP_MEADOW;      break;
     case T_FOREST:       ch='T'; cp=CP_FOREST;      break;
     case T_PINE:         ch='Y'; cp=CP_PINE;        break;
@@ -490,9 +498,10 @@ void renderMap() {
                 else if (ent->owner == 0)     cp = night ? CP_PLAYER_NIGHT : CP_PLAYER;
                 else if (ent->owner > 0 && ent->owner < MAX_PLAYERS)
                                               cp = night ? CP_ENEMY_NIGHT  : CP_ENEMY;
-                else if (ent->type == E_WOLF) cp = CP_WOLF;
-                else if (ent->type == E_SHEEP)cp = CP_SHEEP;
-                else                          cp = CP_DEER;
+                else if (ent->type == E_WOLF)  cp = CP_WOLF;
+                else if (ent->type == E_SHEEP) cp = CP_SHEEP;
+                else if (ent->type == E_BOAR)  cp = CP_BOAR;
+                else                           cp = CP_DEER;
                 // Ships override with a wood-deck background so they read as solid hulls.
                 if (isNaval(ent->type)) cp = (ent->owner == 0) ? CP_SHIP_PLAYER : CP_SHIP_ENEMY;
                 // Gate: glyph reflects open/closed state
@@ -838,7 +847,7 @@ void renderUI() {
             attroff(COLOR_PAIR(CP_PLAYER)); iy++;
             attron(COLOR_PAIR(CP_DEER));
             mvprintw(iy++, panelX+1, "d Deer  s Sheep");
-            mvprintw(iy++, panelX+1, "w Wolf");
+            mvprintw(iy++, panelX+1, "w Wolf  o Boar");
             attroff(COLOR_PAIR(CP_DEER));
         }
     }
