@@ -1,18 +1,22 @@
-CXX      = g++
-CXXFLAGS = -std=c++17 -O2 -Wall -Wextra
-LDFLAGS  = -lncurses
+CXX ?= g++
+CXXFLAGS ?= -std=c++17 -O2 -Wall -Wextra -finput-charset=UTF-8 -fexec-charset=UTF-8
+PKG_CONFIG ?= pkg-config
 
-SRCS = main.cpp globals.cpp mapgen.cpp entity.cpp ai.cpp render.cpp input.cpp
-OBJS = $(SRCS:.cpp=.o)
-TARGET = realm
+TARGET := realm
+OBJS := main.o globals.o mapgen.o entity.o ai.o render.o input.o display.o
+
+# Use wide ncurses for UTF-8/Unicode glyph output. Falls back to -lncursesw
+# if pkg-config is unavailable.
+NCURSES_CFLAGS := $(shell $(PKG_CONFIG) --cflags ncursesw 2>/dev/null)
+NCURSES_LIBS   := $(shell $(PKG_CONFIG) --libs ncursesw 2>/dev/null || echo -lncursesw)
 
 all: $(TARGET)
 
 $(TARGET): $(OBJS)
-	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
+	$(CXX) $(CXXFLAGS) -o $@ $(OBJS) $(NCURSES_LIBS)
 
 %.o: %.cpp realm.h
-	$(CXX) $(CXXFLAGS) -c -o $@ $<
+	$(CXX) $(CXXFLAGS) $(NCURSES_CFLAGS) -c -o $@ $<
 
 clean:
 	rm -f $(OBJS) $(TARGET)

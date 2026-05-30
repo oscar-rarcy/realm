@@ -186,10 +186,12 @@ void handleInput(int ch) {
         if (ch == KEY_MOUSE) {
             MEVENT me;
             if (getmouse(&me) != OK) goto clamp;
+            int tileW = (displayMode == DM_EMOJI) ? 2 : 1;
             int mapSY = me.y - 2;
-            int mapX  = g.viewX + me.x;
+            int mapSX = me.x / tileW;
+            int mapX  = g.viewX + mapSX;
             int mapY  = g.viewY + mapSY;
-            bool inMap = (mapSY>=0 && g.viewW>0 && me.x<g.viewW && inBounds(mapX,mapY));
+            bool inMap = (mapSY>=0 && g.viewW>0 && me.x<g.viewW*tileW && inBounds(mapX,mapY));
             if (!inMap) goto clamp;
             g.cursorX = mapX; g.cursorY = mapY;
             if (me.bstate & BUTTON1_PRESSED) {
@@ -242,9 +244,11 @@ void handleInput(int ch) {
         if (ch == '\n' || ch == '\r' || ch == KEY_ENTER) { commit(g.cursorX, g.cursorY); goto clamp; }
         if (ch == KEY_MOUSE) {
             MEVENT me; if (getmouse(&me) != OK) goto clamp;
+            int tileW = (displayMode == DM_EMOJI) ? 2 : 1;
             int mapSY = me.y - 2;
-            int mapX = g.viewX + me.x, mapY = g.viewY + mapSY;
-            if (mapSY >= 0 && g.viewW > 0 && me.x < g.viewW && inBounds(mapX, mapY)) {
+            int mapSX = me.x / tileW;
+            int mapX = g.viewX + mapSX, mapY = g.viewY + mapSY;
+            if (mapSY >= 0 && g.viewW > 0 && me.x < g.viewW * tileW && inBounds(mapX, mapY)) {
                 g.cursorX = mapX; g.cursorY = mapY;
                 if (me.bstate & (BUTTON1_CLICKED | BUTTON1_RELEASED | BUTTON3_CLICKED)) commit(mapX, mapY);
             }
@@ -274,9 +278,11 @@ void handleInput(int ch) {
         if (ch == '\n' || ch == '\r' || ch == KEY_ENTER) { commit(g.cursorX, g.cursorY); goto clamp; }
         if (ch == KEY_MOUSE) {
             MEVENT me; if (getmouse(&me) != OK) goto clamp;
+            int tileW = (displayMode == DM_EMOJI) ? 2 : 1;
             int mapSY = me.y - 2;
-            int mapX = g.viewX + me.x, mapY = g.viewY + mapSY;
-            if (mapSY >= 0 && me.x < g.viewW && inBounds(mapX, mapY)) {
+            int mapSX = me.x / tileW;
+            int mapX = g.viewX + mapSX, mapY = g.viewY + mapSY;
+            if (mapSY >= 0 && me.x < g.viewW * tileW && inBounds(mapX, mapY)) {
                 g.cursorX = mapX; g.cursorY = mapY;
                 if (me.bstate & (BUTTON1_CLICKED | BUTTON1_RELEASED | BUTTON3_CLICKED)) commit(mapX, mapY);
             }
@@ -571,8 +577,10 @@ void handleInput(int ch) {
     case KEY_MOUSE: {
         MEVENT me;
         if (getmouse(&me) != OK) break;
+        int tileW = (displayMode == DM_EMOJI) ? 2 : 1;
         int mapSY = me.y - 2;
-        int mapX  = g.viewX + me.x;
+        int mapSX = me.x / tileW;
+        int mapX  = g.viewX + mapSX;
         int mapY  = g.viewY + mapSY;
         // Minimap click → jump viewport. Minimap sits at panelX+1..+mmW, mmY..+mmH.
         {
@@ -593,7 +601,7 @@ void handleInput(int ch) {
                 break;
             }
         }
-        bool inMap = (mapSY >= 0 && g.viewW > 0 && me.x < g.viewW && inBounds(mapX, mapY));
+        bool inMap = (mapSY >= 0 && g.viewW > 0 && me.x < g.viewW * tileW && inBounds(mapX, mapY));
         if (!inMap) { g.dragging = false; break; }
 
         // Hover-track the cursor, but only when the mouse actually crossed into a new map

@@ -8,6 +8,7 @@
 #include <cmath>
 #include <string>
 #include <cstring>
+#include "display.h"
 
 // ============================================================
 // CONSTANTS
@@ -99,6 +100,11 @@ enum {
     CP_SPRING_FLOWER,
     CP_DEER, CP_WOLF, CP_SHEEP, CP_BOAR, CP_MM_ANIMAL,
     CP_LAVA, CP_LAVA_HOT, CP_ASH,
+    // Ownership background colours: background = owner, foreground = glyph.
+    // Used for all land units and buildings (ships keep CP_SHIP_* wood bg).
+    // One set per player slot (0=human, 1-3=AI); separate night variants.
+    CP_OWN_P0, CP_OWN_P1, CP_OWN_P2, CP_OWN_P3,
+    CP_OWN_P0_NIGHT, CP_OWN_P1_NIGHT, CP_OWN_P2_NIGHT, CP_OWN_P3_NIGHT,
     CP_COUNT
 };
 
