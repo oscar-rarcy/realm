@@ -141,6 +141,8 @@ struct Entity {
     int researching; // Research bit currently being researched (Blacksmith only); 0 = none
     int attackMove;  // 1 = engage enemies opportunistically while moving
     int holdPosition;// 1 = ignore auto-aggro; only attack when explicitly ordered
+    bool gateOpen;   // E_GATE only: open (passable) vs closed (blocks pathing)
+    bool gateLocked; // E_GATE only: manual mode — don't auto-toggle on ally proximity
     std::vector<int> queue;    // pending EntityTypes to train (FIFO, max 5)
     std::vector<int> garrison; // unit ids currently inside this building
 };

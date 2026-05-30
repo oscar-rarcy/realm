@@ -1,5 +1,76 @@
 #include "realm.h"
 
+// Single right-click / Enter command from a selected player unit onto (x,y).
+// Picks the right verb based on what's at the tile: help-build / tend-farm /
+// garrison / attack / gather / sow-farm / fish / move. Used by both the
+// keyboard Enter handler and the mouse right-click handler so the two paths
+// can never drift out of sync.
+static void cmdAtTileSingle(Entity* sel, int x, int y) {
+    if (!sel || sel->owner != 0 || !isUnit(sel->type)) return;
+    Entity* tgt = entityAt(x, y);
+    bool visible = g.map[y][x].visible[0];
+
+    if (tgt && tgt->alive && tgt->owner == 0 && tgt->underConstruction && sel->type == E_PEASANT) {
+        orderHelp(*sel, tgt->id); setStatus("Helping build..."); return;
+    }
+    if (tgt && tgt->alive && tgt->owner == 0 && tgt->type == E_FARM
+        && !tgt->underConstruction && sel->type == E_PEASANT) {
+        orderHelp(*sel, tgt->id); setStatus("Tending farm..."); return;
+    }
+    if (tgt && tgt->alive && tgt->owner == 0 && !tgt->underConstruction
+        && canGarrisonIn(tgt->type) && sel->type != E_CATAPULT) {
+        orderGarrison(*sel, tgt->id); return;
+    }
+    if (tgt && tgt->alive && tgt->owner != 0 && visible) {
+        orderAttack(*sel, tgt->id); setStatus("Attacking!"); return;
+    }
+    if (sel->type == E_PEASANT) {
+        Terrain ter = g.map[y][x].terrain;
+        bool isW = (ter==T_FOREST||ter==T_PINE||ter==T_PALM||ter==T_DEAD_TREE);
+        if ((ter==T_GOLD||isW||ter==T_BERRY) && g.map[y][x].resources > 0) {
+            orderGather(*sel, x, y);
+            setStatus(ter==T_GOLD ? "Mining gold..."
+                    : ter==T_BERRY ? "Picking berries..." : "Chopping wood...");
+            return;
+        }
+        if (ter == T_WHEAT && !tgt && canPlace(E_FARM, x, y, 0)) {
+            int fid = spawnEntity(E_FARM, 0, x, y, true);
+            orderHelp(*sel, fid); setStatus("Working wheat field...");
+            return;
+        }
+        orderMove(*sel, x, y); setStatus("Moving..."); return;
+    }
+    if (sel->type == E_FISHING_BOAT) {
+        Terrain ter = g.map[y][x].terrain;
+        if (ter == T_FISH && g.map[y][x].resources > 0) {
+            orderGather(*sel, x, y); setStatus("Fishing..."); return;
+        }
+        orderMove(*sel, x, y); setStatus("Moving..."); return;
+    }
+    orderMove(*sel, x, y); setStatus("Moving...");
+}
+
+// Group right-click / Enter command — applies to every entity in
+// g.selectedIds. Same path for keyboard and mouse.
+static void cmdAtTileGroup(int x, int y) {
+    Entity* tgt = entityAt(x, y);
+    bool visible = g.map[y][x].visible[0];
+    if (tgt && tgt->alive && tgt->owner == 0
+        && !tgt->underConstruction && canGarrisonIn(tgt->type)) {
+        for (int id : g.selectedIds) {
+            Entity* u = findEntity(id);
+            if (u && u->alive && u->owner == 0 && isUnit(u->type) && u->type != E_CATAPULT)
+                orderGarrison(*u, tgt->id);
+        }
+        setStatus("Garrisoning...");
+        return;
+    }
+    if (tgt && tgt->alive && tgt->owner != 0 && visible) {
+        orderGroupAttack(tgt->id); return;
+    }
+    orderGroupMove(x, y);
+}
+
 void handleInput(int ch) {
     if (ch == ERR) return;
     if (ch == 'q' || ch == 'Q') { endwin(); exit(0); }
@@ -266,61 +337,8 @@ void handleInput(int ch) {
     }
 
     case '\n': case '\r': case KEY_ENTER: {
-        if (g.selectedIds.size() > 1) {
-            // Group command
-            Entity* tgt = entityAt(g.cursorX, g.cursorY);
-            if (tgt && tgt->alive && tgt->owner == 0 && !tgt->underConstruction && canGarrisonIn(tgt->type)) {
-                for (int id : g.selectedIds) {
-                    Entity* u = findEntity(id);
-                    if (u && u->alive && u->owner == 0 && isUnit(u->type) && u->type != E_CATAPULT)
-                        orderGarrison(*u, tgt->id);
-                }
-                setStatus("Garrisoning...");
-            } else if (tgt && tgt->alive && tgt->owner != 0 && g.map[g.cursorY][g.cursorX].visible[0]) {
-                orderGroupAttack(tgt->id);
-            } else {
-                orderGroupMove(g.cursorX, g.cursorY);
-            }
-        } else {
-            Entity* sel = findEntity(g.selectedId);
-            if (!sel || sel->owner != 0 || !isUnit(sel->type)) break;
-            Entity* tgt = entityAt(g.cursorX, g.cursorY);
-            if (tgt && tgt->alive && tgt->owner == 0 && tgt->underConstruction && sel->type == E_PEASANT) {
-                orderHelp(*sel, tgt->id);
-                setStatus("Helping build...");
-            } else if (tgt && tgt->alive && tgt->owner == 0 && tgt->type == E_FARM && !tgt->underConstruction && sel->type == E_PEASANT) {
-                orderHelp(*sel, tgt->id);
-                setStatus("Tending farm...");
-            } else if (tgt && tgt->alive && tgt->owner == 0 && !tgt->underConstruction && canGarrisonIn(tgt->type) && sel->type != E_CATAPULT) {
-                orderGarrison(*sel, tgt->id);
-            } else if (tgt && tgt->alive && tgt->owner != 0 && g.map[g.cursorY][g.cursorX].visible[0]) {
-                orderAttack(*sel, tgt->id);
-                setStatus("Attacking!");
-            } else if (sel->type == E_PEASANT) {
-                Terrain ter = g.map[g.cursorY][g.cursorX].terrain;
-                bool isW = (ter==T_FOREST||ter==T_PINE||ter==T_PALM||ter==T_DEAD_TREE);
-                if ((ter==T_GOLD||isW||ter==T_BERRY) && g.map[g.cursorY][g.cursorX].resources > 0) {
-                    orderGather(*sel, g.cursorX, g.cursorY);
-                    setStatus(ter==T_GOLD ? "Mining gold..."
-                            : ter==T_BERRY ? "Picking berries..." : "Chopping wood...");
-                } else if (ter == T_WHEAT && !tgt && canPlace(E_FARM, g.cursorX, g.cursorY, 0)) {
-                    int fid = spawnEntity(E_FARM, 0, g.cursorX, g.cursorY, true);
-                    orderHelp(*sel, fid);
-                    setStatus("Working wheat field...");
-                } else {
-                    orderMove(*sel, g.cursorX, g.cursorY);
-                    setStatus("Moving...");
-                }
-            } else if (sel->type == E_FISHING_BOAT) {
-                Terrain ter = g.map[g.cursorY][g.cursorX].terrain;
-                if (ter == T_FISH && g.map[g.cursorY][g.cursorX].resources > 0) {
-                    orderGather(*sel, g.cursorX, g.cursorY); setStatus("Fishing...");
-                } else { orderMove(*sel, g.cursorX, g.cursorY); setStatus("Moving..."); }
-            } else {
-                orderMove(*sel, g.cursorX, g.cursorY);
-                setStatus("Moving...");
-            }
-        }
+        if (g.selectedIds.size() > 1) cmdAtTileGroup(g.cursorX, g.cursorY);
+        else                          cmdAtTileSingle(findEntity(g.selectedId), g.cursorX, g.cursorY);
         break;
     }
 
@@ -399,12 +417,12 @@ void handleInput(int ch) {
     case 'O': {
         Entity* sel = findEntity(g.selectedId);
         if (sel && sel->alive && sel->owner==0 && sel->type==E_GATE && !sel->underConstruction) {
-            if (sel->gatherType == 0) {
-                sel->gatherType = 1; // enter manual lock in current state
-                setStatus(sel->carrying > 0 ? "Gate locked open" : "Gate locked closed");
+            if (!sel->gateLocked) {
+                sel->gateLocked = true; // enter manual lock in current state
+                setStatus(sel->gateOpen ? "Gate locked open" : "Gate locked closed");
             } else {
-                sel->carrying = (sel->carrying > 0) ? 0 : 1; // toggle state
-                setStatus(sel->carrying > 0 ? "Gate locked open" : "Gate locked closed");
+                sel->gateOpen = !sel->gateOpen; // toggle state
+                setStatus(sel->gateOpen ? "Gate locked open" : "Gate locked closed");
             }
         }
         break;
@@ -658,50 +676,8 @@ void handleInput(int ch) {
         else if (me.bstate & (BUTTON3_CLICKED | BUTTON3_PRESSED)) {
             // Right click: issue command at cursor position
             g.dragging = false;
-            if (g.selectedIds.size() > 1) {
-                Entity* tgt = entityAt(mapX, mapY);
-                if (tgt && tgt->alive && tgt->owner == 0 && !tgt->underConstruction && canGarrisonIn(tgt->type)) {
-                    for (int id : g.selectedIds) {
-                        Entity* u = findEntity(id);
-                        if (u && u->alive && u->owner == 0 && isUnit(u->type) && u->type != E_CATAPULT)
-                            orderGarrison(*u, tgt->id);
-                    }
-                    setStatus("Garrisoning...");
-                } else if (tgt && tgt->alive && tgt->owner != 0 && g.map[mapY][mapX].visible[0])
-                    orderGroupAttack(tgt->id);
-                else
-                    orderGroupMove(mapX, mapY);
-            } else {
-                Entity* sel = findEntity(g.selectedId);
-                if (!sel || sel->owner != 0 || !isUnit(sel->type)) break;
-                Entity* tgt = entityAt(mapX, mapY);
-                if (tgt && tgt->alive && tgt->owner == 0 && tgt->underConstruction && sel->type == E_PEASANT) {
-                    orderHelp(*sel, tgt->id); setStatus("Helping build...");
-                } else if (tgt && tgt->alive && tgt->owner == 0 && tgt->type == E_FARM && !tgt->underConstruction && sel->type == E_PEASANT) {
-                    orderHelp(*sel, tgt->id); setStatus("Tending farm...");
-                } else if (tgt && tgt->alive && tgt->owner == 0 && !tgt->underConstruction && canGarrisonIn(tgt->type) && sel->type != E_CATAPULT) {
-                    orderGarrison(*sel, tgt->id);
-                } else if (tgt && tgt->alive && tgt->owner != 0 && g.map[mapY][mapX].visible[0]) {
-                    orderAttack(*sel, tgt->id); setStatus("Attacking!");
-                } else if (sel->type == E_PEASANT) {
-                    Terrain ter = g.map[mapY][mapX].terrain;
-                    bool isW = (ter==T_FOREST||ter==T_PINE||ter==T_PALM||ter==T_DEAD_TREE);
-                    if ((ter==T_GOLD||isW||ter==T_BERRY) && g.map[mapY][mapX].resources > 0) {
-                        orderGather(*sel, mapX, mapY);
-                        setStatus(ter==T_GOLD ? "Mining gold..."
-                                : ter==T_BERRY ? "Picking berries..." : "Chopping wood...");
-                    } else if (ter == T_WHEAT && !tgt && canPlace(E_FARM, mapX, mapY, 0)) {
-                        int fid = spawnEntity(E_FARM, 0, mapX, mapY, true);
-                        orderHelp(*sel, fid);
-                        setStatus("Working wheat field...");
-                    } else { orderMove(*sel, mapX, mapY); setStatus("Moving..."); }
-                } else if (sel->type == E_FISHING_BOAT) {
-                    Terrain ter = g.map[mapY][mapX].terrain;
-                    if (ter == T_FISH && g.map[mapY][mapX].resources > 0) {
-                        orderGather(*sel, mapX, mapY); setStatus("Fishing...");
-                    } else { orderMove(*sel, mapX, mapY); setStatus("Moving..."); }
-                } else { orderMove(*sel, mapX, mapY); setStatus("Moving..."); }
-            }
+            if (g.selectedIds.size() > 1) cmdAtTileGroup(mapX, mapY);
+            else                          cmdAtTileSingle(findEntity(g.selectedId), mapX, mapY);
         }
         // All other events (pure movement): cursor already updated above
         break;

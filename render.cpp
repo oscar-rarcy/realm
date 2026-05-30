@@ -491,7 +491,7 @@ void renderMap() {
                 if (isNaval(ent->type)) cp = (ent->owner == 0) ? CP_SHIP_PLAYER : CP_SHIP_ENEMY;
                 // Gate: glyph reflects open/closed state
                 if (ent->type == E_GATE && !ent->underConstruction) {
-                    ch = (ent->carrying > 0) ? '-' : '|';
+                    ch = ent->gateOpen ? '-' : '|';
                     drawCh = (chtype)ch;
                 }
                 if (ent->underConstruction && g.tick%10 < 5) { ch = '#'; drawCh = (chtype)ch; }
@@ -794,8 +794,8 @@ void renderUI() {
                     if (sel->type==E_MINING_CAMP) mvprintw(iy++, panelX+1, "Gold drop-off");
                     if (sel->type==E_MILL)        mvprintw(iy++, panelX+1, "Enables harvesting");
                     if (sel->type==E_GATE) {
-                        mvprintw(iy++, panelX+1, sel->carrying>0 ? "State: Open" : "State: Closed");
-                        mvprintw(iy++, panelX+1, sel->gatherType==1 ? "Mode: Locked" : "Mode: Auto");
+                        mvprintw(iy++, panelX+1, sel->gateOpen ? "State: Open" : "State: Closed");
+                        mvprintw(iy++, panelX+1, sel->gateLocked ? "Mode: Locked" : "Mode: Auto");
                         mvprintw(iy++, panelX+1, "[O] Toggle/Lock");
                     }
                     if (sel->type==E_CASTLE)     mvprintw(iy++, panelX+1, "+15 Supply, 350 HP");
