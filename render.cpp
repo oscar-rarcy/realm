@@ -176,6 +176,9 @@ void initColors() {
     init_pair(CP_MM_CASTLE,      C::BRIGHT_GRAY,  C::NEAR_BLACK);
     init_pair(CP_SPRING_FLOWER,  C::LAVENDER,     bg);
 
+    init_pair(CP_LAVA,           C::ORANGE,       C::RED);
+    init_pair(CP_LAVA_HOT,       C::BRIGHT_GOLD,  C::RED);
+    init_pair(CP_ASH,            C::DARK_GRAY,    bg);
     init_pair(CP_DEER,           C::TAN,          bg);
     init_pair(CP_WOLF,           C::LIGHT_GRAY,   bg);
     init_pair(CP_SHEEP,          C::SNOW_WHITE,   bg);
@@ -251,6 +254,13 @@ void getTerrainVisual(Terrain t, int x, int y, char& ch, int& cp) {
     case T_FISH:         ch=(g.tick%30<15)?'~':'"'; cp=CP_SHALLOWS; break;
     case T_RUINS:        ch='&'; cp=CP_RUINS;       break;
     case T_GRAVEL:       ch=':'; cp=CP_GRAVEL;      break;
+    case T_LAVA: {
+        int frame = (g.tick/4 + x*3 + y*5) % 6;
+        ch = (frame < 2) ? '~' : (frame < 4) ? '=' : '*';
+        cp = (frame == 1 || frame == 4) ? CP_LAVA_HOT : CP_LAVA;
+        break;
+    }
+    case T_ASH:          ch='.'; cp=CP_ASH;         break;
     case T_CASTLE_WALL:  ch='#'; cp=CP_CASTLE_WALL; break;
     case T_CASTLE_FLOOR: ch='.'; cp=CP_CASTLE_FLOOR;break;
     case T_CASTLE_GATE:  ch='='; cp=CP_CASTLE_GATE; break;
@@ -512,6 +522,15 @@ void renderMap() {
                 if (ent->underConstruction && g.tick%10 < 5) { ch = '#'; drawCh = (chtype)ch; }
                 // Dwarf-Fortress-style solid wall block when complete
                 if (ent->type == E_WALL && !ent->underConstruction) drawCh = ACS_CKBOARD;
+                // Siege engine arm animation: catapult '-'→'/' on fire; ram '-'→'=' on ram
+                if (ent->type == E_CATAPULT) {
+                    bool firing = ent->state==S_ATTACKING && ent->atkCd > STATS[E_CATAPULT].atkSpeed*2/3;
+                    ch = firing ? '/' : '-'; drawCh = (chtype)ch;
+                }
+                if (ent->type == E_RAM) {
+                    bool ramming = ent->state==S_ATTACKING && ent->atkCd > STATS[E_RAM].atkSpeed*2/3;
+                    ch = ramming ? '=' : '-'; drawCh = (chtype)ch;
+                }
                 // Recently in combat: gentle '!' pulse — ~1.5 Hz, not strobing
                 if (ent->alertTicks > 0 && (g.tick % 8) < 4) { ch = '!'; drawCh = (chtype)ch; }
             }
@@ -561,6 +580,15 @@ void renderMap() {
                 if (ent && ent->alive) attr |= A_BOLD;
                 if (isSel)        attr |= A_UNDERLINE;
                 attron(attr); mvaddch(scY, scX, drawCh); attroff(attr);
+            }
+
+            // Siege engines render as 2 chars: arm ('-'/'/' or '-'/'=') + body ('c'/'r')
+            if (ent && ent->alive && (ent->type==E_CATAPULT||ent->type==E_RAM)
+                    && sx+1 < g.viewW && !entityAt(mx+1, my)) {
+                char sc = (ent->type==E_CATAPULT) ? 'c' : 'r';
+                int sattr = COLOR_PAIR(cp) | A_BOLD;
+                if (isSel) sattr |= A_UNDERLINE;
+                attron(sattr); mvaddch(scY, scX+1, sc); attroff(sattr);
             }
         }
     }
@@ -631,6 +659,7 @@ void renderUI() {
             "Palm Grove","Dead Tree","Mountain","Rolling Hills","Stone","Deep Water","Shallows",
             "Marshland","Reed Bed","Gold Deposit","Sandy Ground","Sand Dunes","Snow Cover","Frozen Ice",
             "Bare Earth","Stone Road","Mud","Wheat Field","Berry Bush","Fish Shoal","Ancient Ruins","Gravel",
+            "Lava Fissure","Volcanic Ash",
             "Castle Wall","Castle Floor","Castle Gate"};
         attron(COLOR_PAIR(CP_UI_TEXT)); mvprintw(1, 1, "%-16s", tn[ct.terrain]); attroff(COLOR_PAIR(CP_UI_TEXT));
         attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(1, 18, "[%s]", bn[ct.biome]); attroff(COLOR_PAIR(CP_UI_DIM));
@@ -861,7 +890,7 @@ void renderUI() {
         Entity* s2 = findEntity(g.selectedId);
         if (s2) {
             if (s2->type==E_TOWNHALL)  mvprintw(botY2, 1, " TRAIN: [P]easant(50g) [Esc] ");
-            else if (s2->type==E_BARRACKS) mvprintw(botY2, 1, " TRAIN: [M]ilitia(60g) [A]rcher(70g) [C]atapult(150g+40w) [Esc] ");
+            else if (s2->type==E_BARRACKS) mvprintw(botY2, 1, " TRAIN: [M]ilitia(60g) [A]rcher(70g) [C]atapult(150g+40w) [R]am(70g+80w) [Esc] ");
             else if (s2->type==E_STABLE)   mvprintw(botY2, 1, " TRAIN: [K]night(120g) [Esc] ");
             else if (s2->type==E_DOCK)     mvprintw(botY2, 1, " TRAIN: [B]oat(80g+50w) [W]arship(150g+80w) [T]ransport(80g+40w) [Esc] ");
         }
@@ -874,8 +903,8 @@ void renderUI() {
         attron(A_BOLD); mvprintw(botY2, 1, " PAUSED - Press [P] to resume "); attroff(A_BOLD);
     } else if (g.mode == M_GAME_OVER) {
         attron(A_BOLD);
-        if (g.winner==0) mvprintw(botY2, 1, " VICTORY! The realm is yours. [Q] Quit ");
-        else             mvprintw(botY2, 1, " DEFEAT! Your kingdom has fallen. [Q] Quit ");
+        if (g.winner==0) mvprintw(botY2, 1, " VICTORY! The realm is yours. [Enter] New game  [Q] Quit ");
+        else             mvprintw(botY2, 1, " DEFEAT! Your kingdom has fallen. [Enter] New game  [Q] Quit ");
         attroff(A_BOLD);
     } else if (g.groupAssignPending) {
         attron(A_BOLD); mvprintw(botY2, 1, " GROUP ASSIGN: Press [1]-[9] to assign selection to group, [Esc] to cancel "); attroff(A_BOLD);

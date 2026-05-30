@@ -40,10 +40,15 @@ void generateMap() {
         // Larger biome patches: scale halved for more distinct identity.
         float n1 = sampleNoise(x*0.04f, y*0.04f), n2 = sampleNoise(x*0.025f+10, y*0.025f+10);
         Biome b = B_TEMPERATE;
-        if (n1 > 0.7f) b = B_DESERT;
-        else if (n1 < 0.25f) b = B_SNOW;
-        else if (n2 > 0.7f) b = B_SWAMP;
-        else if (n2 < 0.3f && n1 > 0.4f && n1 < 0.6f) b = B_FOREST;
+        if (g.biomeChoice >= 0) {
+            b = (Biome)g.biomeChoice;
+        } else {
+            if (n1 > 0.72f) b = B_DESERT;
+            else if (n1 < 0.22f) b = B_SNOW;
+            else if (n2 > 0.72f) b = B_SWAMP;
+            else if (n2 < 0.28f && n1 > 0.4f && n1 < 0.6f) b = B_FOREST;
+            else if (n1 > 0.62f && n2 > 0.62f) b = B_VOLCANIC;
+        }
         g.map[y][x] = {T_GRASS, 0, {}, {}, b, T_GRASS, 0};
     }
     for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
@@ -82,6 +87,15 @@ void generateMap() {
             else if (r<60) { t.terrain = T_BERRY;  t.resources = 50  + rand() % 40;  }
             else if (r<65) t.terrain = T_TALL_GRASS;
             else           t.terrain = T_GRASS;
+            break;
+        case B_VOLCANIC:
+            // Hostile terrain: lava fissures, ash plains, rich gold veins.
+            if (r<18)      t.terrain = T_LAVA;   // impassable fissures
+            else if (r<30) t.terrain = T_STONE;
+            else if (r<38) t.terrain = T_MOUNTAIN;
+            else if (r<50) t.terrain = T_GRAVEL;
+            else if (r<60) { t.terrain = T_GOLD; t.resources = 150 + rand()%100; } // rich seams
+            else           t.terrain = T_ASH;
             break;
         }
     }

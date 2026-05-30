@@ -37,7 +37,7 @@ bool isPassable(int x, int y) {
     // deep water and fish shoals block them. Winter freezes water → T_ICE which is
     // passable everywhere as a slick. Mountains/stone/walls always block.
     return t != T_MOUNTAIN && t != T_WATER && t != T_STONE && t != T_CASTLE_WALL
-        && t != T_FISH;
+        && t != T_FISH && t != T_LAVA;
 }
 
 bool isPassableWater(int x, int y) {
@@ -433,6 +433,7 @@ static void orderAttackMove(Entity& e, int tx, int ty) {
 void orderAttack(Entity& e, int tid) {
     Entity* t = findEntity(tid);
     if (!t) return;
+    if (e.type == E_RAM && !isBuilding(t->type)) return; // rams demolish buildings only
     e.holdPosition = 0;
     e.state = S_ATTACKING; e.targetId = tid;
 }
@@ -769,7 +770,7 @@ void moveAlongPath(Entity& e) {
     Terrain ter = g.map[ny][nx].terrain;
     int spd = STATS[e.type].speed;
     if (ter==T_ROAD||ter==T_DIRT||ter==T_CASTLE_FLOOR) spd = std::max(1, spd-1);
-    else if (ter==T_MARSH||ter==T_SHALLOWS||ter==T_SAND||ter==T_SNOW||ter==T_ICE) spd += 1;
+    else if (ter==T_MARSH||ter==T_SHALLOWS||ter==T_SAND||ter==T_SNOW||ter==T_ICE||ter==T_ASH) spd += 1;
     else if (ter==T_MUD) spd += 2; // bogged down
     if (getSeason() == WINTER) spd = std::max(spd, STATS[e.type].speed+1);
     // Weather: rain and storm bog down movement on natural ground.
@@ -919,7 +920,7 @@ void tickEntity(Entity& e) {
         // Military auto-engages anything visible within fog radius — units now
         // close in on threats they can see rather than waiting to be poked.
         if (!e.holdPosition && e.type != E_PEASANT && e.type != E_FISHING_BOAT
-            && e.type != E_TRANSPORT && STATS[e.type].atk > 0) {
+            && e.type != E_TRANSPORT && e.type != E_RAM && STATS[e.type].atk > 0) {
             int aggroRange = std::max(FOG_RADIUS, unitRange(e) + 1);
             Entity* en = findNearestEnemy(e, aggroRange);
             if (en) orderAttack(e, en->id);
@@ -958,6 +959,8 @@ void tickEntity(Entity& e) {
         // target dies inside the safe building.
         if (t->state == S_GARRISONED) { e.state = S_IDLE; e.targetId = -1; break; }
         int d = dist(e.x, e.y, t->x, t->y);
+        // Catapults need standoff — too close to arm the sling properly.
+        if (e.type == E_CATAPULT && d < 2) { e.state = S_IDLE; break; }
         if (d <= unitRange(e)) {
             if (e.atkCd <= 0) {
                 int rawDmg = unitAtk(e);

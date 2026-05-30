@@ -73,7 +73,13 @@ static void cmdAtTileGroup(int x, int y) {
 
 void handleInput(int ch) {
     if (ch == ERR) return;
-    if (ch == 'q' || ch == 'Q') { endwin(); exit(0); }
+    if (ch == 'q' || ch == 'Q') {
+        if (g.mode == M_GAME_OVER) { g.returnToMenu = true; return; }
+        endwin(); exit(0);
+    }
+    if ((ch=='\n'||ch==KEY_ENTER||ch=='\r') && g.mode==M_GAME_OVER) {
+        g.returnToMenu = true; return;
+    }
     if ((ch=='p'||ch=='P') && (g.mode==M_NORMAL||g.mode==M_PAUSED)) {
         g.mode = (g.mode==M_PAUSED) ? M_NORMAL : M_PAUSED; return;
     }
@@ -126,6 +132,7 @@ void handleInput(int ch) {
             if (ch=='m'||ch=='M') tt = E_MILITIA;
             else if (ch=='a'||ch=='A') tt = E_ARCHER;
             else if (ch=='c'||ch=='C') tt = E_CATAPULT;
+            else if (ch=='r'||ch=='R') tt = E_RAM;
         }
         else if (sel->type == E_STABLE) { if (ch=='k'||ch=='K') tt = E_KNIGHT; }
         else if (sel->type == E_DOCK)   {
@@ -449,12 +456,12 @@ void handleInput(int ch) {
         if (!g.selectedIds.empty()) {
             for (int id : g.selectedIds) {
                 Entity* e = findEntity(id);
-                if (e && (e->type==E_MILITIA||e->type==E_ARCHER||e->type==E_KNIGHT||e->type==E_CATAPULT))
+                if (e && (e->type==E_MILITIA||e->type==E_ARCHER||e->type==E_KNIGHT||e->type==E_CATAPULT||e->type==E_RAM))
                     { hasMilitarySel = true; break; }
             }
         } else if (g.selectedId >= 0) {
             Entity* e = findEntity(g.selectedId);
-            if (e && (e->type==E_MILITIA||e->type==E_ARCHER||e->type==E_KNIGHT||e->type==E_CATAPULT))
+            if (e && (e->type==E_MILITIA||e->type==E_ARCHER||e->type==E_KNIGHT||e->type==E_CATAPULT||e->type==E_RAM))
                 hasMilitarySel = true;
         }
         if (hasMilitarySel) {
@@ -464,7 +471,7 @@ void handleInput(int ch) {
             g.selectedIds.clear(); g.selectedId = -1;
             for (auto& e : g.entities) {
                 if (!e.alive || e.owner != 0 || e.state == S_GARRISONED) continue;
-                if (e.type==E_MILITIA||e.type==E_ARCHER||e.type==E_KNIGHT||e.type==E_CATAPULT) {
+                if (e.type==E_MILITIA||e.type==E_ARCHER||e.type==E_KNIGHT||e.type==E_CATAPULT||e.type==E_RAM) {
                     g.selectedIds.push_back(e.id);
                     if (g.selectedId < 0) { g.selectedId=e.id; g.cursorX=e.x; g.cursorY=e.y; }
                 }

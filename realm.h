@@ -38,13 +38,14 @@ enum Terrain {
     T_DIRT, T_ROAD, T_MUD,
     T_WHEAT, T_BERRY, T_FISH,
     T_RUINS, T_GRAVEL,
+    T_LAVA, T_ASH,
     T_CASTLE_WALL, T_CASTLE_FLOOR, T_CASTLE_GATE
 };
 
 enum EntityType {
     E_NONE = 0,
     E_PEASANT, E_MILITIA, E_ARCHER, E_KNIGHT, E_CATAPULT,
-    E_FISHING_BOAT, E_WARSHIP, E_TRANSPORT,
+    E_FISHING_BOAT, E_WARSHIP, E_TRANSPORT, E_RAM,
     E_TOWNHALL, E_HOUSE, E_BARRACKS, E_STABLE, E_TOWER,
     E_FARM, E_BLACKSMITH, E_CHURCH, E_MARKET, E_WALL, E_GATE, E_CASTLE,
     E_LUMBER_CAMP, E_MINING_CAMP, E_MILL, E_DOCK,
@@ -60,7 +61,7 @@ enum GameMode  { M_NORMAL, M_BUILD_SELECT, M_TRAIN_SELECT, M_WALL_DRAG, M_PAUSED
 
 // Research bits stored in Player.research
 enum Research { R_IRON_WEAPONS = 1, R_CROSSBOWS = 2 };
-enum Biome     { B_TEMPERATE, B_DESERT, B_SNOW, B_SWAMP, B_FOREST };
+enum Biome     { B_TEMPERATE, B_DESERT, B_SNOW, B_SWAMP, B_FOREST, B_VOLCANIC };
 enum Season    { SPRING = 0, SUMMER, AUTUMN, WINTER };
 enum Weather   { W_CLEAR = 0, W_RAIN, W_STORM, W_SNOW };
 
@@ -97,6 +98,7 @@ enum {
     CP_MM_GOLD, CP_MM_SAND, CP_MM_SNOW, CP_MM_MTN, CP_MM_CASTLE,
     CP_SPRING_FLOWER,
     CP_DEER, CP_WOLF, CP_SHEEP, CP_BOAR, CP_MM_ANIMAL,
+    CP_LAVA, CP_LAVA_HOT, CP_ASH,
     CP_COUNT
 };
 
@@ -110,7 +112,7 @@ struct EntityStats {
 };
 extern const EntityStats STATS[];
 
-inline bool isUnit(EntityType t)     { return (t>=E_PEASANT&&t<=E_TRANSPORT)||(t>=E_DEER&&t<=E_BOAR); }
+inline bool isUnit(EntityType t)     { return (t>=E_PEASANT&&t<=E_RAM)||(t>=E_DEER&&t<=E_BOAR); }
 inline bool isBuilding(EntityType t) { return t>=E_TOWNHALL&&t<=E_DOCK; }
 inline bool isRanged(EntityType t)   { return t==E_ARCHER||t==E_CATAPULT||t==E_WARSHIP; }
 inline bool isNaval(EntityType t)    { return t==E_FISHING_BOAT||t==E_WARSHIP||t==E_TRANSPORT; }
@@ -172,6 +174,8 @@ struct Game {
     int prevSeason; // for detecting season transitions
     int weather;       // current Weather state
     int weatherTimer;  // ticks until next weather change roll
+    int biomeChoice;   // -1 = random, else Biome enum value forced on whole map
+    bool returnToMenu; // set on game-over to break back to splash screen
 };
 extern Game g;
 

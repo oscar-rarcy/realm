@@ -1,34 +1,90 @@
 #include "realm.h"
 #include <chrono>
 
-// Pre-match menu: pick the number of AI opponents (1, 2, or 3). Q exits.
-static int pickAICount() {
+// Full splash screen. Sets g.biomeChoice. Returns numAIs.
+static int showSplash() {
+    static const char* biomeNames[] = {
+        "Temperate","Desert","Snow","Swamp","Forest","Volcanic","Random"
+    };
+    int numAIs = 1;
+    int biomeIdx = 6; // 6 = random
+
     int maxY, maxX;
     while (true) {
         getmaxyx(stdscr, maxY, maxX);
         erase();
-        int row = maxY/2 - 6;
-        auto center = [&](const char* s) {
-            int len = (int)strlen(s);
-            mvprintw(row++, std::max(0, maxX/2 - len/2), "%s", s);
+
+        int col = std::max(2, maxX/2 - 34);
+        int row = std::max(0, maxY/2 - 14);
+
+        auto pr = [&](int r, int c, const char* fmt, ...) {
+            va_list ap; va_start(ap, fmt);
+            char buf[256]; vsnprintf(buf, sizeof(buf), fmt, ap); va_end(ap);
+            mvprintw(r, c, "%s", buf);
         };
-        attron(A_BOLD); center("REALM"); attroff(A_BOLD);
-        center("=====");
+
+        attron(A_BOLD);
+        pr(row,   col+10, "R  E  A  L  M");
+        pr(row+1, col+8,  "-- Medieval Warlord --");
+        attroff(A_BOLD);
+
+        row += 3;
+        pr(row++, col, "You are lord of a small settlement in a hostile");
+        pr(row++, col, "realm. Gather resources, build an army, and");
+        pr(row++, col, "outlast every rival. Survive winter or starve.");
+
         row++;
-        center("Choose number of opponents:");
+        attron(A_BOLD); pr(row++, col, "CONTROLS"); attroff(A_BOLD);
+        pr(row++, col, "  Space/click    Select unit or building");
+        pr(row++, col, "  Enter/R-click  Command (move/attack/gather)");
+        pr(row++, col, "  B              Build menu");
+        pr(row++, col, "  T              Train units");
+        pr(row++, col, "  A              Select all military");
+        pr(row++, col, "  H              Jump to town hall");
+        pr(row++, col, "  1-9 / G        Control groups");
+        pr(row++, col, "  P              Pause");
+
         row++;
-        center("[1]  1 AI   - duel");
-        center("[2]  2 AIs  - 3-corner FFA");
-        center("[3]  3 AIs  - full 4-corner FFA");
+        attron(A_BOLD); pr(row++, col, "TIPS"); attroff(A_BOLD);
+        pr(row++, col, "  Stockpile food before winter (1 food/unit/8s).");
+        pr(row++, col, "  Boars fight back. Wolves hunt in winter.");
+        pr(row++, col, "  Catapults need 2+ tiles of standoff to fire.");
+
         row++;
-        center("Press 1, 2, or 3 to begin.   Q to quit.");
+        attron(A_BOLD); pr(row++, col, "OPPONENTS"); attroff(A_BOLD);
+        pr(row++, col, "  [1] Duel       [2] Three-way     [3] Four-way");
+
+        row++;
+        attron(A_BOLD); pr(row++, col, "BIOME"); attroff(A_BOLD);
+        pr(row++, col, "  [0] Random   [T] Temperate   [D] Desert");
+        pr(row++, col, "  [S] Snow     [W] Swamp        [F] Forest");
+        pr(row++, col, "  [V] Volcanic");
+
+        row++;
+        attron(A_BOLD);
+        pr(row++, col, "  > Opponents: %d    Biome: %s", numAIs, biomeNames[biomeIdx]);
+        attroff(A_BOLD);
+
+        row++;
+        pr(row, col, "  [Enter] Start game            [Q] Quit");
+
         refresh();
         int ch = getch();
-        if (ch == 'q' || ch == 'Q') { endwin(); exit(0); }
-        if (ch == '1') return 1;
-        if (ch == '2') return 2;
-        if (ch == '3') return 3;
+        if (ch=='q'||ch=='Q') { endwin(); exit(0); }
+        if (ch=='\n'||ch==KEY_ENTER||ch=='\r') break;
+        if (ch=='1') numAIs=1;
+        else if (ch=='2') numAIs=2;
+        else if (ch=='3') numAIs=3;
+        else if (ch=='0') biomeIdx=6;
+        else if (ch=='t'||ch=='T') biomeIdx=0;
+        else if (ch=='d'||ch=='D') biomeIdx=1;
+        else if (ch=='s'||ch=='S') biomeIdx=2;
+        else if (ch=='w'||ch=='W') biomeIdx=3;
+        else if (ch=='f'||ch=='F') biomeIdx=4;
+        else if (ch=='v'||ch=='V') biomeIdx=5;
     }
+    g.biomeChoice = (biomeIdx == 6) ? -1 : biomeIdx;
+    return numAIs;
 }
 
 void initGame(int numAIs) {
@@ -46,6 +102,8 @@ void initGame(int numAIs) {
     g.winner = -1; g.aiTimer = 0; g.farmTimer = 0; g.statusTimer = 0;
     g.buildPending = E_NONE; g.wallDragX = 0; g.wallDragY = 0;
     g.dayPhase = 0.25f; g.seasonPhase = 0.0f; g.prevSeason = -1;
+    g.returnToMenu = false;
+    // biomeChoice is set by showSplash before initGame is called; don't reset it here.
     for (int p = 0; p < MAX_PLAYERS; p++)
         g.players[p] = {300, 200, 100, 0, 0, true, 0, 0};
     g.players[OWNER_NATURE] = {0, 0, 0, 0, 0, true, 0, 0};
@@ -143,69 +201,74 @@ int main() {
     // REPORT_MOUSE_POSITION gives continuous hover events for live cursor tracking
     mousemask(ALL_MOUSE_EVENTS | REPORT_MOUSE_POSITION, NULL);
     initColors();
-    int numAIs = pickAICount();
-    initGame(numAIs);
-    setStatus("Dawn breaks over the realm. Select peasants [Space] and gather [Enter]. [A]=select all military.");
 
     using Clock = std::chrono::steady_clock;
     using Ms    = std::chrono::milliseconds;
-    auto nextTick = Clock::now() + Ms(TICK_MS);
 
-    int lastCx = g.cursorX, lastCy = g.cursorY;
-    bool lastDrag = g.dragging;
     while (true) {
-        // Block only as long as needed to reach the next game tick
-        int wait = (int)std::chrono::duration_cast<Ms>(nextTick - Clock::now()).count();
-        timeout(std::max(0, wait));
-        int ch = getch();
-        handleInput(ch);
+        int numAIs = showSplash();
+        initGame(numAIs);
+        setStatus("Dawn breaks over the realm. Select peasants [Space] and gather [Enter]. [A]=select all military.");
 
-        // Drain any events that piled up (mouse moves, key repeats) without
-        // running game logic for each one — keeps the cursor smooth
-        timeout(0);
-        int extra;
-        while ((extra = getch()) != ERR) handleInput(extra);
+        auto nextTick = Clock::now() + Ms(TICK_MS);
+        int lastCx = g.cursorX, lastCy = g.cursorY;
+        bool lastDrag = g.dragging;
 
-        // Tick and render at fixed rate regardless of input volume
-        bool ticked = false;
-        if (Clock::now() >= nextTick) {
-            nextTick += Ms(TICK_MS);
-            if (g.mode != M_PAUSED && g.mode != M_GAME_OVER) {
-                g.tick++;
-                g.dayPhase += 1.0f / DAY_LENGTH;
-                if (g.dayPhase >= 1.0f) g.dayPhase -= 1.0f;
-                g.seasonPhase += 1.0f / SEASON_LENGTH;
-                if (g.seasonPhase >= 4.0f) g.seasonPhase -= 4.0f;
-                for (int i = 0; i < (int)g.entities.size(); i++) tickEntity(g.entities[i]);
-                tickSeasons(); tickThaw(); tickWinter();
-                tickWeather(); tickPaving();
-                tickTowers(); tickGates(); tickProjectiles(); tickFarms(); tickMarkets();
-                tickChurches(); tickAnimals(); tickAI(); updateFog();
-                // Prune dead IDs from selection + control groups so UI counts
-                // ("Group: N units") stay honest as casualties pile up.
-                auto pruneDead = [](std::vector<int>& v) {
-                    v.erase(std::remove_if(v.begin(), v.end(),
-                        [](int id){ return findEntity(id) == nullptr; }), v.end());
-                };
-                pruneDead(g.selectedIds);
-                for (int i = 0; i < 9; i++) pruneDead(g.controlGroups[i]);
-                if (g.selectedId >= 0 && !findEntity(g.selectedId)) g.selectedId = -1;
-                if (g.tick % 100 == 0) {
-                    g.entities.erase(std::remove_if(g.entities.begin(), g.entities.end(),
-                        [](const Entity& e){ return !e.alive && e.state==S_DEAD; }), g.entities.end());
-                    // Defensive: rebuild supply totals so any kill path that
-                    // missed updateSupply gets reconciled within ~8 seconds.
-                    for (int p = 0; p < MAX_PLAYERS; p++) updateSupply(p);
-                    checkWin();
+        while (!g.returnToMenu) {
+            // Block only as long as needed to reach the next game tick
+            int wait = (int)std::chrono::duration_cast<Ms>(nextTick - Clock::now()).count();
+            timeout(std::max(0, wait));
+            int ch = getch();
+            handleInput(ch);
+
+            // Drain any events that piled up (mouse moves, key repeats) without
+            // running game logic for each one — keeps the cursor smooth
+            timeout(0);
+            int extra;
+            while ((extra = getch()) != ERR) handleInput(extra);
+
+            // Tick and render at fixed rate regardless of input volume
+            bool ticked = false;
+            if (Clock::now() >= nextTick) {
+                nextTick += Ms(TICK_MS);
+                if (g.mode != M_PAUSED && g.mode != M_GAME_OVER) {
+                    g.tick++;
+                    g.dayPhase += 1.0f / DAY_LENGTH;
+                    if (g.dayPhase >= 1.0f) g.dayPhase -= 1.0f;
+                    g.seasonPhase += 1.0f / SEASON_LENGTH;
+                    if (g.seasonPhase >= 4.0f) g.seasonPhase -= 4.0f;
+                    for (int i = 0; i < (int)g.entities.size(); i++) tickEntity(g.entities[i]);
+                    tickSeasons(); tickThaw(); tickWinter();
+                    tickWeather(); tickPaving();
+                    tickTowers(); tickGates(); tickProjectiles(); tickFarms(); tickMarkets();
+                    tickChurches(); tickAnimals(); tickAI(); updateFog();
+                    // Prune dead IDs from selection + control groups so UI counts
+                    // ("Group: N units") stay honest as casualties pile up.
+                    auto pruneDead = [](std::vector<int>& v) {
+                        v.erase(std::remove_if(v.begin(), v.end(),
+                            [](int id){ return findEntity(id) == nullptr; }), v.end());
+                    };
+                    pruneDead(g.selectedIds);
+                    for (int i = 0; i < 9; i++) pruneDead(g.controlGroups[i]);
+                    if (g.selectedId >= 0 && !findEntity(g.selectedId)) g.selectedId = -1;
+                    if (g.tick % 100 == 0) {
+                        g.entities.erase(std::remove_if(g.entities.begin(), g.entities.end(),
+                            [](const Entity& e){ return !e.alive && e.state==S_DEAD; }), g.entities.end());
+                        // Defensive: rebuild supply totals so any kill path that
+                        // missed updateSupply gets reconciled within ~8 seconds.
+                        for (int p = 0; p < MAX_PLAYERS; p++) updateSupply(p);
+                        checkWin();
+                    }
                 }
+                render();
+                ticked = true;
             }
-            render();
-            ticked = true;
+            // Snappy cursor: redraw between ticks when the mouse moved or a drag updated.
+            bool cursorMoved = (g.cursorX != lastCx || g.cursorY != lastCy || g.dragging != lastDrag);
+            if (!ticked && cursorMoved) render();
+            lastCx = g.cursorX; lastCy = g.cursorY; lastDrag = g.dragging;
         }
-        // Snappy cursor: redraw between ticks when the mouse moved or a drag updated.
-        bool cursorMoved = (g.cursorX != lastCx || g.cursorY != lastCy || g.dragging != lastDrag);
-        if (!ticked && cursorMoved) render();
-        lastCx = g.cursorX; lastCy = g.cursorY; lastDrag = g.dragging;
+        // returnToMenu set — loop back to splash.
     }
     endwin();
     return 0;
