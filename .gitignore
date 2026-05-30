@@ -1,14 +1,107 @@
-# Build output
-realm
+# -------------------------------------------------------------------
+# Build outputs
+# -------------------------------------------------------------------
+
+/realm
+/realm.exe
+/realm.out
+/realm.app/
+/realm.dSYM/
+
 *.o
+*.obj
 *.d
+*.a
+*.lib
+*.so
+*.dylib
+*.dll
+*.exe
+*.out
+*.pdb
+*.ilk
+*.idb
 
-# macOS
-.DS_Store
+# If realm.command is a generated launcher, keep this.
+# If it is a handwritten script you want in git, remove this line.
+/realm.command
 
-# JetBrains IDE
+
+# -------------------------------------------------------------------
+# Build directories
+# -------------------------------------------------------------------
+
+/build/
+/dist/
+/out/
+/bin/
+/obj/
+/debug/
+/release/
+
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+compile_commands.json
+CTestTestfile.cmake
+Testing/
+
+
+# -------------------------------------------------------------------
+# Generated dependency / make files
+# -------------------------------------------------------------------
+
+.deps/
+*.gcda
+*.gcno
+*.gcov
+
+
+# -------------------------------------------------------------------
+# IDEs / editors
+# -------------------------------------------------------------------
+
 .idea/
+.vscode/
+*.code-workspace
 
-# Swap / temp
 *.swp
+*.swo
 *~
+*.bak
+*.tmp
+*.temp
+
+
+# -------------------------------------------------------------------
+# OS files
+# -------------------------------------------------------------------
+
+.DS_Store
+.AppleDouble
+.LSOverride
+
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+
+# -------------------------------------------------------------------
+# Logs / runtime junk
+# -------------------------------------------------------------------
+
+*.log
+logs/
+tmp/
+temp/
+
+
+# -------------------------------------------------------------------
+# Local notes / scratch files
+# -------------------------------------------------------------------
+
+notes.rtf
+notes.txt
+scratch/
+.junie/
