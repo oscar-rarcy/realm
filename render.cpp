@@ -867,7 +867,8 @@ void renderUI() {
                     if (sel->type==E_CHURCH)     mvprintw(iy++, panelX+1, "Heals nearby +Vision");
                     if (sel->type==E_MARKET)     mvprintw(iy++, panelX+1, "Passive gold income");
                     if (sel->type==E_FARM)        { mvprintw(iy++, panelX+1, "Generates food");
-                                                     mvprintw(iy++, panelX+1, "Assign peasant to tend"); }
+                                                     mvprintw(iy++, panelX+1, "Assign peasant to tend");
+                                                     mvprintw(iy++, panelX+1, "Ripe: %d / 20", sel->carrying); }
                     if (sel->type==E_LUMBER_CAMP) mvprintw(iy++, panelX+1, "Wood drop-off");
                     if (sel->type==E_MINING_CAMP) mvprintw(iy++, panelX+1, "Gold drop-off");
                     if (sel->type==E_MILL)        mvprintw(iy++, panelX+1, "Enables harvesting");
@@ -893,6 +894,7 @@ void renderUI() {
             mvprintw(iy++, panelX+1, "$ Gold   T Oak");
             mvprintw(iy++, panelX+1, "^ Mtn    Y Pine");
             mvprintw(iy++, panelX+1, "~ Water  n Hills");
+            mvprintw(iy++, panelX+1, "* Berry  %% Wheat");
             mvprintw(iy++, panelX+1, "# Castle & Ruins");
             attroff(COLOR_PAIR(CP_UI_TEXT)); iy++;
             attron(COLOR_PAIR(CP_PLAYER));

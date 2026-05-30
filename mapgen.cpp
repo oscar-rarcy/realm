@@ -226,6 +226,23 @@ void generateMap() {
             if (inBounds(nx,ny) && g.map[ny][nx].terrain == T_GRASS) g.map[ny][nx].terrain = T_RUINS;
         }
     }
+    // Berry patches — scattered clusters in temperate/forest/swamp biomes so any
+    // map (even one with biome forced via splash) has wild food to forage.
+    for (int i = 0; i < 14; i++) {
+        int bx = 10 + rand()%(MAP_W-20), by = 10 + rand()%(MAP_H-20);
+        Biome b = g.map[by][bx].biome;
+        if (b == B_DESERT || b == B_SNOW || b == B_VOLCANIC || b == B_OCEAN) continue;
+        int sz = 1 + rand() % 3;
+        for (int dy = -sz; dy <= sz; dy++) for (int dx = -sz; dx <= sz; dx++) {
+            int nx = bx+dx, ny = by+dy;
+            if (!inBounds(nx,ny)) continue;
+            Terrain o = g.map[ny][nx].terrain;
+            if ((o==T_GRASS||o==T_TALL_GRASS||o==T_MEADOW) && rand()%3 != 0) {
+                g.map[ny][nx].terrain = T_BERRY;
+                g.map[ny][nx].resources = 50 + rand() % 40;
+            }
+        }
+    }
     // Wheat patches
     for (int i = 0; i < 12; i++) {
         int wx = 10 + rand()%(MAP_W-20), wy = 10 + rand()%(MAP_H-20);

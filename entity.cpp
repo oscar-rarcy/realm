@@ -98,7 +98,9 @@ Entity* findDepot(Entity& e) {
         bool isWood = (o.type == E_LUMBER_CAMP && e.gatherType == 1);
         bool isGold = (o.type == E_MINING_CAMP && e.gatherType == 0);
         bool isFish = (o.type == E_DOCK        && e.gatherType == 2);
-        if (isBase || isWood || isGold || isFish) {
+        // Mill accepts food deliveries from farm couriers (and berry pickers).
+        bool isFood = (o.type == E_MILL        && e.gatherType == 3);
+        if (isBase || isWood || isGold || isFish || isFood) {
             int d = mdist(e.x, e.y, o.x, o.y);
             if (d < bestD) { bestD = d; best = &o; }
         }
@@ -1067,6 +1069,17 @@ void tickEntity(Entity& e) {
             else if (e.gatherType == 1) g.players[e.owner].wood += e.carrying;
             else                        g.players[e.owner].food += e.carrying;
             e.carrying = 0;
+            // Farm courier: rallyX/Y stores the farm we came from — go back and resume tending.
+            if (e.gatherType == 3 && inBounds(e.rallyX, e.rallyY)) {
+                Entity* home = entityAt(e.rallyX, e.rallyY);
+                if (home && home->alive && home->type == E_FARM
+                    && home->owner == e.owner && !home->underConstruction) {
+                    e.state = S_BUILDING; e.targetId = home->id;
+                    e.targetX = home->x; e.targetY = home->y;
+                    e.path = findPathFor(e, home->x, home->y); e.pathIdx = 0;
+                    break;
+                }
+            }
             Tile& rt = g.map[e.rallyY][e.rallyX];
             bool isW = (rt.terrain==T_FOREST||rt.terrain==T_PINE||rt.terrain==T_PALM||rt.terrain==T_DEAD_TREE);
             bool isBerry = (rt.terrain == T_BERRY);
@@ -1129,9 +1142,27 @@ void tickEntity(Entity& e) {
     case S_BUILDING: {
         Entity* bld = findEntity(e.targetId);
         if (!bld || !bld->alive) { e.state = S_IDLE; break; }
-        // Tending a completed farm — stay adjacent
+        // Tending a completed farm — stay adjacent and ferry ripe harvest to a depot
         if (!bld->underConstruction && bld->type == E_FARM) {
-            if (dist(e.x, e.y, bld->x, bld->y) > 1) {
+            int d = dist(e.x, e.y, bld->x, bld->y);
+            // Pick up ripe wheat once enough has accumulated to make the trip worthwhile
+            if (d <= 1 && bld->carrying >= 5 && e.carrying == 0) {
+                int take = std::min(bld->carrying, CARRY_MAX);
+                e.carrying = take; bld->carrying -= take;
+                e.gatherType = 3; // food — depots: TC, Castle, Mill
+                e.rallyX = bld->x; e.rallyY = bld->y; // return-to point: this farm
+                Entity* dep = findDepot(e);
+                if (dep) {
+                    e.state = S_RETURNING;
+                    e.targetId = dep->id; e.targetX = dep->x; e.targetY = dep->y;
+                    e.path = findPathFor(e, dep->x, dep->y); e.pathIdx = 0;
+                } else {
+                    // No depot available — drop the harvest back on the farm and keep tending
+                    bld->carrying += take; e.carrying = 0;
+                }
+                break;
+            }
+            if (d > 1) {
                 moveAlongPath(e);
                 if (e.path.empty()) { e.path = findPathFor(e, bld->x, bld->y); e.pathIdx = 0; }
             }
@@ -1235,6 +1266,7 @@ void tickFarms() {
         return;
     }
 
+    const int FARM_CAP = 20;
     int bonus = (getSeason() == SUMMER) ? 1 : 0;
     for (int p = 0; p < MAX_PLAYERS; p++) {
         bool hasMill = false;
@@ -1244,13 +1276,38 @@ void tickFarms() {
 
         for (auto& farm : g.entities) {
             if (!farm.alive || farm.type!=E_FARM || farm.owner!=p || farm.underConstruction) continue;
-            // Any adjacent peasant (explicitly tending or just idle nearby) counts
+            // Any adjacent peasant (explicitly tending or just idle nearby) keeps the wheat growing
             bool tended = false;
             for (auto& u : g.entities) {
                 if (!u.alive || u.owner!=p || u.type!=E_PEASANT) continue;
                 if (dist(u.x, u.y, farm.x, farm.y) <= 1) { tended=true; break; }
             }
-            if (tended) g.players[p].food += 3 + bonus;
+            // Food ripens on the farm itself (capped); a courier peasant carries it
+            // to a Mill or Town Hall — see S_BUILDING farm-tending branch.
+            if (tended && farm.carrying < FARM_CAP)
+                farm.carrying = std::min(FARM_CAP, farm.carrying + 3 + bonus);
+
+            // AI helper: if ripe food is sitting on an AI farm with no courier
+            // assigned, grab the nearest idle owner-peasant and send them to tend.
+            // Player keeps explicit control — never auto-yanks the player's peasants.
+            if (p != 0 && farm.carrying >= 5) {
+                bool assigned = false;
+                for (auto& u : g.entities) {
+                    if (!u.alive || u.owner!=p || u.type!=E_PEASANT) continue;
+                    if (u.state == S_BUILDING && u.targetId == farm.id) { assigned = true; break; }
+                }
+                if (!assigned) {
+                    Entity* best = nullptr; int bestD = 99999;
+                    for (auto& u : g.entities) {
+                        if (!u.alive || u.owner!=p || u.type!=E_PEASANT) continue;
+                        if (u.state != S_IDLE) continue;
+                        if (u.carrying > 0) continue;
+                        int d = mdist(u.x, u.y, farm.x, farm.y);
+                        if (d <= 12 && d < bestD) { bestD = d; best = &u; }
+                    }
+                    if (best) orderHelp(*best, farm.id);
+                }
+            }
         }
     }
 }
