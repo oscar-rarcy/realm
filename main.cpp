@@ -132,6 +132,10 @@ static int showSplash() {
 
 void initGame(int numAIs) {
     srand((unsigned)time(nullptr));
+    // Critical: wipe every piece of per-match state so a new game can't see
+    // entities, projectiles, IDs, or cached fog from the previous match.
+    g.entities.clear();
+    g.projectiles.clear();
     // Reserve generously: late-game FFA can hit a few hundred live entities plus
     // dead-but-not-yet-purged ones. Reallocating mid-tick would dangle the
     // `Entity& e` reference held by tickEntity while it calls spawnEntity (training,
@@ -143,9 +147,14 @@ void initGame(int numAIs) {
     g.dragging = false; g.dragStartX = 0; g.dragStartY = 0;
     for (int i = 0; i < 9; i++) g.controlGroups[i].clear();
     g.winner = -1; g.aiTimer = 0; g.farmTimer = 0; g.statusTimer = 0;
+    g.statusMsg.clear();
+    g.weather = W_CLEAR; g.weatherTimer = 0;
     g.buildPending = E_NONE; g.wallDragX = 0; g.wallDragY = 0;
     g.dayPhase = 0.25f; g.seasonPhase = 0.0f; g.prevSeason = -1;
     g.returnToMenu = false;
+    // Invalidate per-tick detection cache so the new match (which starts at
+    // tick=0 again) can't accidentally share a row with last match's tick 0.
+    resetDetectMapCache();
     // biomeChoice is set by showSplash before initGame is called; don't reset it here.
     for (int p = 0; p < MAX_PLAYERS; p++)
         g.players[p] = {300, 200, 100, 0, 0, true, 0, 0};
@@ -187,6 +196,17 @@ void initGame(int numAIs) {
     g.cursorX = s0.thX + 2; g.cursorY = s0.thY + 2;
     g.viewX = std::max(0, s0.thX - 10); g.viewY = std::max(0, s0.thY - 5);
 
+    // Spawn-safety: hostile/neutral wildlife must keep clear of every player
+    // base so peasants don't get gored before they can react.
+    auto farFromAnyBase = [](int ax, int ay, int radius) {
+        for (auto& e : g.entities) {
+            if (!e.alive) continue;
+            if (e.type != E_TOWNHALL && e.type != E_CASTLE) continue;
+            if (std::abs(ax - e.x) <= radius && std::abs(ay - e.y) <= radius) return false;
+        }
+        return true;
+    };
+
     // Wild deer in herds of 3-6, each herd anchored to a random open spot.
     {
         int total = 0;
@@ -195,7 +215,8 @@ void initGame(int numAIs) {
             for (int t = 0; t < 300 && hx < 0; t++) {
                 int ax = 10 + rand()%(MAP_W-20), ay = 10 + rand()%(MAP_H-20);
                 Terrain tr = g.map[ay][ax].terrain;
-                if (tr==T_GRASS||tr==T_MEADOW||tr==T_TALL_GRASS||tr==T_FOREST)
+                if ((tr==T_GRASS||tr==T_MEADOW||tr==T_TALL_GRASS||tr==T_FOREST)
+                    && farFromAnyBase(ax, ay, 14))
                     { hx=ax; hy=ay; }
             }
             if (hx < 0) continue;
@@ -205,25 +226,28 @@ void initGame(int numAIs) {
                 ax = std::max(1, std::min(ax, MAP_W-2));
                 ay = std::max(1, std::min(ay, MAP_H-2));
                 Terrain tr = g.map[ay][ax].terrain;
-                if ((tr==T_GRASS||tr==T_MEADOW||tr==T_TALL_GRASS||tr==T_FOREST) && !entityAt(ax,ay))
+                if ((tr==T_GRASS||tr==T_MEADOW||tr==T_TALL_GRASS||tr==T_FOREST)
+                    && !entityAt(ax,ay) && farFromAnyBase(ax, ay, 10))
                     { spawnEntity(E_DEER, OWNER_NATURE, ax, ay); i++; total++; }
             }
         }
     }
-    // Wolves in forested areas
+    // Wolves in forested areas — must spawn well clear of every player base.
     for (int i = 0, t = 0; i < 5 && t < 600; t++) {
         int ax = 10 + rand()%(MAP_W-20), ay = 10 + rand()%(MAP_H-20);
         Terrain tr = g.map[ay][ax].terrain;
-        if ((tr==T_FOREST||tr==T_PINE||tr==T_TALL_GRASS) && !entityAt(ax,ay))
+        if ((tr==T_FOREST||tr==T_PINE||tr==T_TALL_GRASS) && !entityAt(ax,ay)
+            && farFromAnyBase(ax, ay, 16))
             { spawnEntity(E_WOLF, OWNER_NATURE, ax, ay); i++; }
     }
-    // Boars in temperate woodland and forest biomes
+    // Boars: same buffer as wolves — these are the biggest early-game peasant hazard.
     for (int i = 0, t = 0; i < 14 && t < 800; t++) {
         int ax = 10 + rand()%(MAP_W-20), ay = 10 + rand()%(MAP_H-20);
         Terrain tr = g.map[ay][ax].terrain;
         Biome  b  = g.map[ay][ax].biome;
         if ((tr==T_FOREST||tr==T_PINE||tr==T_TALL_GRASS||tr==T_GRASS)
-            && (b==B_TEMPERATE||b==B_FOREST) && !entityAt(ax,ay))
+            && (b==B_TEMPERATE||b==B_FOREST) && !entityAt(ax,ay)
+            && farFromAnyBase(ax, ay, 16))
             { spawnEntity(E_BOAR, OWNER_NATURE, ax, ay); i++; }
     }
     // Domestic sheep near each player's town hall (one cluster per occupied corner)

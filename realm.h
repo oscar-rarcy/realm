@@ -243,6 +243,9 @@ bool canGarrisonIn(EntityType bt);
 int  garrisonCap(EntityType bt);
 void ejectGarrison(Entity& bld);
 
+// entity.cpp — state management
+void resetDetectMapCache();
+
 // entity.cpp — tick / game logic
 void tickEntity(Entity& e);
 void tickTowers();

@@ -53,6 +53,12 @@ bool isConcealing() { return isNight() || g.weather == W_STORM; }
 static bool detectMap[MAX_PLAYERS][MAP_H][MAP_W];
 static int  detectMapTick[MAX_PLAYERS] = {-1,-1,-1,-1};
 
+// Force the detect-map cache to rebuild on its next access. Called from initGame
+// so stale data from a previous match can't be served up at the new tick 0.
+void resetDetectMapCache() {
+    for (int p = 0; p < MAX_PLAYERS; p++) detectMapTick[p] = -1;
+}
+
 static void ensureDetectMap(int observerOwner) {
     if (observerOwner < 0 || observerOwner >= MAX_PLAYERS) return;
     if (detectMapTick[observerOwner] == g.tick) return;
@@ -170,6 +176,10 @@ bool canPlace(EntityType type, int x, int y, int owner) {
         if (ter == T_GOLD) return false;
         // Forests are resource terrain — chop the trees before you can build here.
         if (ter==T_FOREST||ter==T_PINE||ter==T_PALM||ter==T_DEAD_TREE) return false;
+        // Land buildings need solid ground — shallows, marsh, reeds and ice are
+        // walkable for units but not foundations. (Docks are special: their
+        // footprint must be land, plus one neighbour must be water — handled below.)
+        if (ter==T_SHALLOWS||ter==T_MARSH||ter==T_REEDS||ter==T_ICE) return false;
         if (entityAt(nx,ny)) return false;
     }
     // Docks must sit on the shoreline — at least one neighbouring tile must be water.
