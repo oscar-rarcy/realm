@@ -85,6 +85,29 @@ bool isDetectedBy(int x, int y, int observerOwner) {
 
 void setStatus(const std::string& msg) { g.statusMsg = msg; g.statusTimer = 35; }
 
+// Food can be deposited at a Mill, Town Hall, or Castle. A Mill tracks how much
+// of the player's food currently lives at its location — if the Mill is destroyed,
+// that share is forfeited. TC/Castle food is treated as safe (loss of either ends the run).
+static void addPlayerFood(int owner, int amount, Entity* depot) {
+    g.players[owner].food += amount;
+    if (depot && depot->type == E_MILL) depot->carrying += amount;
+}
+
+// Drain Mill stockpiles first so the exposed share is consumed before the safer
+// reserve held at TC/Castle. Keeps mill.carrying consistent with player.food.
+static void spendPlayerFood(int owner, int amount) {
+    Player& p = g.players[owner];
+    int spent = std::min(amount, p.food);
+    p.food -= spent;
+    int remaining = spent;
+    for (auto& e : g.entities) {
+        if (remaining <= 0) break;
+        if (!e.alive || e.owner != owner || e.type != E_MILL || e.underConstruction) continue;
+        int take = std::min(e.carrying, remaining);
+        e.carrying -= take; remaining -= take;
+    }
+}
+
 Entity* findEntity(int id) {
     for (auto& e : g.entities) if (e.id == id && e.alive) return &e;
     return nullptr;
@@ -517,7 +540,7 @@ void orderTrain(Entity& bld, EntityType ut) {
     else if (ut==E_WARSHIP)  foodCost = 20;
     else if (ut==E_TRANSPORT) foodCost = 10;
     if (p.food < foodCost) { if (bld.owner==0) setStatus("Need more food!"); return; }
-    p.food -= foodCost;
+    spendPlayerFood(bld.owner, foodCost);
     p.gold -= STATS[ut].costGold; p.wood -= STATS[ut].costWood;
     if (bld.producing == E_NONE) {
         bld.producing = ut; bld.prodProgress = 0; bld.prodTime = STATS[ut].trainTime;
@@ -655,6 +678,15 @@ void ejectGarrison(Entity& bld) {
 static void killEntity(Entity& t) {
     if (!t.alive) return;
     t.alive = false; t.state = S_DEAD;
+    // Mill destruction forfeits the food stored locally at it — the only food depot
+    // that's "exposed" (TC/Castle food is treated as safe; their death ends the run anyway).
+    if (t.type == E_MILL && t.carrying > 0 && t.owner >= 0 && t.owner < MAX_PLAYERS) {
+        int loss = std::min(t.carrying, g.players[t.owner].food);
+        g.players[t.owner].food -= loss;
+        if (t.owner == 0 && loss > 0)
+            setStatus(std::string("Mill destroyed! Lost ") + std::to_string(loss) + " food.");
+        t.carrying = 0;
+    }
     // Anything that can hold a garrison (buildings + transports) drops its cargo on death.
     if (canGarrisonIn(t.type)) ejectGarrison(t);
     if (isBuilding(t.type)) {
@@ -997,13 +1029,27 @@ void tickEntity(Entity& e) {
                     }
                 }
                 if (t->hp <= 0) {
-                    if (t->owner == OWNER_NATURE && e.owner < OWNER_NATURE) {
+                    bool hunted = (t->owner == OWNER_NATURE && e.owner < OWNER_NATURE);
+                    if (hunted && e.type == E_PEASANT && e.carrying == 0) {
+                        // Peasant hunter hauls the carcass back to a Mill/TC/Castle.
                         int food = (t->type==E_SHEEP)?80:(t->type==E_DEER)?120:(t->type==E_BOAR)?100:30;
-                        g.players[e.owner].food += food;
-                        if (e.owner==0) setStatus(std::string("Got ") + std::to_string(food) + " food!");
+                        e.carrying = food; e.gatherType = 3;
+                        e.rallyX = -1; e.rallyY = -1; // sentinel: don't auto-resume after dropoff
+                        Entity* dep = findDepot(e);
+                        if (dep) {
+                            e.state = S_RETURNING;
+                            e.targetId = dep->id; e.targetX = dep->x; e.targetY = dep->y;
+                            e.path = findPathFor(e, dep->x, dep->y); e.pathIdx = 0;
+                            if (e.owner==0) setStatus(std::string("Hunted! Hauling ") + std::to_string(food) + " food.");
+                        } else {
+                            e.carrying = 0; e.state = S_IDLE;
+                            if (e.owner==0) setStatus("Killed game but no Mill/TC nearby — meat wasted.");
+                        }
+                    } else {
+                        // Non-peasant kills (e.g. militia defending base) waste the carcass.
+                        e.state = S_IDLE;
                     }
                     killEntity(*t);
-                    e.state = S_IDLE;
                 }
             } else e.atkCd--;
         } else {
@@ -1067,7 +1113,8 @@ void tickEntity(Entity& e) {
         if (d <= STATS[dep->type].sizeW + 1) {
             if (e.gatherType == 0)      g.players[e.owner].gold += e.carrying;
             else if (e.gatherType == 1) g.players[e.owner].wood += e.carrying;
-            else                        g.players[e.owner].food += e.carrying;
+            else if (e.gatherType == 3) addPlayerFood(e.owner, e.carrying, dep); // farm/berry/hunt
+            else                        g.players[e.owner].food += e.carrying;   // fish (dock-tracked)
             e.carrying = 0;
             // Farm courier: rallyX/Y stores the farm we came from — go back and resume tending.
             if (e.gatherType == 3 && inBounds(e.rallyX, e.rallyY)) {
@@ -1080,6 +1127,8 @@ void tickEntity(Entity& e) {
                     break;
                 }
             }
+            // Hunters use rallyX = -1 sentinel — no auto-resume after dropoff.
+            if (!inBounds(e.rallyX, e.rallyY)) { e.state = S_IDLE; break; }
             Tile& rt = g.map[e.rallyY][e.rallyX];
             bool isW = (rt.terrain==T_FOREST||rt.terrain==T_PINE||rt.terrain==T_PALM||rt.terrain==T_DEAD_TREE);
             bool isBerry = (rt.terrain == T_BERRY);
@@ -1400,10 +1449,10 @@ void tickWinter() {
         Player& pl = g.players[p];
         int drain = unitCount; // 1 food per unit per 100 ticks
         if (pl.food >= drain) {
-            pl.food -= drain;
+            spendPlayerFood(p, drain);
         } else {
             int starve = drain - pl.food;
-            pl.food = 0;
+            spendPlayerFood(p, pl.food);
             // Damage `starve` random units. If any die, they're gone.
             int hits = 0;
             for (auto& e : g.entities) {
