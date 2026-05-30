@@ -107,7 +107,7 @@ void initColors() {
 
     init_pair(CP_WHEAT,         C::WHEAT_GOLD,   bg);
     init_pair(CP_WHEAT_GOLD,    C::BRIGHT_GOLD,  bg);
-    init_pair(CP_BERRY,         C::BERRY_RED,    bg);
+    init_pair(CP_BERRY,         C::BERRY_RED,    C::DARK_GREEN);
 
     init_pair(CP_RUINS,         C::GRAY,         bg);
     init_pair(CP_GRAVEL,        C::MED_GRAY,     bg);
@@ -255,7 +255,7 @@ void getTerrainVisual(Terrain t, int x, int y, char& ch, int& cp) {
     case T_ROAD:         ch='#'; cp=CP_ROAD;        break;
     case T_MUD:          ch=','; cp=CP_DIRT;        break;
     case T_WHEAT:        ch='%'; cp=CP_WHEAT;       break;
-    case T_BERRY:        ch='*'; cp=CP_BERRY;       break;
+    case T_BERRY:        ch=':'; cp=CP_BERRY;       break;
     case T_FISH:         ch=(g.tick%30<15)?'~':'"'; cp=CP_SHALLOWS; break;
     case T_RUINS:        ch='&'; cp=CP_RUINS;       break;
     case T_GRAVEL:       ch=':'; cp=CP_GRAVEL;      break;
@@ -894,7 +894,7 @@ void renderUI() {
             mvprintw(iy++, panelX+1, "$ Gold   T Oak");
             mvprintw(iy++, panelX+1, "^ Mtn    Y Pine");
             mvprintw(iy++, panelX+1, "~ Water  n Hills");
-            mvprintw(iy++, panelX+1, "* Berry  %% Wheat");
+            mvprintw(iy++, panelX+1, ": Berry  %% Wheat");
             mvprintw(iy++, panelX+1, "# Castle & Ruins");
             attroff(COLOR_PAIR(CP_UI_TEXT)); iy++;
             attron(COLOR_PAIR(CP_PLAYER));
