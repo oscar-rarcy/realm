@@ -845,7 +845,7 @@ void tickEntity(Entity& e) {
                     if (nu) orderMove(*nu, e.rallyX, e.rallyY);
                 }
                 e.producing = E_NONE; e.state = S_IDLE;
-                if (e.owner==0) { setStatus("Training complete!"); beep(); }
+                if (e.owner==0) setStatus("Training complete!");
                 // Pop the next queued unit straight into production.
                 if (!e.queue.empty()) {
                     EntityType next = (EntityType)e.queue.front();
@@ -866,7 +866,6 @@ void tickEntity(Entity& e) {
             if (e.owner == 0) {
                 if (bit == R_IRON_WEAPONS) setStatus("Iron Weapons researched — militia/knights +2 atk!");
                 else if (bit == R_CROSSBOWS) setStatus("Crossbows researched — archers +2 range!");
-                beep();
             }
         }
     }
@@ -885,7 +884,7 @@ void tickEntity(Entity& e) {
             e.hp += 2;
             if (e.hp >= e.maxHp) {
                 e.hp = e.maxHp; e.underConstruction = false; updateSupply(e.owner);
-                if (e.owner==0) { setStatus(std::string(STATS[e.type].name) + " complete!"); beep(); }
+                if (e.owner==0) setStatus(std::string(STATS[e.type].name) + " complete!");
                 for (auto& o : g.entities) {
                     if (!o.alive || o.state!=S_BUILDING || o.targetId!=e.id) continue;
                     // For farms: keep tending — S_BUILDING handler routes to its farm branch.
