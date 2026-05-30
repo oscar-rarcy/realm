@@ -349,7 +349,7 @@ void updateFog() {
     int nightPen = isNight() ? 2 : (isDusk()||isDawn()) ? 1 : 0;
     if (getSeason() == WINTER) nightPen += 1; // blizzards eat sight
     if (g.weather == W_STORM) nightPen += 1;
-    else if (g.weather == W_RAIN) nightPen += (nightPen > 0 ? 0 : 1); // mild rain dimming by day
+    else if (g.weather == W_RAIN || g.weather == W_SNOW) nightPen += (nightPen > 0 ? 0 : 1);
     for (auto& e : g.entities) {
         if (!e.alive || e.owner >= OWNER_NATURE) continue;
         if (e.state == S_GARRISONED) continue;
@@ -1424,7 +1424,10 @@ void tickPaving() {
 // WEATHER
 // ============================================================
 void tickWeather() {
-    // Mud creation/drying happens on its own cadence regardless of state changes.
+    Season s = getSeason();
+    float sp = getSeasonProgress();
+
+    // Snow doesn't create mud; rain/storm do.
     if (g.tick % 50 == 0) {
         if (g.weather == W_RAIN || g.weather == W_STORM) {
             int hits = (g.weather == W_STORM) ? 60 : 30;
@@ -1437,7 +1440,7 @@ void tickWeather() {
                 }
             }
         } else {
-            // Drying — mud reverts to dirt over time once skies clear.
+            // Drying — mud reverts to dirt once skies clear (or freeze over).
             for (int i = 0; i < 40; i++) {
                 int x = rand() % MAP_W, y = rand() % MAP_H;
                 Tile& t = g.map[y][x];
@@ -1445,27 +1448,74 @@ void tickWeather() {
             }
         }
     }
-    if (g.weatherTimer > 0) { g.weatherTimer--; return; }
-    // Roll for transition. Season biases the result.
-    int roll = rand() % 100;
-    Season s = getSeason();
-    int rainBias = (s == AUTUMN) ? 50 : (s == SPRING) ? 35 : (s == WINTER) ? 20 : 25;
-    int stormBias = (s == AUTUMN) ? 15 : 8;
-    if (g.weather == W_CLEAR) {
-        if (roll < stormBias)              g.weather = W_STORM;
-        else if (roll < rainBias)          g.weather = W_RAIN;
-        g.weatherTimer = 400 + rand() % 800; // ~30s-100s
-    } else {
-        // Rain/storm linger then break.
-        if (roll < 60) g.weather = W_CLEAR;
-        else if (g.weather == W_RAIN && roll < 75) g.weather = W_STORM;
-        else if (g.weather == W_STORM && roll < 80) g.weather = W_RAIN;
-        g.weatherTimer = 300 + rand() % 600;
+
+    // Season-appropriate weather: rain/storm can't persist into winter; snow can't persist into spring/summer.
+    if (s == WINTER && (g.weather == W_RAIN || g.weather == W_STORM)) {
+        g.weather = W_SNOW;
+        g.weatherTimer = 300;
+        if (g.players[0].alive) setStatus("The rain turns to snow.");
+        return;
     }
+    bool lateAutumn = (s == AUTUMN && sp > 0.5f);
+    if (!lateAutumn && s != WINTER && g.weather == W_SNOW) {
+        g.weather = W_CLEAR;
+        g.weatherTimer = 100;
+        if (g.players[0].alive) setStatus("The skies clear.");
+        return;
+    }
+
+    if (g.weatherTimer > 0) { g.weatherTimer--; return; }
+
+    int roll = rand() % 100;
+
+    if (s == WINTER) {
+        // Winter: only clear or snow.
+        if (g.weather == W_CLEAR) {
+            if (roll < 40) { g.weather = W_SNOW; g.weatherTimer = 500 + rand() % 900; }
+            else             g.weatherTimer = 300 + rand() % 500;
+        } else { // W_SNOW
+            if (roll < 50) g.weather = W_CLEAR;
+            g.weatherTimer = 300 + rand() % 600;
+        }
+    } else if (lateAutumn) {
+        // Late autumn: rain fades, first snows begin. Progress 0.5→1 maps to 0→1 of this range.
+        float late = (sp - 0.5f) * 2.0f;
+        int snowBias  = (int)(late * 30);           // up to 30% snow chance by end of autumn
+        int rainBias  = (int)(50 * (1.0f - late * 0.6f)); // rain fades 50→20
+        int stormBias = (int)(15 * (1.0f - late));  // storms fade out entirely
+        if (g.weather == W_CLEAR) {
+            if      (roll < stormBias)              g.weather = W_STORM;
+            else if (roll < rainBias)               g.weather = W_RAIN;
+            else if (roll < rainBias + snowBias)    g.weather = W_SNOW;
+            g.weatherTimer = 400 + rand() % 800;
+        } else {
+            if (roll < 60) g.weather = W_CLEAR;
+            else if (g.weather == W_RAIN  && roll < 75) g.weather = W_STORM;
+            else if (g.weather == W_STORM && roll < 80) g.weather = W_RAIN;
+            // snow just clears, doesn't escalate
+            g.weatherTimer = 300 + rand() % 600;
+        }
+    } else {
+        // Spring / summer / early autumn: rain and storms only.
+        int rainBias  = (s == AUTUMN) ? 50 : (s == SPRING) ? 35 : 25;
+        int stormBias = (s == AUTUMN) ? 15 : 8;
+        if (g.weather == W_CLEAR) {
+            if (roll < stormBias)     g.weather = W_STORM;
+            else if (roll < rainBias) g.weather = W_RAIN;
+            g.weatherTimer = 400 + rand() % 800;
+        } else {
+            if (roll < 60) g.weather = W_CLEAR;
+            else if (g.weather == W_RAIN  && roll < 75) g.weather = W_STORM;
+            else if (g.weather == W_STORM && roll < 80) g.weather = W_RAIN;
+            g.weatherTimer = 300 + rand() % 600;
+        }
+    }
+
     if (g.players[0].alive) {
-        if (g.weather == W_RAIN)  setStatus("Rain begins.");
+        if      (g.weather == W_RAIN)  setStatus("Rain begins.");
         else if (g.weather == W_STORM) setStatus("A storm rolls in!");
-        else                       setStatus("The skies clear.");
+        else if (g.weather == W_SNOW)  setStatus("Snow begins to fall.");
+        else                           setStatus("The skies clear.");
     }
 }
 

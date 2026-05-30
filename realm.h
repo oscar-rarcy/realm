@@ -62,7 +62,7 @@ enum GameMode  { M_NORMAL, M_BUILD_SELECT, M_TRAIN_SELECT, M_WALL_DRAG, M_PAUSED
 enum Research { R_IRON_WEAPONS = 1, R_CROSSBOWS = 2 };
 enum Biome     { B_TEMPERATE, B_DESERT, B_SNOW, B_SWAMP, B_FOREST };
 enum Season    { SPRING = 0, SUMMER, AUTUMN, WINTER };
-enum Weather   { W_CLEAR = 0, W_RAIN, W_STORM };
+enum Weather   { W_CLEAR = 0, W_RAIN, W_STORM, W_SNOW };
 
 // ============================================================
 // COLOR PAIR IDS  (used in both entity.cpp and render.cpp)

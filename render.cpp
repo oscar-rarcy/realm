@@ -290,6 +290,12 @@ void getTerrainVisual(Terrain t, int x, int y, char& ch, int& cp) {
             }
             if (t==T_FLOWERS && shouldShowSeasonAt(x,y,p*0.7f))  { ch='.'; cp=CP_AUT_GRASS; }
             if (t==T_WHEAT   && shouldShowSeasonAt(x,y,p))        { ch=','; cp=CP_DIRT; }
+            // Late autumn: first frost dusts the ground with light snow patches.
+            if (p > 0.65f) {
+                float frost = (p - 0.65f) * 2.86f; // 0→1 over the last 35% of autumn
+                if (t==T_GRASS||t==T_TALL_GRASS||t==T_MEADOW||t==T_FLOWERS||t==T_DIRT)
+                    if (shouldShowSeasonAt(x+50,y+50, frost*0.45f)) { ch='.'; cp=CP_WIN_GROUND; }
+            }
             break;
         }
         case WINTER: {
@@ -552,6 +558,7 @@ void renderMap() {
 
     // Weather overlay: very gentle pulse — ~1.5 Hz, never overlays units/buildings.
     if (g.weather != W_CLEAR && (g.tick % 8) == 0) {
+        bool snowWeather = (g.weather == W_SNOW);
         int density = (g.weather == W_STORM) ? 2 : 1; // percent — very sparse
         int frame = g.tick;
         for (int sy = 0; sy < g.viewH; sy++) for (int sx = 0; sx < g.viewW; sx++) {
@@ -560,9 +567,16 @@ void renderMap() {
             if (entityAt(mx, my)) continue; // don't paint over units/buildings
             unsigned h = ((unsigned)(mx*73856093u) ^ (unsigned)(my*19349663u) ^ (unsigned)(frame*83492791u));
             if ((int)(h % 100) >= density) continue;
-            attron(COLOR_PAIR(CP_RAIN)|A_BOLD);
-            mvaddch(sy+2, sx, '.');
-            attroff(COLOR_PAIR(CP_RAIN)|A_BOLD);
+            if (snowWeather) {
+                // Snow: white background so the flake doesn't flash dark over snowy ground.
+                attron(COLOR_PAIR(CP_WIN_GROUND));
+                mvaddch(sy+2, sx, '*');
+                attroff(COLOR_PAIR(CP_WIN_GROUND));
+            } else {
+                attron(COLOR_PAIR(CP_RAIN)|A_BOLD);
+                mvaddch(sy+2, sx, '.');
+                attroff(COLOR_PAIR(CP_RAIN)|A_BOLD);
+            }
         }
     }
 }
@@ -595,7 +609,7 @@ void renderUI() {
     if (getBrightness() > 0.5f) { attron(COLOR_PAIR(CP_SUN)|A_BOLD); mvprintw(0,iconX,"*"); attroff(COLOR_PAIR(CP_SUN)|A_BOLD); }
     else { attron(COLOR_PAIR(CP_MOON)); mvprintw(0,iconX,"o"); attroff(COLOR_PAIR(CP_MOON)); }
     attron(COLOR_PAIR(CP_UI_BAR));
-    const char* wn = (g.weather == W_STORM) ? "Storm" : (g.weather == W_RAIN) ? "Rain " : "Clear";
+    const char* wn = (g.weather == W_STORM) ? "Storm" : (g.weather == W_RAIN) ? "Rain " : (g.weather == W_SNOW) ? "Snow " : "Clear";
     mvprintw(0, iconX+1, " %-5s %-6s %s", getTimeName(), getSeasonName(), wn);
     attroff(COLOR_PAIR(CP_UI_BAR));
 
