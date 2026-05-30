@@ -146,6 +146,8 @@ void initColors() {
     init_pair(CP_PROJ_ARROW,     C::BRIGHT_GOLD,  bg);
     init_pair(CP_PROJ_BOULDER,   C::BRIGHT_GRAY,  bg);
     init_pair(CP_PROJ_TOWER,     C::BRIGHT_RED,   bg);
+    // Rain: a transparent blue dot — foreground colour only, no background fill.
+    init_pair(CP_RAIN,           C::ICE_BLUE,     bg);
 
     init_pair(CP_UI_BAR,         C::UI_TEXT,      C::UI_BG);
     init_pair(CP_UI_TEXT,        C::UI_TEXT,      bg);
@@ -318,6 +320,33 @@ void getTerrainVisual(Terrain t, int x, int y, char& ch, int& cp) {
         }}
     }
 
+    // Tundra (B_SNOW) is its own seasonal cycle. Native T_SNOW tiles used to
+    // stay snowy year-round, which read weird in summer. Now the tundra
+    // partially thaws in spring/autumn and almost fully greens in summer.
+    if (biome == B_SNOW && t == T_SNOW) {
+        switch (season) {
+        case SUMMER:
+            // Mostly bare ground and patchy grass.
+            if (shouldShowSeasonAt(x, y, 0.70f)) { ch='.'; cp=CP_GRASS_DRY; }
+            else                                 { ch=','; cp=CP_GRASS_LIGHT; }
+            break;
+        case SPRING: {
+            // Snow lingers near start, then patches of grass break through.
+            float thaw = std::min(1.0f, sprog * 1.4f);
+            if (shouldShowSeasonAt(x, y, thaw)) { ch='.'; cp=CP_GRASS_DRY; }
+            break;
+        }
+        case AUTUMN: {
+            // First frost — grass mostly, snow returns late.
+            float freeze = std::min(1.0f, sprog * 1.2f);
+            if (!shouldShowSeasonAt(x, y, freeze)) { ch=','; cp=CP_GRASS_DRY; }
+            break;
+        }
+        case WINTER:
+            break; // already full snow
+        }
+    }
+
     if (night) {
         if (cp==CP_GRASS||cp==CP_GRASS_LIGHT||cp==CP_GRASS_DRY||cp==CP_TALL_GRASS||cp==CP_MEADOW
             ||cp==CP_AUT_GRASS||cp==CP_AUT_GRASS_LATE)
@@ -424,8 +453,31 @@ void renderMap() {
             // Cloaking: enemy units fade at night/storm unless a friendly eye is close.
             if (ent && ent->alive && ent->owner != 0 && ent->owner < MAX_PLAYERS
                 && isConcealing() && !isDetectedBy(mx, my, 0)) ent = nullptr;
+            // Render priority + stack count. When multiple units share a tile,
+            // prefer the highest-value military so e.g. knights show through a
+            // pile of peasants. Also count any same-owner combat units on the
+            // tile so we can show an uppercase glyph for stacks of 2+.
+            int stackedMil = 0;
+            if (ent && ent->alive && !isBuilding(ent->type)) {
+                auto isMil = [](EntityType t) {
+                    return t==E_MILITIA||t==E_ARCHER||t==E_KNIGHT||t==E_CATAPULT
+                        || t==E_WARSHIP;
+                };
+                int prio = isMil(ent->type) ? 1 : 0;
+                for (auto& other : g.entities) {
+                    if (!other.alive || other.state == S_GARRISONED) continue;
+                    if (other.x != mx || other.y != my) continue;
+                    if (other.owner != ent->owner) continue;
+                    if (!isMil(other.type)) continue;
+                    stackedMil++;
+                    if (prio == 0) { ent = &other; prio = 1; }
+                }
+            }
             if (ent && ent->alive) {
                 ch = STATS[ent->type].glyph;
+                // Uppercase the glyph when 2+ military stack so the player can
+                // tell something's there even though only one fits in the cell.
+                if (stackedMil >= 2 && ch >= 'a' && ch <= 'z') ch = ch - 'a' + 'A';
                 drawCh = (chtype)ch;
                 // Farms use natural wheat colouring regardless of owner
                 if (ent->type == E_FARM)      cp = (g.tick%40 < 20) ? CP_WHEAT : CP_WHEAT_GOLD;
@@ -508,9 +560,9 @@ void renderMap() {
             if (entityAt(mx, my)) continue; // don't paint over units/buildings
             unsigned h = ((unsigned)(mx*73856093u) ^ (unsigned)(my*19349663u) ^ (unsigned)(frame*83492791u));
             if ((int)(h % 100) >= density) continue;
-            attron(COLOR_PAIR(CP_WATER_SHIMMER)|A_DIM);
+            attron(COLOR_PAIR(CP_RAIN)|A_BOLD);
             mvaddch(sy+2, sx, '.');
-            attroff(COLOR_PAIR(CP_WATER_SHIMMER)|A_DIM);
+            attroff(COLOR_PAIR(CP_RAIN)|A_BOLD);
         }
     }
 }
