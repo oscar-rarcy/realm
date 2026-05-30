@@ -382,6 +382,13 @@ static int unitAtk(const Entity& e) {
     if ((e.type == E_MILITIA || e.type == E_KNIGHT) && (r & R_IRON_WEAPONS)) a += 2;
     return a;
 }
+// Building-damage multiplier: catapults are siege specialists, everyone else
+// is bad at chewing through walls. Returns the damage actually applied.
+static int damageVs(EntityType attacker, EntityType target, int rawDmg) {
+    if (!isBuilding(target)) return rawDmg;
+    if (attacker == E_CATAPULT) return (rawDmg * 3) / 2; // 1.5x
+    return std::max(1, rawDmg / 2);                       // 0.5x, floor 1
+}
 static int unitRange(const Entity& e) {
     int rng = STATS[e.type].range;
     int r = g.players[e.owner].research;
@@ -945,7 +952,8 @@ void tickEntity(Entity& e) {
         int d = dist(e.x, e.y, t->x, t->y);
         if (d <= unitRange(e)) {
             if (e.atkCd <= 0) {
-                int dmg = unitAtk(e);
+                int rawDmg = unitAtk(e);
+                int dmg = damageVs(e.type, t->type, rawDmg);
                 t->hp -= dmg;
                 e.atkCd = STATS[e.type].atkSpeed;
                 e.alertTicks = 12; t->alertTicks = 12;
@@ -954,20 +962,21 @@ void tickEntity(Entity& e) {
                     int pcol = (e.type==E_CATAPULT) ? CP_PROJ_BOULDER : CP_PROJ_ARROW;
                     spawnProjectile(e.x, e.y, t->x, t->y, pc, pcol);
                 }
-                // Catapult splash: 1-tile radius around impact centre, half damage to
-                // anyone but the prime target. Friendly fire is on — siege is messy.
+                // Catapult splash: 1-tile radius around impact centre, ~1/3 of the
+                // raw damage to anyone but the prime target (per-victim building
+                // modifier still applies). Friendly fire is on.
                 if (e.type == E_CATAPULT) {
                     auto& ts = STATS[t->type];
                     int tcx = t->x + ts.sizeW/2, tcy = t->y + ts.sizeH/2;
-                    int primeId = t->id, splash = dmg / 2;
+                    int primeId = t->id, splashRaw = rawDmg / 3;
                     for (auto& o : g.entities) {
                         if (!o.alive || o.id == primeId) continue;
                         auto& os = STATS[o.type];
-                        // Use footprint-overlap-ish check: nearest point of o's footprint to impact centre.
                         int ox = std::max(o.x, std::min(tcx, o.x + os.sizeW - 1));
                         int oy = std::max(o.y, std::min(tcy, o.y + os.sizeH - 1));
                         if (std::abs(ox - tcx) <= 1 && std::abs(oy - tcy) <= 1) {
-                            o.hp -= splash; o.alertTicks = 12;
+                            int splashDmg = damageVs(E_CATAPULT, o.type, splashRaw);
+                            o.hp -= splashDmg; o.alertTicks = 12;
                             if (o.hp <= 0) killEntity(o);
                         }
                     }
@@ -1175,9 +1184,13 @@ void tickTowers() {
         Entity* en = findNearestEnemy(e, rng);
         if (en) {
             if (e.atkCd <= 0) {
-                en->hp -= atk; e.atkCd = isTower ? STATS[E_TOWER].atkSpeed : 9;
+                // Towers/garrison-fire respect the same building-damage rule —
+                // garrisoned archers can wear down walls but not blow them open.
+                int dmg = damageVs(E_ARCHER, en->type, atk);
+                en->hp -= dmg; e.atkCd = isTower ? STATS[E_TOWER].atkSpeed : 9;
                 en->alertTicks = 12;
-                spawnProjectile(sx, sy, en->x, en->y, '*', CP_PROJ_TOWER);
+                // Bolt-style projectile so tower fire reads as arrows instead of stars.
+                spawnProjectile(sx, sy, en->x, en->y, '-', CP_PROJ_TOWER);
                 if (en->hp <= 0) killEntity(*en);
             } else e.atkCd--;
         } else if (e.atkCd > 0) e.atkCd--;
@@ -1748,11 +1761,10 @@ static void tickAIForOwner(int o) {
     // === ATTACK RHYTHM: send waves, smart targets ===
     int army = mil + arch + kni + cat;
     if (p.aiWaveCd > 0) p.aiWaveCd--;
-    // Grace period: AI doesn't attack for the first ~90 seconds, giving the
-    // player time to set up. Threshold also bumps from 3 to 5 — the AI now
-    // builds a real force before charging in.
-    const int graceTicks = 1125;
-    int attackThreshold = (g.tick < graceTicks) ? 999 : 5;
+    // Grace period: AI doesn't attack for the first ~2 minutes, giving the
+    // player time to set up. Threshold also requires a real force (6+).
+    const int graceTicks = 1500;
+    int attackThreshold = (g.tick < graceTicks) ? 999 : 6;
     if (army >= attackThreshold && p.aiWaveCd == 0) {
         Entity* anchor = nullptr;
         for (auto& e : g.entities) {
