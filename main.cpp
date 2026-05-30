@@ -1,7 +1,37 @@
 #include "realm.h"
 #include <chrono>
 
-void initGame() {
+// Pre-match menu: pick the number of AI opponents (1, 2, or 3). Q exits.
+static int pickAICount() {
+    int maxY, maxX;
+    while (true) {
+        getmaxyx(stdscr, maxY, maxX);
+        erase();
+        int row = maxY/2 - 6;
+        auto center = [&](const char* s) {
+            int len = (int)strlen(s);
+            mvprintw(row++, std::max(0, maxX/2 - len/2), "%s", s);
+        };
+        attron(A_BOLD); center("REALM"); attroff(A_BOLD);
+        center("=====");
+        row++;
+        center("Choose number of opponents:");
+        row++;
+        center("[1]  1 AI   - duel");
+        center("[2]  2 AIs  - 3-corner FFA");
+        center("[3]  3 AIs  - full 4-corner FFA");
+        row++;
+        center("Press 1, 2, or 3 to begin.   Q to quit.");
+        refresh();
+        int ch = getch();
+        if (ch == 'q' || ch == 'Q') { endwin(); exit(0); }
+        if (ch == '1') return 1;
+        if (ch == '2') return 2;
+        if (ch == '3') return 3;
+    }
+}
+
+void initGame(int numAIs) {
     srand((unsigned)time(nullptr));
     // Reserve generously: late-game FFA can hit a few hundred live entities plus
     // dead-but-not-yet-purged ones. Reallocating mid-tick would dangle the
@@ -30,17 +60,26 @@ void initGame() {
         {5,        MAP_H-9,  9,         MAP_H-5,   1},   // bottom-left
         {MAP_W-9,  MAP_H-9,  MAP_W-14,  MAP_H-5,   1},   // bottom-right
     };
-    // Free-for-all: one human at a random corner, AIs at the rest.
+    // Free-for-all: one human at a random corner, up to numAIs at the others.
+    // Corners beyond what the player chose are left empty.
     int humanCorner = rand() % 4;
     int aiCounter = 0;
+    bool spawned[MAX_PLAYERS] = {false};
     for (int c = 0; c < 4; c++) {
         int owner;
         if (c == humanCorner) owner = 0;
-        else { owner = 1 + aiCounter++; if (owner >= MAX_PLAYERS) continue; }
+        else {
+            if (aiCounter >= numAIs) continue;          // skip empty corner
+            owner = 1 + aiCounter++;
+            if (owner >= MAX_PLAYERS) continue;         // safety net
+        }
+        spawned[owner] = true;
         auto& s = corners[c];
         spawnEntity(E_TOWNHALL, owner, s.thX, s.thY);
         for (int i = 0; i < 4; i++) spawnEntity(E_PEASANT, owner, s.pX + i*s.pDir, s.pY);
     }
+    // Mark any non-spawned slots dead so checkWin doesn't wait on them.
+    for (int p = 1; p < MAX_PLAYERS; p++) if (!spawned[p]) g.players[p].alive = false;
     for (int p = 0; p < MAX_PLAYERS; p++) updateSupply(p);
 
     auto& s0 = corners[humanCorner];
@@ -79,7 +118,8 @@ int main() {
     // REPORT_MOUSE_POSITION gives continuous hover events for live cursor tracking
     mousemask(ALL_MOUSE_EVENTS | REPORT_MOUSE_POSITION, NULL);
     initColors();
-    initGame();
+    int numAIs = pickAICount();
+    initGame(numAIs);
     setStatus("Dawn breaks over the realm. Select peasants [Space] and gather [Enter]. [A]=select all military.");
 
     using Clock = std::chrono::steady_clock;

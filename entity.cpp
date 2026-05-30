@@ -1508,6 +1508,9 @@ void checkWin() {
         if (!hasBase) g.players[p].alive = false;
         else { aliveCount++; lastAlive = p; }
     }
+    // Human defeat ends the match immediately — no point watching the AIs fight
+    // each other after the player's been eliminated.
+    if (!g.players[0].alive) { g.winner = -1; g.mode = M_GAME_OVER; return; }
     if (aliveCount <= 1) { g.winner = lastAlive; g.mode = M_GAME_OVER; }
 }
 
@@ -1745,7 +1748,11 @@ static void tickAIForOwner(int o) {
     // === ATTACK RHYTHM: send waves, smart targets ===
     int army = mil + arch + kni + cat;
     if (p.aiWaveCd > 0) p.aiWaveCd--;
-    int attackThreshold = 3;
+    // Grace period: AI doesn't attack for the first ~90 seconds, giving the
+    // player time to set up. Threshold also bumps from 3 to 5 — the AI now
+    // builds a real force before charging in.
+    const int graceTicks = 1125;
+    int attackThreshold = (g.tick < graceTicks) ? 999 : 5;
     if (army >= attackThreshold && p.aiWaveCd == 0) {
         Entity* anchor = nullptr;
         for (auto& e : g.entities) {
@@ -1759,10 +1766,15 @@ static void tickAIForOwner(int o) {
             // Fallback: if intel found a TH, march on it directly (hunt the player out)
             if (tid < 0 && intel.playerTH) tid = intel.playerTH->id;
             if (tid >= 0) {
+                // Send ~60% of the army, keep the rest at home for defense.
+                // Floor of 3 means waves always feel like raids, not lone scouts.
+                int sendCap = std::max(3, (army * 6 + 5) / 10);
+                int sent = 0;
                 for (auto& e : g.entities) {
+                    if (sent >= sendCap) break;
                     if (!e.alive || e.owner != o) continue;
                     if (!isUnit(e.type) || e.type == E_PEASANT || e.type == E_FISHING_BOAT) continue;
-                    if (e.state == S_IDLE) orderAttack(e, tid);
+                    if (e.state == S_IDLE) { orderAttack(e, tid); sent++; }
                 }
                 p.aiWaveCd = 5; // re-pick target every ~5 AI ticks
             }

@@ -263,4 +263,4 @@ void render();
 void handleInput(int ch);
 
 // main.cpp
-void initGame();
+void initGame(int numAIs);
