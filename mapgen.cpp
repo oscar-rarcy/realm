@@ -97,6 +97,17 @@ void generateMap() {
             else if (r<60) { t.terrain = T_GOLD; t.resources = 150 + rand()%100; } // rich seams
             else           t.terrain = T_ASH;
             break;
+        case B_OCEAN:
+            // Archipelago: mostly water with scattered island terrain.
+            if (r<50)      t.terrain = T_WATER;
+            else if (r<65) t.terrain = T_SHALLOWS;
+            else if (r<70) t.terrain = T_SAND;
+            else if (r<73) t.terrain = T_REEDS;
+            else if (r<80) t.terrain = T_GRASS;
+            else if (r<87) t.terrain = T_TALL_GRASS;
+            else if (r<93) { t.terrain = T_FOREST; t.resources = 80 + rand()%60; }
+            else           t.terrain = T_GRASS;
+            break;
         }
     }
     // Mountains
@@ -199,7 +210,10 @@ void generateMap() {
             cy = std::max(0, std::min(cy, MAP_H-1));
         }
     };
-    makeRoad(15,15,midX,midY); makeRoad(MAP_W-15,MAP_H-15,midX,midY); makeRoad(midX,5,midX,MAP_H-5);
+    // Ocean maps are mostly water — roads on water tiles look wrong; skip them.
+    if (g.biomeChoice != B_OCEAN) {
+        makeRoad(15,15,midX,midY); makeRoad(MAP_W-15,MAP_H-15,midX,midY); makeRoad(midX,5,midX,MAP_H-5);
+    }
     // Castle ruins
     placeCastleRuin(MAP_W/2-4, MAP_H/2-4, 8);
     placeCastleRuin(MAP_W/4,   MAP_H/4,   6);

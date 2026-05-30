@@ -119,6 +119,8 @@ void initColors() {
     init_pair(CP_AUT_TREE_EARLY, C::YELLOW_GREEN, bg);
     init_pair(CP_AUT_TREE_MID,   C::ORANGE,       bg);
     init_pair(CP_AUT_TREE_LATE,  C::BROWN,        bg);
+    init_pair(CP_AUT_TREE_GOLD,  C::BRIGHT_GOLD,  bg);
+    init_pair(CP_AUT_TREE_RED,   C::RED,          bg);
     init_pair(CP_AUT_GRASS,      C::OLIVE,        bg);
     init_pair(CP_AUT_GRASS_LATE, C::BROWN,        bg);
 
@@ -132,6 +134,7 @@ void initColors() {
     init_pair(CP_NIGHT_WATER,    C::NAVY,         C::NEAR_BLACK);
     init_pair(CP_NIGHT_GROUND,   C::DARKER_GRAY,  bg);
     init_pair(CP_NIGHT_GOLD,     C::DARK_GOLD,    bg);
+    init_pair(CP_NIGHT_SNOW,     C::LIGHT_GRAY,   C::DARKER_GRAY);
 
     init_pair(CP_DAWN_SKY,       C::ORANGE,       bg);
     init_pair(CP_DUSK_SKY,       C::DUSK_PURPLE,  bg);
@@ -150,6 +153,8 @@ void initColors() {
     init_pair(CP_PROJ_TOWER,     C::BRIGHT_RED,   bg);
     // Rain: a transparent blue dot — foreground colour only, no background fill.
     init_pair(CP_RAIN,           C::ICE_BLUE,     bg);
+    // Falling snow: white glyph on transparent bg so flakes take the terrain's background.
+    init_pair(CP_SNOW_FALL,      C::SNOW_WHITE,   bg);
 
     init_pair(CP_UI_BAR,         C::UI_TEXT,      C::UI_BG);
     init_pair(CP_UI_TEXT,        C::UI_TEXT,      bg);
@@ -297,8 +302,12 @@ void getTerrainVisual(Terrain t, int x, int y, char& ch, int& cp) {
         case AUTUMN: {
             float p = sprog;
             if (t==T_FOREST) {
-                if (shouldShowSeasonAt(x,y,p*0.4f))                    cp = CP_AUT_TREE_EARLY;
-                if (p>0.3f && shouldShowSeasonAt(x,y,(p-0.3f)*1.4f))   cp = CP_AUT_TREE_MID;
+                // Per-tree hash gives orange/gold/red variety across the canopy.
+                int tv = (x*3571 + y*2371) % 3;
+                int earlyC = (tv==0) ? CP_AUT_TREE_EARLY : (tv==1) ? CP_AUT_TREE_GOLD : CP_AUT_TREE_RED;
+                int midC   = (tv==0) ? CP_AUT_TREE_MID   : (tv==1) ? CP_AUT_TREE_EARLY : CP_AUT_TREE_GOLD;
+                if (shouldShowSeasonAt(x,y,p*0.4f))                    cp = earlyC;
+                if (p>0.3f && shouldShowSeasonAt(x,y,(p-0.3f)*1.4f))   cp = midC;
                 if (p>0.6f && shouldShowSeasonAt(x,y,(p-0.6f)*2.5f)) { cp = CP_AUT_TREE_LATE; ch='t'; }
             }
             if (t==T_PINE && p>0.5f && shouldShowSeasonAt(x,y,(p-0.5f)*0.6f)) cp = CP_AUT_TREE_EARLY;
@@ -306,7 +315,8 @@ void getTerrainVisual(Terrain t, int x, int y, char& ch, int& cp) {
                 if (shouldShowSeasonAt(x,y,p*0.5f))                             cp = CP_AUT_GRASS;
                 if (p>0.6f && shouldShowSeasonAt(x,y,(p-0.6f)*2.0f)) { cp=CP_AUT_GRASS_LATE; if(t==T_TALL_GRASS)ch=','; }
             }
-            if (t==T_FLOWERS && shouldShowSeasonAt(x,y,p*0.7f))  { ch='.'; cp=CP_AUT_GRASS; }
+            // Flowers gone by autumn — immediately fade to grass colour.
+            if (t==T_FLOWERS) { ch='.'; cp=(p>0.5f) ? CP_AUT_GRASS_LATE : CP_AUT_GRASS; }
             if (t==T_WHEAT   && shouldShowSeasonAt(x,y,p))        { ch=','; cp=CP_DIRT; }
             // Late autumn: first frost dusts the ground with light snow patches.
             if (p > 0.65f) {
@@ -318,8 +328,8 @@ void getTerrainVisual(Terrain t, int x, int y, char& ch, int& cp) {
         }
         case WINTER: {
             float p = sprog;
-            // Snow blankets ground immediately, near-total by mid-winter
-            float snowAmt = std::min(1.0f, 0.55f + p * 0.5f);
+            // Patchy snow: never a full blanket — always some bare ground visible.
+            float snowAmt = std::min(0.80f, 0.30f + p * 0.55f);
             if (t==T_GRASS||t==T_TALL_GRASS||t==T_MEADOW||t==T_FLOWERS||t==T_DIRT||t==T_BERRY||t==T_GRAVEL)
                 if (shouldShowSeasonAt(x,y,snowAmt)) { ch='.'; cp=CP_WIN_GROUND; }
             if (t==T_HILLS && shouldShowSeasonAt(x,y,snowAmt)) cp=CP_WIN_GROUND;
@@ -373,17 +383,24 @@ void getTerrainVisual(Terrain t, int x, int y, char& ch, int& cp) {
 
     if (night) {
         if (cp==CP_GRASS||cp==CP_GRASS_LIGHT||cp==CP_GRASS_DRY||cp==CP_TALL_GRASS||cp==CP_MEADOW
-            ||cp==CP_AUT_GRASS||cp==CP_AUT_GRASS_LATE)
+            ||cp==CP_AUT_GRASS||cp==CP_AUT_GRASS_LATE
+            ||cp==CP_SPRING_FLOWER
+            ||cp==CP_FLOWERS||cp==CP_FLOWERS_BLUE||cp==CP_FLOWERS_YELLOW||cp==CP_FLOWERS_RED
+            ||cp==CP_BERRY||cp==CP_MARSH||cp==CP_REEDS)
             cp = CP_NIGHT_GRASS;
         if (cp==CP_FOREST||cp==CP_FOREST_DARK||cp==CP_PINE||cp==CP_PALM||cp==CP_DEAD_TREE
-            ||cp==CP_AUT_TREE_EARLY||cp==CP_AUT_TREE_MID||cp==CP_AUT_TREE_LATE||cp==CP_WIN_TREE)
+            ||cp==CP_AUT_TREE_EARLY||cp==CP_AUT_TREE_MID||cp==CP_AUT_TREE_LATE
+            ||cp==CP_AUT_TREE_GOLD||cp==CP_AUT_TREE_RED
+            ||cp==CP_WIN_TREE||cp==CP_WIN_PINE)
             cp = CP_NIGHT_TREE;
         if (cp==CP_WATER||cp==CP_WATER_SHIMMER||cp==CP_SHALLOWS) cp = CP_NIGHT_WATER;
         if (cp==CP_SAND||cp==CP_DUNES||cp==CP_DIRT||cp==CP_ROAD||cp==CP_GRAVEL
-            ||cp==CP_CASTLE_FLOOR||cp==CP_RUINS||cp==CP_WHEAT||cp==CP_WHEAT_GOLD)
+            ||cp==CP_CASTLE_FLOOR||cp==CP_RUINS||cp==CP_WHEAT||cp==CP_WHEAT_GOLD
+            ||cp==CP_HILLS||cp==CP_STONE)
             cp = CP_NIGHT_GROUND;
         if (cp==CP_GOLD||cp==CP_GOLD_SHIMMER) cp = CP_NIGHT_GOLD;
-        if (cp==CP_WIN_GROUND||cp==CP_SNOW_GROUND) cp = CP_FOG_EXPLORED;
+        // Snow tiles darken but stay distinctly lighter than bare ground at night.
+        if (cp==CP_WIN_GROUND||cp==CP_SNOW_GROUND) cp = CP_NIGHT_SNOW;
     }
 }
 
@@ -475,8 +492,10 @@ void renderMap() {
 
             Entity* ent = entityAt(mx, my);
             // Cloaking: enemy units fade at night/storm unless a friendly eye is close.
+            // Wheat fields also conceal enemies — units in crops need close detection.
+            bool inCrop = ent && !isBuilding(ent->type) && tile.terrain == T_WHEAT;
             if (ent && ent->alive && ent->owner != 0 && ent->owner < MAX_PLAYERS
-                && isConcealing() && !isDetectedBy(mx, my, 0)) ent = nullptr;
+                && (isConcealing() || inCrop) && !isDetectedBy(mx, my, 0)) ent = nullptr;
             // Render priority + stack count. When multiple units share a tile,
             // prefer the highest-value military so e.g. knights show through a
             // pile of peasants. Also count any same-owner combat units on the
@@ -605,10 +624,10 @@ void renderMap() {
             unsigned h = ((unsigned)(mx*73856093u) ^ (unsigned)(my*19349663u) ^ (unsigned)(frame*83492791u));
             if ((int)(h % 100) >= density) continue;
             if (snowWeather) {
-                // Snow: white background so the flake doesn't flash dark over snowy ground.
-                attron(COLOR_PAIR(CP_WIN_GROUND));
+                // Transparent-bg white glyph: flake adopts whatever terrain colour is beneath it.
+                attron(COLOR_PAIR(CP_SNOW_FALL)|A_BOLD);
                 mvaddch(sy+2, sx, '*');
-                attroff(COLOR_PAIR(CP_WIN_GROUND));
+                attroff(COLOR_PAIR(CP_SNOW_FALL)|A_BOLD);
             } else {
                 attron(COLOR_PAIR(CP_RAIN)|A_BOLD);
                 mvaddch(sy+2, sx, '.');
@@ -654,7 +673,7 @@ void renderUI() {
     attron(COLOR_PAIR(CP_UI_DIM)); mvhline(1, 0, '-', g.viewW); attroff(COLOR_PAIR(CP_UI_DIM));
     if (inBounds(g.cursorX, g.cursorY) && g.map[g.cursorY][g.cursorX].explored[0]) {
         Tile& ct = g.map[g.cursorY][g.cursorX];
-        const char* bn[] = {"Temperate","Desert","Tundra","Swamp","Woodland"};
+        const char* bn[] = {"Temperate","Desert","Tundra","Swamp","Woodland","Volcanic","Ocean"};
         const char* tn[] = {"Grassland","Tall Grass","Wildflowers","Meadow","Oak Forest","Pine Forest",
             "Palm Grove","Dead Tree","Mountain","Rolling Hills","Stone","Deep Water","Shallows",
             "Marshland","Reed Bed","Gold Deposit","Sandy Ground","Sand Dunes","Snow Cover","Frozen Ice",
@@ -691,6 +710,13 @@ void renderUI() {
             // Hide cloaked enemies from the minimap as well.
             if (ent && ent->alive && ent->owner != 0 && ent->owner < MAX_PLAYERS
                 && isConcealing() && !isDetectedBy(mapX, mapY, 0)) ent = nullptr;
+            if (ent && ent->alive) {
+                // Mirror main-map crop/cloaking on the minimap.
+                bool mmInCrop = !isBuilding(ent->type) && g.map[mapY][mapX].terrain == T_WHEAT;
+                if (ent->owner != 0 && ent->owner < MAX_PLAYERS
+                    && (isConcealing() || mmInCrop) && !isDetectedBy(mapX, mapY, 0))
+                    ent = nullptr;
+            }
             if (ent && ent->alive) {
                 mch = isBuilding(ent->type) ? '#' : '*';
                 if      (ent->owner == 0)            mcp = CP_MM_PLAYER;

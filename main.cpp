@@ -4,10 +4,10 @@
 // Full splash screen. Sets g.biomeChoice. Returns numAIs.
 static int showSplash() {
     static const char* biomeNames[] = {
-        "Temperate","Desert","Snow","Swamp","Forest","Volcanic","Random"
+        "Temperate","Desert","Snow","Swamp","Forest","Volcanic","Ocean","Random"
     };
     int numAIs = 1;
-    int biomeIdx = 6; // 6 = random
+    int biomeIdx = 7; // 7 = random
 
     int maxY, maxX;
     while (true) {
@@ -24,8 +24,8 @@ static int showSplash() {
         };
 
         attron(A_BOLD);
-        pr(row,   col+10, "R  E  A  L  M");
-        pr(row+1, col+8,  "-- Medieval Warlord --");
+        pr(row,   col+17, "R  E  A  L  M");
+        pr(row+1, col+13, "-- Medieval Warlord --");
         attroff(A_BOLD);
 
         row += 3;
@@ -56,9 +56,9 @@ static int showSplash() {
 
         row++;
         attron(A_BOLD); pr(row++, col, "BIOME"); attroff(A_BOLD);
-        pr(row++, col, "  [0] Random   [T] Temperate   [D] Desert");
-        pr(row++, col, "  [S] Snow     [W] Swamp        [F] Forest");
-        pr(row++, col, "  [V] Volcanic");
+        pr(row++, col, "  [0] Random    [T] Temperate  [D] Desert");
+        pr(row++, col, "  [S] Snow      [W] Swamp      [F] Forest");
+        pr(row++, col, "  [V] Volcanic  [C] Coastal");
 
         row++;
         attron(A_BOLD);
@@ -75,15 +75,16 @@ static int showSplash() {
         if (ch=='1') numAIs=1;
         else if (ch=='2') numAIs=2;
         else if (ch=='3') numAIs=3;
-        else if (ch=='0') biomeIdx=6;
+        else if (ch=='0') biomeIdx=7;
         else if (ch=='t'||ch=='T') biomeIdx=0;
         else if (ch=='d'||ch=='D') biomeIdx=1;
         else if (ch=='s'||ch=='S') biomeIdx=2;
         else if (ch=='w'||ch=='W') biomeIdx=3;
         else if (ch=='f'||ch=='F') biomeIdx=4;
         else if (ch=='v'||ch=='V') biomeIdx=5;
+        else if (ch=='c'||ch=='C') biomeIdx=6;
     }
-    g.biomeChoice = (biomeIdx == 6) ? -1 : biomeIdx;
+    g.biomeChoice = (biomeIdx == 7) ? -1 : biomeIdx;
     return numAIs;
 }
 
