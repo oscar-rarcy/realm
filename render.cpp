@@ -992,6 +992,20 @@ void renderMap() {
                     bool ramming = ent->state==S_ATTACKING && ent->atkCd > STATS[E_RAM].atkSpeed*2/3;
                     ch = ramming ? '=' : '-'; drawCh = (chtype)ch;
                 }
+                // Peasant work/idle cycle (ASCII only — emoji peasants have their
+                // own state-aware glyph). Staggered per-id so a busy village
+                // doesn't strobe in sync.
+                if (displayMode == DM_ASCII && ent->type == E_PEASANT) {
+                    int cyc = (g.tick + ent->id*5) % 8;
+                    if      (ent->state == S_GATHERING && cyc < 4) { ch = '*'; drawCh = (chtype)ch; }
+                    else if (ent->state == S_BUILDING  && cyc < 4) { ch = '+'; drawCh = (chtype)ch; }
+                    else if (ent->state == S_RETURNING && cyc < 2) { ch = ','; drawCh = (chtype)ch; }
+                    else if (ent->state == S_IDLE) {
+                        // Slow daydream pulse: '?' shown ~1 s every ~20 s, staggered.
+                        int slow = (g.tick + ent->id*47) % 250;
+                        if (slow < 12) { ch = '?'; drawCh = (chtype)ch; }
+                    }
+                }
                 // Recently in combat: gentle '!' pulse — ~1.5 Hz, not strobing.
                 if (ent->alertTicks > 0 && (g.tick % 8) < 4) {
                     ch = '!'; drawCh = (chtype)ch;
