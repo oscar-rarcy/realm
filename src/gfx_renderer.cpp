@@ -306,8 +306,9 @@ static void drawCentered(const std::string& text, SDL_Rect rect, Color col, bool
         drawTextValue = emojiFallbackGlyph(text);
         font = s.mono;
     }
-    SDL_Texture* tex = cachedText(font, drawTextValue, col);
-    if (!tex && emoji) tex = cachedText(s.mono, emojiFallbackGlyph(text), col);
+    Color renderCol = tint ? rgb(255, 255, 255, col.a) : col;
+    SDL_Texture* tex = cachedText(font, drawTextValue, renderCol);
+    if (!tex && emoji) tex = cachedText(s.mono, emojiFallbackGlyph(text), renderCol);
     if (!tex) return;
     int tw=0, th=0; SDL_QueryTexture(tex, nullptr, nullptr, &tw, &th);
     if (tw <= 0 || th <= 0) return;
@@ -502,38 +503,38 @@ static float visibleFadeAt(int x, int y) {
 
 static float torchStrength(EntityType type) {
     switch (type) {
-        case E_TOWNHALL:    return 0.88f;
-        case E_CASTLE:      return 0.95f;
-        case E_TOWER:       return 0.82f;
-        case E_CHURCH:      return 0.76f;
-        case E_MARKET:      return 0.68f;
+        case E_TOWNHALL:    return 0.44f;
+        case E_CASTLE:      return 0.48f;
+        case E_TOWER:       return 0.42f;
+        case E_CHURCH:      return 0.38f;
+        case E_MARKET:      return 0.34f;
         case E_BARRACKS:
         case E_STABLE:
-        case E_BLACKSMITH:  return 0.62f;
+        case E_BLACKSMITH:  return 0.30f;
         case E_HOUSE:
         case E_LUMBER_CAMP:
         case E_MINING_CAMP:
         case E_MILL:
-        case E_DOCK:        return 0.48f;
+        case E_DOCK:        return 0.23f;
         default:            return 0.0f;
     }
 }
 
 static float torchRadius(EntityType type) {
     switch (type) {
-        case E_CASTLE:      return 6.2f;
-        case E_TOWNHALL:    return 5.7f;
+        case E_CASTLE:      return 5.6f;
+        case E_TOWNHALL:    return 5.1f;
         case E_TOWER:
-        case E_CHURCH:      return 5.0f;
-        case E_MARKET:      return 4.4f;
+        case E_CHURCH:      return 4.6f;
+        case E_MARKET:      return 4.0f;
         case E_BARRACKS:
         case E_STABLE:
-        case E_BLACKSMITH:  return 4.0f;
-        case E_DOCK:        return 3.8f;
+        case E_BLACKSMITH:  return 3.7f;
+        case E_DOCK:        return 3.5f;
         case E_HOUSE:
         case E_LUMBER_CAMP:
         case E_MINING_CAMP:
-        case E_MILL:        return 3.2f;
+        case E_MILL:        return 2.9f;
         default:            return 0.0f;
     }
 }
@@ -565,7 +566,8 @@ static float torchLightAt(int x, int y) {
         float dist = std::sqrt((float)(dx * dx + dy * dy));
         if (dist > radius) continue;
 
-        float local = strength * std::pow(clamp01(1.0f - dist / radius), 1.7f);
+        float local = strength * std::pow(clamp01(1.0f - dist / radius), 1.85f);
+        if (dx == 0 && dy == 0) local *= 0.40f;
         light = std::max(light, local);
     }
     return clamp01(light * nightNeed);
@@ -578,17 +580,18 @@ static Color applyVisionAndLight(Color c, int x, int y) {
 
     float torch = torchLightAt(x, y);
     if (torch > 0.0f) {
-        c = blend(c, rgb(255, 176, 76), torch * 0.26f);
-        c = scale(c, 1.0f + torch * 0.34f);
+        c = blend(c, rgb(238, 122, 52), torch * 0.14f);
+        c = scale(c, 1.0f + torch * 0.12f);
     }
     return c;
 }
 
 static Color applyVisionToGlyph(Color c, int x, int y) {
+    c = timeTint(c);
     float vis = visibleFadeAt(x, y);
     if (vis < 1.0f) c = scale(c, 0.50f + 0.50f * vis);
     float torch = torchLightAt(x, y);
-    if (torch > 0.0f) c = blend(c, rgb(255, 230, 170), torch * 0.24f);
+    if (torch > 0.0f) c = blend(c, rgb(238, 150, 82), torch * 0.10f);
     return c;
 }
 
@@ -1260,10 +1263,11 @@ static TileVisual makeTileVisual(int mx, int my) {
     } else if (v.visible && v.ent && v.ent->alive) {
         v.glyph = entityGlyph(*v.ent); v.emoji = true;
         v.fg = (v.ent->owner == OWNER_NATURE) ? rgb(245,245,235) : rgb(255,255,255);
+        v.tint = true;
     } else if (v.visible) {
         v.glyph = terrainGlyph(tile, mx, my);
         v.emoji = isResourceEmojiTerrain(tile.terrain);
-        v.tint = (tile.terrain == T_GOLD);
+        v.tint = v.emoji;
     } else {
         v.glyph = "·"; v.emoji = false; v.fg = rgb(95,95,105,150);
     }
