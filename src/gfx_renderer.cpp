@@ -981,17 +981,116 @@ static bool screenToMap(int px, int py, int& mx, int& my) {
     return false;
 }
 
+static bool screenToMapOffset(int px, int py, int& sxOut, int& syOut) {
+    SDL_Rect mr = mapRect();
+    if (px < mr.x || py < mr.y || px >= mr.x + mr.w || py >= mr.y + mr.h) return false;
+
+    if (!s.isometric) {
+        sxOut = (px - mr.x) / std::max(1, s.tile);
+        syOut = (py - mr.y) / std::max(1, s.tile);
+        return true;
+    }
+
+    int hw = isoHalfW();
+    int hh = isoHalfH();
+    float sxF = 0.0f, syF = 0.0f;
+    isoScreenToOffsetFloat(px, py, sxF, syF);
+    int baseX = (int)std::floor(sxF);
+    int baseY = (int)std::floor(syF);
+    IsoOffsetBounds b = isoVisibleOffsetBounds();
+
+    for (int dy = -1; dy <= 2; ++dy) {
+        for (int dx = -1; dx <= 2; ++dx) {
+            int sx = baseX + dx, sy = baseY + dy;
+            if (sx < b.minSx || sx > b.maxSx || sy < b.minSy || sy > b.maxSy) continue;
+            int cx, cy; isoTileCenterFromScreenOffset(sx, sy, cx, cy);
+            if (!pointInDiamond(px, py, cx, cy, hw, hh)) continue;
+            sxOut = sx;
+            syOut = sy;
+            return true;
+        }
+    }
+
+    sxOut = baseX;
+    syOut = baseY;
+    return true;
+}
+
+static bool mapTileScreenCenter(int mx, int my, int& px, int& py) {
+    if (!inBounds(mx, my)) return false;
+    SDL_Rect mr = mapRect();
+    int sx = mx - g.viewX;
+    int sy = my - g.viewY;
+
+    if (!s.isometric) {
+        if (sx < 0 || sy < 0 || sx >= g.viewW || sy >= g.viewH) return false;
+        px = mr.x + sx * s.tile + s.tile / 2;
+        py = mr.y + sy * s.tile + s.tile / 2;
+    } else {
+        IsoOffsetBounds b = isoVisibleOffsetBounds();
+        if (sx < b.minSx || sx > b.maxSx || sy < b.minSy || sy > b.maxSy) return false;
+        isoTileCenterFromScreenOffset(sx, sy, px, py);
+    }
+
+    return px >= mr.x && py >= mr.y && px < mr.x + mr.w && py < mr.y + mr.h;
+}
+
+static bool mapTileAtViewportCenter(int& mx, int& my, int& px, int& py) {
+    SDL_Rect safe = mapSafeRect();
+    px = safe.x + safe.w / 2;
+    py = safe.y + safe.h / 2;
+    if (screenToMap(px, py, mx, my)) return true;
+
+    if (s.isometric) {
+        float sx = 0.0f, sy = 0.0f;
+        isoScreenToOffsetFloat(px, py, sx, sy);
+        mx = g.viewX + (int)std::lround(sx);
+        my = g.viewY + (int)std::lround(sy);
+    } else {
+        mx = g.viewX + topDownSafeColumns() / 2;
+        my = g.viewY + topDownSafeRows() / 2;
+    }
+    mx = std::max(0, std::min(mx, MAP_W - 1));
+    my = std::max(0, std::min(my, MAP_H - 1));
+    return true;
+}
+
+static void chooseZoomAnchor(int requestedX, int requestedY, int& anchorX, int& anchorY, int& mx, int& my) {
+    if (requestedX >= 0 && requestedY >= 0 && screenToMap(requestedX, requestedY, mx, my)) {
+        anchorX = requestedX;
+        anchorY = requestedY;
+        return;
+    }
+    if (mapTileScreenCenter(g.cursorX, g.cursorY, anchorX, anchorY)) {
+        mx = g.cursorX;
+        my = g.cursorY;
+        return;
+    }
+    mapTileAtViewportCenter(mx, my, anchorX, anchorY);
+}
+
 static void setZoom(int newTile, int anchorX = -1, int anchorY = -1) {
     int oldTile = s.tile;
     newTile = std::max(14, std::min(44, newTile));
     if (newTile == oldTile) return;
 
     int oldMx = g.cursorX, oldMy = g.cursorY;
-    if (anchorX >= 0 && anchorY >= 0) screenToMap(anchorX, anchorY, oldMx, oldMy);
+    int fixedX = anchorX, fixedY = anchorY;
+    chooseZoomAnchor(anchorX, anchorY, fixedX, fixedY, oldMx, oldMy);
+
     s.tile = newTile;
     g.cursorX = std::max(0, std::min(oldMx, MAP_W-1));
     g.cursorY = std::max(0, std::min(oldMy, MAP_H-1));
-    centerViewOnTile(g.cursorX, g.cursorY);
+    updateViewMetrics(false);
+
+    int newSx = 0, newSy = 0;
+    if (screenToMapOffset(fixedX, fixedY, newSx, newSy)) {
+        g.viewX = g.cursorX - newSx;
+        g.viewY = g.cursorY - newSy;
+        clampView();
+    } else {
+        centerViewOnTile(g.cursorX, g.cursorY);
+    }
     // Text textures may be re-used scaled; no need to rebuild font cache.
 }
 
@@ -1907,6 +2006,14 @@ void gfxSetProjection(bool isometric) {
 
 void gfxSetZoomForTest(int tilePx) {
     setZoom(tilePx);
+}
+
+void gfxSetZoomAnchoredForTest(int tilePx, int anchorX, int anchorY) {
+    setZoom(tilePx, anchorX, anchorY);
+}
+
+bool gfxMapTileAtScreenForTest(int px, int py, int& mx, int& my) {
+    return screenToMap(px, py, mx, my);
 }
 
 void gfxSetWindowSizeForTest(int width, int height) {

@@ -208,6 +208,46 @@ static int runUiTestMode() {
         ok = captureUiFrame((outDir / "15-night-torch-light.bmp").string()) && ok;
     }
 
+    auto verifyZoomAnchor = [&](bool iso) {
+        gfxSetProjection(iso);
+        gfxSetZoomForTest(20);
+        g.cursorX = MAP_W / 2;
+        g.cursorY = MAP_H / 2;
+        gfxOnNewGame();
+        int anchorX = (width - 286) / 2;
+        int anchorY = 32 + (height - 32 - 48) / 2;
+        int beforeX = 0, beforeY = 0, afterX = 0, afterY = 0;
+        if (!gfxMapTileAtScreenForTest(anchorX, anchorY, beforeX, beforeY)) {
+            std::cerr << "realm: zoom anchor test failed before projection=" << (iso ? "iso" : "top") << "\n";
+            return false;
+        }
+        gfxSetZoomAnchoredForTest(32, anchorX, anchorY);
+        if (!gfxMapTileAtScreenForTest(anchorX, anchorY, afterX, afterY)) {
+            std::cerr << "realm: zoom anchor test failed after in projection=" << (iso ? "iso" : "top") << "\n";
+            return false;
+        }
+        if (beforeX != afterX || beforeY != afterY) {
+            std::cerr << "realm: zoom anchor mismatch in projection=" << (iso ? "iso" : "top")
+                      << " before=" << beforeX << ',' << beforeY
+                      << " after=" << afterX << ',' << afterY << "\n";
+            return false;
+        }
+        gfxSetZoomAnchoredForTest(18, anchorX, anchorY);
+        if (!gfxMapTileAtScreenForTest(anchorX, anchorY, afterX, afterY)) {
+            std::cerr << "realm: zoom anchor test failed after out projection=" << (iso ? "iso" : "top") << "\n";
+            return false;
+        }
+        bool same = beforeX == afterX && beforeY == afterY;
+        if (!same) {
+            std::cerr << "realm: zoom anchor mismatch out projection=" << (iso ? "iso" : "top")
+                      << " before=" << beforeX << ',' << beforeY
+                      << " after=" << afterX << ',' << afterY << "\n";
+        }
+        return same;
+    };
+    ok = verifyZoomAnchor(false) && ok;
+    ok = verifyZoomAnchor(true) && ok;
+
     if (Entity* townHall = firstOwned(E_TOWNHALL, 0)) {
         g.selectedId = townHall->id;
         g.selectedIds.clear();
