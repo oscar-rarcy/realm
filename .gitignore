@@ -46,6 +46,7 @@ realm-save.txt
 logs/
 tmp/
 temp/
+captures/
 
 # -------------------------------------------------------------------
 # CMake and generated dependency files

@@ -118,6 +118,16 @@ static int runUiTestMode() {
     gfxOnNewGame();
     ok = captureUiFrame((outDir / "12-bottom-right-isometric.bmp").string()) && ok;
 
+    if (std::getenv("REALM_UI_CAPTURE_TEST")) {
+        SDL_Event event{};
+        event.type = SDL_KEYDOWN;
+        event.key.keysym.sym = SDLK_F12;
+        SDL_PushEvent(&event);
+        bool quitRequested = false;
+        gfxPollInput(quitRequested);
+        ok = !quitRequested && ok;
+    }
+
     std::cerr << "realm: ui test " << (ok ? "complete" : "failed") << " dir=" << outDir.string() << "\n";
     return ok ? 0 : 1;
 }

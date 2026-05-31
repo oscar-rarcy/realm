@@ -9,6 +9,11 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <chrono>
+#include <ctime>
+#include <filesystem>
+#include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -1319,8 +1324,14 @@ static void drawBottom() {
     else if (g.mode == M_GAME_OVER) { controls1 = (g.winner==0) ? "VICTORY - Enter/Q for menu, X to exit" : "DEFEAT - Enter/Q for menu, X to exit"; controls2.clear(); }
     else if (g.mode == M_BUILD_SELECT) { controls1 = "BUILD: H House, B Barracks, S Stable, T Tower, F Farm, W Wall, K Castle"; controls2 = "L Lumber camp  N Mining camp  I Mill  D Dock  Esc cancel"; }
     else if (g.mode == M_TRAIN_SELECT) { controls1 = "TRAIN: repeat unit keys to queue more, Esc cancel"; controls2.clear(); }
+    const std::string captureHint = "F12:Capture issue";
+    int hintW = textWidth(captureHint);
+    int hintX = std::max(10, s.winW - hintW - 14);
+    drawText(hintX, s.winH-s.bottomH+6, captureHint, rgb(255,230,120));
+
     int maxW = std::max(1, s.winW - 20);
-    drawTextFit(10, s.winH-s.bottomH+6, controls1, rgb(230,235,230), maxW);
+    int topLineW = std::max(1, hintX - 20);
+    drawTextFit(10, s.winH-s.bottomH+6, controls1, rgb(230,235,230), topLineW);
     if (g.statusTimer > 0) {
         drawTextFit(10, s.winH-s.bottomH+26, ">> " + g.statusMsg, rgb(255,230,120), maxW);
         g.statusTimer--;
@@ -1525,6 +1536,74 @@ int gfxShowSplash() {
     }
 }
 
+static std::string captureTimestamp() {
+    auto now = std::chrono::system_clock::now();
+    std::time_t t = std::chrono::system_clock::to_time_t(now);
+    std::tm tm{};
+#if defined(_WIN32)
+    localtime_s(&tm, &t);
+#else
+    localtime_r(&t, &tm);
+#endif
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+        now.time_since_epoch()) % 1000;
+    std::ostringstream ss;
+    ss << std::put_time(&tm, "%Y%m%d-%H%M%S")
+       << '-' << std::setw(3) << std::setfill('0') << ms.count();
+    return ss.str();
+}
+
+static void captureIssueBundle() {
+    namespace fs = std::filesystem;
+    std::error_code ec;
+    fs::path dir = fs::absolute(fs::path("captures") / ("realm-issue-" + captureTimestamp()), ec);
+    if (ec) dir = fs::path("captures") / ("realm-issue-" + captureTimestamp());
+    fs::create_directories(dir, ec);
+    if (ec) {
+        setStatus("Issue capture failed.");
+        std::cerr << "realm: issue capture mkdir failed " << dir.string()
+                  << " error=" << ec.message() << "\n";
+        return;
+    }
+
+    fs::path savePath = dir / "realm-save.txt";
+    fs::path shotPath = dir / "screenshot.bmp";
+    fs::path infoPath = dir / "capture-info.txt";
+
+    bool saved = saveGame(savePath.string());
+    bool shot = gfxSaveScreenshot(shotPath.string());
+
+    std::ofstream info(infoPath);
+    if (info) {
+        info << "Realm issue capture\n"
+             << "directory: " << dir.string() << "\n"
+             << "save: " << savePath.filename().string() << "\n"
+             << "screenshot: " << shotPath.filename().string() << "\n"
+             << "tick: " << g.tick << "\n"
+             << "seed: " << g.seed << "\n"
+             << "cursor: " << g.cursorX << "," << g.cursorY << "\n"
+             << "view: " << g.viewX << "," << g.viewY << " "
+             << g.viewW << "x" << g.viewH << "\n"
+             << "projection: " << (s.isometric ? "isometric" : "top-down") << "\n"
+             << "visuals: " << (displayMode == DM_EMOJI ? "emoji" : "ascii") << "\n"
+             << "window: " << s.winW << "x" << s.winH << "\n";
+    }
+
+    int clip = SDL_SetClipboardText(dir.string().c_str());
+    if (saved && shot && clip == 0) {
+        setStatus("Issue capture saved; path copied.");
+    } else if (saved || shot) {
+        setStatus("Issue capture partial; see log.");
+    } else {
+        setStatus("Issue capture failed.");
+    }
+
+    std::cerr << "realm: issue capture dir=" << dir.string()
+              << " save=" << (saved ? "ok" : "failed")
+              << " screenshot=" << (shot ? "ok" : "failed")
+              << " clipboard=" << (clip == 0 ? "ok" : SDL_GetError()) << "\n";
+}
+
 void gfxOnNewGame() {
     centerViewOnTile(g.cursorX, g.cursorY);
 }
@@ -1594,6 +1673,7 @@ void gfxPollInput(bool& quitRequested) {
             if (k == SDLK_F5) { saveGame("realm-save.txt"); continue; }
             if (k == SDLK_F8) { g.diagnostics = !g.diagnostics; continue; }
             if (k == SDLK_F9) { loadGame("realm-save.txt"); updateViewMetrics(true); continue; }
+            if (k == SDLK_F12) { captureIssueBundle(); continue; }
             if (k == SDLK_EQUALS || k == SDLK_PLUS || k == SDLK_KP_PLUS) { setZoom(s.tile+3); continue; }
             if (k == SDLK_MINUS || k == SDLK_KP_MINUS) { setZoom(s.tile-3); continue; }
             int ch = keyToInput(k);
