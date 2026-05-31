@@ -99,7 +99,7 @@ void initColors() {
 
     init_pair(CP_SAND,          C::TAN,          bg);
     init_pair(CP_DUNES,         C::LIGHT_TAN,    bg);
-    init_pair(CP_SNOW_GROUND,   C::LIGHT_GRAY,   C::SNOW_WHITE);
+    init_pair(CP_SNOW_GROUND,   C::SNOW_WHITE,   bg);
     init_pair(CP_ICE,           C::MED_BLUE,     C::ICE_BLUE);
 
     init_pair(CP_DIRT,          C::BROWN,        bg);
@@ -124,17 +124,17 @@ void initColors() {
     init_pair(CP_AUT_GRASS,      C::OLIVE,        bg);
     init_pair(CP_AUT_GRASS_LATE, C::BROWN,        bg);
 
-    init_pair(CP_WIN_GROUND,     C::LIGHT_GRAY,   C::SNOW_WHITE);
-    init_pair(CP_WIN_TREE,       C::DARK_GREEN,   C::SNOW_WHITE);
-    init_pair(CP_WIN_PINE,       C::PINE_GREEN,   C::SNOW_WHITE);
+    init_pair(CP_WIN_GROUND,     C::LIGHT_GRAY,   bg);
+    init_pair(CP_WIN_TREE,       C::MED_GRAY,     bg);
+    init_pair(CP_WIN_PINE,       C::LIGHT_GRAY,   bg);
     init_pair(CP_WIN_ICE,        C::ICE_BLUE,     C::NAVY);
 
     init_pair(CP_NIGHT_GRASS,    C::DARK_GREEN,   bg);
-    init_pair(CP_NIGHT_TREE,     C::DARK_GREEN,   bg);
+    init_pair(CP_NIGHT_TREE,     C::DARK_GRAY,    bg);
     init_pair(CP_NIGHT_WATER,    C::NAVY,         C::NEAR_BLACK);
     init_pair(CP_NIGHT_GROUND,   C::DARKER_GRAY,  bg);
     init_pair(CP_NIGHT_GOLD,     C::DARK_GOLD,    bg);
-    init_pair(CP_NIGHT_SNOW,     C::LIGHT_GRAY,   C::DARKER_GRAY);
+    init_pair(CP_NIGHT_SNOW,     C::MED_GRAY,     bg);
 
     init_pair(CP_DAWN_SKY,       C::ORANGE,       bg);
     init_pair(CP_DUSK_SKY,       C::DUSK_PURPLE,  bg);
@@ -357,21 +357,13 @@ void getTerrainVisual(Terrain t, int x, int y, char& ch, int& cp) {
                 if (shouldShowSeasonAt(x,y,snowAmt)) { ch='.'; cp=CP_WIN_GROUND; }
             if (t==T_HILLS && shouldShowSeasonAt(x,y,snowAmt)) cp=CP_WIN_GROUND;
             if (t==T_WHEAT) { ch='.'; cp=CP_WIN_GROUND; }
-            if (t==T_FOREST && shouldShowSeasonAt(x,y,0.35f+p*0.55f)) { ch='t'; cp=CP_WIN_TREE; }
-            if (t==T_PINE   && shouldShowSeasonAt(x,y,0.25f+p*0.4f))          cp=CP_WIN_PINE;
-            // Rivers and marshes freeze over
-            float freezeAmt = std::min(1.0f, 0.25f + p * 1.1f);
-            if (t==T_WATER  && shouldShowSeasonAt(x,y,freezeAmt)) { ch='='; cp=CP_WIN_ICE; }
-            if (t==T_SHALLOWS && shouldShowSeasonAt(x,y,freezeAmt)) { ch='='; cp=CP_WIN_ICE; }
-            if (t==T_MARSH  && shouldShowSeasonAt(x,y,freezeAmt)) { ch='='; cp=CP_WIN_ICE; }
-            if (t==T_REEDS  && shouldShowSeasonAt(x,y,freezeAmt)) { ch='='; cp=CP_WIN_ICE; }
-            // Thaw at the tail end of winter
+            if (t==T_FOREST) { ch='t'; cp=CP_WIN_TREE; }
+            if (t==T_PINE)   cp=CP_WIN_PINE;
+            // Tail-end visual thaw for snow-dusted non-snow terrain (hills etc).
             if (p > 0.85f) {
                 float thaw = (p-0.85f)*6.67f;
                 if ((cp==CP_WIN_GROUND) && t!=T_SNOW && shouldShowSeasonAt(x+100,y+100,thaw))
                     { ch='.'; cp=CP_GRASS; }
-                if (cp==CP_WIN_ICE && (t==T_WATER||t==T_SHALLOWS) && shouldShowSeasonAt(x+200,y+200,thaw*0.7f))
-                    { ch='~'; cp=CP_WATER; }
             }
             break;
         }}
@@ -530,6 +522,34 @@ void renderMap() {
             bool inCrop = ent && !isBuilding(ent->type) && tile.terrain == T_WHEAT;
             if (ent && ent->alive && ent->owner != 0 && ent->owner < MAX_PLAYERS
                 && (isConcealing() || inCrop) && !isDetectedBy(mx, my, 0)) ent = nullptr;
+
+            // Catapult/ram body tile: render the body from the adjacent slot so
+            // the normal terrain pass for this cell cannot overwrite it.
+            if (displayMode == DM_ASCII && !ent && inBounds(mx-1, my)) {
+                Entity* leftEnt = entityAt(mx-1, my);
+                if (leftEnt && leftEnt->alive && !leftEnt->underConstruction
+                    && (leftEnt->type == E_CATAPULT || leftEnt->type == E_RAM)) {
+                    bool inCropLeft = g.map[my][mx-1].terrain == T_WHEAT;
+                    bool leftCloaked = leftEnt->owner != 0 && leftEnt->owner < MAX_PLAYERS
+                        && (isConcealing() || inCropLeft) && !isDetectedBy(mx-1, my, 0);
+                    if (!leftCloaked) {
+                        char sc = (leftEnt->type == E_CATAPULT) ? 'c' : 'r';
+                        bool bodyIsSel = leftEnt->id == g.selectedId;
+                        if (!bodyIsSel)
+                            for (int sid : g.selectedIds) if (sid == leftEnt->id) { bodyIsSel = true; break; }
+                        int bcp = ownerColorPair(leftEnt->owner, night);
+                        int sattr = COLOR_PAIR(bcp) | A_BOLD;
+                        if (bodyIsSel) sattr |= A_REVERSE;
+                        if (isCur) {
+                            attron(COLOR_PAIR(CP_CURSOR)); mvaddch(scY, scX, sc); attroff(COLOR_PAIR(CP_CURSOR));
+                        } else {
+                            attron(sattr); mvaddch(scY, scX, sc); attroff(sattr);
+                        }
+                        continue;
+                    }
+                }
+            }
+
             // Render priority + stack count. When multiple units share a tile,
             // prefer the highest-value military so e.g. knights show through a
             // pile of peasants. Also count any same-owner combat units on the
@@ -602,6 +622,14 @@ void renderMap() {
                     drawCh = ACS_CKBOARD;
                     emojiStr = "\xe2\x96\xa0";  // ■ U+25A0
                 }
+                if (ent->type == E_CASTLE && !ent->underConstruction && displayMode == DM_ASCII) {
+                    int dx = mx - ent->x, dy = my - ent->y;
+                    bool corner = (dx == 0 || dx == 3) && (dy == 0 || dy == 3);
+                    if (corner)                     drawCh = ACS_CKBOARD;
+                    else if (dy == 0 || dy == 3) { ch = '='; drawCh = (chtype)ch; }
+                    else if (dx == 0 || dx == 3) { ch = '|'; drawCh = (chtype)ch; }
+                    else                         { ch = '.'; drawCh = (chtype)ch; }
+                }
                 // Siege engine arm animations.
                 // Catapult: arm at rest = ◄ (loaded), arm firing = ╱ (swinging).
                 if (ent->type == E_CATAPULT) {
@@ -619,9 +647,9 @@ void renderMap() {
                 // own state-aware glyph). Staggered per-id so a busy village
                 // doesn't strobe in sync.
                 if (displayMode == DM_ASCII && ent->type == E_PEASANT) {
-                    int cyc = (g.tick + ent->id*5) % 8;
-                    if      (ent->state == S_GATHERING && cyc < 4) { ch = '*'; drawCh = (chtype)ch; }
-                    else if (ent->state == S_BUILDING  && cyc < 4) { ch = '+'; drawCh = (chtype)ch; }
+                    int cyc = (g.tick + ent->id*5) % 30;
+                    if      (ent->state == S_GATHERING && cyc < 3) { ch = '*'; drawCh = (chtype)ch; }
+                    else if (ent->state == S_BUILDING  && cyc < 3) { ch = '+'; drawCh = (chtype)ch; }
                     else if (ent->state == S_RETURNING && cyc < 2) { ch = ','; drawCh = (chtype)ch; }
                     else if (ent->state == S_IDLE) {
                         // Slow daydream pulse: '?' shown ~1 s every ~20 s, staggered.
@@ -714,21 +742,6 @@ void renderMap() {
                 attroff(attr);
             }
 
-            // Siege engines render as 2 chars: arm then body.
-            // ASCII: body char 'c' or 'r'.  Emoji: ⊙ (catapult barrel) or ▬ (ram).
-            if (ent && ent->alive && (ent->type==E_CATAPULT||ent->type==E_RAM)
-                    && sx+1 < g.viewW && !entityAt(mx+1, my)) {
-                char sc = (ent->type==E_CATAPULT) ? 'c' : 'r';
-                const char* bodyEmoji = (ent->type==E_CATAPULT)
-                    ? "\xe2\x8a\x99"   // ⊙ U+2299 catapult barrel
-                    : "\xe2\x96\xac";  // ▬ U+25AC ram body
-                int sattr = COLOR_PAIR(cp) | A_BOLD;
-                if (isSel) sattr |= A_REVERSE;
-                attron(sattr);
-                if (displayMode == DM_ASCII) mvaddch(scY, scX+1, sc);
-                else                         mvprintw(scY, scX+1, "%s", bodyEmoji);
-                attroff(sattr);
-            }
         }
     }
 

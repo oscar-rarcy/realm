@@ -358,6 +358,28 @@ static void testMillFoodStockpile() {
     assert(mill->storedFood == 25);
 }
 
+static void testWinterPartialWaterFreeze() {
+    initGameWithSeed(1, 3653u, 0);
+    for (int y = 0; y < MAP_H; y++) {
+        for (int x = 0; x < MAP_W; x++) {
+            g.map[y][x].terrain = T_WATER;
+            g.map[y][x].preWinterTerrain = T_WATER;
+        }
+    }
+    g.prevSeason = AUTUMN;
+    g.seasonPhase = (float)WINTER;
+    tickSeasons();
+    int ice = 0, openWater = 0;
+    for (int y = 0; y < MAP_H; y++) {
+        for (int x = 0; x < MAP_W; x++) {
+            if (g.map[y][x].terrain == T_ICE) ice++;
+            if (g.map[y][x].terrain == T_WATER) openWater++;
+        }
+    }
+    assert(ice > 0);
+    assert(openWater > 0);
+}
+
 static void testMapgenReachabilityAcrossSeeds() {
     for (unsigned seed = 70; seed < 100; seed++) {
         initGameWithSeed(3, seed, (int)(seed % 4));
@@ -464,6 +486,7 @@ int main() {
     testTownHallTrainInputFlow();
     testBerryGatherAndDepletion();
     testMillFoodStockpile();
+    testWinterPartialWaterFreeze();
     testStartSafetyAcrossSeeds();
     testMapgenReachabilityAcrossSeeds();
     testSaveLoadRoundTrip();

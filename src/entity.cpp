@@ -1225,7 +1225,8 @@ void tickEntity(Entity& e) {
     case S_IDLE:
         // Military auto-engages anything visible within fog radius — units now
         // close in on threats they can see rather than waiting to be poked.
-        if (!e.holdPosition && isMilitary(e.type) && canAttack(e.type) && e.type != E_RAM) {
+        if (!e.holdPosition && isMilitary(e.type) && canAttack(e.type) && e.type != E_RAM
+            && e.owner != OWNER_NATURE) {
             // Melee units engage at 5 tiles; ranged at full fog radius — prevents
             // instant magnetic battles where everyone charges across the map.
             int aggroRange = isRanged(e.type) ? std::max(FOG_RADIUS, unitRange(e)+1) : 5;
@@ -1664,8 +1665,13 @@ static void applyWinter() {
             case T_SAND:  case T_DUNES:      case T_WHEAT:   case T_BERRY:
             case T_MUD:   case T_CASTLE_FLOOR:
                 t.terrain = T_SNOW; break;
-            case T_WATER: case T_SHALLOWS: case T_MARSH: case T_REEDS:
-                t.terrain = T_ICE; break;
+            case T_WATER: case T_SHALLOWS: case T_MARSH: case T_REEDS: {
+                // Partial freeze: deeper water freezes less readily than shallows/marsh.
+                unsigned h = ((unsigned)x * 73856093u) ^ ((unsigned)y * 19349663u) ^ 0xCAFEBABEu;
+                int pct = (t.terrain == T_WATER) ? 60 : (t.terrain == T_MARSH) ? 80 : 75;
+                if ((h % 100) < (unsigned)pct) t.terrain = T_ICE;
+                break;
+            }
             default: break; // forests, hills, mountains, gold, walls, stone keep their look
         }
     }
