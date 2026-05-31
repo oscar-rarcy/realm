@@ -315,6 +315,7 @@ void initGameWithSeed(int numAIs, unsigned seed, int humanCorner) {
 #ifndef USE_SDL_RENDERER
 int main() {
     forceUtf8Locale();
+    displayMode = DM_ASCII;
     initscr(); cbreak(); noecho(); keypad(stdscr, TRUE); curs_set(0);
     // REPORT_MOUSE_POSITION gives continuous hover events for live cursor tracking
     mousemask(ALL_MOUSE_EVENTS | REPORT_MOUSE_POSITION, NULL);

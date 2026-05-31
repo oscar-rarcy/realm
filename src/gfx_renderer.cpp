@@ -38,7 +38,7 @@ struct Gfx {
 
     // GUI-only projection mode. Terminal/ncurses build does not see this.
     // false = classic top-down grid, true = isometric diamond tiles.
-    bool isometric = false;
+    bool isometric = true;
 
     bool leftDown = false;
     bool middleDown = false;
