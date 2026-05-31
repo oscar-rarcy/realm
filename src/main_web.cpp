@@ -27,8 +27,16 @@ static bool isEmbedRoute() {
         if (typeof window === 'undefined' || !window.location || typeof window.location.pathname !== 'string') {
             return 0;
         }
-        var path = window.location.pathname;
-        return /(^|\/)embed(\/|$)/.test(path) ? 1 : 0;
+        var path = window.location.pathname.toLowerCase();
+        var search = (window.location.search || "").toLowerCase();
+        var hash = (window.location.hash || "").toLowerCase();
+        if (search.indexOf('embed') !== -1 || hash.indexOf('embed') !== -1) return 1;
+
+        var segments = path.split('/');
+        for (var i = 0; i < segments.length; i++) {
+            if (segments[i] === 'embed') return 1;
+        }
+        return 0;
     });
 }
 

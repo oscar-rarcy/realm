@@ -88,7 +88,8 @@ persistent after refresh.
 
 ## Known limitations
 
-- The browser build starts directly in a playable match instead of showing the
-  native blocking splash screen.
+- The browser entrypoint uses route-based startup:
+  non-`/embed` pages show the main menu, while `/embed` starts a deterministic
+  mid-game immediately.
 - Browser save persistence is deferred.
 - Only the `edward` branch is configured for Netlify in this pass.
