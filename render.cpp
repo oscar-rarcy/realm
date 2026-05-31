@@ -999,6 +999,19 @@ void renderMap() {
                     drawCh = ACS_CKBOARD;
                     emojiStr = u8"🧱";
                 }
+                // Castle: 4×4 per-cell pattern in ASCII mode.
+                //   █ = = █   corners  → solid block (tower)
+                //   | . . |   edges    → | (sides) / = (top/bottom)
+                //   | . . |   interior → . (courtyard)
+                //   █ = = █
+                if (ent->type == E_CASTLE && !ent->underConstruction && displayMode == DM_ASCII) {
+                    int dx = mx - ent->x, dy = my - ent->y;
+                    bool corner = (dx == 0 || dx == 3) && (dy == 0 || dy == 3);
+                    if (corner)                drawCh = ACS_CKBOARD;
+                    else if (dy == 0 || dy == 3) { ch = '='; drawCh = (chtype)ch; }
+                    else if (dx == 0 || dx == 3) { ch = '|'; drawCh = (chtype)ch; }
+                    else                         { ch = '.'; drawCh = (chtype)ch; }
+                }
                 // Siege engine arm animations stay ASCII-only. Emoji mode uses
                 // one proper unit emoji in the entity's single 2-column tile.
                 if (displayMode == DM_ASCII && ent->type == E_CATAPULT) {
