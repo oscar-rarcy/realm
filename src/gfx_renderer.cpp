@@ -1392,6 +1392,32 @@ static void drawTopBar() {
     drawTextFit(10, 7, ss.str(), rgb(235,238,230), std::max(1, s.winW - s.panelW - 18));
 }
 
+static bool isTrainProducer(EntityType t) {
+    return t == E_TOWNHALL || t == E_BARRACKS || t == E_STABLE || t == E_DOCK;
+}
+
+static std::string trainPromptFor(const Entity* sel) {
+    if (!sel || sel->owner != 0 || !isTrainProducer(sel->type))
+        return "TRAIN: select a production building, Esc cancel";
+    switch (sel->type) {
+        case E_TOWNHALL: return "TRAIN: P Peasant (50g), repeat to queue, Esc cancel";
+        case E_BARRACKS: return "TRAIN: M Militia  A Archer  C Catapult  R Ram, Esc cancel";
+        case E_STABLE: return "TRAIN: K Knight, repeat to queue, Esc cancel";
+        case E_DOCK: return "TRAIN: B Fishing boat  W Warship  T Transport, Esc cancel";
+        default: return "TRAIN: no units available, Esc cancel";
+    }
+}
+
+static std::vector<std::string> trainPanelHintsFor(EntityType t) {
+    switch (t) {
+        case E_TOWNHALL: return {"P: peasant (50g)"};
+        case E_BARRACKS: return {"M: militia  A: archer", "C: catapult  R: ram"};
+        case E_STABLE: return {"K: knight"};
+        case E_DOCK: return {"B: fish boat  W: warship", "T: transport"};
+        default: return {};
+    }
+}
+
 static void drawPanel() {
     SDL_Rect pr = panelRect();
     setDraw(rgb(8,10,14)); SDL_RenderFillRect(s.ren, &pr);
@@ -1445,7 +1471,16 @@ static void drawPanel() {
                 drawTextFit(x,y,"B: build",rgb(150,210,230), textW); y+=20;
                 drawTextFit(x,y,"Enter/R-click: command",rgb(150,210,230), textW); y+=20;
             }
-            else if (isBuilding(sel->type) && !sel->underConstruction) { drawTextFit(x,y,"T: train / actions",rgb(150,210,230), textW); y+=20; }
+            else if (isBuilding(sel->type) && !sel->underConstruction) {
+                if (isTrainProducer(sel->type)) {
+                    drawTextFit(x,y,"T: train",rgb(150,210,230), textW); y+=20;
+                    for (const std::string& hint : trainPanelHintsFor(sel->type)) {
+                        drawTextFit(x,y,hint,rgb(180,205,210), textW); y+=20;
+                    }
+                } else {
+                    drawTextFit(x,y,"No train options",rgb(130,145,150), textW); y+=20;
+                }
+            }
         }
     } else {
         drawText(x, y, "No selection", rgb(130,135,145)); y += 26;
@@ -1467,7 +1502,7 @@ static void drawBottom() {
     if (g.mode == M_PAUSED) { controls1 = "PAUSED - Press P to resume"; controls2.clear(); }
     else if (g.mode == M_GAME_OVER) { controls1 = (g.winner==0) ? "VICTORY - Enter/Q for menu, X to exit" : "DEFEAT - Enter/Q for menu, X to exit"; controls2.clear(); }
     else if (g.mode == M_BUILD_SELECT) { controls1 = "BUILD: H House, B Barracks, S Stable, T Tower, F Farm, W Wall, K Castle"; controls2 = "L Lumber camp  N Mining camp  I Mill  D Dock  Esc cancel"; }
-    else if (g.mode == M_TRAIN_SELECT) { controls1 = "TRAIN: repeat unit keys to queue more, Esc cancel"; controls2.clear(); }
+    else if (g.mode == M_TRAIN_SELECT) { controls1 = trainPromptFor(findEntity(g.selectedId)); controls2.clear(); }
     const std::string captureHint = "F12:Capture issue";
     int hintW = textWidth(captureHint);
     int hintX = std::max(10, s.winW - hintW - 14);
@@ -1792,6 +1827,7 @@ void gfxPollInput(bool& quitRequested) {
                 g.dragging = false;
             } else if (screenToMap(e.button.x, e.button.y, mx, my)) {
                 g.cursorX = mx; g.cursorY = my;
+                if (g.mode == M_TRAIN_SELECT) g.mode = M_NORMAL;
                 if (g.mode == M_RALLY_SET || g.mode == M_ATTACK_MOVE) {
                     handleInput('\n');
                 } else if (e.button.button == SDL_BUTTON_LEFT) {
@@ -1819,6 +1855,7 @@ void gfxPollInput(bool& quitRequested) {
             }
             if (e.button.button == SDL_BUTTON_LEFT && screenToMap(e.button.x, e.button.y, mx, my)) {
                 g.cursorX = mx; g.cursorY = my;
+                if (g.mode == M_TRAIN_SELECT) g.mode = M_NORMAL;
                 if (s.leftDown) {
                     bool moved = (std::abs(mx - s.dragStartX) + std::abs(my - s.dragStartY)) > 1;
                     if (moved) rendererBoxSelect(s.dragStartX, s.dragStartY, mx, my);

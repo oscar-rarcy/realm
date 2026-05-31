@@ -275,6 +275,33 @@ static void testSupplyAndTownHallCost() {
     assert(false && "no town hall build spot found");
 }
 
+static void testTownHallTrainInputFlow() {
+    initGameWithSeed(1, 3253u, 0);
+    Entity* th = nullptr;
+    for (auto& e : g.entities)
+        if (e.alive && e.owner == 0 && e.type == E_TOWNHALL) { th = &e; break; }
+    assert(th);
+    g.selectedId = th->id;
+    g.selectedIds.clear();
+    g.mode = M_NORMAL;
+    g.players[0].gold = 500;
+    g.players[0].wood = 500;
+    g.players[0].food = 500;
+    g.players[0].supplyMax = 20;
+
+    handleInput('t');
+    assert(g.mode == M_TRAIN_SELECT);
+    int goldBefore = g.players[0].gold;
+    handleInput('p');
+    assert(g.mode == M_TRAIN_SELECT);
+    th = findEntity(g.selectedId);
+    assert(th);
+    assert(th->producing == E_PEASANT);
+    assert(g.players[0].gold == goldBefore - STATS[E_PEASANT].costGold);
+    handleInput(27);
+    assert(g.mode == M_NORMAL);
+}
+
 static void testBerryGatherAndDepletion() {
     initGameWithSeed(1, 3503u, 0);
     Entity* peasant = nullptr;
@@ -405,6 +432,7 @@ int main() {
     testRecoverableValidation();
     testMatchResetAndDeterminism();
     testSupplyAndTownHallCost();
+    testTownHallTrainInputFlow();
     testBerryGatherAndDepletion();
     testStartSafetyAcrossSeeds();
     testMapgenReachabilityAcrossSeeds();

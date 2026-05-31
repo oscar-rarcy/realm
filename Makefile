@@ -66,7 +66,8 @@ TEST_OBJS := \
 	$(OBJ_DIR)/entity_headless.o \
 	$(OBJ_DIR)/orders_headless.o \
 	$(OBJ_DIR)/simulation_headless.o \
-	$(OBJ_DIR)/ai_headless.o
+	$(OBJ_DIR)/ai_headless.o \
+	$(OBJ_DIR)/input_headless.o
 
 .DEFAULT_GOAL := gui
 
@@ -229,6 +230,9 @@ $(OBJ_DIR)/simulation_headless.o: $(SRC_DIR)/simulation.cpp $(INC_DIR)/realm.h |
 
 $(OBJ_DIR)/ai_headless.o: $(SRC_DIR)/ai.cpp $(INC_DIR)/realm.h | $(OBJ_DIR)
 	$(CXX) $(CXXFLAGS) -DUSE_SDL_RENDERER -I$(INC_DIR) -c -o $@ $(SRC_DIR)/ai.cpp
+
+$(OBJ_DIR)/input_headless.o: $(SRC_DIR)/input.cpp $(INC_DIR)/realm.h | $(OBJ_DIR)
+	$(CXX) $(CXXFLAGS) -DUSE_SDL_RENDERER -I$(INC_DIR) -c -o $@ $(SRC_DIR)/input.cpp
 
 test: $(TEST_TARGET)
 	./$(TEST_TARGET)

@@ -208,6 +208,42 @@ static int runUiTestMode() {
         ok = captureUiFrame((outDir / "15-night-torch-light.bmp").string()) && ok;
     }
 
+    if (Entity* townHall = firstOwned(E_TOWNHALL, 0)) {
+        g.selectedId = townHall->id;
+        g.selectedIds.clear();
+        g.mode = M_NORMAL;
+        g.players[0].gold = 500;
+        g.players[0].wood = 500;
+        g.players[0].food = 500;
+        g.players[0].supplyMax = 20;
+
+        SDL_Event train{};
+        train.type = SDL_KEYDOWN;
+        train.key.keysym.sym = SDLK_t;
+        SDL_PushEvent(&train);
+        bool quitRequested = false;
+        gfxPollInput(quitRequested);
+        ok = !quitRequested && g.mode == M_TRAIN_SELECT && ok;
+
+        SDL_Event queuePeasant{};
+        queuePeasant.type = SDL_KEYDOWN;
+        queuePeasant.key.keysym.sym = SDLK_p;
+        SDL_PushEvent(&queuePeasant);
+        gfxPollInput(quitRequested);
+        townHall = firstOwned(E_TOWNHALL, 0);
+        ok = !quitRequested && townHall && townHall->producing == E_PEASANT
+             && g.mode == M_TRAIN_SELECT && ok;
+
+        SDL_Event click{};
+        click.type = SDL_MOUSEBUTTONDOWN;
+        click.button.button = SDL_BUTTON_LEFT;
+        click.button.x = (width - 286) / 2;
+        click.button.y = 32 + (height - 32 - 48) / 2;
+        SDL_PushEvent(&click);
+        gfxPollInput(quitRequested);
+        ok = !quitRequested && g.mode == M_NORMAL && ok;
+    }
+
     if (std::getenv("REALM_UI_CAPTURE_TEST")) {
         SDL_Event event{};
         event.type = SDL_KEYDOWN;
