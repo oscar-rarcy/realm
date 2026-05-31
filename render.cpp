@@ -1016,7 +1016,9 @@ void renderMap() {
                 // Siege engine arm animations stay ASCII-only. Emoji mode uses
                 // one proper unit emoji in the entity's single 2-column tile.
                 if (displayMode == DM_ASCII && ent->type == E_CATAPULT) {
-                    bool firing = ent->state==S_ATTACKING && ent->atkCd > STATS[E_CATAPULT].atkSpeed*2/3;
+                    // Arm shows as raised only for the first 3 ticks after firing —
+                    // a brief thump, then rests horizontal until the next shot.
+                    bool firing = ent->state==S_ATTACKING && ent->atkCd > STATS[E_CATAPULT].atkSpeed - 3;
                     ch = firing ? '/' : '-'; drawCh = (chtype)ch;
                 }
                 if (displayMode == DM_ASCII && ent->type == E_RAM) {

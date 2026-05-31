@@ -45,7 +45,8 @@ void aiGather(int o) {
     }
 }
 
-// Build placement: try near a given centre. Wider, more attempts.
+// Build placement: try near a given centre. Prefer positions with some breathing
+// room from existing buildings so the base spreads out rather than clustering.
 static void aiBuildSpotNear(int o, EntityType bt, int cx, int cy, int& ox, int& oy) {
     if (cx < 0 || cy < 0) {
         Entity* th = aiBldg(o, E_TOWNHALL);
@@ -53,7 +54,19 @@ static void aiBuildSpotNear(int o, EntityType bt, int cx, int cy, int& ox, int& 
         if (!th) return;
         cx = th->x; cy = th->y;
     }
-    for (int r = 2; r < 18; r++) for (int a = 0; a < 24; a++) {
+    // First pass: spaced placement — skip tiles within 3 of any owned building.
+    for (int r = 4; r < 22; r++) for (int a = 0; a < 28; a++) {
+        int bx = cx + (rand()%(r*2+1)) - r, by = cy + (rand()%(r*2+1)) - r;
+        if (!canPlace(bt, bx, by, o)) continue;
+        bool tooClose = false;
+        for (auto& e : g.entities) {
+            if (!e.alive || e.owner != o || !isBuilding(e.type)) continue;
+            if (dist(e.x, e.y, bx, by) < 3) { tooClose = true; break; }
+        }
+        if (!tooClose) { ox = bx; oy = by; return; }
+    }
+    // Fallback: accept any valid spot if spacing can't be maintained.
+    for (int r = 2; r < 22; r++) for (int a = 0; a < 28; a++) {
         int bx = cx + (rand()%(r*2+1)) - r, by = cy + (rand()%(r*2+1)) - r;
         if (canPlace(bt, bx, by, o)) { ox = bx; oy = by; return; }
     }
