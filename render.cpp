@@ -982,6 +982,9 @@ void renderMap() {
                 }
                 if (displayMode == DM_ASCII && isNaval(ent->type))
                     cp = (ent->owner == 0) ? CP_SHIP_PLAYER : CP_SHIP_ENEMY;
+                // Farms are always wheat-gold — ownership doesn't change their colour.
+                if (ent->type == E_FARM && !ent->underConstruction)
+                    cp = (getSeason() == SUMMER) ? CP_WHEAT_GOLD : CP_WHEAT;
 
                 // State-specific glyph overrides (gate, construction, siege engines, alert).
                 if (ent->type == E_GATE && !ent->underConstruction) {
