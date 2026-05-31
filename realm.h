@@ -58,7 +58,7 @@ enum EntityState {
     S_BUILDING, S_TRAINING, S_RETURNING, S_DEAD,
     S_ENTERING, S_GARRISONED
 };
-enum GameMode  { M_NORMAL, M_BUILD_SELECT, M_TRAIN_SELECT, M_WALL_DRAG, M_PAUSED, M_GAME_OVER, M_RALLY_SET, M_RESEARCH_SELECT, M_ATTACK_MOVE };
+enum GameMode  { M_NORMAL, M_BUILD_SELECT, M_TRAIN_SELECT, M_WALL_DRAG, M_PAUSED, M_GAME_OVER, M_RALLY_SET, M_RESEARCH_SELECT, M_ATTACK_MOVE, M_MARKET_TRADE };
 
 // Research bits stored in Player.research
 enum Research { R_IRON_WEAPONS = 1, R_CROSSBOWS = 2 };
@@ -151,6 +151,7 @@ struct Entity {
     int holdPosition;// 1 = ignore auto-aggro; only attack when explicitly ordered
     bool gateOpen;   // E_GATE only: open (passable) vs closed (blocks pathing)
     bool gateLocked; // E_GATE only: manual mode — don't auto-toggle on ally proximity
+    int convertTicks; // accumulated exposure to an enemy church; convert when threshold met
     std::vector<int> queue;    // pending EntityTypes to train (FIFO, max 5)
     std::vector<int> garrison; // unit ids currently inside this building
 };

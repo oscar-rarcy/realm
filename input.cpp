@@ -290,6 +290,30 @@ void handleInput(int ch) {
         goto clamp;
     }
 
+    // Market trade menu.
+    if (g.mode == M_MARKET_TRADE) {
+        if (ch == 27) { g.mode = M_NORMAL; return; }
+        Entity* mkt = findEntity(g.selectedId);
+        if (!mkt || mkt->type != E_MARKET || mkt->underConstruction) { g.mode = M_NORMAL; return; }
+        Player& pl = g.players[0];
+        auto trade = [&](int costGold, int costWood, int costFood,
+                         int gainGold, int gainWood, int gainFood,
+                         const char* msg) {
+            if (pl.gold < costGold || pl.wood < costWood || pl.food < costFood) {
+                setStatus("Not enough resources!"); return;
+            }
+            pl.gold += gainGold - costGold;
+            pl.wood += gainWood - costWood;
+            pl.food += gainFood - costFood;
+            setStatus(msg);
+        };
+        if      (ch == 'g' || ch == 'G') trade(40, 0, 0,  0, 30,  0, "Traded gold for wood.");
+        else if (ch == 'w' || ch == 'W') trade( 0,40, 0, 30,  0,  0, "Traded wood for gold.");
+        else if (ch == 'f' || ch == 'F') trade(50, 0, 0,  0,  0, 30, "Traded gold for food.");
+        else if (ch == 'v' || ch == 'V') trade( 0, 0,40, 30,  0,  0, "Traded food for gold.");
+        return;
+    }
+
     // Research selection from the blacksmith.
     if (g.mode == M_RESEARCH_SELECT) {
         if (ch == 27) { g.mode = M_NORMAL; return; }
@@ -393,7 +417,10 @@ void handleInput(int ch) {
             setStatus("Select a production building first.");
             break;
         }
-        if (sel->type == E_BLACKSMITH) {
+        if (sel->type == E_MARKET) {
+            g.mode = M_MARKET_TRADE;
+            setStatus("Trade (40→30): [G]old→Wood  [W]ood→Gold  [F]ood←Gold  [V]ictuals→Gold  [Esc]");
+        } else if (sel->type == E_BLACKSMITH) {
             g.mode = M_RESEARCH_SELECT;
             setStatus("Research: [I]ron Weapons 100g/100w  [C]rossbows 80g/80w  [Esc]");
         } else if (sel->type == E_TOWNHALL || sel->type == E_CASTLE

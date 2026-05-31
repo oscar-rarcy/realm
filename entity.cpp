@@ -1390,13 +1390,44 @@ void tickMarkets() {
 }
 
 void tickChurches() {
-    if (g.tick % 20 != 0) return;
-    for (auto& e : g.entities) {
-        if (!e.alive || e.type!=E_CHURCH || e.underConstruction) continue;
+    const int CHURCH_RANGE = 6;
+    for (auto& ch : g.entities) {
+        if (!ch.alive || ch.type != E_CHURCH || ch.underConstruction) continue;
+
+        // Heal friendly units in range every 25 ticks.
+        if (g.tick % 25 == 0) {
+            for (auto& u : g.entities) {
+                if (!u.alive || u.owner != ch.owner || !isUnit(u.type)) continue;
+                if (u.state == S_GARRISONED) continue;
+                if (dist(u.x, u.y, ch.x, ch.y) <= CHURCH_RANGE && u.hp < u.maxHp)
+                    u.hp = std::min(u.maxHp, u.hp + 1);
+            }
+        }
+
+        // Conversion: enemy units in range slowly accumulate faith pressure.
+        // Threshold scales with unit toughness so knights take much longer than peasants.
         for (auto& u : g.entities) {
-            if (!u.alive || u.owner!=e.owner || !isUnit(u.type)) continue;
-            if (dist(u.x,u.y,e.x,e.y) <= 3 && u.hp < u.maxHp)
-                u.hp = std::min(u.maxHp, u.hp + 1);
+            if (!u.alive || u.owner == ch.owner || u.owner == OWNER_NATURE) continue;
+            if (!isUnit(u.type) || isBuilding(u.type)) continue;
+            if (u.state == S_GARRISONED) continue;
+            if (dist(u.x, u.y, ch.x, ch.y) <= CHURCH_RANGE) {
+                u.convertTicks++;
+                int threshold = 200 + u.maxHp * 3; // ~300 for peasants, ~530 for knights
+                if (u.convertTicks >= threshold) {
+                    int oldOwner = u.owner;
+                    u.owner = ch.owner;
+                    u.convertTicks = 0;
+                    u.state = S_IDLE; u.path.clear(); u.pathIdx = 0;
+                    updateSupply(oldOwner);
+                    updateSupply(ch.owner);
+                    if (ch.owner == 0)
+                        setStatus(std::string(STATS[u.type].name) + " converted to your cause!");
+                    else if (oldOwner == 0)
+                        setStatus("A unit has been turned against you!");
+                }
+            } else {
+                if (u.convertTicks > 0) u.convertTicks--;  // slow decay when out of range
+            }
         }
     }
 }
