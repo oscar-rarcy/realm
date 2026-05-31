@@ -100,6 +100,19 @@ The sanitizer target runs the same headless suite with ASan/UBSan and sets
 `REALM_TEST_LONG_TICKS=2000` so sanitizer verification remains practical. Plain
 `make test` / `mingw32-make test` still default to the 10,000 tick long run.
 
+## Graphical UI Screenshots
+
+To run a deterministic SDL UI pass and write screenshots for visual inspection:
+
+```sh
+make ui-test
+```
+
+The UI pass writes BMP screenshots to `build/ui-screenshots/`, covering top-down,
+isometric, selection, build menu, diagnostics, help overlay, and post-tick match
+states. You can override the output directory and capture size with
+`REALM_UI_TEST_DIR`, `REALM_UI_TEST_WIDTH`, and `REALM_UI_TEST_HEIGHT`.
+
 When switching between WSL/Linux `make` and Windows/MSYS2 `mingw32-make`, run
 `make clean` or `mingw32-make clean` first. Both toolchains use `build/obj`, so
 mixed object files can cause confusing link errors.

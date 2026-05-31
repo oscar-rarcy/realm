@@ -255,6 +255,24 @@ static void drawText(int x, int y, const std::string& text, Color col, TTF_Font*
     SDL_RenderCopy(s.ren, tex, nullptr, &dst);
 }
 
+static int textWidth(const std::string& text, TTF_Font* font = nullptr) {
+    SDL_Texture* tex = cachedText(font ? font : s.mono, text, rgb(255,255,255));
+    if (!tex) return 0;
+    int w=0,h=0; SDL_QueryTexture(tex, nullptr, nullptr, &w, &h);
+    return w;
+}
+
+static void drawTextFit(int x, int y, const std::string& text, Color col, int maxW, TTF_Font* font = nullptr) {
+    if (maxW <= 0) return;
+    std::string out = text;
+    TTF_Font* f = font ? font : s.mono;
+    if (textWidth(out, f) > maxW) {
+        while (out.size() > 1 && textWidth(out + "~", f) > maxW) out.pop_back();
+        if (!out.empty()) out += "~";
+    }
+    drawText(x, y, out, col, f);
+}
+
 static void drawCentered(const std::string& text, SDL_Rect rect, Color col, bool emoji, bool tint = false) {
     std::string drawTextValue = text;
     TTF_Font* font = emoji ? s.emoji : s.mono;
@@ -870,7 +888,10 @@ static void drawTile(int mx, int my, SDL_Rect r) {
     bool explored = tile.explored[0];
 
     if (!explored) {
-        setDraw(rgb(8,9,12)); SDL_RenderFillRect(s.ren, &r); return;
+        setDraw(rgb(8,9,12)); SDL_RenderFillRect(s.ren, &r);
+        SDL_SetRenderDrawBlendMode(s.ren, SDL_BLENDMODE_BLEND);
+        setDraw(rgb(24,28,34,120)); SDL_RenderDrawRect(s.ren, &r);
+        return;
     }
 
     Entity* ent = visible ? entityAt(mx,my) : nullptr;
@@ -1089,12 +1110,12 @@ static void drawTopBar() {
     setDraw(rgb(12,32,58)); SDL_RenderFillRect(s.ren,&top);
     Player& p = g.players[0];
     std::ostringstream ss;
-    ss << " Gold:" << p.gold << "  Wood:" << p.wood << "  Food:" << p.food
-       << "  Supply:" << p.supply << "/" << p.supplyMax
-       << "  " << seasonNameSafe() << "  " << timeNameSafe() << "  " << weatherName()
-       << "  View:" << (s.isometric ? "Iso" : "Top")
-       << "  Zoom:" << s.tile << "px";
-    drawText(10, 7, ss.str(), rgb(235,238,230));
+    ss << "G:" << p.gold << "  W:" << p.wood << "  F:" << p.food
+       << "  Pop:" << p.supply << "/" << p.supplyMax
+       << "  " << seasonNameSafe() << ' ' << timeNameSafe() << ' ' << weatherName()
+       << "  " << (s.isometric ? "Iso" : "Top")
+       << "  " << s.tile << "px";
+    drawTextFit(10, 7, ss.str(), rgb(235,238,230), std::max(1, s.winW - s.panelW - 18));
 }
 
 static void drawPanel() {
@@ -1104,78 +1125,81 @@ static void drawPanel() {
     for (int y=0; y<s.winH; y+=16) drawText(pr.x, y, "|", rgb(95,105,115));
 
     int x = pr.x + 14, y = 12;
+    int textW = std::max(1, pr.w - 28);
     drawMiniMap(x, y, pr.w-28, 110); y += 124;
 
     drawText(x, y, "Realm", rgb(245,245,230)); y += 22;
     std::ostringstream c; c << "Cursor: (" << g.cursorX << "," << g.cursorY << ")";
-    drawText(x, y, c.str(), rgb(185,190,195)); y += 20;
-    drawText(x, y, cursorTileSummary(), rgb(180,190,185)); y += 20;
-    drawText(x, y, cursorStackSummary(), rgb(180,190,185)); y += 20;
-    drawText(x, y, s.isometric ? "Projection: Isometric" : "Projection: Top-down", rgb(150,170,190)); y += 20;
-    drawText(x, y, "Mouse wheel: zoom   Middle-drag: pan", rgb(150,160,168)); y += 26;
+    drawTextFit(x, y, c.str(), rgb(185,190,195), textW); y += 20;
+    drawTextFit(x, y, cursorTileSummary(), rgb(180,190,185), textW); y += 20;
+    drawTextFit(x, y, cursorStackSummary(), rgb(180,190,185), textW); y += 20;
+    drawTextFit(x, y, s.isometric ? "Projection: Isometric" : "Projection: Top-down", rgb(150,170,190), textW); y += 20;
+    drawTextFit(x, y, "Wheel zoom / middle pan", rgb(150,160,168), textW); y += 26;
 
     if (g.diagnostics) {
         std::ostringstream ds;
         ds << "Diag tick " << g.tick << " mode " << modeName(g.mode);
-        drawText(x, y, trimPanelLine(ds.str()), rgb(255,210,120)); y += 20;
+        drawTextFit(x, y, trimPanelLine(ds.str()), rgb(255,210,120), textW); y += 20;
         std::ostringstream ds2;
         ds2 << "Ent " << g.entities.size() << " Proj " << g.projectiles.size()
             << " Seed " << g.seed;
-        drawText(x, y, trimPanelLine(ds2.str()), rgb(255,210,120)); y += 20;
+        drawTextFit(x, y, trimPanelLine(ds2.str()), rgb(255,210,120), textW); y += 20;
         if (Entity* selDiag = findEntity(g.selectedId)) {
             std::ostringstream ds3;
             ds3 << "Sel #" << selDiag->id << ' ' << STATS[selDiag->type].name
                 << ' ' << stateName(selDiag->state);
-            drawText(x, y, trimPanelLine(ds3.str()), rgb(255,210,120)); y += 20;
+            drawTextFit(x, y, trimPanelLine(ds3.str()), rgb(255,210,120), textW); y += 20;
         }
     }
 
     Entity* sel = findEntity(g.selectedId);
     if (!g.selectedIds.empty()) {
         std::ostringstream gs; gs << "Group: " << g.selectedIds.size() << " units";
-        drawText(x, y, gs.str(), rgb(255,230,135)); y += 22;
-        drawText(x, y, "R-click: command group", rgb(180,185,190)); y += 20;
+        drawTextFit(x, y, gs.str(), rgb(255,230,135), textW); y += 22;
+        drawTextFit(x, y, "R-click: command group", rgb(180,185,190), textW); y += 20;
     } else if (sel) {
         Color badge = (sel->owner == OWNER_NATURE) ? rgb(95,95,80) : ownerBg(sel->owner);
         SDL_Rect b{x,y,22,22}; setDraw(badge); SDL_RenderFillRect(s.ren,&b);
         drawCentered(entityGlyph(*sel), b, rgb(255,255,255), true);
-        drawText(x+30, y+2, STATS[sel->type].name, rgb(255,230,135)); y += 26;
+        drawTextFit(x+30, y+2, STATS[sel->type].name, rgb(255,230,135), std::max(1, textW - 30)); y += 26;
         std::ostringstream hp; hp << "HP: " << sel->hp << "/" << sel->maxHp;
-        drawText(x, y, hp.str(), rgb(220,220,210)); y += 20;
-        drawText(x, y, stateName(sel->state), rgb(180,190,200)); y += 22;
+        drawTextFit(x, y, hp.str(), rgb(220,220,210), textW); y += 20;
+        drawTextFit(x, y, stateName(sel->state), rgb(180,190,200), textW); y += 22;
         if (sel->owner == 0) {
-            if (sel->type == E_PEASANT) { drawText(x,y,"B: build   Enter/R-click: command",rgb(150,210,230)); y+=20; }
-            else if (isBuilding(sel->type) && !sel->underConstruction) { drawText(x,y,"T: train / actions",rgb(150,210,230)); y+=20; }
+            if (sel->type == E_PEASANT) {
+                drawTextFit(x,y,"B: build",rgb(150,210,230), textW); y+=20;
+                drawTextFit(x,y,"Enter/R-click: command",rgb(150,210,230), textW); y+=20;
+            }
+            else if (isBuilding(sel->type) && !sel->underConstruction) { drawTextFit(x,y,"T: train / actions",rgb(150,210,230), textW); y+=20; }
         }
     } else {
         drawText(x, y, "No selection", rgb(130,135,145)); y += 26;
         drawText(x, y, "Legend", rgb(205,210,215)); y += 22;
-        if (s.emojiFontLoaded) {
-            drawText(x, y, u8"🪨 gold   🌳 trees   🫐 berries", rgb(210,210,200), s.emoji); y += 24;
-            drawText(x, y, u8"🧍 peasant  🤺 militia  🐎 cavalry", rgb(210,210,200), s.emoji); y += 24;
-            drawText(x, y, u8"🦌 deer  🐑 sheep  🐺 wolf  🐗 boar", rgb(210,210,200), s.emoji); y += 24;
-        } else {
-            drawText(x, y, "◆ gold   ♣ trees   : berries", rgb(210,210,200)); y += 24;
-            drawText(x, y, "p peasant  m militia  k cavalry", rgb(210,210,200)); y += 24;
-            drawText(x, y, "> deer  o sheep  < wolf  @ boar", rgb(210,210,200)); y += 24;
-        }
-        drawText(x, y, "Owner: blue you, red/orange/purple enemies", rgb(170,180,188)); y += 20;
-        drawText(x, y, "! combat alert   x/+/# command markers", rgb(170,180,188)); y += 20;
+        drawTextFit(x, y, "$ gold     T wood", rgb(210,210,200), textW); y += 20;
+        drawTextFit(x, y, ": berries  p peasant", rgb(210,210,200), textW); y += 20;
+        drawTextFit(x, y, "m militia  k cavalry", rgb(210,210,200), textW); y += 20;
+        drawTextFit(x, y, "> deer  < wolf  @ boar", rgb(210,210,200), textW); y += 20;
+        drawTextFit(x, y, "Blue you; warm enemies", rgb(170,180,188), textW); y += 20;
+        drawTextFit(x, y, "! combat; x/+/# orders", rgb(170,180,188), textW); y += 20;
     }
 }
 
 static void drawBottom() {
     SDL_Rect bot{0,s.winH-s.bottomH,s.winW,s.bottomH};
     setDraw(rgb(12,32,58)); SDL_RenderFillRect(s.ren,&bot);
-    std::string controls = "Arrows:Move  Space/Click:Select  Enter/R-click:Cmd  B:Build  T:Train  F5:Save  F8:Diag  F9:Load  Q:Resign  X:Exit";
-    if (g.mode == M_PAUSED) controls = "PAUSED - Press P to resume";
-    else if (g.mode == M_GAME_OVER) controls = (g.winner==0) ? "VICTORY - Enter/Q for menu, X to exit" : "DEFEAT - Enter/Q for menu, X to exit";
-    else if (g.mode == M_BUILD_SELECT) controls = "BUILD: H House, B Barracks, S Stable, T Tower, F Farm, W Wall, K Castle, Esc cancel";
-    else if (g.mode == M_TRAIN_SELECT) controls = "TRAIN: repeat unit keys to queue more, Esc cancel";
-    drawText(10, s.winH-s.bottomH+8, controls, rgb(230,235,230));
+    std::string controls1 = "Arrows:Move  Space/Click:Select  Enter/R-click:Cmd  B:Build  T:Train";
+    std::string controls2 = "F5:Save  F8:Diag  F9:Load  F6/F7:View  +/-:Zoom  Q:Resign  X:Exit";
+    if (g.mode == M_PAUSED) { controls1 = "PAUSED - Press P to resume"; controls2.clear(); }
+    else if (g.mode == M_GAME_OVER) { controls1 = (g.winner==0) ? "VICTORY - Enter/Q for menu, X to exit" : "DEFEAT - Enter/Q for menu, X to exit"; controls2.clear(); }
+    else if (g.mode == M_BUILD_SELECT) { controls1 = "BUILD: H House, B Barracks, S Stable, T Tower, F Farm, W Wall, K Castle"; controls2 = "L Lumber camp  N Mining camp  I Mill  D Dock  Esc cancel"; }
+    else if (g.mode == M_TRAIN_SELECT) { controls1 = "TRAIN: repeat unit keys to queue more, Esc cancel"; controls2.clear(); }
+    int maxW = std::max(1, s.winW - 20);
+    drawTextFit(10, s.winH-s.bottomH+6, controls1, rgb(230,235,230), maxW);
     if (g.statusTimer > 0) {
-        drawText(10, s.winH-s.bottomH+28, ">> " + g.statusMsg, rgb(255,230,120));
+        drawTextFit(10, s.winH-s.bottomH+26, ">> " + g.statusMsg, rgb(255,230,120), maxW);
         g.statusTimer--;
+    } else if (!controls2.empty()) {
+        drawTextFit(10, s.winH-s.bottomH+26, controls2, rgb(200,213,220), maxW);
     }
 }
 
@@ -1454,7 +1478,7 @@ void gfxPollInput(bool& quitRequested) {
     }
 }
 
-void gfxRender() {
+static void drawFrame(bool present) {
     SDL_GetWindowSize(s.win, &s.winW, &s.winH);
     setDraw(rgb(3,5,8)); SDL_RenderClear(s.ren);
     drawTopBar();
@@ -1462,9 +1486,51 @@ void gfxRender() {
     drawPanel();
     drawBottom();
     drawHelpOverlay();
-    SDL_RenderPresent(s.ren);
+    if (present) SDL_RenderPresent(s.ren);
+}
+
+void gfxRender() {
+    drawFrame(true);
 }
 
 void gfxDelay(int ms) {
     SDL_Delay((Uint32)std::max(0, ms));
+}
+
+void gfxSetProjection(bool isometric) {
+    s.isometric = isometric;
+    updateViewMetrics(true);
+}
+
+void gfxSetZoomForTest(int tilePx) {
+    setZoom(tilePx);
+}
+
+void gfxSetWindowSizeForTest(int width, int height) {
+    width = std::max(640, width);
+    height = std::max(480, height);
+    SDL_SetWindowSize(s.win, width, height);
+    SDL_SetWindowPosition(s.win, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+    SDL_GetWindowSize(s.win, &s.winW, &s.winH);
+    updateViewMetrics(true);
+}
+
+bool gfxSaveScreenshot(const std::string& path) {
+    drawFrame(false);
+    SDL_Surface* surface = SDL_CreateRGBSurfaceWithFormat(0, s.winW, s.winH, 32, SDL_PIXELFORMAT_ARGB8888);
+    if (!surface) {
+        std::cerr << "realm: screenshot surface failed: " << SDL_GetError() << "\n";
+        return false;
+    }
+    bool ok = SDL_RenderReadPixels(s.ren, nullptr, SDL_PIXELFORMAT_ARGB8888,
+        surface->pixels, surface->pitch) == 0;
+    if (!ok) {
+        std::cerr << "realm: screenshot read failed: " << SDL_GetError() << "\n";
+    } else if (SDL_SaveBMP(surface, path.c_str()) != 0) {
+        std::cerr << "realm: screenshot save failed: " << SDL_GetError() << "\n";
+        ok = false;
+    }
+    SDL_FreeSurface(surface);
+    SDL_RenderPresent(s.ren);
+    return ok;
 }

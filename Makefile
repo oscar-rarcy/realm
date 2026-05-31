@@ -91,7 +91,7 @@ endif
 # -------------------------------------------------------------------
 # Public build commands
 # -------------------------------------------------------------------
-.PHONY: all gui gfx terminal term run run-gui run-terminal test debug sanitize package clean check-sdl check-ncurses copy-windows-runtime help
+.PHONY: all gui gfx terminal term run run-gui run-terminal test ui-test debug sanitize package clean check-sdl check-ncurses copy-windows-runtime help
 
 all: gui
 
@@ -125,6 +125,7 @@ help:
 	@echo "  make / make gui      Build GUI renderer (default, all platforms)"
 	@echo "  make run            Build and run GUI renderer"
 	@echo "  make test           Build and run headless simulation tests"
+	@echo "  make ui-test        Build GUI and write UI screenshots to build/ui-screenshots"
 	@echo "  make debug          Build tests with debug flags"
 ifeq ($(NATIVE_WINDOWS),1)
 	@echo "  make terminal       Not supported on native Windows; use WSL"
@@ -231,6 +232,9 @@ $(OBJ_DIR)/ai_headless.o: $(SRC_DIR)/ai.cpp $(INC_DIR)/realm.h | $(OBJ_DIR)
 
 test: $(TEST_TARGET)
 	./$(TEST_TARGET)
+
+ui-test: gui
+	REALM_UI_TEST=1 ./$(GFX_TARGET)
 
 debug:
 	$(MAKE) clean
