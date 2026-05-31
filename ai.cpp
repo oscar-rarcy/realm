@@ -9,9 +9,7 @@ Entity* aiIdle(int o, EntityType t)     { for(auto& e:g.entities) if(e.alive&&e.
 Entity* aiBldg(int o, EntityType t)     { for(auto& e:g.entities) if(e.alive&&e.owner==o&&e.type==t&&!e.underConstruction)return &e; return nullptr; }
 
 // Worker selection for AI construction. Prefers idle peasants; if none exist,
-// pulls one off gathering/returning so the AI doesn't deadlock at 10/10
-// population because aiGather() consumed every idle worker before the build
-// pass ran.
+// pulls one off gathering/returning so the AI doesn't deadlock.
 static Entity* aiWorker(int o) {
     for (auto& e : g.entities)
         if (e.alive && e.owner == o && e.type == E_PEASANT
@@ -20,6 +18,14 @@ static Entity* aiWorker(int o) {
         if (e.alive && e.owner == o && e.type == E_PEASANT
             && !e.underConstruction
             && (e.state == S_GATHERING || e.state == S_RETURNING)) return &e;
+    return nullptr;
+}
+
+// Idle peasant only — used where we don't want to interrupt gathering.
+static Entity* aiIdlePeasant(int o) {
+    for (auto& e : g.entities)
+        if (e.alive && e.owner == o && e.type == E_PEASANT
+            && e.state == S_IDLE && !e.underConstruction) return &e;
     return nullptr;
 }
 
@@ -39,7 +45,7 @@ void aiGather(int o) {
     }
 }
 
-// Build placement: try near a given centre (random TH-relative if cx<0). Wider, more attempts.
+// Build placement: try near a given centre. Wider, more attempts.
 static void aiBuildSpotNear(int o, EntityType bt, int cx, int cy, int& ox, int& oy) {
     if (cx < 0 || cy < 0) {
         Entity* th = aiBldg(o, E_TOWNHALL);
@@ -54,42 +60,71 @@ static void aiBuildSpotNear(int o, EntityType bt, int cx, int cy, int& ox, int& 
 }
 void aiBuildSpot(int o, EntityType bt, int& ox, int& oy) { aiBuildSpotNear(o, bt, -1, -1, ox, oy); }
 
-// Scan player state — used to scale production and pick targets.
-struct AIIntel { int playerArmy; int playerCastles; int playerWalls; int playerPeasants; Entity* playerTH; };
+// Scan all opponents — used to scale production and pick targets.
+struct AIIntel { int playerArmy; int playerCastles; int playerWalls; int playerPeasants; int playerCatapults; Entity* playerTH; };
 static AIIntel aiScout(int o) {
-    AIIntel x{0,0,0,0,nullptr};
+    AIIntel x{0,0,0,0,0,nullptr};
     for (auto& e : g.entities) {
         if (!e.alive || e.owner == o || e.owner == OWNER_NATURE) continue;
         if (e.state == S_GARRISONED) continue;
-        if (e.type == E_PEASANT) x.playerPeasants++;
-        else if (isUnit(e.type)) x.playerArmy++;
-        else if (e.type == E_CASTLE)  { x.playerCastles++; if (!x.playerTH) x.playerTH = &e; }
-        else if (e.type == E_WALL)    x.playerWalls++;
+        if      (e.type == E_PEASANT)  x.playerPeasants++;
+        else if (e.type == E_CATAPULT) { x.playerCatapults++; x.playerArmy++; }
+        else if (isUnit(e.type))       x.playerArmy++;
+        else if (e.type == E_CASTLE)   { x.playerCastles++; if (!x.playerTH) x.playerTH = &e; }
+        else if (e.type == E_WALL)     x.playerWalls++;
         else if (e.type == E_TOWNHALL && !x.playerTH) x.playerTH = &e;
     }
     return x;
 }
 
-// Pick a target worth attacking from `attacker`'s position.
-// Priorities: peasants (raid), wounded enemies, towers, key buildings.
+// Pick the best target for a wave originating from `attacker`.
+// Priority adapts to game phase: early = raid workers, late = destroy HQ.
 static int aiPickTarget(int o, Entity* attacker) {
     Entity* best = nullptr; int bestScore = -999999;
+    bool lateGame = g.tick > 6000;
+    bool midGame  = g.tick > 2500;
     for (auto& e : g.entities) {
         if (!e.alive || e.owner == o || e.owner == OWNER_NATURE) continue;
         if (e.state == S_GARRISONED) continue;
         int score = 0;
-        if      (e.type == E_PEASANT)                                score += 220;
-        else if (e.type == E_ARCHER || e.type == E_CATAPULT)         score += 180;
-        else if (isUnit(e.type))                                     score += 110;
-        else if (e.type == E_TOWER)                                  score += 140;
-        else if (e.type == E_BARRACKS || e.type == E_STABLE)         score += 90;
-        else if (e.type == E_FARM || e.type == E_MILL)               score += 70;
-        else if (e.type == E_TOWNHALL || e.type == E_CASTLE)         score += 50;
-        else if (isBuilding(e.type))                                 score += 25;
+        if      (e.type == E_CATAPULT)                               score += 270; // neutralise siege threat first
+        else if (e.type == E_WARSHIP)                                score += 220;
+        else if (e.type == E_ARCHER)                                 score += 200;
+        else if (e.type == E_PEASANT)                                score += lateGame ? 60 : 220; // raid workers early; ignore late
+        else if (isUnit(e.type))                                     score += 130;
+        else if (e.type == E_TOWER)                                  score += 160;
+        else if (e.type == E_TOWNHALL || e.type == E_CASTLE)         score += lateGame ? 250 : (midGame ? 120 : 50);
+        else if (e.type == E_BARRACKS || e.type == E_STABLE)         score += 100;
+        else if (e.type == E_DOCK)                                   score += 80;
+        else if (e.type == E_FARM || e.type == E_MILL)               score += 65;
+        else if (isBuilding(e.type))                                 score += 30;
+        // Focus-fire bonus: heavily wounded targets are almost dead, finish them.
         int missing = e.maxHp - e.hp;
-        score += missing / 3;            // finish wounded targets
+        score += missing / 2;
+        // Proximity strongly preferred — don't split the army chasing something far away.
         int d = dist(attacker->x, attacker->y, e.x, e.y);
-        score -= d / 2;                  // prefer closer
+        score -= d * 2 / 3;
+        if (score > bestScore) { bestScore = score; best = &e; }
+    }
+    return best ? best->id : -1;
+}
+
+// Pick a building target for catapults (they deal 1.5x to buildings).
+static int aiPickSiegeTarget(int o, Entity* attacker) {
+    Entity* best = nullptr; int bestScore = -999999;
+    for (auto& e : g.entities) {
+        if (!e.alive || e.owner == o || e.owner == OWNER_NATURE) continue;
+        if (!isBuilding(e.type) && e.type != E_CATAPULT) continue;
+        int score = 0;
+        if      (e.type == E_TOWNHALL || e.type == E_CASTLE) score += 300;
+        else if (e.type == E_TOWER)                          score += 220;
+        else if (e.type == E_BARRACKS || e.type == E_STABLE) score += 160;
+        else if (e.type == E_DOCK)                           score += 130;
+        else                                                 score += 60;
+        int missing = e.maxHp - e.hp;
+        score += missing / 2;
+        int d = dist(attacker->x, attacker->y, e.x, e.y);
+        score -= d;
         if (score > bestScore) { bestScore = score; best = &e; }
     }
     return best ? best->id : -1;
@@ -107,7 +142,7 @@ static void tickAIForOwner(int o) {
 
     aiGather(o);
 
-    // Caps scale with what the player has fielded — match and exceed.
+    // Caps scale with what opponents have fielded — match and exceed.
     int peasCap = std::max(12, intel.playerPeasants + 4);
     int milCap  = std::max(8,  intel.playerArmy + 4);
     int archCap = std::max(6,  intel.playerArmy/2 + 3);
@@ -149,14 +184,24 @@ static void tickAIForOwner(int o) {
         if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_STABLE,bx,by); if(bx>=0) orderBuild(*b,E_STABLE,bx,by); }
     }
 
+    // === RESEARCH: queue at blacksmith once it's built ===
+    for (auto& smith : g.entities) {
+        if (!smith.alive || smith.owner != o || smith.type != E_BLACKSMITH || smith.underConstruction) continue;
+        if (smith.researching != 0) break; // already in progress
+        if (!(p.research & R_IRON_WEAPONS))  { smith.researching = R_IRON_WEAPONS; smith.prodProgress = 0; smith.prodTime = 350; break; }
+        if (!(p.research & R_CROSSBOWS))     { smith.researching = R_CROSSBOWS;    smith.prodProgress = 0; smith.prodTime = 350; break; }
+    }
+
     // === MILITARY UNITS — train at every barracks/stable in parallel ===
-    bool needCat = (intel.playerCastles > 0 || intel.playerWalls > 6);
+    bool needSiege = (intel.playerCastles > 0 || intel.playerWalls > 6 || intel.playerCatapults > 0);
     for (auto& br : g.entities) {
         if (!br.alive || br.owner != o || br.type != E_BARRACKS || br.underConstruction) continue;
         if (br.producing != E_NONE) continue;
-        if (needCat && cat < 2 && p.gold >= 150 && p.wood >= 40 && p.food >= 30) { orderTrain(br, E_CATAPULT); continue; }
-        if (mil  < milCap  && p.gold >= 60 && p.food >= 20) { orderTrain(br, E_MILITIA); continue; }
-        if (arch < archCap && p.gold >= 70 && p.food >= 20) { orderTrain(br, E_ARCHER);  continue; }
+        if (needSiege && cat < 3 && p.gold >= 150 && p.wood >= 40 && p.food >= 30) { orderTrain(br, E_CATAPULT); continue; }
+        // Alternate militia and archers for a balanced field force.
+        if (arch < mil && arch < archCap && p.gold >= 70 && p.food >= 20) { orderTrain(br, E_ARCHER);  continue; }
+        if (mil < milCap               && p.gold >= 60 && p.food >= 20) { orderTrain(br, E_MILITIA); continue; }
+        if (arch < archCap             && p.gold >= 70 && p.food >= 20) { orderTrain(br, E_ARCHER);  continue; }
     }
     for (auto& st : g.entities) {
         if (!st.alive || st.owner != o || st.type != E_STABLE || st.underConstruction) continue;
@@ -170,15 +215,28 @@ static void tickAIForOwner(int o) {
         if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_TOWER,bx,by); if(bx>=0) orderBuild(*b,E_TOWER,bx,by); }
     }
 
-    // === FOOD: mill + farms scale up before winter ===
+    // === FOOD: mill + farms scale up; tend untended farms ===
     if (aiCountAll(o,E_MILL) == 0 && p.wood >= 100) {
         Entity* b = aiWorker(o);
         if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_MILL,bx,by); if(bx>=0) orderBuild(*b,E_MILL,bx,by); }
     }
-    int wantFarms = (getSeason() == AUTUMN) ? 8 : 4;
+    int wantFarms = (getSeason() == AUTUMN) ? 8 : (getSeason() == WINTER ? 0 : 5);
     if (aiCountAll(o,E_MILL) > 0 && aiCountAll(o,E_FARM) < wantFarms && getSeason() != WINTER) {
         Entity* b = aiWorker(o);
         if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_FARM,bx,by); if(bx>=0) orderBuild(*b,E_FARM,bx,by); }
+    }
+    // Assign idle peasants to tend any untended farm (one assignment per tick).
+    for (auto& farm : g.entities) {
+        if (!farm.alive || farm.owner != o || farm.type != E_FARM || farm.underConstruction) continue;
+        bool tended = false;
+        for (auto& u : g.entities) {
+            if (!u.alive || u.owner != o) continue;
+            if (u.state == S_BUILDING && u.targetId == farm.id) { tended = true; break; }
+        }
+        if (!tended) {
+            Entity* tend = aiIdlePeasant(o);
+            if (tend) { orderHelp(*tend, farm.id); break; }
+        }
     }
 
     // === NAVAL: dock + boats if water nearby ===
@@ -195,12 +253,11 @@ static void tickAIForOwner(int o) {
     for (auto& dk : g.entities) {
         if (!dk.alive || dk.owner != o || dk.type != E_DOCK || dk.underConstruction) continue;
         if (dk.producing != E_NONE) continue;
-        // Fishing boats first for food, then a couple of warships for coastline pressure.
         if (aiCount(o,E_FISHING_BOAT) < 3 && p.gold >= 80 && p.wood >= 50) { orderTrain(dk, E_FISHING_BOAT); continue; }
         if (aiCount(o,E_WARSHIP) < 2 && p.gold >= 150 && p.wood >= 80 && p.food >= 20) { orderTrain(dk, E_WARSHIP); continue; }
     }
 
-    // === EXPANSION: forward TH halfway to the player ===
+    // === EXPANSION: forward TH halfway to the nearest opponent ===
     if (aiCountAll(o,E_TOWNHALL) + aiCountAll(o,E_CASTLE) < 2
         && peas >= 9 && p.wood >= 260 && intel.playerTH) {
         Entity* myTh = aiBldg(o, E_TOWNHALL);
@@ -216,11 +273,17 @@ static void tickAIForOwner(int o) {
         }
     }
 
-    // === GARRISON: pack archers into the nearest tower/TH/Castle ===
+    // === GARRISON: pack archers into towers and TH/Castle only.
+    // Cap at 2 per tower, 3 per TH/Castle. Don't absorb every archer —
+    // the field needs a ranged component too.
+    int totalArmy = mil + arch + kni + cat;
     for (auto& bld : g.entities) {
         if (!bld.alive || bld.owner != o || bld.underConstruction) continue;
-        if (!canGarrisonIn(bld.type)) continue;
-        if ((int)bld.garrison.size() >= garrisonCap(bld.type)) continue;
+        if (bld.type != E_TOWER && bld.type != E_TOWNHALL && bld.type != E_CASTLE) continue;
+        int garCap = (bld.type == E_TOWER) ? 2 : 3;
+        if ((int)bld.garrison.size() >= garCap) continue;
+        // Only garrison when we have enough archers that some can stay in the field.
+        if (arch < 3 || totalArmy - arch < 2) continue;
         Entity* archer = nullptr; int bestD = 99999;
         for (auto& u : g.entities) {
             if (!u.alive || u.owner != o || u.state != S_IDLE) continue;
@@ -231,13 +294,20 @@ static void tickAIForOwner(int o) {
         if (archer) orderGarrison(*archer, bld.id);
     }
 
-    // === ATTACK RHYTHM: send waves, smart targets ===
+    // === ATTACK RHYTHM ===
     int army = mil + arch + kni + cat;
     if (p.aiWaveCd > 0) p.aiWaveCd--;
-    // Grace period: AI doesn't attack for the first ~2 minutes, giving the
-    // player time to set up. Threshold also requires a real force (6+).
-    const int graceTicks = 900;
-    int attackThreshold = (g.tick < graceTicks) ? 999 : 4;
+
+    // Grace period before first attack. Threshold and send-fraction scale with game age.
+    const int graceTicks = 600;
+    bool lateGame = g.tick > 6000;
+    bool midGame  = g.tick > 2500;
+    int attackThreshold = (g.tick < graceTicks) ? 999 : (midGame ? 3 : 5);
+    int waveCooldown    = lateGame ? 2 : 4; // AI ticks between re-orders
+    // Send 70% early, 85% mid, 95% late — always keep a token home guard.
+    int sendPct = lateGame ? 95 : (midGame ? 85 : 70);
+    int sendCap = std::max(3, army * sendPct / 100);
+
     if (army >= attackThreshold && p.aiWaveCd == 0) {
         Entity* anchor = nullptr;
         for (auto& e : g.entities) {
@@ -247,26 +317,30 @@ static void tickAIForOwner(int o) {
             anchor = &e; break;
         }
         if (anchor) {
-            int tid = aiPickTarget(o, anchor);
-            // Fallback: if intel found a TH, march on it directly (hunt the player out)
+            int tid    = aiPickTarget(o, anchor);
+            int siegeId = aiPickSiegeTarget(o, anchor);
+            // Fallback: march on known enemy HQ.
             if (tid < 0 && intel.playerTH) tid = intel.playerTH->id;
             if (tid >= 0) {
-                // Send ~60% of the army, keep the rest at home for defense.
-                // Floor of 3 means waves always feel like raids, not lone scouts.
-                int sendCap = std::max(3, (army * 7 + 5) / 10);
                 int sent = 0;
                 for (auto& e : g.entities) {
                     if (sent >= sendCap) break;
                     if (!e.alive || e.owner != o) continue;
                     if (!isUnit(e.type) || e.type == E_PEASANT || e.type == E_FISHING_BOAT) continue;
-                    if (e.state == S_IDLE) { orderAttack(e, tid); sent++; }
+                    if (e.state == S_IDLE) {
+                        // Catapults seek siege targets; everyone else takes the general target.
+                        int myTarget = (e.type == E_CATAPULT && siegeId >= 0) ? siegeId : tid;
+                        e.attackMove = 1; // engage opportunistically on the march
+                        orderAttack(e, myTarget);
+                        sent++;
+                    }
                 }
-                p.aiWaveCd = 5; // re-pick target every ~5 AI ticks
+                p.aiWaveCd = waveCooldown;
             }
         }
     }
 
-    // === DEFENSE: respond to threats near any owned TH/Castle ===
+    // === DEFENSE: counter any enemy that strolls near our base ===
     for (auto& base : g.entities) {
         if (!base.alive || base.owner != o) continue;
         if (base.type != E_TOWNHALL && base.type != E_CASTLE) continue;
@@ -274,13 +348,38 @@ static void tickAIForOwner(int o) {
             if (!en.alive || en.owner == o || en.owner == OWNER_NATURE) continue;
             if (en.state == S_GARRISONED) continue;
             if (dist(en.x, en.y, base.x, base.y) < 22) {
-                for (auto& d : g.entities)
-                    if (d.alive && d.owner == o && isUnit(d.type)
-                        && d.type != E_PEASANT && d.type != E_FISHING_BOAT && d.state == S_IDLE)
-                        orderAttack(d, en.id);
+                for (auto& d : g.entities) {
+                    if (!d.alive || d.owner != o) continue;
+                    if (!isUnit(d.type) || d.type == E_PEASANT || d.type == E_FISHING_BOAT) continue;
+                    if (d.state == S_IDLE) { d.attackMove = 1; orderAttack(d, en.id); }
+                }
                 break;
             }
         }
+        break; // respond to the first threatened base; one response per tick
+    }
+
+    // === WORKER DEFENSE: if an enemy is near any AI peasant, send nearest idle military ===
+    for (auto& worker : g.entities) {
+        if (!worker.alive || worker.owner != o || worker.type != E_PEASANT) continue;
+        if (worker.alertTicks <= 0) continue; // only if under attack
+        // Find nearest idle military unit to intercept.
+        Entity* guard = nullptr; int bestD = 99999;
+        for (auto& u : g.entities) {
+            if (!u.alive || u.owner != o || u.state != S_IDLE) continue;
+            if (u.type == E_PEASANT || u.type == E_FISHING_BOAT || !isUnit(u.type)) continue;
+            int d = mdist(u.x, u.y, worker.x, worker.y);
+            if (d < bestD) { bestD = d; guard = &u; }
+        }
+        // Find the attacker closest to this worker.
+        Entity* threat = nullptr; int threatD = 99999;
+        for (auto& en : g.entities) {
+            if (!en.alive || en.owner == o || en.owner == OWNER_NATURE) continue;
+            int d = mdist(en.x, en.y, worker.x, worker.y);
+            if (d < threatD) { threatD = d; threat = &en; }
+        }
+        if (guard && threat) { guard->attackMove = 1; orderAttack(*guard, threat->id); }
+        break; // one escort response per AI tick
     }
 }
 

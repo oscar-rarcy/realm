@@ -905,21 +905,28 @@ void renderMap() {
             if (ent && ent->alive && ent->owner != 0 && ent->owner < MAX_PLAYERS
                 && (isConcealing() || inCrop) && !isDetectedBy(mx, my, 0)) ent = nullptr;
 
-            // Catapult/ram body tile: if the tile to the left holds a living
-            // catapult or ram and nothing occupies this tile, draw the 'c'/'r'
-            // body char here and skip normal terrain rendering.
+            // Body tile: if the tile to the left holds a living 2-tile unit
+            // (catapult, ram, or naval) and nothing occupies this tile, draw
+            // the hull/body char here and skip normal terrain rendering.
             if (displayMode == DM_ASCII && !ent && inBounds(mx-1, my)) {
                 Entity* leftEnt = entityAt(mx-1, my);
                 if (leftEnt && leftEnt->alive && !leftEnt->underConstruction &&
-                    (leftEnt->type == E_CATAPULT || leftEnt->type == E_RAM)) {
+                    (leftEnt->type == E_CATAPULT || leftEnt->type == E_RAM || isNaval(leftEnt->type))) {
                     bool inCropLeft = !isBuilding(leftEnt->type) && g.map[my][mx-1].terrain == T_WHEAT;
                     bool leftCloaked = leftEnt->owner != 0 && leftEnt->owner < MAX_PLAYERS
                                     && (isConcealing() || inCropLeft) && !isDetectedBy(mx-1, my, 0);
                     if (!leftCloaked) {
-                        char sc = (leftEnt->type == E_CATAPULT) ? 'c' : 'r';
                         bool bodyIsSel = (leftEnt->id == g.selectedId);
                         if (!bodyIsSel) for (int sid : g.selectedIds) if (sid == leftEnt->id) { bodyIsSel = true; break; }
-                        int bcp = ownerColorPair(leftEnt->owner, night);
+                        int bcp;
+                        char sc;
+                        if (isNaval(leftEnt->type)) {
+                            bcp = (leftEnt->owner == 0) ? CP_SHIP_PLAYER : CP_SHIP_ENEMY;
+                            sc = '=';
+                        } else {
+                            bcp = ownerColorPair(leftEnt->owner, night);
+                            sc = (leftEnt->type == E_CATAPULT) ? 'c' : 'r';
+                        }
                         int sattr = COLOR_PAIR(bcp) | A_BOLD;
                         if (bodyIsSel) sattr |= A_REVERSE;
                         if (isCur) { attron(COLOR_PAIR(CP_CURSOR)); mvaddch(scY, scX, sc); attroff(COLOR_PAIR(CP_CURSOR)); }
