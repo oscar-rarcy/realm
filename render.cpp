@@ -905,32 +905,64 @@ void renderMap() {
             if (ent && ent->alive && ent->owner != 0 && ent->owner < MAX_PLAYERS
                 && (isConcealing() || inCrop) && !isDetectedBy(mx, my, 0)) ent = nullptr;
 
-            // Body tile: if the tile to the left holds a living 2-tile unit
-            // (catapult, ram, or naval) and nothing occupies this tile, draw
-            // the hull/body char here and skip normal terrain rendering.
+            // Body tile: 2-tile units extend one cell in their direction of travel.
+            // Catapults/rams always extend right. Boats extend right when moving
+            // horizontally, extend down when moving vertically.
+            // Helper: derive current movement axis from next path step.
+            auto boatIsVertical = [](Entity* e) -> bool {
+                int pi = e->pathIdx;
+                return pi < (int)e->path.size() && e->path[pi].second != e->y;
+            };
+
+            // Left-look: catapult/ram body, or horizontally-moving boat body.
             if (displayMode == DM_ASCII && !ent && inBounds(mx-1, my)) {
                 Entity* leftEnt = entityAt(mx-1, my);
-                if (leftEnt && leftEnt->alive && !leftEnt->underConstruction &&
-                    (leftEnt->type == E_CATAPULT || leftEnt->type == E_RAM || isNaval(leftEnt->type))) {
-                    bool inCropLeft = !isBuilding(leftEnt->type) && g.map[my][mx-1].terrain == T_WHEAT;
-                    bool leftCloaked = leftEnt->owner != 0 && leftEnt->owner < MAX_PLAYERS
-                                    && (isConcealing() || inCropLeft) && !isDetectedBy(mx-1, my, 0);
-                    if (!leftCloaked) {
-                        bool bodyIsSel = (leftEnt->id == g.selectedId);
-                        if (!bodyIsSel) for (int sid : g.selectedIds) if (sid == leftEnt->id) { bodyIsSel = true; break; }
-                        int bcp;
-                        char sc;
-                        if (isNaval(leftEnt->type)) {
-                            bcp = (leftEnt->owner == 0) ? CP_SHIP_PLAYER : CP_SHIP_ENEMY;
-                            sc = '=';
-                        } else {
-                            bcp = ownerColorPair(leftEnt->owner, night);
-                            sc = (leftEnt->type == E_CATAPULT) ? 'c' : 'r';
+                bool isCatRam = leftEnt && (leftEnt->type == E_CATAPULT || leftEnt->type == E_RAM);
+                bool isBoat   = leftEnt && isNaval(leftEnt->type);
+                if (leftEnt && leftEnt->alive && !leftEnt->underConstruction && (isCatRam || isBoat)) {
+                    // Vertical boat body is handled by the up-look block below.
+                    bool skipHoriz = isBoat && boatIsVertical(leftEnt);
+                    if (!skipHoriz) {
+                        bool inCropLeft = !isBuilding(leftEnt->type) && g.map[my][mx-1].terrain == T_WHEAT;
+                        bool leftCloaked = leftEnt->owner != 0 && leftEnt->owner < MAX_PLAYERS
+                                        && (isConcealing() || inCropLeft) && !isDetectedBy(mx-1, my, 0);
+                        if (!leftCloaked) {
+                            bool bodyIsSel = (leftEnt->id == g.selectedId);
+                            if (!bodyIsSel) for (int sid : g.selectedIds) if (sid == leftEnt->id) { bodyIsSel = true; break; }
+                            int bcp; char sc;
+                            if (isBoat) {
+                                bcp = (leftEnt->owner == 0) ? CP_SHIP_PLAYER : CP_SHIP_ENEMY;
+                                sc = '=';
+                            } else {
+                                bcp = ownerColorPair(leftEnt->owner, night);
+                                sc = (leftEnt->type == E_CATAPULT) ? 'c' : 'r';
+                            }
+                            int sattr = COLOR_PAIR(bcp) | A_BOLD;
+                            if (bodyIsSel) sattr |= A_REVERSE;
+                            if (isCur) { attron(COLOR_PAIR(CP_CURSOR)); mvaddch(scY, scX, sc); attroff(COLOR_PAIR(CP_CURSOR)); }
+                            else        { attron(sattr); mvaddch(scY, scX, sc); attroff(sattr); }
+                            continue;
                         }
+                    }
+                }
+            }
+
+            // Up-look: vertically-moving boat body (extends one cell below the anchor tile).
+            if (displayMode == DM_ASCII && !ent && inBounds(mx, my-1)) {
+                Entity* upEnt = entityAt(mx, my-1);
+                if (upEnt && upEnt->alive && !upEnt->underConstruction && isNaval(upEnt->type)
+                    && boatIsVertical(upEnt)) {
+                    bool inCropUp = g.map[my-1][mx].terrain == T_WHEAT;
+                    bool upCloaked = upEnt->owner != 0 && upEnt->owner < MAX_PLAYERS
+                                   && (isConcealing() || inCropUp) && !isDetectedBy(mx, my-1, 0);
+                    if (!upCloaked) {
+                        bool bodyIsSel = (upEnt->id == g.selectedId);
+                        if (!bodyIsSel) for (int sid : g.selectedIds) if (sid == upEnt->id) { bodyIsSel = true; break; }
+                        int bcp = (upEnt->owner == 0) ? CP_SHIP_PLAYER : CP_SHIP_ENEMY;
                         int sattr = COLOR_PAIR(bcp) | A_BOLD;
                         if (bodyIsSel) sattr |= A_REVERSE;
-                        if (isCur) { attron(COLOR_PAIR(CP_CURSOR)); mvaddch(scY, scX, sc); attroff(COLOR_PAIR(CP_CURSOR)); }
-                        else        { attron(sattr); mvaddch(scY, scX, sc); attroff(sattr); }
+                        if (isCur) { attron(COLOR_PAIR(CP_CURSOR)); mvaddch(scY, scX, '='); attroff(COLOR_PAIR(CP_CURSOR)); }
+                        else        { attron(sattr); mvaddch(scY, scX, '='); attroff(sattr); }
                         continue;
                     }
                 }
