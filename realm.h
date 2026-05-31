@@ -105,8 +105,6 @@ enum {
     // One set per player slot (0=human, 1-3=AI); separate night variants.
     CP_OWN_P0, CP_OWN_P1, CP_OWN_P2, CP_OWN_P3,
     CP_OWN_P0_NIGHT, CP_OWN_P1_NIGHT, CP_OWN_P2_NIGHT, CP_OWN_P3_NIGHT,
-    // Winter variants: owner-colour glyph on snow-white background.
-    CP_OWN_P0_WINTER, CP_OWN_P1_WINTER, CP_OWN_P2_WINTER, CP_OWN_P3_WINTER,
     CP_COUNT
 };
 

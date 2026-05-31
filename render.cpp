@@ -153,7 +153,7 @@ void initColors() {
 
     init_pair(CP_SAND,          C::TAN,          tileBg(C::TAN));
     init_pair(CP_DUNES,         C::LIGHT_TAN,    tileBg(C::LIGHT_TAN));
-    init_pair(CP_SNOW_GROUND,   C::LIGHT_GRAY,   C::SNOW_WHITE);
+    init_pair(CP_SNOW_GROUND,   C::SNOW_WHITE,   bg);
     init_pair(CP_ICE,           C::MED_BLUE,     C::ICE_BLUE);
 
     init_pair(CP_DIRT,          C::BROWN,        tileBg(C::BROWN));
@@ -178,17 +178,17 @@ void initColors() {
     init_pair(CP_AUT_GRASS,      C::OLIVE,        tileBg(C::OLIVE));
     init_pair(CP_AUT_GRASS_LATE, C::BROWN,        tileBg(C::BROWN));
 
-    init_pair(CP_WIN_GROUND,     C::LIGHT_GRAY,   C::SNOW_WHITE);
-    init_pair(CP_WIN_TREE,       C::DARK_GREEN,   C::SNOW_WHITE);
-    init_pair(CP_WIN_PINE,       C::PINE_GREEN,   C::SNOW_WHITE);
+    init_pair(CP_WIN_GROUND,     C::LIGHT_GRAY,   bg);
+    init_pair(CP_WIN_TREE,       C::MED_GRAY,     bg);
+    init_pair(CP_WIN_PINE,       C::LIGHT_GRAY,   bg);
     init_pair(CP_WIN_ICE,        C::ICE_BLUE,     C::NAVY);
 
     init_pair(CP_NIGHT_GRASS,    C::DARK_GREEN,   tileBg(C::NEAR_BLACK));
-    init_pair(CP_NIGHT_TREE,     C::DARK_GREEN,   C::DARKER_GRAY);
+    init_pair(CP_NIGHT_TREE,     C::DARK_GRAY,    bg);
     init_pair(CP_NIGHT_WATER,    C::NAVY,         C::NEAR_BLACK);
     init_pair(CP_NIGHT_GROUND,   C::DARKER_GRAY,  tileBg(C::NEAR_BLACK));
     init_pair(CP_NIGHT_GOLD,     C::DARK_GOLD,    tileBg(C::NEAR_BLACK));
-    init_pair(CP_NIGHT_SNOW,     C::LIGHT_GRAY,   C::DARKER_GRAY);
+    init_pair(CP_NIGHT_SNOW,     C::MED_GRAY,     bg);
 
     init_pair(CP_DAWN_SKY,       C::ORANGE,       bg);
     init_pair(CP_DUSK_SKY,       C::DUSK_PURPLE,  bg);
@@ -209,7 +209,7 @@ void initColors() {
 
     // Weather overlays remain transparent so they do not repaint terrain.
     init_pair(CP_RAIN,           C::ICE_BLUE,     bg);
-    init_pair(CP_SNOW_FALL,      C::LIGHT_GRAY,   C::SNOW_WHITE);
+    init_pair(CP_SNOW_FALL,      C::SNOW_WHITE,   bg);
 
     init_pair(CP_UI_BAR,         C::UI_TEXT,      C::UI_BG);
     init_pair(CP_UI_TEXT,        C::UI_TEXT,      bg);
@@ -263,12 +263,6 @@ void initColors() {
     init_pair(CP_OWN_P2_NIGHT, C::NEAR_BLACK,   C::AMBER);
     init_pair(CP_OWN_P3,       C::SNOW_WHITE,   C::DUSK_PURPLE);
     init_pair(CP_OWN_P3_NIGHT, C::LIGHT_GRAY,   C::GRAY);
-
-    // Winter building variants: owner colour as glyph on snow-white background.
-    init_pair(CP_OWN_P0_WINTER, C::PLAYER_CYAN,  C::SNOW_WHITE);
-    init_pair(CP_OWN_P1_WINTER, C::ENEMY_RED,    C::SNOW_WHITE);
-    init_pair(CP_OWN_P2_WINTER, C::ORANGE,       C::SNOW_WHITE);
-    init_pair(CP_OWN_P3_WINTER, C::DUSK_PURPLE,  C::SNOW_WHITE);
 
     gEmojiBiomePairsReady = false;
     if (COLOR_PAIRS > CP_EMOJI_MAX) {
@@ -993,17 +987,6 @@ void renderMap() {
                     }
                 } else {
                     cp = ownerColorPair(ent->owner, night);
-                }
-                // In winter, completed buildings get a snow-white background so
-                // they visually sit in the snow rather than on a dark bg.
-                if (displayMode == DM_ASCII && !night && getSeason() == WINTER
-                    && isBuilding(ent->type) && !ent->underConstruction) {
-                    switch (ent->owner) {
-                        case 0:  cp = CP_OWN_P0_WINTER; break;
-                        case 1:  cp = CP_OWN_P1_WINTER; break;
-                        case 2:  cp = CP_OWN_P2_WINTER; break;
-                        default: cp = CP_OWN_P3_WINTER; break;
-                    }
                 }
                 if (displayMode == DM_ASCII && isNaval(ent->type))
                     cp = (ent->owner == 0) ? CP_SHIP_PLAYER : CP_SHIP_ENEMY;
