@@ -1,0 +1,16 @@
+[build]
+  command = "bash scripts/netlify-build-web.sh edward"
+  publish = "dist/netlify"
+
+[context.edward]
+  command = "bash scripts/netlify-build-web.sh edward"
+
+[[headers]]
+  for = "/*.wasm"
+  [headers.values]
+    Content-Type = "application/wasm"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"

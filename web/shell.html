@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Realm</title>
+  <script>
+    (function () {
+      var basePath = location.pathname.indexOf('/apps/realm') === 0 ? '/apps/realm/' : '/';
+      document.write('<base href="' + basePath + '">');
+    }());
+  </script>
+  <link rel="icon" href="assets/app-icon.svg" type="image/svg+xml">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #05070a;
+      --panel: #0b1016;
+      --line: #25313d;
+      --text: #e7edf2;
+      --muted: #9dafbf;
+      --accent: #66c7ff;
+    }
+
+    * { box-sizing: border-box; }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+    }
+
+    header {
+      min-height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 8px 12px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--line);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    #status {
+      color: var(--muted);
+      font-size: 13px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    #canvas-wrap {
+      min-width: 0;
+      min-height: 0;
+      position: relative;
+      background: #030507;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      outline: none;
+      touch-action: none;
+    }
+
+    #loading {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      color: var(--muted);
+      background: #030507;
+      pointer-events: none;
+      transition: opacity 160ms ease;
+    }
+
+    body.ready #loading { opacity: 0; }
+
+    a {
+      color: var(--accent);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Realm</h1>
+    <div id="status">Loading WebAssembly...</div>
+  </header>
+  <main id="canvas-wrap">
+    <canvas id="canvas" tabindex="0" oncontextmenu="event.preventDefault()"></canvas>
+    <div id="loading">Starting Realm...</div>
+  </main>
+  <script>
+    const statusEl = document.getElementById('status');
+    const canvas = document.getElementById('canvas');
+
+    function fitCanvas() {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+      canvas.width = Math.max(320, Math.floor(rect.width * dpr));
+      canvas.height = Math.max(240, Math.floor(rect.height * dpr));
+    }
+
+    window.addEventListener('resize', fitCanvas);
+    fitCanvas();
+
+    window.Module = {
+      canvas,
+      print(text) {
+        console.log(text);
+      },
+      printErr(text) {
+        console.error(text);
+        if (/failed|error/i.test(String(text))) statusEl.textContent = text;
+      },
+      setStatus(text) {
+        if (text) statusEl.textContent = text;
+      },
+      onRuntimeInitialized() {
+        statusEl.textContent = 'Initializing game...';
+        canvas.focus();
+      }
+    };
+
+    window.addEventListener('realm-ready', () => {
+      document.body.classList.add('ready');
+      statusEl.textContent = 'Ready';
+      canvas.focus();
+    });
+
+    for (const eventName of ['keydown', 'keyup', 'wheel']) {
+      window.addEventListener(eventName, (event) => {
+        const keys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ', 'PageUp', 'PageDown', 'Home', 'End'];
+        if (eventName === 'wheel' || keys.includes(event.key)) event.preventDefault();
+      }, { passive: false });
+    }
+  </script>
+  {{{ SCRIPT }}}
+</body>
+</html>

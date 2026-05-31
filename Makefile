@@ -92,7 +92,7 @@ endif
 # -------------------------------------------------------------------
 # Public build commands
 # -------------------------------------------------------------------
-.PHONY: all gui gfx terminal term run run-gui run-terminal test ui-test debug sanitize package clean check-sdl check-ncurses copy-windows-runtime help
+.PHONY: all gui gfx terminal term run run-gui run-terminal web test ui-test debug sanitize package clean check-sdl check-ncurses copy-windows-runtime help
 
 all: gui
 
@@ -124,6 +124,7 @@ endif
 help:
 	@echo "Realm build targets:"
 	@echo "  make / make gui      Build GUI renderer (default, all platforms)"
+	@echo "  make web            Build WebAssembly/Netlify output in dist/netlify"
 	@echo "  make run            Build and run GUI renderer"
 	@echo "  make test           Build and run headless simulation tests"
 	@echo "  make ui-test        Build GUI and write UI screenshots to build/ui-screenshots"
@@ -138,6 +139,9 @@ else
 endif
 	@echo "  make package        Create a zip from bin/ after GUI build"
 	@echo "  make clean          Remove build outputs"
+
+web:
+	bash scripts/build-web.sh
 
 # -------------------------------------------------------------------
 # Dependency checks

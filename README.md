@@ -23,7 +23,20 @@ scripts/mac-build-and-run-gui.command       macOS SDL2 GUI build + run
 scripts/mac-build-and-run-terminal.command  macOS ncurses terminal build + run
 scripts/windows-build-and-run-gui.bat       Windows/MSYS2 SDL2 GUI build + run
 scripts/windows-build-and-run-terminal.bat  Windows WSL ncurses terminal build + run
+scripts/build-web.sh                        Emscripten/WebAssembly Netlify build
 ```
+
+## Web Build
+
+Realm can be built as a browser-playable WebAssembly app with Emscripten:
+
+```sh
+bash scripts/build-web.sh
+```
+
+The static Netlify output is written to `dist/netlify/`. See
+`docs/web-build.md` for local run, Netlify deploy, branch mapping, and current
+web limitations.
 
 ## Windows Build
 
