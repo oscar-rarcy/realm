@@ -593,15 +593,25 @@ static void updateViewMetrics(bool keepCursor = true) {
     if (s.isometric) {
         int hw = isoHalfW();
         int hh = isoHalfH();
-        int sumByWidth  = std::max(8, mr.w / std::max(1, hw) - 2);
-        int sumByHeight = std::max(8, mr.h / std::max(1, hh) - 3);
-        int limit = std::max(8, std::min(sumByWidth, sumByHeight));
-        g.viewW = std::max(6, std::min(MAP_W, (limit * 3) / 5));
-        g.viewH = std::max(6, std::min(MAP_H, limit - g.viewW));
-        if (g.viewH < 6) g.viewH = std::min(MAP_H, 6);
+        int sumByWidth  = (mr.w + hw - 1) / std::max(1, hw) + 4;
+        int sumByHeight = (mr.h + hh - 1) / std::max(1, hh) + 4;
+        int targetSum = std::max(12, std::max(sumByWidth, sumByHeight));
+        int aspectW = std::max(6, (targetSum * 3) / 5);
+        int aspectH = std::max(6, targetSum - aspectW);
+        if (aspectW > MAP_W) {
+            aspectW = MAP_W;
+            aspectH = std::max(6, targetSum - aspectW);
+        }
+        if (aspectH > MAP_H) {
+            aspectH = MAP_H;
+            aspectW = std::max(6, targetSum - aspectH);
+        }
+        g.viewW = std::max(1, std::min(MAP_W, aspectW));
+        g.viewH = std::max(1, std::min(MAP_H, aspectH));
     } else {
-        g.viewW = std::max(1, std::min(MAP_W, mr.w / std::max(8, s.tile)));
-        g.viewH = std::max(1, std::min(MAP_H, mr.h / std::max(8, s.tile)));
+        int tile = std::max(8, s.tile);
+        g.viewW = std::max(1, std::min(MAP_W, (mr.w + tile - 1) / tile));
+        g.viewH = std::max(1, std::min(MAP_H, (mr.h + tile - 1) / tile));
     }
 
     if (keepCursor) {
@@ -1029,6 +1039,7 @@ static void drawMap() {
     SDL_Rect mr = mapRect();
     setDraw(rgb(4,6,8)); SDL_RenderFillRect(s.ren, &mr);
     updateViewMetrics(true);
+    SDL_RenderSetClipRect(s.ren, &mr);
 
     for (int sy=0; sy<g.viewH; ++sy) {
         for (int sx=0; sx<g.viewW; ++sx) {
@@ -1051,6 +1062,7 @@ static void drawMap() {
         setDraw(rgb(255,255,255,70)); SDL_RenderFillRect(s.ren, &sel);
         setDraw(rgb(255,255,255,190)); SDL_RenderDrawRect(s.ren, &sel);
     }
+    SDL_RenderSetClipRect(s.ren, nullptr);
 }
 
 static void drawMiniMap(int x, int y, int w, int h) {
