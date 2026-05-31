@@ -964,7 +964,8 @@ void tickEntity(Entity& e) {
         // Military auto-engages anything visible within fog radius — units now
         // close in on threats they can see rather than waiting to be poked.
         if (!e.holdPosition && e.type != E_PEASANT && e.type != E_FISHING_BOAT
-            && e.type != E_TRANSPORT && e.type != E_RAM && STATS[e.type].atk > 0) {
+            && e.type != E_TRANSPORT && e.type != E_RAM && STATS[e.type].atk > 0
+            && e.owner != OWNER_NATURE) {
             // Melee units engage at 5 tiles; ranged at full fog radius — prevents
             // instant magnetic battles where everyone charges across the map.
             int aggroRange = isRanged(e.type) ? std::max(FOG_RADIUS, unitRange(e)+1) : 5;

@@ -184,7 +184,7 @@ void initColors() {
     init_pair(CP_WIN_ICE,        C::ICE_BLUE,     C::NAVY);
 
     init_pair(CP_NIGHT_GRASS,    C::DARK_GREEN,   tileBg(C::NEAR_BLACK));
-    init_pair(CP_NIGHT_TREE,     C::DARK_GREEN,   tileBg(C::NEAR_BLACK));
+    init_pair(CP_NIGHT_TREE,     C::DARK_GREEN,   C::DARKER_GRAY);
     init_pair(CP_NIGHT_WATER,    C::NAVY,         C::NEAR_BLACK);
     init_pair(CP_NIGHT_GROUND,   C::DARKER_GRAY,  tileBg(C::NEAR_BLACK));
     init_pair(CP_NIGHT_GOLD,     C::DARK_GOLD,    tileBg(C::NEAR_BLACK));
@@ -209,7 +209,7 @@ void initColors() {
 
     // Weather overlays remain transparent so they do not repaint terrain.
     init_pair(CP_RAIN,           C::ICE_BLUE,     bg);
-    init_pair(CP_SNOW_FALL,      C::SNOW_WHITE,   bg);
+    init_pair(CP_SNOW_FALL,      C::LIGHT_GRAY,   C::SNOW_WHITE);
 
     init_pair(CP_UI_BAR,         C::UI_TEXT,      C::UI_BG);
     init_pair(CP_UI_TEXT,        C::UI_TEXT,      bg);
@@ -263,6 +263,12 @@ void initColors() {
     init_pair(CP_OWN_P2_NIGHT, C::NEAR_BLACK,   C::AMBER);
     init_pair(CP_OWN_P3,       C::SNOW_WHITE,   C::DUSK_PURPLE);
     init_pair(CP_OWN_P3_NIGHT, C::LIGHT_GRAY,   C::GRAY);
+
+    // Winter building variants: owner colour as glyph on snow-white background.
+    init_pair(CP_OWN_P0_WINTER, C::PLAYER_CYAN,  C::SNOW_WHITE);
+    init_pair(CP_OWN_P1_WINTER, C::ENEMY_RED,    C::SNOW_WHITE);
+    init_pair(CP_OWN_P2_WINTER, C::ORANGE,       C::SNOW_WHITE);
+    init_pair(CP_OWN_P3_WINTER, C::DUSK_PURPLE,  C::SNOW_WHITE);
 
     gEmojiBiomePairsReady = false;
     if (COLOR_PAIRS > CP_EMOJI_MAX) {
@@ -731,8 +737,8 @@ void getTerrainVisual(Terrain t, int x, int y, char& ch, int& cp) {
                 if (shouldShowSeasonAt(x,y,snowAmt)) { ch='.'; cp=CP_WIN_GROUND; }
             if (t==T_HILLS && shouldShowSeasonAt(x,y,snowAmt)) cp=CP_WIN_GROUND;
             if (t==T_WHEAT) { ch='.'; cp=CP_WIN_GROUND; }
-            if (t==T_FOREST && shouldShowSeasonAt(x,y,0.35f+p*0.55f)) { ch='t'; cp=CP_WIN_TREE; }
-            if (t==T_PINE   && shouldShowSeasonAt(x,y,0.25f+p*0.4f))          cp=CP_WIN_PINE;
+            if (t==T_FOREST) { ch='t'; cp=CP_WIN_TREE; }
+            if (t==T_PINE)   cp=CP_WIN_PINE;
             // Rivers and marshes freeze over
             float freezeAmt = std::min(1.0f, 0.25f + p * 1.1f);
             if (t==T_WATER  && shouldShowSeasonAt(x,y,freezeAmt)) { ch='='; cp=CP_WIN_ICE; }
@@ -912,6 +918,31 @@ void renderMap() {
             bool inCrop = ent && !isBuilding(ent->type) && tile.terrain == T_WHEAT;
             if (ent && ent->alive && ent->owner != 0 && ent->owner < MAX_PLAYERS
                 && (isConcealing() || inCrop) && !isDetectedBy(mx, my, 0)) ent = nullptr;
+
+            // Catapult/ram body tile: if the tile to the left holds a living
+            // catapult or ram and nothing occupies this tile, draw the 'c'/'r'
+            // body char here and skip normal terrain rendering.
+            if (displayMode == DM_ASCII && !ent && inBounds(mx-1, my)) {
+                Entity* leftEnt = entityAt(mx-1, my);
+                if (leftEnt && leftEnt->alive && !leftEnt->underConstruction &&
+                    (leftEnt->type == E_CATAPULT || leftEnt->type == E_RAM)) {
+                    bool inCropLeft = !isBuilding(leftEnt->type) && g.map[my][mx-1].terrain == T_WHEAT;
+                    bool leftCloaked = leftEnt->owner != 0 && leftEnt->owner < MAX_PLAYERS
+                                    && (isConcealing() || inCropLeft) && !isDetectedBy(mx-1, my, 0);
+                    if (!leftCloaked) {
+                        char sc = (leftEnt->type == E_CATAPULT) ? 'c' : 'r';
+                        bool bodyIsSel = (leftEnt->id == g.selectedId);
+                        if (!bodyIsSel) for (int sid : g.selectedIds) if (sid == leftEnt->id) { bodyIsSel = true; break; }
+                        int bcp = ownerColorPair(leftEnt->owner, night);
+                        int sattr = COLOR_PAIR(bcp) | A_BOLD;
+                        if (bodyIsSel) sattr |= A_REVERSE;
+                        if (isCur) { attron(COLOR_PAIR(CP_CURSOR)); mvaddch(scY, scX, sc); attroff(COLOR_PAIR(CP_CURSOR)); }
+                        else        { attron(sattr); mvaddch(scY, scX, sc); attroff(sattr); }
+                        continue;
+                    }
+                }
+            }
+
             // Render priority + stack count. When multiple units share a tile,
             // prefer the highest-value military so e.g. knights show through a
             // pile of peasants. Also count any same-owner combat units on the
@@ -963,6 +994,17 @@ void renderMap() {
                 } else {
                     cp = ownerColorPair(ent->owner, night);
                 }
+                // In winter, completed buildings get a snow-white background so
+                // they visually sit in the snow rather than on a dark bg.
+                if (displayMode == DM_ASCII && !night && getSeason() == WINTER
+                    && isBuilding(ent->type) && !ent->underConstruction) {
+                    switch (ent->owner) {
+                        case 0:  cp = CP_OWN_P0_WINTER; break;
+                        case 1:  cp = CP_OWN_P1_WINTER; break;
+                        case 2:  cp = CP_OWN_P2_WINTER; break;
+                        default: cp = CP_OWN_P3_WINTER; break;
+                    }
+                }
                 if (displayMode == DM_ASCII && isNaval(ent->type))
                     cp = (ent->owner == 0) ? CP_SHIP_PLAYER : CP_SHIP_ENEMY;
 
@@ -996,9 +1038,9 @@ void renderMap() {
                 // own state-aware glyph). Staggered per-id so a busy village
                 // doesn't strobe in sync.
                 if (displayMode == DM_ASCII && ent->type == E_PEASANT) {
-                    int cyc = (g.tick + ent->id*5) % 8;
-                    if      (ent->state == S_GATHERING && cyc < 4) { ch = '*'; drawCh = (chtype)ch; }
-                    else if (ent->state == S_BUILDING  && cyc < 4) { ch = '+'; drawCh = (chtype)ch; }
+                    int cyc = (g.tick + ent->id*5) % 30;
+                    if      (ent->state == S_GATHERING && cyc < 3) { ch = '*'; drawCh = (chtype)ch; }
+                    else if (ent->state == S_BUILDING  && cyc < 3) { ch = '+'; drawCh = (chtype)ch; }
                     else if (ent->state == S_RETURNING && cyc < 2) { ch = ','; drawCh = (chtype)ch; }
                     else if (ent->state == S_IDLE) {
                         // Slow daydream pulse: '?' shown ~1 s every ~20 s, staggered.
@@ -1088,26 +1130,6 @@ void renderMap() {
                 attron(attr);
                 drawAt(scY, scX, drawCh, emojiStr);
                 attroff(attr);
-            }
-
-            // ASCII siege engines render as 2 chars: arm then body.
-            // Emoji mode uses one proper unit emoji in one 2-column tile.
-            if (displayMode == DM_ASCII && ent && ent->alive && (ent->type==E_CATAPULT||ent->type==E_RAM)
-                    && sx+1 < g.viewW && !entityAt(mx+1, my)) {
-                char sc = (ent->type==E_CATAPULT) ? 'c' : 'r';
-                const char* bodyEmoji = (ent->type==E_CATAPULT)
-                    ? "\xe2\x8a\x99"   // ⊙ U+2299 catapult barrel
-                    : "\xe2\x96\xac";  // ▬ U+25AC ram body
-                int sattr = COLOR_PAIR(cp) | A_BOLD;
-                if (isSel) sattr |= A_REVERSE;
-                attron(sattr);
-                if (displayMode == DM_ASCII) {
-                    mvaddch(scY, scX+tileW, sc);
-                } else {
-                    mvaddstr(scY, scX+tileW, "  ");
-                    mvprintw(scY, scX+tileW, "%s", bodyEmoji);
-                }
-                attroff(sattr);
             }
         }
     }
