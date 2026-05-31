@@ -525,6 +525,43 @@ static void isoTileCenterFromScreenOffset(int sx, int sy, int& cx, int& cy) {
     cy = oy + (sx + sy) * hh + hh;
 }
 
+static void isoScreenToOffsetFloat(int px, int py, float& sx, float& sy) {
+    int ox, oy; isoOrigin(ox, oy);
+    int hw = isoHalfW();
+    int hh = isoHalfH();
+    float fx = (px - ox) / (float)hw;
+    float fy = (py - oy - hh) / (float)hh;
+    sx = (fy + fx) * 0.5f;
+    sy = (fy - fx) * 0.5f;
+}
+
+struct IsoOffsetBounds {
+    int minSx = 0, maxSx = 0;
+    int minSy = 0, maxSy = 0;
+};
+
+static IsoOffsetBounds isoVisibleOffsetBounds() {
+    SDL_Rect mr = mapRect();
+    float minSx = 1e9f, minSy = 1e9f;
+    float maxSx = -1e9f, maxSy = -1e9f;
+    const int px[4] = {mr.x, mr.x + mr.w - 1, mr.x, mr.x + mr.w - 1};
+    const int py[4] = {mr.y, mr.y, mr.y + mr.h - 1, mr.y + mr.h - 1};
+    for (int i = 0; i < 4; ++i) {
+        float sx = 0.0f, sy = 0.0f;
+        isoScreenToOffsetFloat(px[i], py[i], sx, sy);
+        minSx = std::min(minSx, sx); maxSx = std::max(maxSx, sx);
+        minSy = std::min(minSy, sy); maxSy = std::max(maxSy, sy);
+    }
+
+    // Expand by a small border so partially visible diamonds at pane edges draw.
+    return IsoOffsetBounds{
+        (int)std::floor(minSx) - 3,
+        (int)std::ceil(maxSx) + 3,
+        (int)std::floor(minSy) - 3,
+        (int)std::ceil(maxSy) + 3
+    };
+}
+
 static bool pointInDiamond(int px, int py, int cx, int cy, int hw, int hh) {
     if (hw <= 0 || hh <= 0) return false;
     float dx = std::abs(px - cx) / (float)hw;
@@ -659,20 +696,18 @@ static bool screenToMap(int px, int py, int& mx, int& my) {
         return inBounds(mx,my) && sx < g.viewW && sy < g.viewH;
     }
 
-    int ox, oy; isoOrigin(ox, oy);
     int hw = isoHalfW();
     int hh = isoHalfH();
-    float fx = (px - ox) / (float)hw;
-    float fy = (py - oy - hh) / (float)hh;
-    float sxF = (fy + fx) * 0.5f;
-    float syF = (fy - fx) * 0.5f;
+    float sxF = 0.0f, syF = 0.0f;
+    isoScreenToOffsetFloat(px, py, sxF, syF);
     int baseX = (int)std::floor(sxF);
     int baseY = (int)std::floor(syF);
+    IsoOffsetBounds b = isoVisibleOffsetBounds();
 
     for (int dy = -1; dy <= 2; ++dy) {
         for (int dx = -1; dx <= 2; ++dx) {
             int sx = baseX + dx, sy = baseY + dy;
-            if (sx < 0 || sy < 0 || sx >= g.viewW || sy >= g.viewH) continue;
+            if (sx < b.minSx || sx > b.maxSx || sy < b.minSy || sy > b.maxSy) continue;
             int cx, cy; isoTileCenterFromScreenOffset(sx, sy, cx, cy);
             if (!pointInDiamond(px, py, cx, cy, hw, hh)) continue;
             mx = g.viewX + sx;
@@ -1021,29 +1056,33 @@ static void drawMapIso() {
     updateViewMetrics(true);
     SDL_RenderSetClipRect(s.ren, &mr);
 
-    int maxSum = g.viewW + g.viewH - 2;
-    for (int sum = 0; sum <= maxSum; ++sum) {
-        for (int sy = 0; sy < g.viewH; ++sy) {
+    IsoOffsetBounds b = isoVisibleOffsetBounds();
+    int minSum = b.minSx + b.minSy;
+    int maxSum = b.maxSx + b.maxSy;
+    for (int sum = minSum; sum <= maxSum; ++sum) {
+        for (int sy = b.minSy; sy <= b.maxSy; ++sy) {
             int sx = sum - sy;
-            if (sx < 0 || sx >= g.viewW) continue;
+            if (sx < b.minSx || sx > b.maxSx) continue;
             int mx = g.viewX + sx, my = g.viewY + sy;
+            if (!inBounds(mx, my)) continue;
             drawIsoTileBase(mx, my);
         }
     }
-    for (int sum = 0; sum <= maxSum; ++sum) {
-        for (int sy = 0; sy < g.viewH; ++sy) {
+    for (int sum = minSum; sum <= maxSum; ++sum) {
+        for (int sy = b.minSy; sy <= b.maxSy; ++sy) {
             int sx = sum - sy;
-            if (sx < 0 || sx >= g.viewW) continue;
+            if (sx < b.minSx || sx > b.maxSx) continue;
             int mx = g.viewX + sx, my = g.viewY + sy;
+            if (!inBounds(mx, my)) continue;
             drawIsoTileForeground(mx, my);
         }
     }
 
     if (s.leftDown) {
-        int x0 = std::max(g.viewX, std::min(s.dragStartX, g.cursorX));
-        int x1 = std::min(g.viewX + g.viewW - 1, std::max(s.dragStartX, g.cursorX));
-        int y0 = std::max(g.viewY, std::min(s.dragStartY, g.cursorY));
-        int y1 = std::min(g.viewY + g.viewH - 1, std::max(s.dragStartY, g.cursorY));
+        int x0 = std::max(0, std::min(s.dragStartX, g.cursorX));
+        int x1 = std::min(MAP_W - 1, std::max(s.dragStartX, g.cursorX));
+        int y0 = std::max(0, std::min(s.dragStartY, g.cursorY));
+        int y1 = std::min(MAP_H - 1, std::max(s.dragStartY, g.cursorY));
         for (int my = y0; my <= y1; ++my) {
             for (int mx = x0; mx <= x1; ++mx) {
                 int cx, cy; isoTileCenterFromScreenOffset(mx-g.viewX, my-g.viewY, cx, cy);

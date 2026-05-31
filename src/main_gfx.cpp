@@ -89,6 +89,19 @@ static int runUiTestMode() {
     for (int i = 0; i < 60; i++) tickSimulationOnce();
     ok = captureUiFrame((outDir / "07-after-60-ticks.bmp").string()) && ok;
 
+    g.selectedId = -1;
+    g.selectedIds.clear();
+    g.cursorX = MAP_W / 2;
+    g.cursorY = MAP_H / 2;
+    g.statusTimer = 0;
+    gfxSetProjection(false);
+    gfxOnNewGame();
+    ok = captureUiFrame((outDir / "08-center-topdown.bmp").string()) && ok;
+
+    gfxSetProjection(true);
+    gfxOnNewGame();
+    ok = captureUiFrame((outDir / "09-center-isometric.bmp").string()) && ok;
+
     std::cerr << "realm: ui test " << (ok ? "complete" : "failed") << " dir=" << outDir.string() << "\n";
     return ok ? 0 : 1;
 }
