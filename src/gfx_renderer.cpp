@@ -72,6 +72,10 @@ static Color blend(Color a, Color b, float t) {
                (int)(a.a + (b.a-a.a)*t));
 }
 
+static float clamp01(float v) {
+    return std::max(0.0f, std::min(1.0f, v));
+}
+
 static void setDraw(Color c) {
     SDL_SetRenderDrawColor(s.ren, c.r, c.g, c.b, c.a);
 }
@@ -128,6 +132,23 @@ static Color seasonTint(Color base) {
     return base;
 }
 
+static Color timeTint(Color base) {
+    float b = clamp01(getBrightness());
+    float darkness = clamp01((0.86f - b) / 0.86f);
+    float twilight = clamp01(1.0f - std::abs(b - 0.42f) / 0.30f);
+
+    Color c = scale(base, 1.0f - darkness * 0.46f);
+    c = blend(c, rgb(18, 32, 66), darkness * 0.30f);
+
+    if (g.dayPhase < 0.5f) {
+        c = blend(c, rgb(255, 174, 92), twilight * 0.13f);
+    } else {
+        c = blend(c, rgb(92, 82, 158), twilight * 0.15f);
+        c = blend(c, rgb(255, 122, 72), twilight * 0.05f);
+    }
+    return c;
+}
+
 static Color biomeBase(Biome b) {
     switch (b) {
         case B_DESERT:   return rgb(154,126,73);
@@ -168,8 +189,7 @@ static Color terrainBg(const Tile& t, int x, int y) {
     int edge = boundaryStrength(x,y);
     if (edge) shade += 0.04f * edge;
     c = scale(c, shade);
-    if (isNight()) c = blend(scale(c, 0.55f), rgb(20,35,65), 0.30f);
-    return c;
+    return timeTint(c);
 }
 
 static Color ownerBg(int owner) {
@@ -457,6 +477,119 @@ static bool isSelected(const Entity* e) {
     if (!e) return false;
     if (e->id == g.selectedId) return true;
     return std::find(g.selectedIds.begin(), g.selectedIds.end(), e->id) != g.selectedIds.end();
+}
+
+static float visibleFadeAt(int x, int y) {
+    if (!inBounds(x, y) || !g.map[y][x].explored[0]) return 0.0f;
+    if (!g.map[y][x].visible[0]) return 0.34f;
+
+    float nearest = 99.0f;
+    for (int dy = -2; dy <= 2; ++dy) {
+        for (int dx = -2; dx <= 2; ++dx) {
+            if (dx == 0 && dy == 0) continue;
+            int nx = x + dx, ny = y + dy;
+            if (!inBounds(nx, ny)) continue;
+            if (g.map[ny][nx].visible[0]) continue;
+            nearest = std::min(nearest, std::sqrt((float)(dx * dx + dy * dy)));
+        }
+    }
+
+    if (nearest <= 1.01f) return 0.76f;
+    if (nearest <= 1.45f) return 0.82f;
+    if (nearest <= 2.05f) return 0.91f;
+    return 1.0f;
+}
+
+static float torchStrength(EntityType type) {
+    switch (type) {
+        case E_TOWNHALL:    return 0.88f;
+        case E_CASTLE:      return 0.95f;
+        case E_TOWER:       return 0.82f;
+        case E_CHURCH:      return 0.76f;
+        case E_MARKET:      return 0.68f;
+        case E_BARRACKS:
+        case E_STABLE:
+        case E_BLACKSMITH:  return 0.62f;
+        case E_HOUSE:
+        case E_LUMBER_CAMP:
+        case E_MINING_CAMP:
+        case E_MILL:
+        case E_DOCK:        return 0.48f;
+        default:            return 0.0f;
+    }
+}
+
+static float torchRadius(EntityType type) {
+    switch (type) {
+        case E_CASTLE:      return 6.2f;
+        case E_TOWNHALL:    return 5.7f;
+        case E_TOWER:
+        case E_CHURCH:      return 5.0f;
+        case E_MARKET:      return 4.4f;
+        case E_BARRACKS:
+        case E_STABLE:
+        case E_BLACKSMITH:  return 4.0f;
+        case E_DOCK:        return 3.8f;
+        case E_HOUSE:
+        case E_LUMBER_CAMP:
+        case E_MINING_CAMP:
+        case E_MILL:        return 3.2f;
+        default:            return 0.0f;
+    }
+}
+
+static float torchLightAt(int x, int y) {
+    if (!inBounds(x, y) || !g.map[y][x].explored[0]) return 0.0f;
+    float nightNeed = clamp01((0.88f - getBrightness()) / 0.88f);
+    if (nightNeed <= 0.02f) return 0.0f;
+
+    float light = 0.0f;
+    for (const auto& e : g.entities) {
+        if (!e.alive || e.underConstruction || !isBuilding(e.type)) continue;
+        float strength = torchStrength(e.type);
+        float radius = torchRadius(e.type);
+        if (strength <= 0.0f || radius <= 0.0f) continue;
+
+        const auto& st = STATS[e.type];
+        int left = e.x, right = e.x + std::max(1, st.sizeW) - 1;
+        int top = e.y, bottom = e.y + std::max(1, st.sizeH) - 1;
+        int cx = e.x + st.sizeW / 2, cy = e.y + st.sizeH / 2;
+        if (e.owner != 0 && (!inBounds(cx, cy) || !g.map[cy][cx].visible[0])) continue;
+
+        int dx = 0;
+        if (x < left) dx = left - x;
+        else if (x > right) dx = x - right;
+        int dy = 0;
+        if (y < top) dy = top - y;
+        else if (y > bottom) dy = y - bottom;
+        float dist = std::sqrt((float)(dx * dx + dy * dy));
+        if (dist > radius) continue;
+
+        float local = strength * std::pow(clamp01(1.0f - dist / radius), 1.7f);
+        light = std::max(light, local);
+    }
+    return clamp01(light * nightNeed);
+}
+
+static Color applyVisionAndLight(Color c, int x, int y) {
+    float vis = visibleFadeAt(x, y);
+    if (vis <= 0.0f) return rgb(8, 9, 12);
+    if (vis < 1.0f) c = blend(scale(c, 0.34f + 0.66f * vis), rgb(5, 7, 12), (1.0f - vis) * 0.22f);
+
+    float torch = torchLightAt(x, y);
+    if (torch > 0.0f) {
+        c = blend(c, rgb(255, 176, 76), torch * 0.26f);
+        c = scale(c, 1.0f + torch * 0.34f);
+    }
+    return c;
+}
+
+static Color applyVisionToGlyph(Color c, int x, int y) {
+    float vis = visibleFadeAt(x, y);
+    if (vis < 1.0f) c = scale(c, 0.50f + 0.50f * vis);
+    float torch = torchLightAt(x, y);
+    if (torch > 0.0f) c = blend(c, rgb(255, 230, 170), torch * 0.24f);
+    return c;
 }
 
 static void hatch(SDL_Rect r, Color c, int step, bool diagonal) {
@@ -1010,9 +1143,9 @@ static TileVisual makeTileVisual(int mx, int my) {
     v.bg = terrainBg(tile, mx, my);
 
     if (v.ent && v.ent->alive && v.ent->owner != OWNER_NATURE && (isUnit(v.ent->type) || isBuilding(v.ent->type)))
-        v.bg = ownerBg(v.ent->owner);
-    if (v.cursor) v.bg = rgb(225, 190, 50);
-    if (!v.visible) v.bg = scale(v.bg, 0.38f);
+        v.bg = timeTint(ownerBg(v.ent->owner));
+    v.bg = applyVisionAndLight(v.bg, mx, my);
+    if (v.cursor) v.bg = blend(v.bg, rgb(225, 190, 50), 0.78f);
 
     v.fg = glyphColorForTerrain(tile, mx, my);
     if (displayMode == DM_ASCII) {
@@ -1035,6 +1168,7 @@ static TileVisual makeTileVisual(int mx, int my) {
     } else {
         v.glyph = "·"; v.emoji = false; v.fg = rgb(95,95,105,150);
     }
+    v.fg = applyVisionToGlyph(v.fg, mx, my);
 
     v.selected = (v.visible && v.ent && isSelected(v.ent));
     if (v.visible && !v.ent) {
@@ -1053,87 +1187,38 @@ static TileVisual makeTileVisual(int mx, int my) {
 
 static void drawTile(int mx, int my, SDL_Rect r) {
     const Tile& tile = g.map[my][mx];
-    bool visible = tile.visible[0];
-    bool explored = tile.explored[0];
+    TileVisual v = makeTileVisual(mx, my);
 
-    if (!explored) {
-        setDraw(rgb(8,9,12)); SDL_RenderFillRect(s.ren, &r);
+    if (!v.explored) {
+        setDraw(v.bg); SDL_RenderFillRect(s.ren, &r);
         SDL_SetRenderDrawBlendMode(s.ren, SDL_BLENDMODE_BLEND);
         setDraw(rgb(24,28,34,120)); SDL_RenderDrawRect(s.ren, &r);
         return;
     }
 
-    Entity* ent = visible ? entityAt(mx,my) : nullptr;
-    bool cursor = (mx == g.cursorX && my == g.cursorY);
-    Color bg = terrainBg(tile, mx, my);
-
-    if (ent && ent->alive && ent->owner != OWNER_NATURE && (isUnit(ent->type) || isBuilding(ent->type)))
-        bg = ownerBg(ent->owner);
-    if (cursor) bg = rgb(225, 190, 50);
-    if (!visible) bg = scale(bg, 0.38f);
-
-    setDraw(bg); SDL_RenderFillRect(s.ren, &r);
+    setDraw(v.bg); SDL_RenderFillRect(s.ren, &r);
     applyTerrainTexture(r, tile, mx, my);
 
-    std::string glyph;
-    bool emoji = false;
-    Color fg = glyphColorForTerrain(tile, mx, my);
-    bool tint = false;
-
-    if (displayMode == DM_ASCII) {
-        emoji = false;
-        if (visible && ent && ent->alive) {
-            glyph.assign(1, STATS[ent->type].glyph);
-            fg = (ent->owner == OWNER_NATURE) ? rgb(230,230,210) : rgb(255,255,255);
-        } else if (visible) {
-            glyph.assign(1, terrainAscii(tile.terrain));
-        } else {
-            glyph = "."; fg = rgb(95,95,105,150);
-        }
-    } else if (visible && ent && ent->alive) {
-        if (ent->owner == OWNER_NATURE) {
-            // Nature keeps the biome background underneath.
-            glyph = entityGlyph(*ent); emoji = true; fg = rgb(245,245,235);
-        } else {
-            glyph = entityGlyph(*ent); emoji = true; fg = rgb(255,255,255);
-        }
-    } else if (visible) {
-        glyph = terrainGlyph(tile, mx, my);
-        emoji = isResourceEmojiTerrain(tile.terrain);
-        tint = (tile.terrain == T_GOLD);
-    } else {
-        glyph = "·"; emoji = false; fg = rgb(95,95,105,150);
-    }
-
-    if (!glyph.empty()) drawCentered(glyph, r, visible ? fg : scale(fg, 0.55f), emoji, tint);
-
-    if (visible && !ent) {
-        for (const auto& m : g.actionMarkers) {
-            if (m.x == mx && m.y == my && m.ticks > 0 && (g.tick % 6) < 4) {
-                std::string mark = (m.glyph == '#') ? u8"■" : (m.glyph == '!') ? "!" : u8"×";
-                drawCentered(mark, r, rgb(255,235,105), false);
-                break;
-            }
-        }
-    }
+    if (!v.glyph.empty()) drawCentered(v.glyph, r, v.fg, v.emoji, v.tint);
 
     // HP sliver for damaged visible entities.
-    if (visible && ent && ent->alive && ent->hp < ent->maxHp) {
-        int w = std::max(1, r.w * ent->hp / std::max(1, ent->maxHp));
+    if (v.visible && v.ent && v.ent->alive && v.ent->hp < v.ent->maxHp) {
+        int w = std::max(1, r.w * v.ent->hp / std::max(1, v.ent->maxHp));
         SDL_Rect hb{r.x+2, r.y+r.h-4, std::max(1, r.w-4), 2};
         setDraw(rgb(80,20,20,190)); SDL_RenderFillRect(s.ren, &hb);
-        hb.w = std::max(1, w-4); setDraw(ent->hp*3 > ent->maxHp*2 ? rgb(65,230,90) : ent->hp*3 > ent->maxHp ? rgb(230,210,70) : rgb(230,60,55));
+        hb.w = std::max(1, w-4);
+        setDraw(v.ent->hp*3 > v.ent->maxHp*2 ? rgb(65,230,90) : v.ent->hp*3 > v.ent->maxHp ? rgb(230,210,70) : rgb(230,60,55));
         SDL_RenderFillRect(s.ren, &hb);
     }
 
-    if (visible && ent && isSelected(ent)) {
+    if (v.selected) {
         SDL_SetRenderDrawBlendMode(s.ren, SDL_BLENDMODE_BLEND);
         setDraw(rgb(255,255,255,180));
         SDL_RenderDrawRect(s.ren, &r);
         SDL_Rect r2{r.x+1,r.y+1,r.w-2,r.h-2}; SDL_RenderDrawRect(s.ren, &r2);
     }
 
-    if (cursor) {
+    if (v.cursor) {
         SDL_SetRenderDrawBlendMode(s.ren, SDL_BLENDMODE_BLEND);
         setDraw(rgb(40,20,0,230));
         SDL_RenderDrawRect(s.ren, &r);

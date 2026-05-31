@@ -196,6 +196,18 @@ static int runUiTestMode() {
         ok = captureUiFrame((outDir / "14-middle-pan-edge.bmp").string()) && ok;
     }
 
+    if (Entity* townHall = firstOwned(E_TOWNHALL, 0)) {
+        g.dayPhase = 0.0f;
+        g.weather = W_CLEAR;
+        updateFog();
+        g.cursorX = townHall->x + STATS[townHall->type].sizeW / 2;
+        g.cursorY = townHall->y + STATS[townHall->type].sizeH / 2;
+        gfxSetZoomForTest(26);
+        gfxSetProjection(true);
+        gfxOnNewGame();
+        ok = captureUiFrame((outDir / "15-night-torch-light.bmp").string()) && ok;
+    }
+
     if (std::getenv("REALM_UI_CAPTURE_TEST")) {
         SDL_Event event{};
         event.type = SDL_KEYDOWN;
