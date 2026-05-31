@@ -1213,8 +1213,8 @@ void tickEntity(Entity& e) {
         // Tending a completed farm — stay adjacent and ferry ripe harvest to a depot
         if (!bld->underConstruction && bld->type == E_FARM) {
             int d = dist(e.x, e.y, bld->x, bld->y);
-            // Pick up ripe wheat once enough has accumulated to make the trip worthwhile
-            if (d <= 1 && bld->carrying >= 5 && e.carrying == 0) {
+            // Pick up as soon as there is anything worth carrying.
+            if (d <= 1 && bld->carrying >= 3 && e.carrying == 0) {
                 int take = std::min(bld->carrying, CARRY_MAX);
                 e.carrying = take; bld->carrying -= take;
                 e.gatherType = 3; // food — depots: TC, Castle, Mill
@@ -1335,30 +1335,30 @@ void tickFarms() {
     }
 
     const int FARM_CAP = 20;
-    int bonus = (getSeason() == SUMMER) ? 1 : 0;
     for (int p = 0; p < MAX_PLAYERS; p++) {
         bool hasMill = false;
         for (auto& e : g.entities)
             if (e.alive && e.owner==p && e.type==E_MILL && !e.underConstruction) { hasMill=true; break; }
-        if (!hasMill) continue;
 
         for (auto& farm : g.entities) {
             if (!farm.alive || farm.type!=E_FARM || farm.owner!=p || farm.underConstruction) continue;
-            // Any adjacent peasant (explicitly tending or just idle nearby) keeps the wheat growing
+            // Any adjacent peasant keeps the wheat growing.
             bool tended = false;
             for (auto& u : g.entities) {
                 if (!u.alive || u.owner!=p || u.type!=E_PEASANT) continue;
                 if (dist(u.x, u.y, farm.x, farm.y) <= 1) { tended=true; break; }
             }
-            // Food ripens on the farm itself (capped); a courier peasant carries it
-            // to a Mill or Town Hall — see S_BUILDING farm-tending branch.
-            if (tended && farm.carrying < FARM_CAP)
-                farm.carrying = std::min(FARM_CAP, farm.carrying + 3 + bonus);
+            // Mill doubles output; summer adds +1. No Mill still works — just slower.
+            if (tended && farm.carrying < FARM_CAP) {
+                int rate = hasMill ? 6 : 3;
+                if (getSeason() == SUMMER) rate++;
+                farm.carrying = std::min(FARM_CAP, farm.carrying + rate);
+            }
 
             // AI helper: if ripe food is sitting on an AI farm with no courier
             // assigned, grab the nearest idle owner-peasant and send them to tend.
             // Player keeps explicit control — never auto-yanks the player's peasants.
-            if (p != 0 && farm.carrying >= 5) {
+            if (p != 0 && farm.carrying >= 3) {
                 bool assigned = false;
                 for (auto& u : g.entities) {
                     if (!u.alive || u.owner!=p || u.type!=E_PEASANT) continue;
