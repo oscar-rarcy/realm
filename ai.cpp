@@ -320,13 +320,13 @@ static void tickAIForOwner(int o) {
     if (p.aiWaveCd > 0) p.aiWaveCd--;
 
     // Grace period before first attack. Threshold and send-fraction scale with game age.
-    const int graceTicks = 600;
-    bool lateGame = g.tick > 6000;
-    bool midGame  = g.tick > 2500;
-    int attackThreshold = (g.tick < graceTicks) ? 999 : (midGame ? 3 : 5);
-    int waveCooldown    = lateGame ? 2 : 4; // AI ticks between re-orders
-    // Send 70% early, 85% mid, 95% late — always keep a token home guard.
-    int sendPct = lateGame ? 95 : (midGame ? 85 : 70);
+    const int graceTicks = 1500;          // ~2 minutes of setup time
+    bool lateGame = g.tick > 12000;
+    bool midGame  = g.tick > 6000;
+    int attackThreshold = (g.tick < graceTicks) ? 999 : (midGame ? 5 : 8);
+    int waveCooldown    = lateGame ? 6 : 10; // AI ticks between wave re-orders
+    // Send 50% early, 65% mid, 75% late — always keep a meaningful home guard.
+    int sendPct = lateGame ? 75 : (midGame ? 65 : 50);
     int sendCap = std::max(3, army * sendPct / 100);
 
     if (army >= attackThreshold && p.aiWaveCd == 0) {
