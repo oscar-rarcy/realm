@@ -5,6 +5,7 @@
 #include <SDL_ttf.h>
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
@@ -1519,6 +1520,20 @@ static std::vector<std::string> trainPanelHintsFor(EntityType t) {
     }
 }
 
+static bool devCaptureEnabled() {
+#ifndef REALM_DEV_CAPTURE_DEFAULT
+#define REALM_DEV_CAPTURE_DEFAULT 1
+#endif
+    const char* env = std::getenv("REALM_DEV_CAPTURE");
+    if (env && *env) {
+        std::string value(env);
+        std::transform(value.begin(), value.end(), value.begin(),
+                       [](unsigned char ch) { return (char)std::tolower(ch); });
+        return !(value == "0" || value == "false" || value == "off" || value == "no");
+    }
+    return REALM_DEV_CAPTURE_DEFAULT != 0;
+}
+
 static void drawPanel() {
     SDL_Rect pr = panelRect();
     setDraw(rgb(8,10,14)); SDL_RenderFillRect(s.ren, &pr);
@@ -1604,10 +1619,13 @@ static void drawBottom() {
     else if (g.mode == M_GAME_OVER) { controls1 = (g.winner==0) ? "VICTORY - Enter/Q for menu, X to exit" : "DEFEAT - Enter/Q for menu, X to exit"; controls2.clear(); }
     else if (g.mode == M_BUILD_SELECT) { controls1 = "BUILD: H House, B Barracks, S Stable, T Tower, F Farm, W Wall, K Castle"; controls2 = "L Lumber camp  N Mining camp  I Mill  D Dock  Esc cancel"; }
     else if (g.mode == M_TRAIN_SELECT) { controls1 = trainPromptFor(findEntity(g.selectedId)); controls2.clear(); }
-    const std::string captureHint = "F12:Capture issue";
-    int hintW = textWidth(captureHint);
-    int hintX = std::max(10, s.winW - hintW - 14);
-    drawText(hintX, s.winH-s.bottomH+6, captureHint, rgb(255,230,120));
+    int hintX = s.winW - 14;
+    if (devCaptureEnabled()) {
+        const std::string captureHint = "Y:Capture issue";
+        int hintW = textWidth(captureHint);
+        hintX = std::max(10, s.winW - hintW - 14);
+        drawText(hintX, s.winH-s.bottomH+6, captureHint, rgb(255,230,120));
+    }
 
     int maxW = std::max(1, s.winW - 20);
     int topLineW = std::max(1, hintX - 20);
@@ -1973,7 +1991,7 @@ void gfxPollInput(bool& quitRequested) {
             if (k == SDLK_F5) { saveGame("realm-save.txt"); continue; }
             if (k == SDLK_F8) { g.diagnostics = !g.diagnostics; continue; }
             if (k == SDLK_F9) { loadGame("realm-save.txt"); updateViewMetrics(true); continue; }
-            if (k == SDLK_F12) { captureIssueBundle(); continue; }
+            if (devCaptureEnabled() && k == SDLK_y) { captureIssueBundle(); continue; }
             if (k == SDLK_EQUALS || k == SDLK_PLUS || k == SDLK_KP_PLUS) { setZoom(s.tile+3); continue; }
             if (k == SDLK_MINUS || k == SDLK_KP_MINUS) { setZoom(s.tile-3); continue; }
             int ch = keyToInput(k);

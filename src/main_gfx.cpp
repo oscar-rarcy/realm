@@ -287,7 +287,7 @@ static int runUiTestMode() {
     if (std::getenv("REALM_UI_CAPTURE_TEST")) {
         SDL_Event event{};
         event.type = SDL_KEYDOWN;
-        event.key.keysym.sym = SDLK_F12;
+        event.key.keysym.sym = SDLK_y;
         SDL_PushEvent(&event);
         bool quitRequested = false;
         gfxPollInput(quitRequested);
