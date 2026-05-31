@@ -111,7 +111,7 @@ void orderTrain(Entity& bld, EntityType ut) {
     else if (ut==E_WARSHIP)  foodCost = 20;
     else if (ut==E_TRANSPORT) foodCost = 10;
     if (p.food < foodCost) { if (bld.owner==0) setStatus("Need more food!"); return; }
-    p.food -= foodCost;
+    spendPlayerFood(bld.owner, foodCost);
     p.gold -= STATS[ut].costGold; p.wood -= STATS[ut].costWood;
     if (bld.producing == E_NONE) {
         bld.producing = ut; bld.trainProgress = 0; bld.trainTime = STATS[ut].trainTime;

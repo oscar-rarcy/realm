@@ -8,6 +8,7 @@
 bool gfxInit();
 void gfxShutdown();
 int  gfxShowSplash();
+bool gfxConsumeLoadGameRequest();
 void gfxOnNewGame();
 void gfxPollInput(bool& quitRequested);
 void gfxRender();

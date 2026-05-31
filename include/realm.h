@@ -323,6 +323,8 @@ bool    isDetectedBy(int x,int y,int observerOwner);
 bool    isConcealing();
 void    setStatus(const std::string& msg);
 void    addActionMarker(int x,int y,char glyph);
+void    addPlayerFood(int owner,int amount,Entity* depot);
+void    spendPlayerFood(int owner,int amount);
 Entity* findEntity(int id);
 Entity* findDepot(Entity& e);
 Entity* entityAt(int x,int y);
@@ -357,6 +359,9 @@ void moveAlongPath(Entity& e);
 bool canGarrisonIn(EntityType bt);
 int  garrisonCap(EntityType bt);
 void ejectGarrison(Entity& bld);
+
+// entity.cpp — state management
+void resetDetectMapCache();
 
 // entity.cpp — tick / game logic
 void tickEntity(Entity& e);

@@ -188,9 +188,11 @@ void initGameWithSeed(int numAIs, unsigned seed, int humanCorner) {
     g.selectedId = -1; g.selectedIds.clear(); g.groupAssignPending = false;
     g.dragging = false; g.dragStartX = 0; g.dragStartY = 0;
     for (int i = 0; i < 9; i++) g.controlGroups[i].clear();
-    g.winner = -1; g.aiTimer = 0; g.farmTimer = 0; g.animalTimer = 0; g.statusTimer = 0;
+    g.winner = -1; g.aiTimer = 0; g.farmTimer = 0; g.animalTimer = 0;
+    g.statusMsg.clear(); g.statusTimer = 0;
     g.buildPending = E_NONE; g.wallDragX = 0; g.wallDragY = 0;
     g.dayPhase = 0.25f; g.seasonPhase = 0.0f; g.prevSeason = -1;
+    g.weather = W_CLEAR; g.weatherTimer = 0;
     g.returnToMenu = false;
     g.seed = seed;
     g.startupAIs = numAIs;
@@ -259,7 +261,8 @@ void initGameWithSeed(int numAIs, unsigned seed, int humanCorner) {
             for (int t = 0; t < 300 && hx < 0; t++) {
                 int ax = 10 + realmRand()%(MAP_W-20), ay = 10 + realmRand()%(MAP_H-20);
                 Terrain tr = g.map[ay][ax].terrain;
-                if (tr==T_GRASS||tr==T_MEADOW||tr==T_TALL_GRASS||tr==T_FOREST)
+                if ((tr==T_GRASS||tr==T_MEADOW||tr==T_TALL_GRASS||tr==T_FOREST)
+                    && !nearOccupiedStart(ax, ay, 16))
                     { hx=ax; hy=ay; }
             }
             if (hx < 0) continue;
@@ -269,7 +272,8 @@ void initGameWithSeed(int numAIs, unsigned seed, int humanCorner) {
                 ax = std::max(1, std::min(ax, MAP_W-2));
                 ay = std::max(1, std::min(ay, MAP_H-2));
                 Terrain tr = g.map[ay][ax].terrain;
-                if ((tr==T_GRASS||tr==T_MEADOW||tr==T_TALL_GRASS||tr==T_FOREST) && !entityAt(ax,ay))
+                if ((tr==T_GRASS||tr==T_MEADOW||tr==T_TALL_GRASS||tr==T_FOREST)
+                    && !nearOccupiedStart(ax, ay, 14) && !entityAt(ax,ay))
                     { spawnEntity(E_DEER, OWNER_NATURE, ax, ay); i++; total++; }
             }
         }
@@ -278,7 +282,7 @@ void initGameWithSeed(int numAIs, unsigned seed, int humanCorner) {
     for (int i = 0, t = 0; i < 5 && t < 600; t++) {
         int ax = 10 + realmRand()%(MAP_W-20), ay = 10 + realmRand()%(MAP_H-20);
         Terrain tr = g.map[ay][ax].terrain;
-        if ((tr==T_FOREST||tr==T_PINE||tr==T_TALL_GRASS) && !nearOccupiedStart(ax, ay, 14) && !entityAt(ax,ay))
+        if ((tr==T_FOREST||tr==T_PINE||tr==T_TALL_GRASS) && !nearOccupiedStart(ax, ay, 16) && !entityAt(ax,ay))
             { spawnEntity(E_WOLF, OWNER_NATURE, ax, ay); i++; }
     }
     // Boars in temperate woodland and forest biomes
@@ -287,7 +291,7 @@ void initGameWithSeed(int numAIs, unsigned seed, int humanCorner) {
         Terrain tr = g.map[ay][ax].terrain;
         Biome  b  = g.map[ay][ax].biome;
         if ((tr==T_FOREST||tr==T_PINE||tr==T_TALL_GRASS||tr==T_GRASS)
-            && (b==B_TEMPERATE||b==B_FOREST) && !nearOccupiedStart(ax, ay, 14) && !entityAt(ax,ay))
+            && (b==B_TEMPERATE||b==B_FOREST) && !nearOccupiedStart(ax, ay, 16) && !entityAt(ax,ay))
             { spawnEntity(E_BOAR, OWNER_NATURE, ax, ay); i++; }
     }
     // Domestic sheep near each player's town hall (one cluster per occupied corner)
@@ -302,6 +306,7 @@ void initGameWithSeed(int numAIs, unsigned seed, int humanCorner) {
     }
 
     updateFog();
+    resetDetectMapCache();
     std::cerr << "realm: match start"
               << " match=" << g.matchNumber
               << " seed=" << g.seed

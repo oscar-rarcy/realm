@@ -1039,7 +1039,9 @@ void renderUI() {
                                                      mvprintw(iy++, panelX+1, "Ripe: %d / 20", sel->storedFood); }
                     if (sel->type==E_LUMBER_CAMP) mvprintw(iy++, panelX+1, "Wood drop-off");
                     if (sel->type==E_MINING_CAMP) mvprintw(iy++, panelX+1, "Gold drop-off");
-                    if (sel->type==E_MILL)        mvprintw(iy++, panelX+1, "Enables harvesting");
+                    if (sel->type==E_MILL)        { mvprintw(iy++, panelX+1, "Enables harvesting");
+                                                     mvprintw(iy++, panelX+1, "Stored: %d food", sel->storedFood);
+                                                     mvprintw(iy++, panelX+1, "(lost if destroyed)"); }
                     if (sel->type==E_GATE) {
                         mvprintw(iy++, panelX+1, sel->gateOpen ? "State: Open" : "State: Closed");
                         mvprintw(iy++, panelX+1, sel->gateLocked ? "Mode: Locked" : "Mode: Auto");

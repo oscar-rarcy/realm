@@ -25,6 +25,12 @@ namespace {
 
 struct Color { Uint8 r, g, b, a; };
 
+struct MobileButton {
+    SDL_Rect r;
+    std::string id;
+    std::string label;
+};
+
 struct Gfx {
     SDL_Window*   win = nullptr;
     SDL_Renderer* ren = nullptr;
@@ -53,6 +59,25 @@ struct Gfx {
     int panStartMouseX = 0, panStartMouseY = 0;
     int panStartViewX = 0, panStartViewY = 0;
     int lastMouseMapX = -9999, lastMouseMapY = -9999;
+
+    int mobileOrientation = 0; // 0 auto, 1 portrait, 2 landscape.
+    float mobileUiScale = 1.0f;
+    bool mobileMinimapTap = true;
+    bool mobileConfirmCommands = false;
+    bool mobileEdgeScroll = false;
+    bool mobileSplashSettings = false;
+    bool mobileSplashHelp = false;
+    bool loadGameRequested = false;
+    EntityType mobileBuildType = E_NONE;
+    int mobileBuildPage = 0;
+
+    bool touchDown = false;
+    bool touchOnMap = false;
+    bool touchPanning = false;
+    bool suppressNextMouse = false;
+    Uint32 touchDownTicks = 0;
+    int touchStartX = 0, touchStartY = 0;
+    int touchLastX = 0, touchLastY = 0;
 
     std::unordered_map<std::string, SDL_Texture*> textCache;
 } s;
@@ -636,7 +661,52 @@ static void applyTerrainTexture(SDL_Rect r, const Tile& t, int x, int y) {
     }
 }
 
+static bool mobileForcedByEnv(bool& value) {
+    const char* env = std::getenv("REALM_MOBILE_GUI");
+    if (!env || !*env) return false;
+    std::string v(env);
+    std::transform(v.begin(), v.end(), v.begin(), [](unsigned char ch) { return (char)std::tolower(ch); });
+    value = !(v == "0" || v == "false" || v == "off" || v == "no");
+    return true;
+}
+
+static bool isMobileGui() {
+    bool forced = false;
+    if (mobileForcedByEnv(forced)) return forced;
+    int shortSide = std::min(s.winW, s.winH);
+    return s.winW < 760 || s.winH < 560 || (s.winH > s.winW && s.winW <= 900) || shortSide <= 520;
+}
+
+static bool mobilePortrait() {
+    if (!isMobileGui()) return false;
+    if (s.mobileOrientation == 1) return true;
+    if (s.mobileOrientation == 2) return false;
+    return s.winH >= s.winW;
+}
+
+static int mobileSafePad() {
+    return std::max(8, (int)std::lround(10.0f * s.mobileUiScale));
+}
+
+static int mobileHudExtent() {
+    if (mobilePortrait()) {
+        int preferred = (int)std::lround(s.winH * 0.42f);
+        int maxHud = std::max(250, s.winH - 220);
+        return std::max(250, std::min(preferred, maxHud));
+    }
+    int preferred = (int)std::lround(s.winW * 0.34f);
+    int maxHud = std::max(280, s.winW - 320);
+    return std::max(280, std::min(preferred, maxHud));
+}
+
 static SDL_Rect mapRect() {
+    if (isMobileGui()) {
+        int hud = mobileHudExtent();
+        if (mobilePortrait()) {
+            return SDL_Rect{0, 0, s.winW, std::max(1, s.winH - hud)};
+        }
+        return SDL_Rect{0, 0, std::max(1, s.winW - hud), s.winH};
+    }
     return SDL_Rect{0, s.topH, std::max(1, s.winW - s.panelW), std::max(1, s.winH - s.topH - s.bottomH)};
 }
 
@@ -656,11 +726,27 @@ static SDL_Rect mapSafeRect() {
 }
 
 static SDL_Rect panelRect() {
+    if (isMobileGui()) {
+        int hud = mobileHudExtent();
+        if (mobilePortrait()) return SDL_Rect{0, std::max(1, s.winH - hud), s.winW, hud};
+        return SDL_Rect{std::max(1, s.winW - hud), 0, hud, s.winH};
+    }
     return SDL_Rect{s.winW - s.panelW, 0, s.panelW, s.winH};
 }
 
 static SDL_Rect miniMapRect() {
     SDL_Rect pr = panelRect();
+    if (isMobileGui()) {
+        int pad = mobileSafePad();
+        if (mobilePortrait()) {
+            int w = std::max(118, std::min(pr.w / 3, 180));
+            int h = std::max(74, std::min(110, pr.h / 3));
+            return SDL_Rect{pr.x + pr.w - pad - w, pr.y + pad + 36, w, h};
+        }
+        int w = std::max(1, pr.w - pad * 2);
+        int h = std::max(88, std::min(132, pr.h / 4));
+        return SDL_Rect{pr.x + pad, pr.y + pad + 42, w, h};
+    }
     return SDL_Rect{pr.x + 14, 12, std::max(1, pr.w - 28), 110};
 }
 
@@ -1329,6 +1415,44 @@ static void drawTile(int mx, int my, SDL_Rect r) {
     }
 }
 
+static void drawMobileBuildPreviewTopDown() {
+    if (!isMobileGui() || s.mobileBuildType == E_NONE) return;
+    SDL_Rect mr = mapRect();
+    EntityType bt = s.mobileBuildType;
+    bool ok = canPlace(bt, g.cursorX, g.cursorY, 0);
+    SDL_SetRenderDrawBlendMode(s.ren, SDL_BLENDMODE_BLEND);
+    Color fill = ok ? rgb(70,210,120,72) : rgb(230,65,65,78);
+    Color edge = ok ? rgb(130,255,170,220) : rgb(255,120,110,230);
+    for (int dy = 0; dy < STATS[bt].sizeH; ++dy) {
+        for (int dx = 0; dx < STATS[bt].sizeW; ++dx) {
+            int mx = g.cursorX + dx, my = g.cursorY + dy;
+            if (!inBounds(mx, my)) continue;
+            int sx = mx - g.viewX, sy = my - g.viewY;
+            if (sx < 0 || sy < 0 || sx >= g.viewW || sy >= g.viewH) continue;
+            SDL_Rect r{mr.x + sx * s.tile, mr.y + sy * s.tile, s.tile, s.tile};
+            setDraw(fill); SDL_RenderFillRect(s.ren, &r);
+            setDraw(edge); SDL_RenderDrawRect(s.ren, &r);
+        }
+    }
+}
+
+static void drawMobileBuildPreviewIso() {
+    if (!isMobileGui() || s.mobileBuildType == E_NONE) return;
+    EntityType bt = s.mobileBuildType;
+    bool ok = canPlace(bt, g.cursorX, g.cursorY, 0);
+    Color fill = ok ? rgb(70,210,120,72) : rgb(230,65,65,78);
+    Color edge = ok ? rgb(130,255,170,220) : rgb(255,120,110,230);
+    for (int dy = 0; dy < STATS[bt].sizeH; ++dy) {
+        for (int dx = 0; dx < STATS[bt].sizeW; ++dx) {
+            int mx = g.cursorX + dx, my = g.cursorY + dy;
+            if (!inBounds(mx, my)) continue;
+            int cx, cy; isoTileCenterFromScreenOffset(mx - g.viewX, my - g.viewY, cx, cy);
+            fillDiamond(cx, cy, isoHalfW(), isoHalfH(), fill);
+            drawDiamondOutline(cx, cy, isoHalfW(), isoHalfH(), edge);
+        }
+    }
+}
+
 static void drawIsoTileBase(int mx, int my) {
     int sx = mx - g.viewX, sy = my - g.viewY;
     int cx, cy; isoTileCenterFromScreenOffset(sx, sy, cx, cy);
@@ -1414,6 +1538,7 @@ static void drawMapIso() {
             }
         }
     }
+    drawMobileBuildPreviewIso();
     SDL_RenderSetClipRect(s.ren, nullptr);
 }
 
@@ -1446,6 +1571,7 @@ static void drawMap() {
         setDraw(rgb(255,255,255,70)); SDL_RenderFillRect(s.ren, &sel);
         setDraw(rgb(255,255,255,190)); SDL_RenderDrawRect(s.ren, &sel);
     }
+    drawMobileBuildPreviewTopDown();
     SDL_RenderSetClipRect(s.ren, nullptr);
 }
 
@@ -1534,7 +1660,213 @@ static bool devCaptureEnabled() {
     return REALM_DEV_CAPTURE_DEFAULT != 0;
 }
 
+static int mobileButtonH() {
+    return std::max(44, (int)std::lround(48.0f * s.mobileUiScale));
+}
+
+static void drawButton(const MobileButton& b, bool active = false, bool danger = false) {
+    SDL_SetRenderDrawBlendMode(s.ren, SDL_BLENDMODE_BLEND);
+    Color bg = active ? rgb(42,86,118) : danger ? rgb(86,42,42) : rgb(24,31,39);
+    Color bd = active ? rgb(120,195,235) : rgb(92,105,118);
+    setDraw(bg); SDL_RenderFillRect(s.ren, &b.r);
+    setDraw(bd); SDL_RenderDrawRect(s.ren, &b.r);
+    drawTextFit(b.r.x + 8, b.r.y + std::max(4, (b.r.h - 18) / 2), b.label,
+                rgb(235,240,235), std::max(1, b.r.w - 16), s.monoSmall ? s.monoSmall : s.mono);
+}
+
+static void addGridButtons(std::vector<MobileButton>& out, int x, int y, int w,
+                           const std::vector<std::pair<std::string, std::string>>& items,
+                           int cols = 3) {
+    if (items.empty()) return;
+    int gap = 8;
+    int h = mobileButtonH();
+    cols = std::max(1, cols);
+    int bw = std::max(44, (w - gap * (cols - 1)) / cols);
+    for (size_t i = 0; i < items.size(); ++i) {
+        int col = (int)i % cols;
+        int row = (int)i / cols;
+        out.push_back({SDL_Rect{x + col * (bw + gap), y + row * (h + gap), bw, h},
+                       items[i].first, items[i].second});
+    }
+}
+
+static std::string mobileSelectionSummary() {
+    if (!g.selectedIds.empty()) {
+        int idle = 0, gathering = 0, military = 0;
+        for (int id : g.selectedIds) {
+            Entity* e = findEntity(id);
+            if (!e || !e->alive) continue;
+            if (e->state == S_IDLE) idle++;
+            if (e->state == S_GATHERING) gathering++;
+            if (isMilitary(e->type)) military++;
+        }
+        std::ostringstream ss;
+        ss << g.selectedIds.size() << " units";
+        if (idle || gathering || military) ss << "  " << idle << " idle  " << gathering << " gathering";
+        return ss.str();
+    }
+    Entity* sel = findEntity(g.selectedId);
+    if (!sel) return "No selection";
+    std::ostringstream ss;
+    ss << STATS[sel->type].name << "  HP " << sel->hp << "/" << sel->maxHp;
+    if (sel->owner == 0) {
+        if (sel->producing != E_NONE) {
+            int pct = sel->trainTime > 0 ? (sel->trainProgress * 100 / sel->trainTime) : 0;
+            ss << "  Training " << STATS[sel->producing].name << " " << pct << "%";
+        } else if (sel->cargo.type != CR_NONE) {
+            ss << "  carrying " << sel->cargo.amount << " " << cargoResourceName(sel->cargo.type);
+        } else {
+            ss << "  " << stateName(sel->state);
+        }
+    }
+    return ss.str();
+}
+
+static bool mobileHasSelectedWorker() {
+    if (!g.selectedIds.empty()) {
+        for (int id : g.selectedIds) {
+            Entity* e = findEntity(id);
+            if (e && e->alive && e->owner == 0 && canBuild(e->type)) return true;
+        }
+        return false;
+    }
+    Entity* e = findEntity(g.selectedId);
+    return e && e->alive && e->owner == 0 && canBuild(e->type);
+}
+
+static bool mobileHasSelectedMilitary() {
+    if (!g.selectedIds.empty()) {
+        for (int id : g.selectedIds) {
+            Entity* e = findEntity(id);
+            if (e && e->alive && e->owner == 0 && isMilitary(e->type)) return true;
+        }
+        return false;
+    }
+    Entity* e = findEntity(g.selectedId);
+    return e && e->alive && e->owner == 0 && isMilitary(e->type);
+}
+
+static EntityType mobileDefaultTrainType(EntityType producer) {
+    switch (producer) {
+        case E_TOWNHALL: return E_PEASANT;
+        case E_BARRACKS: return E_MILITIA;
+        case E_STABLE: return E_KNIGHT;
+        case E_DOCK: return E_FISHING_BOAT;
+        default: return E_NONE;
+    }
+}
+
+static std::vector<MobileButton> mobileHudButtons() {
+    std::vector<MobileButton> buttons;
+    SDL_Rect pr = panelRect();
+    SDL_Rect mm = miniMapRect();
+    int pad = mobileSafePad();
+    int gap = 8;
+    int bh = mobileButtonH();
+
+    int cmdX = pr.x + pad;
+    int cmdY = 0;
+    int cmdW = std::max(1, pr.w - pad * 2);
+    if (mobilePortrait()) {
+        cmdY = pr.y + pad + 132;
+        cmdW = std::max(1, mm.x - cmdX - gap);
+        if (cmdW < 170) {
+            cmdW = std::max(1, pr.w - pad * 2);
+            cmdY = mm.y + mm.h + gap;
+        }
+    } else {
+        cmdY = mm.y + mm.h + gap;
+    }
+
+    std::vector<std::pair<std::string, std::string>> cmd;
+    if (s.mobileBuildType != E_NONE) {
+        cmd.push_back({"cancel", "Cancel"});
+    } else if (g.mode == M_BUILD_SELECT) {
+        if (s.mobileBuildPage == 0) {
+            cmd = {{"build:house", "House"}, {"build:farm", "Farm"}, {"build:barracks", "Barracks"},
+                   {"build:tower", "Tower"}, {"cancel", "Cancel"}, {"buildmore", "More"}};
+        } else {
+            cmd = {{"build:stable", "Stable"}, {"build:lumber", "Lumber"}, {"build:mining", "Mining"},
+                   {"build:mill", "Mill"}, {"build:dock", "Dock"}, {"buildback", "Back"}};
+        }
+    } else {
+        Entity* sel = findEntity(g.selectedId);
+        if (mobileHasSelectedWorker()) {
+            cmd = {{"move", "Move"}, {"gather", "Gather"}, {"build", "Build"}, {"stop", "Stop"}};
+        } else if (mobileHasSelectedMilitary()) {
+            cmd = {{"move", "Move"}, {"attack", "Attack"}, {"attackmove", "Attack Move"}, {"stop", "Stop"}};
+        } else if (sel && sel->owner == 0 && isBuilding(sel->type) && !sel->underConstruction) {
+            if (isTrainProducer(sel->type)) {
+                EntityType tt = mobileDefaultTrainType(sel->type);
+                cmd.push_back({"train", tt == E_NONE ? "Train" : std::string("Train ") + STATS[tt].name});
+            }
+            if (sel->type == E_TOWNHALL || sel->type == E_CASTLE || sel->type == E_BARRACKS
+                || sel->type == E_STABLE || sel->type == E_DOCK) {
+                cmd.push_back({"rally", "Rally"});
+            }
+            cmd.push_back({"cancelqueue", "Cancel Queue"});
+        } else {
+            cmd = {{"selectarmy", "Select Army"}, {"help", "Help"}};
+        }
+    }
+    addGridButtons(buttons, cmdX, cmdY, cmdW, cmd, mobilePortrait() ? 3 : 2);
+
+    int utilityY = pr.y + pr.h - bh - pad;
+    int utilityW = std::max(1, pr.w - pad * 2);
+    addGridButtons(buttons, pr.x + pad, utilityY, utilityW,
+                   {{"menu", "Menu"}, {"pause", g.mode == M_PAUSED ? "Resume" : "Pause"}, {"idle", "Idle"}}, 3);
+    return buttons;
+}
+
+static void mobileDrawResources(int x, int y, int w) {
+    Player& p = g.players[0];
+    std::ostringstream ss;
+    if (w < 340) {
+        ss << "F " << p.food << "  W " << p.wood << "  G " << p.gold
+           << "  P " << p.supply << "/" << p.supplyMax;
+    } else {
+        ss << "Food " << p.food << "   Wood " << p.wood << "   Gold " << p.gold
+           << "   Pop " << p.supply << "/" << p.supplyMax;
+    }
+    drawTextFit(x, y, ss.str(), rgb(236,240,226), w, s.monoSmall ? s.monoSmall : s.mono);
+}
+
+static void drawMobileHud() {
+    SDL_Rect pr = panelRect();
+    int pad = mobileSafePad();
+    setDraw(rgb(8,10,14)); SDL_RenderFillRect(s.ren, &pr);
+    setDraw(rgb(68,82,94)); SDL_RenderDrawRect(s.ren, &pr);
+
+    mobileDrawResources(pr.x + pad, pr.y + pad, std::max(1, pr.w - pad * 2));
+    int summaryY = pr.y + pad + 28;
+    SDL_Rect mm = miniMapRect();
+    int summaryW = mobilePortrait() ? std::max(1, mm.x - (pr.x + pad) - 10) : std::max(1, pr.w - pad * 2);
+    drawTextFit(pr.x + pad, summaryY, mobileSelectionSummary(), rgb(255,230,135), summaryW);
+    if (s.mobileBuildType != E_NONE) {
+        drawTextFit(pr.x + pad, summaryY + 22,
+                    std::string("Placing ") + STATS[s.mobileBuildType].name + " - tap a valid tile",
+                    rgb(145,220,245), summaryW);
+    } else if (g.mode == M_RALLY_SET || g.mode == M_ATTACK_MOVE || g.mode == M_BUILD_SELECT) {
+        drawTextFit(pr.x + pad, summaryY + 22, modeName(g.mode), rgb(145,220,245), summaryW);
+    } else if (g.statusTimer > 0) {
+        drawTextFit(pr.x + pad, summaryY + 22, g.statusMsg, rgb(255,230,120), summaryW);
+    }
+
+    drawMiniMap(mm.x, mm.y, mm.w, mm.h);
+    for (const MobileButton& b : mobileHudButtons()) {
+        bool active = (b.id == "build" && g.mode == M_BUILD_SELECT)
+                   || (b.id == "attack" && g.mode == M_ATTACK_MOVE)
+                   || (b.id == "rally" && g.mode == M_RALLY_SET);
+        drawButton(b, active, b.id == "cancel");
+    }
+    if (g.statusTimer > 0) g.statusTimer--;
+}
+
 static void drawPanel() {
+    if (isMobileGui()) {
+        drawMobileHud();
+        return;
+    }
     SDL_Rect pr = panelRect();
     setDraw(rgb(8,10,14)); SDL_RenderFillRect(s.ren, &pr);
     // Keep the console look: a pipe divider drawn as text, not a modern UI bar.
@@ -1595,6 +1927,16 @@ static void drawPanel() {
                     }
                 } else {
                     drawTextFit(x,y,"No train options",rgb(130,145,150), textW); y+=20;
+                }
+                if (sel->type == E_FARM) {
+                    std::ostringstream ripe;
+                    ripe << "Ripe: " << sel->storedFood << " / 20";
+                    drawTextFit(x,y,ripe.str(),rgb(180,205,210), textW); y+=20;
+                } else if (sel->type == E_MILL) {
+                    std::ostringstream stored;
+                    stored << "Stored: " << sel->storedFood << " food";
+                    drawTextFit(x,y,stored.str(),rgb(180,205,210), textW); y+=20;
+                    drawTextFit(x,y,"Lost if destroyed",rgb(210,165,135), textW); y+=20;
                 }
             }
         }
@@ -1669,7 +2011,82 @@ static void clearTextCache() {
     s.textCache.clear();
 }
 
+static bool pointInRect(int x, int y, SDL_Rect r) {
+    return x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h;
+}
+
+static std::vector<MobileButton> mobileSplashButtons() {
+    std::vector<MobileButton> buttons;
+    int pad = mobileSafePad();
+    int bw = std::min(360, std::max(220, s.winW - pad * 2));
+    int x = (s.winW - bw) / 2;
+    int y = mobilePortrait() ? std::max(120, s.winH / 4) : std::max(70, s.winH / 5);
+    if (s.mobileSplashSettings) {
+        addGridButtons(buttons, x, y, bw,
+            {{"orient", s.mobileOrientation == 0 ? "Orientation Auto" : s.mobileOrientation == 1 ? "Portrait Lock" : "Landscape Lock"},
+             {"uiscale", "UI Scale"},
+             {"zoom", "Zoom Level"},
+             {"minimap", s.mobileMinimapTap ? "Minimap On" : "Minimap Off"},
+             {"confirm", s.mobileConfirmCommands ? "Confirm On" : "Confirm Off"},
+             {"edge", s.mobileEdgeScroll ? "Edge Scroll On" : "Edge Scroll Off"},
+             {"settings", "Back"}}, 1);
+        return buttons;
+    }
+    if (s.mobileSplashHelp) {
+        addGridButtons(buttons, x, y + 230, bw, {{"helpback", "Back"}}, 1);
+        return buttons;
+    }
+    addGridButtons(buttons, x, y, bw,
+        {{"new", "New Game"}, {"load", "Load Game"}, {"settings", "Settings"}, {"help", "Help"}, {"quit", "Quit"}}, 1);
+    return buttons;
+}
+
+static void drawMobileSplash(int numAIs, int biomeIdx) {
+    setDraw(rgb(7,10,15)); SDL_RenderClear(s.ren);
+    int pad = mobileSafePad();
+    drawTextFit(pad, pad + 8, "R E A L M", rgb(255,235,145), s.winW - pad * 2);
+    drawTextFit(pad, pad + 34, "Medieval Warlord", rgb(180,205,230), s.winW - pad * 2);
+    if (s.mobileSplashHelp) {
+        int y = pad + 82;
+        drawTextFit(pad, y, "Touch Controls", rgb(255,230,135), s.winW - pad * 2); y += 28;
+        drawTextFit(pad, y, "Tap selects or commands. Drag the map to pan.", rgb(220,225,220), s.winW - pad * 2); y += 24;
+        drawTextFit(pad, y, "Use command buttons for build, attack, rally, pause, and idle peasants.", rgb(220,225,220), s.winW - pad * 2); y += 24;
+        drawTextFit(pad, y, "Long press inspects. Double tap selects nearby units of the same type.", rgb(220,225,220), s.winW - pad * 2);
+    } else if (!s.mobileSplashSettings) {
+        static const char* biomeNames[] = {"Temperate","Desert","Snow","Swamp","Forest","Volcanic","Ocean","Random"};
+        std::ostringstream ss;
+        ss << "Opponents " << numAIs << "   Biome " << biomeNames[biomeIdx];
+        drawTextFit(pad, pad + 64, ss.str(), rgb(220,225,220), s.winW - pad * 2);
+    }
+    for (const MobileButton& b : mobileSplashButtons()) drawButton(b);
+    SDL_RenderPresent(s.ren);
+}
+
+static bool handleMobileSplashTap(int px, int py, int& numAIs, int& biomeIdx, bool& done) {
+    for (const MobileButton& b : mobileSplashButtons()) {
+        if (!pointInRect(px, py, b.r)) continue;
+        if (b.id == "new") { done = true; return true; }
+        if (b.id == "load") { s.loadGameRequested = true; done = true; return true; }
+        if (b.id == "quit") { gfxShutdown(); std::exit(0); }
+        if (b.id == "settings") { s.mobileSplashSettings = !s.mobileSplashSettings; s.mobileSplashHelp = false; return true; }
+        if (b.id == "help") { s.mobileSplashHelp = true; s.mobileSplashSettings = false; return true; }
+        if (b.id == "helpback") { s.mobileSplashHelp = false; return true; }
+        if (b.id == "orient") { s.mobileOrientation = (s.mobileOrientation + 1) % 3; return true; }
+        if (b.id == "uiscale") { s.mobileUiScale = s.mobileUiScale >= 1.25f ? 0.9f : s.mobileUiScale + 0.1f; return true; }
+        if (b.id == "zoom") { setZoom(s.tile >= 36 ? 20 : s.tile + 4); return true; }
+        if (b.id == "minimap") { s.mobileMinimapTap = !s.mobileMinimapTap; return true; }
+        if (b.id == "confirm") { s.mobileConfirmCommands = !s.mobileConfirmCommands; return true; }
+        if (b.id == "edge") { s.mobileEdgeScroll = !s.mobileEdgeScroll; return true; }
+    }
+    (void)numAIs; (void)biomeIdx;
+    return false;
+}
+
 static void drawSplash(int numAIs, int biomeIdx) {
+    if (isMobileGui()) {
+        drawMobileSplash(numAIs, biomeIdx);
+        return;
+    }
     setDraw(rgb(7,10,15)); SDL_RenderClear(s.ren);
     int col = s.winW/2 - 360;
     int y = std::max(40, s.winH/2 - 255);
@@ -1714,6 +2131,8 @@ static void drawSplash(int numAIs, int biomeIdx) {
 } // namespace
 
 bool gfxInit() {
+    SDL_SetHint(SDL_HINT_MOUSE_TOUCH_EVENTS, "1");
+    SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) != 0) {
         std::cerr << "SDL_Init failed: " << SDL_GetError() << "\n"; return false;
     }
@@ -1799,6 +2218,24 @@ int gfxShowSplash() {
             if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
                 s.winW = e.window.data1; s.winH = e.window.data2;
             }
+            if (isMobileGui() && (e.type == SDL_FINGERDOWN || e.type == SDL_MOUSEBUTTONDOWN)) {
+                int px = 0, py = 0;
+                if (e.type == SDL_FINGERDOWN) {
+                    px = (int)std::lround(e.tfinger.x * s.winW);
+                    py = (int)std::lround(e.tfinger.y * s.winH);
+                    s.suppressNextMouse = true;
+                } else {
+                    if (s.suppressNextMouse) { s.suppressNextMouse = false; continue; }
+                    if (e.button.button != SDL_BUTTON_LEFT) continue;
+                    px = e.button.x; py = e.button.y;
+                }
+                bool done = false;
+                if (handleMobileSplashTap(px, py, numAIs, biomeIdx, done) && done) {
+                    g.biomeChoice = (biomeIdx == 7) ? -1 : biomeIdx;
+                    return numAIs;
+                }
+                continue;
+            }
             if (e.type != SDL_KEYDOWN) continue;
             SDL_Keycode k = e.key.keysym.sym;
             if (k == SDLK_q || k == SDLK_x) { gfxShutdown(); std::exit(0); }
@@ -1832,6 +2269,12 @@ int gfxShowSplash() {
         }
         SDL_Delay(16);
     }
+}
+
+bool gfxConsumeLoadGameRequest() {
+    bool requested = s.loadGameRequested;
+    s.loadGameRequested = false;
+    return requested;
 }
 
 static std::string captureTimestamp() {
@@ -1906,6 +2349,280 @@ void gfxOnNewGame() {
     centerViewOnTile(g.cursorX, g.cursorY);
 }
 
+static Entity* primaryOwnedSelection() {
+    if (!g.selectedIds.empty()) {
+        for (int id : g.selectedIds) {
+            Entity* e = findEntity(id);
+            if (e && e->alive && e->owner == 0) return e;
+        }
+        return nullptr;
+    }
+    Entity* e = findEntity(g.selectedId);
+    return (e && e->alive && e->owner == 0) ? e : nullptr;
+}
+
+static void mobileSelectIdlePeasant() {
+    Entity* pick = nullptr;
+    for (auto& e : g.entities) {
+        if (e.alive && e.owner == 0 && e.type == E_PEASANT && e.state == S_IDLE) {
+            pick = &e;
+            break;
+        }
+    }
+    if (!pick) {
+        setStatus("No idle peasants");
+        return;
+    }
+    g.selectedId = pick->id;
+    g.selectedIds.clear();
+    g.cursorX = pick->x;
+    g.cursorY = pick->y;
+    centerViewOnTile(g.cursorX, g.cursorY);
+    setStatus("Idle peasant selected");
+}
+
+static void mobileStopSelection() {
+    int n = 0;
+    auto stopOne = [&](Entity* e) {
+        if (!e || !e->alive || e->owner != 0 || !isUnit(e->type)) return;
+        e->state = S_IDLE;
+        e->targetId = -1;
+        e->path.clear();
+        e->pathIdx = 0;
+        e->attackMove = 0;
+        n++;
+    };
+    if (!g.selectedIds.empty()) for (int id : g.selectedIds) stopOne(findEntity(id));
+    else stopOne(findEntity(g.selectedId));
+    if (n) setStatus("Stopped.");
+}
+
+static EntityType mobileBuildTypeForId(const std::string& id) {
+    if (id == "build:house") return E_HOUSE;
+    if (id == "build:farm") return E_FARM;
+    if (id == "build:barracks") return E_BARRACKS;
+    if (id == "build:stable") return E_STABLE;
+    if (id == "build:tower") return E_TOWER;
+    if (id == "build:lumber") return E_LUMBER_CAMP;
+    if (id == "build:mining") return E_MINING_CAMP;
+    if (id == "build:mill") return E_MILL;
+    if (id == "build:dock") return E_DOCK;
+    if (id == "build:castle") return E_CASTLE;
+    return E_NONE;
+}
+
+static void mobileCancelCommand() {
+    s.mobileBuildType = E_NONE;
+    s.mobileBuildPage = 0;
+    g.mode = M_NORMAL;
+    g.dragging = false;
+    s.leftDown = false;
+    setStatus("Cancelled.");
+}
+
+static void handleMobileHudButton(const std::string& id) {
+    Entity* sel = primaryOwnedSelection();
+    if (id == "cancel") { mobileCancelCommand(); return; }
+    if (id == "buildmore") { s.mobileBuildPage = 1; return; }
+    if (id == "buildback") { s.mobileBuildPage = 0; return; }
+    if (id == "menu") { g.returnToMenu = true; return; }
+    if (id == "pause") { handleInput('p'); return; }
+    if (id == "idle") { mobileSelectIdlePeasant(); return; }
+    if (id == "help") { g.helpOverlay = !g.helpOverlay; setStatus(g.helpOverlay ? "Help open." : "Help closed."); return; }
+    if (id == "selectarmy") { handleInput('A'); return; }
+    if (id == "stop") { mobileStopSelection(); return; }
+    if (id == "move") { g.mode = M_NORMAL; setStatus("Tap a destination."); return; }
+    if (id == "gather") { g.mode = M_NORMAL; setStatus("Tap a resource."); return; }
+    if (id == "build") {
+        if (sel && sel->type == E_PEASANT) {
+            g.mode = M_BUILD_SELECT;
+            s.mobileBuildPage = 0;
+            setStatus("Choose a building.");
+        } else {
+            setStatus("Select a peasant first.");
+        }
+        return;
+    }
+    EntityType bt = mobileBuildTypeForId(id);
+    if (bt != E_NONE) {
+        if (!sel || sel->type != E_PEASANT) {
+            setStatus("Select a peasant first.");
+            g.mode = M_NORMAL;
+            return;
+        }
+        s.mobileBuildType = bt;
+        g.mode = M_NORMAL;
+        setStatus(std::string("Placing ") + STATS[bt].name + ". Tap a valid tile.");
+        return;
+    }
+    if (id == "attack" || id == "attackmove") {
+        if (mobileHasSelectedMilitary()) {
+            g.mode = M_ATTACK_MOVE;
+            setStatus("Tap an attack target or destination.");
+        } else {
+            setStatus("Select military units first.");
+        }
+        return;
+    }
+    if (id == "rally") {
+        if (sel && isBuilding(sel->type)) {
+            g.mode = M_RALLY_SET;
+            setStatus("Tap a rally point.");
+        }
+        return;
+    }
+    if (id == "train") {
+        if (sel && isBuilding(sel->type)) {
+            EntityType tt = mobileDefaultTrainType(sel->type);
+            if (tt != E_NONE) orderTrain(*sel, tt);
+        }
+        return;
+    }
+    if (id == "cancelqueue") {
+        if (sel && isBuilding(sel->type)) {
+            sel->queue.clear();
+            if (sel->producing != E_NONE) {
+                sel->producing = E_NONE;
+                sel->trainProgress = 0;
+                sel->trainTime = 0;
+                sel->state = S_IDLE;
+            }
+            setStatus("Queue cancelled.");
+        }
+    }
+}
+
+static bool handleMobileHudHit(int px, int py) {
+    if (!isMobileGui()) return false;
+    if (!pointInRect(px, py, panelRect())) return false;
+    if (s.mobileMinimapTap && pointInRect(px, py, miniMapRect())) {
+        moveViewFromMiniMap(px, py, true);
+        s.miniMapDown = true;
+        return true;
+    }
+    for (const MobileButton& b : mobileHudButtons()) {
+        if (pointInRect(px, py, b.r)) {
+            handleMobileHudButton(b.id);
+            return true;
+        }
+    }
+    return true;
+}
+
+static bool screenToMapWithTolerance(int px, int py, int& mx, int& my) {
+    if (screenToMap(px, py, mx, my)) return true;
+    int radius = std::max(10, std::min(28, s.tile));
+    for (int r = 8; r <= radius; r += 8) {
+        const int pts[8][2] = {{r,0},{-r,0},{0,r},{0,-r},{r,r},{r,-r},{-r,r},{-r,-r}};
+        for (auto& p : pts) {
+            if (screenToMap(px + p[0], py + p[1], mx, my)) return true;
+        }
+    }
+    return false;
+}
+
+static void mobileInspectAt(int mx, int my) {
+    g.cursorX = mx;
+    g.cursorY = my;
+    Entity* e = entityAt(mx, my);
+    if (e && e->alive && g.map[my][mx].visible[0]) {
+        std::ostringstream ss;
+        ss << STATS[e->type].name << " HP " << e->hp << "/" << e->maxHp << " " << stateName(e->state);
+        setStatus(ss.str());
+    } else {
+        setStatus(cursorTileSummary());
+    }
+}
+
+static void mobileTapMap(int px, int py) {
+    int mx = 0, my = 0;
+    if (!screenToMapWithTolerance(px, py, mx, my)) return;
+    g.cursorX = mx;
+    g.cursorY = my;
+    if (g.mode == M_PAUSED || g.mode == M_GAME_OVER) return;
+    if (s.mobileBuildType != E_NONE) {
+        Entity* builder = primaryOwnedSelection();
+        if (!builder || builder->type != E_PEASANT) {
+            setStatus("Select a peasant first.");
+            s.mobileBuildType = E_NONE;
+            return;
+        }
+        if (!canPlace(s.mobileBuildType, mx, my, 0)) {
+            setStatus("Cannot build there.");
+            return;
+        }
+        orderBuild(*builder, s.mobileBuildType, mx, my);
+        s.mobileBuildType = E_NONE;
+        g.mode = M_NORMAL;
+        setStatus("Building placed.");
+        return;
+    }
+    if (g.mode == M_RALLY_SET || g.mode == M_ATTACK_MOVE) {
+        handleInput('\n');
+        return;
+    }
+    if (primaryOwnedSelection() && (isUnit(primaryOwnedSelection()->type) || !g.selectedIds.empty())) {
+        rendererCommandAtTile(mx, my);
+    } else {
+        rendererSelectAtTile(mx, my);
+    }
+}
+
+static void mobilePointerDown(int px, int py) {
+    s.touchDown = true;
+    s.touchPanning = false;
+    s.touchOnMap = false;
+    s.touchDownTicks = SDL_GetTicks();
+    s.touchStartX = s.touchLastX = px;
+    s.touchStartY = s.touchLastY = py;
+    if (handleMobileHudHit(px, py)) return;
+    if (pointInRect(px, py, mapRect())) {
+        s.touchOnMap = true;
+        startMiddlePan(px, py);
+        s.touchPanning = false;
+    }
+}
+
+static void mobilePointerMotion(int px, int py) {
+    if (s.miniMapDown) {
+        moveViewFromMiniMap(px, py, true);
+        return;
+    }
+    if (!s.touchDown || !s.touchOnMap) return;
+    int distPx = std::abs(px - s.touchStartX) + std::abs(py - s.touchStartY);
+    if (distPx > 12) s.touchPanning = true;
+    if (s.touchPanning) updateMiddlePan(px, py);
+    s.touchLastX = px;
+    s.touchLastY = py;
+}
+
+static void mobilePointerUp(int px, int py) {
+    if (s.miniMapDown) {
+        moveViewFromMiniMap(px, py, true);
+        s.miniMapDown = false;
+        s.touchDown = false;
+        s.middleDown = false;
+        moveCursorToViewCenter();
+        return;
+    }
+    bool wasMap = s.touchOnMap;
+    bool wasPan = s.touchPanning;
+    Uint32 held = SDL_GetTicks() - s.touchDownTicks;
+    s.touchDown = false;
+    s.touchOnMap = false;
+    s.touchPanning = false;
+    if (s.middleDown) {
+        if (wasPan) updateMiddlePan(px, py);
+        s.middleDown = false;
+        if (wasPan) moveCursorToViewCenter();
+    }
+    if (!wasMap || wasPan) return;
+    int mx = 0, my = 0;
+    if (!screenToMapWithTolerance(px, py, mx, my)) return;
+    if (held >= 550) mobileInspectAt(mx, my);
+    else mobileTapMap(px, py);
+}
+
 void gfxPollInput(bool& quitRequested) {
     quitRequested = false;
     SDL_Event e;
@@ -1913,6 +2630,30 @@ void gfxPollInput(bool& quitRequested) {
         if (e.type == SDL_QUIT) { quitRequested = true; return; }
         if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
             s.winW = e.window.data1; s.winH = e.window.data2; updateViewMetrics(true);
+        }
+        if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_FOCUS_LOST && isMobileGui()) {
+            if (g.mode == M_NORMAL) {
+                g.mode = M_PAUSED;
+                setStatus("Paused while in background.");
+            }
+        }
+        if (isMobileGui() && (e.type == SDL_FINGERDOWN || e.type == SDL_FINGERMOTION || e.type == SDL_FINGERUP)) {
+            int px = (int)std::lround(e.tfinger.x * s.winW);
+            int py = (int)std::lround(e.tfinger.y * s.winH);
+            s.suppressNextMouse = true;
+            if (e.type == SDL_FINGERDOWN) mobilePointerDown(px, py);
+            else if (e.type == SDL_FINGERMOTION) mobilePointerMotion(px, py);
+            else mobilePointerUp(px, py);
+            continue;
+        }
+        if (isMobileGui() && (e.type == SDL_MOUSEBUTTONDOWN || e.type == SDL_MOUSEMOTION || e.type == SDL_MOUSEBUTTONUP)) {
+            if (s.suppressNextMouse) {
+                if (e.type == SDL_MOUSEBUTTONUP) s.suppressNextMouse = false;
+                continue;
+            }
+            if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) { mobilePointerDown(e.button.x, e.button.y); continue; }
+            if (e.type == SDL_MOUSEMOTION && (s.touchDown || s.miniMapDown)) { mobilePointerMotion(e.motion.x, e.motion.y); continue; }
+            if (e.type == SDL_MOUSEBUTTONUP && e.button.button == SDL_BUTTON_LEFT) { mobilePointerUp(e.button.x, e.button.y); continue; }
         }
         if (e.type == SDL_MOUSEWHEEL) {
             int mx, my; SDL_GetMouseState(&mx, &my);
@@ -2003,10 +2744,10 @@ void gfxPollInput(bool& quitRequested) {
 static void drawFrame(bool present) {
     SDL_GetWindowSize(s.win, &s.winW, &s.winH);
     setDraw(rgb(3,5,8)); SDL_RenderClear(s.ren);
-    drawTopBar();
+    if (!isMobileGui()) drawTopBar();
     drawMap();
     drawPanel();
-    drawBottom();
+    if (!isMobileGui()) drawBottom();
     drawHelpOverlay();
     if (present) SDL_RenderPresent(s.ren);
 }

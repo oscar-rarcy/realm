@@ -122,6 +122,32 @@ The graphical target now compiles its own *_gfx.o object files with
 links ncursesw and should keep behaving as before.
 
 
+Mobile GUI mode
+---------------
+
+The SDL GUI renderer switches to a touch-first mobile layout on narrow portrait
+windows, short landscape windows, or when `REALM_MOBILE_GUI=1` is set. The
+terminal/ncurses renderer is unchanged.
+
+Mobile mode uses two panels only:
+
+- portrait: game viewport above the HUD
+- landscape: game viewport left of the HUD
+
+The mobile HUD contains resources, selection status, minimap, command buttons,
+and Menu/Pause/Idle controls. Keyboard shortcut labels are hidden in this mode.
+Touch-style input maps to existing game commands: tap selects or commands, drag
+pans the map, long press inspects, minimap tap/drag pans the camera, and Build
+uses an explicit placement preview with Cancel.
+
+The GUI test harness writes mobile layout captures in addition to desktop
+captures:
+
+- `build/ui-screenshots/16-mobile-portrait-hud.bmp`
+- `build/ui-screenshots/17-mobile-portrait-build-menu.bmp`
+- `build/ui-screenshots/18-mobile-landscape-hud.bmp`
+
+
 Cross-platform build behaviour
 ==============================
 

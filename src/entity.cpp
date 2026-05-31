@@ -256,6 +256,10 @@ bool isConcealing() { return isNight() || g.weather == W_STORM; }
 static bool detectMap[MAX_PLAYERS][MAP_H][MAP_W];
 static int  detectMapTick[MAX_PLAYERS] = {-1,-1,-1,-1};
 
+void resetDetectMapCache() {
+    for (int p = 0; p < MAX_PLAYERS; p++) detectMapTick[p] = -1;
+}
+
 static void ensureDetectMap(int observerOwner) {
     if (observerOwner < 0 || observerOwner >= MAX_PLAYERS) return;
     if (detectMapTick[observerOwner] == g.tick) return;
@@ -292,6 +296,27 @@ void addActionMarker(int x, int y, char glyph) {
     if (!inBounds(x, y)) return;
     g.actionMarkers.push_back({x, y, 18, glyph});
     if (g.actionMarkers.size() > 32) g.actionMarkers.erase(g.actionMarkers.begin());
+}
+
+void addPlayerFood(int owner, int amount, Entity* depot) {
+    if (owner < 0 || owner >= MAX_PLAYERS || amount <= 0) return;
+    g.players[owner].food += amount;
+    if (depot && depot->type == E_MILL) depot->storedFood += amount;
+}
+
+void spendPlayerFood(int owner, int amount) {
+    if (owner < 0 || owner >= MAX_PLAYERS || amount <= 0) return;
+    Player& p = g.players[owner];
+    int spent = std::min(amount, p.food);
+    p.food -= spent;
+    int remaining = spent;
+    for (auto& e : g.entities) {
+        if (remaining <= 0) break;
+        if (!e.alive || e.owner != owner || e.type != E_MILL || e.underConstruction) continue;
+        int take = std::min(e.storedFood, remaining);
+        e.storedFood -= take;
+        remaining -= take;
+    }
 }
 
 Entity* findEntity(int id) {
@@ -379,6 +404,7 @@ bool canPlace(EntityType type, int x, int y, int owner) {
         if (ter == T_GOLD) return false;
         // Forests are resource terrain — chop the trees before you can build here.
         if (ter==T_FOREST||ter==T_PINE||ter==T_PALM||ter==T_DEAD_TREE) return false;
+        if (ter==T_SHALLOWS||ter==T_MARSH||ter==T_REEDS||ter==T_ICE) return false;
         if (isOccupied(occ, nx, ny)) return false;
     }
     // Docks must sit on the shoreline — at least one neighbouring tile must be water.
@@ -806,6 +832,7 @@ bool loadGame(const std::string& path) {
     }
     g = std::move(ng);
     for (int p = 0; p < MAX_PLAYERS; p++) updateSupply(p);
+    resetDetectMapCache();
     return true;
 }
 
@@ -929,6 +956,13 @@ static void killEntity(Entity& t) {
     t.targetId = -1; t.targetX = -1; t.targetY = -1;
     t.path.clear(); t.pathIdx = 0;
     clearReferencesToEntity(id);
+    if (t.type == E_MILL && t.storedFood > 0 && t.owner >= 0 && t.owner < MAX_PLAYERS) {
+        int loss = std::min(t.storedFood, g.players[t.owner].food);
+        g.players[t.owner].food -= loss;
+        t.storedFood = 0;
+        if (t.owner == 0 && loss > 0)
+            setStatus(std::string("Mill destroyed! Lost ") + std::to_string(loss) + " food.");
+    }
     // Anything that can hold a garrison (buildings + transports) drops its cargo on death.
     if (canGarrisonIn(t.type)) ejectGarrison(t);
     if (isBuilding(t.type)) {
@@ -1266,13 +1300,27 @@ void tickEntity(Entity& e) {
                     }
                 }
                 if (t->hp <= 0) {
-                    if (t->owner == OWNER_NATURE && e.owner < OWNER_NATURE) {
+                    if (t->owner == OWNER_NATURE && e.owner < OWNER_NATURE && e.type == E_PEASANT) {
                         int food = (t->type==E_SHEEP)?80:(t->type==E_DEER)?120:(t->type==E_BOAR)?100:30;
-                        g.players[e.owner].food += food;
-                        if (e.owner==0) setStatus(std::string("Got ") + std::to_string(food) + " food!");
+                        e.cargo = {CR_FOOD, food, -1, -1};
+                        e.resourceX = -1;
+                        e.resourceY = -1;
+                        Entity* dep = findDepot(e);
+                        if (dep) {
+                            e.state = S_RETURNING;
+                            e.targetId = dep->id;
+                            e.targetX = dep->x;
+                            e.targetY = dep->y;
+                            e.path = findPathFor(e, dep->x, dep->y);
+                            e.pathIdx = 0;
+                            if (e.owner==0) setStatus(std::string("Hauling ") + std::to_string(food) + " food.");
+                        } else {
+                            e.cargo = emptyCargo();
+                            if (e.owner==0) setStatus("No food drop-off available.");
+                        }
                     }
                     killEntity(*t);
-                    e.state = S_IDLE;
+                    if (e.cargo.amount <= 0) e.state = S_IDLE;
                 }
             } else e.atkCd--;
         } else {
@@ -1336,7 +1384,7 @@ void tickEntity(Entity& e) {
         if (d <= STATS[dep->type].sizeW + 1) {
             if (e.cargo.type == CR_GOLD)      g.players[e.owner].gold += e.cargo.amount;
             else if (e.cargo.type == CR_WOOD) g.players[e.owner].wood += e.cargo.amount;
-            else                              g.players[e.owner].food += e.cargo.amount;
+            else                              addPlayerFood(e.owner, e.cargo.amount, dep);
             e.cargo.amount = 0;
             // Farm courier: cargo source stores the farm we came from; return and resume tending.
             if (e.cargo.type == CR_FOOD && inBounds(e.cargo.sourceX, e.cargo.sourceY)) {
@@ -1670,10 +1718,10 @@ void tickWinter() {
         Player& pl = g.players[p];
         int drain = unitCount; // 1 food per unit per 100 ticks
         if (pl.food >= drain) {
-            pl.food -= drain;
+            spendPlayerFood(p, drain);
         } else {
             int starve = drain - pl.food;
-            pl.food = 0;
+            spendPlayerFood(p, pl.food);
             // Damage `starve` random units. If any die, they're gone.
             int hits = 0;
             for (auto& e : g.entities) {

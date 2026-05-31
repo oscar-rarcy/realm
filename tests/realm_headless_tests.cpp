@@ -147,6 +147,13 @@ static void testPlacementBoundsAndStateNames() {
     g.map[12][12].resources = 100;
     assert(isPassable(12, 12));
     assert(!canPlace(E_HOUSE, 12, 12, 0));
+    Terrain invalidFoundations[] = {T_SHALLOWS, T_MARSH, T_REEDS, T_ICE};
+    for (Terrain t : invalidFoundations) {
+        g.map[12][12].terrain = t;
+        g.map[12][12].resources = 0;
+        assert(isPassable(12, 12));
+        assert(!canPlace(E_HOUSE, 12, 12, 0));
+    }
     for (int i = S_IDLE; i <= S_GARRISONED; i++)
         assert(std::string(stateName((EntityState)i)) != "Unknown");
     assert(std::string(stateName((EntityState)999)) == "Unknown");
@@ -331,6 +338,26 @@ static void testBerryGatherAndDepletion() {
     assert(peasant && peasant->cargo.amount == 0);
 }
 
+static void testMillFoodStockpile() {
+    initGameWithSeed(1, 3603u, 0);
+    Entity* mill = nullptr;
+    for (int y = 20; y < MAP_H - 5 && !mill; y++) {
+        for (int x = 20; x < MAP_W - 5 && !mill; x++) {
+            if (!canPlace(E_MILL, x, y, 0)) continue;
+            int id = spawnEntity(E_MILL, 0, x, y);
+            mill = findEntity(id);
+        }
+    }
+    assert(mill);
+    int foodBefore = g.players[0].food;
+    addPlayerFood(0, 40, mill);
+    assert(g.players[0].food == foodBefore + 40);
+    assert(mill->storedFood == 40);
+    spendPlayerFood(0, 15);
+    assert(g.players[0].food == foodBefore + 25);
+    assert(mill->storedFood == 25);
+}
+
 static void testMapgenReachabilityAcrossSeeds() {
     for (unsigned seed = 70; seed < 100; seed++) {
         initGameWithSeed(3, seed, (int)(seed % 4));
@@ -370,8 +397,10 @@ static void testStartSafetyAcrossSeeds() {
         for (const auto& e : g.entities) {
             if (!e.alive) continue;
             for (auto& st : starts) {
-                if (isHostileWildlife(e.type))
+                if (e.type == E_DEER)
                     assert(dist(e.x, e.y, st[0] + 1, st[1] + 1) > 14);
+                if (isHostileWildlife(e.type))
+                    assert(dist(e.x, e.y, st[0] + 1, st[1] + 1) > 16);
             }
             if (e.owner > 0 && e.owner < MAX_PLAYERS) {
                 bool nearAStart = false;
@@ -434,6 +463,7 @@ int main() {
     testSupplyAndTownHallCost();
     testTownHallTrainInputFlow();
     testBerryGatherAndDepletion();
+    testMillFoodStockpile();
     testStartSafetyAcrossSeeds();
     testMapgenReachabilityAcrossSeeds();
     testSaveLoadRoundTrip();

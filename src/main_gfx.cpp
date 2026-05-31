@@ -208,6 +208,32 @@ static int runUiTestMode() {
         ok = captureUiFrame((outDir / "15-night-torch-light.bmp").string()) && ok;
     }
 
+    if (Entity* peasant = firstOwned(E_PEASANT, 0)) {
+        g.selectedId = peasant->id;
+        g.selectedIds.clear();
+        g.cursorX = peasant->x;
+        g.cursorY = peasant->y;
+        g.mode = M_NORMAL;
+        gfxSetProjection(true);
+        gfxSetZoomForTest(24);
+
+        gfxSetWindowSizeForTest(430, 820);
+        gfxOnNewGame();
+        ok = captureUiFrame((outDir / "16-mobile-portrait-hud.bmp").string()) && ok;
+
+        g.mode = M_BUILD_SELECT;
+        ok = captureUiFrame((outDir / "17-mobile-portrait-build-menu.bmp").string()) && ok;
+
+        gfxSetWindowSizeForTest(900, 430);
+        g.mode = M_NORMAL;
+        gfxOnNewGame();
+        ok = captureUiFrame((outDir / "18-mobile-landscape-hud.bmp").string()) && ok;
+
+        gfxSetWindowSizeForTest(width, height);
+        gfxSetZoomForTest(envIntLocal("REALM_UI_TEST_ZOOM", 20));
+        gfxOnNewGame();
+    }
+
     auto verifyZoomAnchor = [&](bool iso) {
         gfxSetProjection(iso);
         gfxSetZoomForTest(20);
@@ -327,6 +353,13 @@ int main(int, char**) {
         }
         std::cerr << "realm: starting game with " << numAIs << " AI opponent(s)\n";
         initGame(numAIs);
+        if (gfxConsumeLoadGameRequest()) {
+            if (loadGame("realm-save.txt")) {
+                std::cerr << "realm: loaded realm-save.txt from GUI menu\n";
+            } else {
+                std::cerr << "realm: GUI menu load failed; continuing new game\n";
+            }
+        }
         std::cerr << "realm: game initialized\n";
         gfxOnNewGame();
         setStatus("Dawn breaks over the realm. Select peasants [Space/click] and gather [Enter/R-click].");
