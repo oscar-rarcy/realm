@@ -106,6 +106,19 @@ static void setDraw(Color c) {
     SDL_SetRenderDrawColor(s.ren, c.r, c.g, c.b, c.a);
 }
 
+static void applyRendererOutputScale() {
+#if defined(REALM_WEB)
+    int outW = 0;
+    int outH = 0;
+    SDL_GetRendererOutputSize(s.ren, &outW, &outH);
+    float sx = (s.winW > 0 && outW > 0) ? (float)outW / (float)s.winW : 1.0f;
+    float sy = (s.winH > 0 && outH > 0) ? (float)outH / (float)s.winH : 1.0f;
+    if (!std::isfinite(sx) || sx <= 0.0f) sx = 1.0f;
+    if (!std::isfinite(sy) || sy <= 0.0f) sy = 1.0f;
+    SDL_RenderSetScale(s.ren, sx, sy);
+#endif
+}
+
 static unsigned hash2(int x, int y, unsigned salt) {
     unsigned h = (unsigned)x * 374761393u + (unsigned)y * 668265263u + salt * 1442695041u;
     h = (h ^ (h >> 13)) * 1274126177u;
@@ -2632,10 +2645,14 @@ void gfxPollInput(bool& quitRequested) {
             s.winW = e.window.data1; s.winH = e.window.data2; updateViewMetrics(true);
         }
         if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_FOCUS_LOST && isMobileGui()) {
+#if defined(REALM_WEB)
+            continue;
+#else
             if (g.mode == M_NORMAL) {
                 g.mode = M_PAUSED;
                 setStatus("Paused while in background.");
             }
+#endif
         }
         if (isMobileGui() && (e.type == SDL_FINGERDOWN || e.type == SDL_FINGERMOTION || e.type == SDL_FINGERUP)) {
             int px = (int)std::lround(e.tfinger.x * s.winW);
@@ -2743,6 +2760,7 @@ void gfxPollInput(bool& quitRequested) {
 
 static void drawFrame(bool present) {
     SDL_GetWindowSize(s.win, &s.winW, &s.winH);
+    applyRendererOutputScale();
     setDraw(rgb(3,5,8)); SDL_RenderClear(s.ren);
     if (!isMobileGui()) drawTopBar();
     drawMap();
