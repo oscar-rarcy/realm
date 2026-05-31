@@ -114,8 +114,10 @@
         console.log(text);
       },
       printErr(text) {
-        console.error(text);
-        if (/failed|error/i.test(String(text))) loadingEl.textContent = text;
+        const message = String(text);
+        if (/failed|error|abort|exception/i.test(message)) console.error(message);
+        else console.log(message);
+        if (/failed|error/i.test(message)) loadingEl.textContent = message;
       },
       setStatus(text) {
         if (text) loadingEl.textContent = text;

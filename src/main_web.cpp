@@ -14,12 +14,55 @@ namespace {
 double nextTickMs = 0.0;
 bool initialized = false;
 
-int envIntLocal(const char* name, int fallback) {
+int envIntOnly(const char* name, int fallback) {
     const char* v = std::getenv(name);
     if (!v || !*v) return fallback;
     char* end = nullptr;
     long parsed = std::strtol(v, &end, 10);
     return (end && *end == '\0') ? (int)parsed : fallback;
+}
+
+int urlInt(const char* name, int fallback) {
+    return EM_ASM_INT({
+        if (typeof window === 'undefined' || !window.location) return $1;
+        var key = UTF8ToString($0);
+        var read = function (source) {
+            if (!source) return null;
+            var text = String(source);
+            if (text.charAt(0) === '#') text = text.slice(1);
+            if (text.charAt(0) === '?') text = text.slice(1);
+            var params = new URLSearchParams(text);
+            return params.has(key) ? params.get(key) : null;
+        };
+        var raw = read(window.location.search);
+        if (raw === null) raw = read(window.location.hash);
+        if (raw === null || String(raw).length === 0) return $1;
+        var parsed = Number.parseInt(raw, 10);
+        return Number.isFinite(parsed) ? parsed : $1;
+    }, name, fallback);
+}
+
+int settingInt(const char* envName, const char* urlName, int fallback) {
+    return urlInt(urlName, envIntOnly(envName, fallback));
+}
+
+bool urlSettingEquals(const char* name, const char* expected) {
+    return EM_ASM_INT({
+        if (typeof window === 'undefined' || !window.location) return 0;
+        var key = UTF8ToString($0);
+        var expected = UTF8ToString($1).toLowerCase();
+        var read = function (source) {
+            if (!source) return null;
+            var text = String(source);
+            if (text.charAt(0) === '#') text = text.slice(1);
+            if (text.charAt(0) === '?') text = text.slice(1);
+            var params = new URLSearchParams(text);
+            return params.has(key) ? params.get(key) : null;
+        };
+        var raw = read(window.location.search);
+        if (raw === null) raw = read(window.location.hash);
+        return raw !== null && String(raw).toLowerCase() === expected ? 1 : 0;
+    }, name, expected);
 }
 
 static bool isEmbedRoute() {
@@ -92,6 +135,9 @@ int realm_web_selected_id() {
 int main() {
     forceUtf8Locale();
     displayMode = DM_EMOJI;
+    if (urlSettingEquals("display", "ascii") || urlSettingEquals("visual", "ascii")) {
+        displayMode = DM_ASCII;
+    }
     const bool startedFromEmbed = isEmbedRoute();
 
     if (!gfxInit()) {
@@ -99,24 +145,36 @@ int main() {
         return 1;
     }
 
+    if (urlSettingEquals("projection", "topdown") || urlSettingEquals("view", "topdown")) {
+        gfxSetProjection(false);
+    } else if (urlSettingEquals("projection", "isometric") || urlSettingEquals("view", "isometric")) {
+        gfxSetProjection(true);
+    }
+
+    int numAIs = settingInt("REALM_WEB_AIS", "ais", 1);
+    numAIs = std::max(1, std::min(3, numAIs));
+
     if (startedFromEmbed) {
-        int numAIs = envIntLocal("REALM_WEB_AIS", 1);
-        numAIs = std::max(1, std::min(3, numAIs));
-        g.biomeChoice = envIntLocal("REALM_WEB_BIOME", B_TEMPERATE);
+        g.biomeChoice = settingInt("REALM_WEB_BIOME", "biome", B_TEMPERATE);
         if (g.biomeChoice < -1 || g.biomeChoice > B_OCEAN) g.biomeChoice = B_TEMPERATE;
 
-        unsigned seed = (unsigned)envIntLocal("REALM_WEB_SEED", 2468);
-        int humanCorner = envIntLocal("REALM_WEB_HUMAN_CORNER", 1);
+        unsigned seed = (unsigned)settingInt("REALM_WEB_SEED", "seed", 2468);
+        int humanCorner = settingInt("REALM_WEB_HUMAN_CORNER", "corner", 1);
         if (humanCorner < 0 || humanCorner > 3) humanCorner = 1;
 
         initGameWithSeed(numAIs, seed, humanCorner);
     } else {
-        int numAIs = gfxShowSplash();
-        if (numAIs < 1 || numAIs > 3) {
-            std::cerr << "realm: invalid splash selection " << numAIs << "\n";
-            return 1;
+        g.biomeChoice = settingInt("REALM_WEB_BIOME", "biome", -1);
+        if (g.biomeChoice < -1 || g.biomeChoice > B_OCEAN) g.biomeChoice = -1;
+        int seed = urlInt("seed", -1);
+        int humanCorner = urlInt("corner", -1);
+        if (seed >= 0 || (humanCorner >= 0 && humanCorner <= 3)) {
+            if (seed < 0) seed = 2468;
+            if (humanCorner < 0 || humanCorner > 3) humanCorner = 1;
+            initGameWithSeed(numAIs, (unsigned)seed, humanCorner);
+        } else {
+            initGame(numAIs);
         }
-        initGame(numAIs);
     }
     gfxOnNewGame();
     setStatus("Browser build ready. Select peasants with click/tap and command with right click or keyboard.");

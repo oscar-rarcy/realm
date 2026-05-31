@@ -1486,7 +1486,7 @@ static void drawIsoTileForeground(int mx, int my) {
     if (!v.glyph.empty()) {
         // Upright sprite/glyph over the flat isometric board.  The diamond is
         // isometric; the emoji/text itself is not skewed.
-        int glyphSize = v.emoji ? std::max(16, (int)(s.tile * 0.96f)) : std::max(10, (int)(s.tile * 0.62f));
+        int glyphSize = v.emoji ? std::max(16, (int)(s.tile * 0.96f)) : std::max(12, (int)(s.tile * 0.78f));
         SDL_Rect gr{cx - glyphSize/2, cy - glyphSize/2, glyphSize, glyphSize};
         drawCentered(v.glyph, gr, v.visible ? v.fg : scale(v.fg, 0.55f), v.emoji, v.tint);
     }
@@ -2176,6 +2176,9 @@ bool gfxInit() {
         "/System/Library/Fonts/Menlo.ttc", "/Library/Fonts/Menlo.ttc"
     };
     std::vector<std::string> emojiPaths = {
+#if defined(REALM_WEB)
+        "/assets/fonts/RealmSymbols.ttf",
+#endif
         // Native Windows / MSYS2.
         "C:/Windows/Fonts/seguiemj.ttf", "C:/Windows/Fonts/Segoe UI Emoji.ttf",
         "C:/Windows/Fonts/seguisym.ttf",

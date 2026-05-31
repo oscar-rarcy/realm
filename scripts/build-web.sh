@@ -50,6 +50,17 @@ if [[ ! -f "$FONT_DIR/DejaVuSansMono.ttf" ]]; then
     || { echo "No usable monospace font found for the web bundle." >&2; exit 1; }
 fi
 
+if [[ ! -f "$FONT_DIR/RealmSymbols.ttf" ]]; then
+  copy_first_font "$FONT_DIR/RealmSymbols.ttf" \
+    /usr/share/fonts/truetype/noto/NotoEmoji-Regular.ttf \
+    /usr/share/fonts/truetype/ancient-scripts/Symbola_hint.ttf \
+    /mnt/c/Windows/Fonts/seguisym.ttf \
+    /c/Windows/Fonts/seguisym.ttf \
+    /mnt/c/Windows/Fonts/seguiemj.ttf \
+    /c/Windows/Fonts/seguiemj.ttf \
+    || cp "$FONT_DIR/DejaVuSansMono.ttf" "$FONT_DIR/RealmSymbols.ttf"
+fi
+
 if [[ -f assets/app-icon.svg ]]; then
   mkdir -p "$ASSET_DIR"
   cp assets/app-icon.svg "$ASSET_DIR/app-icon.svg"
@@ -82,8 +93,11 @@ em++ "${COMMON_SOURCES[@]}" \
   -sEXPORTED_RUNTIME_METHODS='["ccall","cwrap"]' \
   --preload-file "$ASSET_DIR@/assets" \
   --preload-file "$FONT_DIR/DejaVuSansMono.ttf@/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf" \
+  --preload-file "$FONT_DIR/RealmSymbols.ttf@/assets/fonts/RealmSymbols.ttf" \
   --shell-file web/shell.html \
   -o "$DIST_DIR/index.html"
+
+perl -0pi -e 's#<script async src=index\.js></script>#<script>(function(){var base=location.pathname.indexOf("/apps/realm")===0?"/apps/realm/":"/";var script=document.createElement("script");script.async=true;script.src=base+"index.js";document.currentScript.after(script);}());</script>#' "$DIST_DIR/index.html"
 
 cat > "$DIST_DIR/_headers" <<'HEADERS'
 /*.wasm
