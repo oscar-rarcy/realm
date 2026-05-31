@@ -503,6 +503,21 @@ static SDL_Rect mapRect() {
     return SDL_Rect{0, s.topH, std::max(1, s.winW - s.panelW), std::max(1, s.winH - s.topH - s.bottomH)};
 }
 
+static int mapSafeMargin() {
+    return std::max(24, std::min(56, s.tile + 10));
+}
+
+static SDL_Rect insetRect(SDL_Rect r, int inset) {
+    inset = std::max(0, std::min(inset, std::min(r.w, r.h) / 3));
+    return SDL_Rect{r.x + inset, r.y + inset,
+                    std::max(1, r.w - inset * 2),
+                    std::max(1, r.h - inset * 2)};
+}
+
+static SDL_Rect mapSafeRect() {
+    return insetRect(mapRect(), mapSafeMargin());
+}
+
 static SDL_Rect panelRect() {
     return SDL_Rect{s.winW - s.panelW, 0, s.panelW, s.winH};
 }
@@ -551,8 +566,7 @@ struct IsoOffsetBounds {
     int minSy = 0, maxSy = 0;
 };
 
-static IsoOffsetBounds isoVisibleOffsetBounds() {
-    SDL_Rect mr = mapRect();
+static IsoOffsetBounds isoOffsetBoundsForRect(SDL_Rect mr, int expand) {
     float minSx = 1e9f, minSy = 1e9f;
     float maxSx = -1e9f, maxSy = -1e9f;
     const int px[4] = {mr.x, mr.x + mr.w - 1, mr.x, mr.x + mr.w - 1};
@@ -564,46 +578,51 @@ static IsoOffsetBounds isoVisibleOffsetBounds() {
         minSy = std::min(minSy, sy); maxSy = std::max(maxSy, sy);
     }
 
-    // Expand by a small border so partially visible diamonds at pane edges draw.
     return IsoOffsetBounds{
-        (int)std::floor(minSx) - 3,
-        (int)std::ceil(maxSx) + 3,
-        (int)std::floor(minSy) - 3,
-        (int)std::ceil(maxSy) + 3
+        (int)std::floor(minSx) - expand,
+        (int)std::ceil(maxSx) + expand,
+        (int)std::floor(minSy) - expand,
+        (int)std::ceil(maxSy) + expand
     };
 }
 
-static int topDownFullColumns() {
-    SDL_Rect mr = mapRect();
+static IsoOffsetBounds isoVisibleOffsetBounds() {
+    // Expand by a small border so partially visible diamonds at pane edges draw.
+    return isoOffsetBoundsForRect(mapRect(), 3);
+}
+
+static IsoOffsetBounds isoSafeOffsetBounds() {
+    return isoOffsetBoundsForRect(mapSafeRect(), 0);
+}
+
+static int topDownFullColumnsForRect(SDL_Rect mr) {
     return std::max(1, std::min(MAP_W, mr.w / std::max(1, s.tile)));
 }
 
-static int topDownFullRows() {
-    SDL_Rect mr = mapRect();
+static int topDownFullRowsForRect(SDL_Rect mr) {
     return std::max(1, std::min(MAP_H, mr.h / std::max(1, s.tile)));
 }
 
+static int topDownSafeColumns() { return topDownFullColumnsForRect(mapSafeRect()); }
+static int topDownSafeRows() { return topDownFullRowsForRect(mapSafeRect()); }
+
 static void cameraBounds(int& minX, int& maxX, int& minY, int& maxY) {
     if (s.isometric) {
-        IsoOffsetBounds b = isoVisibleOffsetBounds();
-        const int pad = 2;
-        int minVisibleX = b.minSx + pad;
-        int maxVisibleX = b.maxSx - pad;
-        int minVisibleY = b.minSy + pad;
-        int maxVisibleY = b.maxSy - pad;
-        if (minVisibleX > maxVisibleX) { minVisibleX = b.minSx; maxVisibleX = b.maxSx; }
-        if (minVisibleY > maxVisibleY) { minVisibleY = b.minSy; maxVisibleY = b.maxSy; }
-        minX = -maxVisibleX;
-        maxX = MAP_W - 1 - minVisibleX;
-        minY = -maxVisibleY;
-        maxY = MAP_H - 1 - minVisibleY;
+        IsoOffsetBounds b = isoSafeOffsetBounds();
+        minX = -b.maxSx;
+        maxX = MAP_W - 1 - b.minSx;
+        minY = -b.maxSy;
+        maxY = MAP_H - 1 - b.minSy;
         return;
     }
 
-    minX = 0;
-    minY = 0;
-    maxX = std::max(0, MAP_W - topDownFullColumns());
-    maxY = std::max(0, MAP_H - topDownFullRows());
+    int safeW = topDownSafeColumns();
+    int safeH = topDownSafeRows();
+    int insetTiles = std::max(1, mapSafeMargin() / std::max(1, s.tile));
+    minX = -insetTiles;
+    minY = -insetTiles;
+    maxX = MAP_W - safeW + insetTiles;
+    maxY = MAP_H - safeH + insetTiles;
 }
 
 static bool pointInDiamond(int px, int py, int cx, int cy, int hw, int hh) {
@@ -715,12 +734,11 @@ static void updateViewMetrics(bool keepCursor = true) {
 
     if (keepCursor) {
         if (s.isometric) {
-            IsoOffsetBounds b = isoVisibleOffsetBounds();
-            const int pad = 2;
-            int minOffsetX = b.minSx + pad;
-            int maxOffsetX = b.maxSx - pad;
-            int minOffsetY = b.minSy + pad;
-            int maxOffsetY = b.maxSy - pad;
+            IsoOffsetBounds b = isoSafeOffsetBounds();
+            int minOffsetX = b.minSx;
+            int maxOffsetX = b.maxSx;
+            int minOffsetY = b.minSy;
+            int maxOffsetY = b.maxSy;
             if (minOffsetX > maxOffsetX) { minOffsetX = b.minSx; maxOffsetX = b.maxSx; }
             if (minOffsetY > maxOffsetY) { minOffsetY = b.minSy; maxOffsetY = b.maxSy; }
 
@@ -731,12 +749,13 @@ static void updateViewMetrics(bool keepCursor = true) {
             if (offsetY < minOffsetY) g.viewY = g.cursorY - minOffsetY;
             if (offsetY > maxOffsetY) g.viewY = g.cursorY - maxOffsetY;
         } else {
-            int fullW = topDownFullColumns();
-            int fullH = topDownFullRows();
-            if (g.cursorX < g.viewX) g.viewX = g.cursorX;
-            if (g.cursorY < g.viewY) g.viewY = g.cursorY;
-            if (g.cursorX >= g.viewX + fullW) g.viewX = g.cursorX - fullW + 1;
-            if (g.cursorY >= g.viewY + fullH) g.viewY = g.cursorY - fullH + 1;
+            int fullW = topDownSafeColumns();
+            int fullH = topDownSafeRows();
+            int insetTiles = std::max(1, mapSafeMargin() / std::max(1, s.tile));
+            if (g.cursorX < g.viewX + insetTiles) g.viewX = g.cursorX - insetTiles;
+            if (g.cursorY < g.viewY + insetTiles) g.viewY = g.cursorY - insetTiles;
+            if (g.cursorX >= g.viewX + fullW) g.viewX = g.cursorX - fullW + 1 + insetTiles;
+            if (g.cursorY >= g.viewY + fullH) g.viewY = g.cursorY - fullH + 1 + insetTiles;
         }
     }
     int minX, maxX, minY, maxY;
@@ -758,12 +777,14 @@ static void centerViewOnTile(int mx, int my) {
     my = std::max(0, std::min(my, MAP_H - 1));
 
     if (s.isometric) {
-        IsoOffsetBounds b = isoVisibleOffsetBounds();
-        g.viewX = mx - (b.minSx + b.maxSx) / 2;
-        g.viewY = my - (b.minSy + b.maxSy) / 2;
+        SDL_Rect safe = mapSafeRect();
+        float sx = 0.0f, sy = 0.0f;
+        isoScreenToOffsetFloat(safe.x + safe.w / 2, safe.y + safe.h / 2, sx, sy);
+        g.viewX = mx - (int)std::lround(sx);
+        g.viewY = my - (int)std::lround(sy);
     } else {
-        g.viewX = mx - topDownFullColumns() / 2;
-        g.viewY = my - topDownFullRows() / 2;
+        g.viewX = mx - topDownSafeColumns() / 2;
+        g.viewY = my - topDownSafeRows() / 2;
     }
     clampView();
 }
@@ -870,12 +891,14 @@ static void updateMiddlePan(int px, int py) {
 
 static void moveCursorToViewCenter() {
     if (s.isometric) {
-        IsoOffsetBounds b = isoVisibleOffsetBounds();
-        g.cursorX = g.viewX + (b.minSx + b.maxSx) / 2;
-        g.cursorY = g.viewY + (b.minSy + b.maxSy) / 2;
+        SDL_Rect safe = mapSafeRect();
+        float sx = 0.0f, sy = 0.0f;
+        isoScreenToOffsetFloat(safe.x + safe.w / 2, safe.y + safe.h / 2, sx, sy);
+        g.cursorX = g.viewX + (int)std::lround(sx);
+        g.cursorY = g.viewY + (int)std::lround(sy);
     } else {
-        g.cursorX = g.viewX + topDownFullColumns() / 2;
-        g.cursorY = g.viewY + topDownFullRows() / 2;
+        g.cursorX = g.viewX + topDownSafeColumns() / 2;
+        g.cursorY = g.viewY + topDownSafeRows() / 2;
     }
     g.cursorX = std::max(0, std::min(g.cursorX, MAP_W - 1));
     g.cursorY = std::max(0, std::min(g.cursorY, MAP_H - 1));

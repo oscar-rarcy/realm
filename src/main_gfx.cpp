@@ -108,6 +108,15 @@ static int runUiTestMode() {
     gfxOnNewGame();
     ok = captureUiFrame((outDir / "10-top-right-isometric.bmp").string()) && ok;
 
+    g.map[0][MAP_W - 1].visible[0] = true;
+    g.map[0][MAP_W - 1].explored[0] = true;
+    g.actionMarkers.push_back({MAP_W - 1, 0, 120, 'x'});
+    gfxSetZoomForTest(38);
+    gfxOnNewGame();
+    ok = captureUiFrame((outDir / "10b-top-right-isometric-38px.bmp").string()) && ok;
+    g.actionMarkers.clear();
+    gfxSetZoomForTest(envIntLocal("REALM_UI_TEST_ZOOM", 20));
+
     g.cursorX = MAP_W - 1;
     g.cursorY = MAP_H - 1;
     gfxSetProjection(false);
