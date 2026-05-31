@@ -22,6 +22,16 @@ int envIntLocal(const char* name, int fallback) {
     return (end && *end == '\0') ? (int)parsed : fallback;
 }
 
+static bool isEmbedRoute() {
+    return EM_ASM_INT({
+        if (typeof window === 'undefined' || !window.location || typeof window.location.pathname !== 'string') {
+            return 0;
+        }
+        var path = window.location.pathname;
+        return /(^|\/)embed(\/|$)/.test(path) ? 1 : 0;
+    });
+}
+
 void notifyReady() {
     EM_ASM({
         globalThis.realmReady = true;
@@ -74,22 +84,32 @@ int realm_web_selected_id() {
 int main() {
     forceUtf8Locale();
     displayMode = DM_EMOJI;
+    const bool startedFromEmbed = isEmbedRoute();
 
     if (!gfxInit()) {
         std::cerr << "realm: web gfxInit failed\n";
         return 1;
     }
 
-    int numAIs = envIntLocal("REALM_WEB_AIS", 1);
-    numAIs = std::max(1, std::min(3, numAIs));
-    g.biomeChoice = envIntLocal("REALM_WEB_BIOME", B_TEMPERATE);
-    if (g.biomeChoice < -1 || g.biomeChoice > B_OCEAN) g.biomeChoice = B_TEMPERATE;
+    if (startedFromEmbed) {
+        int numAIs = envIntLocal("REALM_WEB_AIS", 1);
+        numAIs = std::max(1, std::min(3, numAIs));
+        g.biomeChoice = envIntLocal("REALM_WEB_BIOME", B_TEMPERATE);
+        if (g.biomeChoice < -1 || g.biomeChoice > B_OCEAN) g.biomeChoice = B_TEMPERATE;
 
-    unsigned seed = (unsigned)envIntLocal("REALM_WEB_SEED", 2468);
-    int humanCorner = envIntLocal("REALM_WEB_HUMAN_CORNER", 1);
-    if (humanCorner < 0 || humanCorner > 3) humanCorner = 1;
+        unsigned seed = (unsigned)envIntLocal("REALM_WEB_SEED", 2468);
+        int humanCorner = envIntLocal("REALM_WEB_HUMAN_CORNER", 1);
+        if (humanCorner < 0 || humanCorner > 3) humanCorner = 1;
 
-    initGameWithSeed(numAIs, seed, humanCorner);
+        initGameWithSeed(numAIs, seed, humanCorner);
+    } else {
+        int numAIs = gfxShowSplash();
+        if (numAIs < 1 || numAIs > 3) {
+            std::cerr << "realm: invalid splash selection " << numAIs << "\n";
+            return 1;
+        }
+        initGame(numAIs);
+    }
     gfxOnNewGame();
     setStatus("Browser build ready. Select peasants with click/tap and command with right click or keyboard.");
 
