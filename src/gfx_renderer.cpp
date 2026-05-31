@@ -1489,9 +1489,7 @@ static void drawTopBar() {
     std::ostringstream ss;
     ss << "G:" << p.gold << "  W:" << p.wood << "  F:" << p.food
        << "  Pop:" << p.supply << "/" << p.supplyMax
-       << "  " << seasonNameSafe() << ' ' << timeNameSafe() << ' ' << weatherName()
-       << "  " << (s.isometric ? "Iso" : "Top")
-       << "  " << s.tile << "px";
+       << "  " << seasonNameSafe() << ' ' << timeNameSafe() << ' ' << weatherName();
     drawTextFit(10, 7, ss.str(), rgb(235,238,230), std::max(1, s.winW - s.panelW - 18));
 }
 
