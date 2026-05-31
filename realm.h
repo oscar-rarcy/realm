@@ -177,11 +177,13 @@ struct Game {
     EntityType buildPending; int wallDragX, wallDragY;
     int winner, aiTimer, farmTimer;
     float dayPhase, seasonPhase;
-    int prevSeason; // for detecting season transitions
-    int weather;       // current Weather state
-    int weatherTimer;  // ticks until next weather change roll
-    int biomeChoice;   // -1 = random, else Biome enum value forced on whole map
-    bool returnToMenu; // set on game-over to break back to splash screen
+    int prevSeason;       // for detecting season transitions
+    int prevTimePhase;    // 0=day 1=dusk 2=night 3=dawn; for transition messages
+    int attackNotifyCd;  // ticks until next "Under attack" message is allowed
+    int weather;          // current Weather state
+    int weatherTimer;     // ticks until next weather change roll
+    int biomeChoice;      // -1 = random, else Biome enum value forced on whole map
+    bool returnToMenu;    // set on game-over to break back to splash screen
 };
 extern Game g;
 

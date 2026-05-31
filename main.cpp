@@ -151,6 +151,7 @@ void initGame(int numAIs) {
     g.weather = W_CLEAR; g.weatherTimer = 0;
     g.buildPending = E_NONE; g.wallDragX = 0; g.wallDragY = 0;
     g.dayPhase = 0.25f; g.seasonPhase = 0.0f; g.prevSeason = -1;
+    g.prevTimePhase = 0; g.attackNotifyCd = 0;
     g.returnToMenu = false;
     // Invalidate per-tick detection cache so the new match (which starts at
     // tick=0 again) can't accidentally share a row with last match's tick 0.

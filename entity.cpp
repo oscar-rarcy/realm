@@ -449,6 +449,9 @@ Entity* findNearestEnemy(Entity& e, int range) {
 }
 
 void orderMove(Entity& e, int tx, int ty) {
+    // Warn if the clicked tile is impassable for this unit type.
+    bool targetOk = isNaval(e.type) ? isPassableWater(tx, ty) : isPassable(tx, ty);
+    if (!targetOk && e.owner == 0) setStatus("Can't move there.");
     e.state = S_MOVING; e.targetX = tx; e.targetY = ty; e.targetId = -1;
     e.stuckTicks = 0;
     e.attackMove = 0; e.holdPosition = 0;
@@ -896,8 +899,9 @@ void tickEntity(Entity& e) {
                     Entity* nu = findEntity(newId);
                     if (nu) orderMove(*nu, e.rallyX, e.rallyY);
                 }
+                EntityType justTrained = e.producing;
                 e.producing = E_NONE; e.state = S_IDLE;
-                if (e.owner==0) setStatus("Training complete!");
+                if (e.owner==0) setStatus(std::string(STATS[justTrained].name) + " is ready.");
                 // Pop the next queued unit straight into production.
                 if (!e.queue.empty()) {
                     EntityType next = (EntityType)e.queue.front();
@@ -1015,6 +1019,10 @@ void tickEntity(Entity& e) {
                 t->hp -= dmg;
                 e.atkCd = STATS[e.type].atkSpeed;
                 e.alertTicks = 12; t->alertTicks = 12;
+                if (t->owner == 0 && g.attackNotifyCd == 0 && t->type != E_NONE) {
+                    setStatus("Your people are under attack!");
+                    g.attackNotifyCd = 200;
+                }
                 if (isRanged(e.type)) {
                     char pc = (e.type==E_CATAPULT) ? 'o' : '-';
                     int pcol = (e.type==E_CATAPULT) ? CP_PROJ_BOULDER : CP_PROJ_ARROW;
@@ -1426,12 +1434,38 @@ static void applyWinter() {
 }
 
 void tickSeasons() {
+    // Decrement the under-attack notification cooldown once per tick.
+    if (g.attackNotifyCd > 0) g.attackNotifyCd--;
+
+    // Season transitions.
     int s = (int)getSeason();
     if (s != g.prevSeason) {
         if (s == WINTER) applyWinter();
-        if (s == SPRING && g.prevSeason == WINTER && g.players[0].alive)
-            setStatus("Spring stirs. The thaw begins.");
+        if (g.players[0].alive) {
+            if (s == SPRING && g.prevSeason == WINTER)
+                setStatus("The frost retreats. New life stirs across the land.");
+            else if (s == SUMMER)
+                setStatus("Summer is upon the realm. Long days and warm soil.");
+            else if (s == AUTUMN)
+                setStatus("Autumn descends. The harvest calls — winter is not far.");
+        }
         g.prevSeason = s;
+    }
+
+    // Time-of-day transitions (fire once per phase crossing, not every tick).
+    if (g.players[0].alive) {
+        int phase;
+        if (isDawn())       phase = 3;
+        else if (isDusk())  phase = 1;
+        else if (isNight()) phase = 2;
+        else                phase = 0; // day
+        if (phase != g.prevTimePhase) {
+            if      (phase == 3) setStatus("Dawn breaks. The realm stirs to life.");
+            else if (phase == 1) setStatus("Evening falls. The shadows lengthen.");
+            else if (phase == 2) setStatus("Night. Stars keep watch over the sleeping land.");
+            // No message for plain day — players see it clearly.
+            g.prevTimePhase = phase;
+        }
     }
 }
 

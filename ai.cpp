@@ -60,6 +60,18 @@ static void aiBuildSpotNear(int o, EntityType bt, int cx, int cy, int& ox, int& 
 }
 void aiBuildSpot(int o, EntityType bt, int& ox, int& oy) { aiBuildSpotNear(o, bt, -1, -1, ox, oy); }
 
+// Wide placement: starts searching further out — good for supply buildings
+// that would be blocked by the dense inner base cluster.
+static void aiBuildSpotWide(int o, EntityType bt, int& ox, int& oy) {
+    Entity* th = aiBldg(o, E_TOWNHALL);
+    if (!th) th = aiBldg(o, E_CASTLE);
+    if (!th) return;
+    for (int r = 5; r < 28; r++) for (int a = 0; a < 32; a++) {
+        int bx = th->x + (rand()%(r*2+1)) - r, by = th->y + (rand()%(r*2+1)) - r;
+        if (canPlace(bt, bx, by, o)) { ox = bx; oy = by; return; }
+    }
+}
+
 // Scan all opponents — used to scale production and pick targets.
 struct AIIntel { int playerArmy; int playerCastles; int playerWalls; int playerPeasants; int playerCatapults; Entity* playerTH; };
 static AIIntel aiScout(int o) {
@@ -160,9 +172,18 @@ static void tickAIForOwner(int o) {
     }
 
     // === SUPPLY: keep houses ahead of training ===
-    if (p.supply + 4 >= p.supplyMax && hous < 12 && p.wood >= 50) {
+    // Use wide placement so houses sprawl outside the dense inner base cluster.
+    if (p.supply + 4 >= p.supplyMax && hous < 16 && p.wood >= 50) {
         Entity* b = aiWorker(o);
-        if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_HOUSE,bx,by); if(bx>=0) orderBuild(*b,E_HOUSE,bx,by); }
+        if (b) { int bx=-1,by=-1; aiBuildSpotWide(o,E_HOUSE,bx,by); if(bx>=0) orderBuild(*b,E_HOUSE,bx,by); }
+    }
+
+    // === LATE-GAME UPGRADE: Castle ===
+    // Castle (100g+250w, 4x4) replaces or supplements the TH — more HP, more supply,
+    // and gives the AI a hardened anchor for late-game sieges.
+    if (aiCountAll(o,E_CASTLE) == 0 && mil + kni >= 8 && p.gold >= 100 && p.wood >= 250) {
+        Entity* b = aiWorker(o);
+        if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_CASTLE,bx,by); if(bx>=0) orderBuild(*b,E_CASTLE,bx,by); }
     }
 
     // === MILITARY BUILDINGS ===
