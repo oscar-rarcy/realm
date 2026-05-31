@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Realm app icon">
+  <defs>
+    <linearGradient id="bg" x1="120" y1="80" x2="904" y2="944" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#142234"/>
+      <stop offset="0.55" stop-color="#071018"/>
+      <stop offset="1" stop-color="#03070b"/>
+    </linearGradient>
+    <linearGradient id="grassTop" x1="245" y1="394" x2="782" y2="654" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#6fbf5c"/>
+      <stop offset="0.48" stop-color="#3f9345"/>
+      <stop offset="1" stop-color="#23713e"/>
+    </linearGradient>
+    <linearGradient id="grassLeft" x1="253" y1="597" x2="514" y2="832" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2f7b3b"/>
+      <stop offset="1" stop-color="#174d2e"/>
+    </linearGradient>
+    <linearGradient id="grassRight" x1="514" y1="637" x2="793" y2="824" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1e6b38"/>
+      <stop offset="1" stop-color="#0d3e2b"/>
+    </linearGradient>
+    <linearGradient id="rFace" x1="388" y1="168" x2="640" y2="648" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff4bd"/>
+      <stop offset="0.52" stop-color="#ffd44d"/>
+      <stop offset="1" stop-color="#f39a2e"/>
+    </linearGradient>
+    <filter id="softShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="26" stdDeviation="28" flood-color="#000000" flood-opacity="0.42"/>
+    </filter>
+  </defs>
+
+  <rect x="64" y="64" width="896" height="896" rx="196" fill="url(#bg)"/>
+  <ellipse cx="512" cy="784" rx="318" ry="94" fill="#000000" opacity="0.34"/>
+
+  <g filter="url(#softShadow)">
+    <polygon points="512,360 812,526 512,692 212,526" fill="url(#grassTop)"/>
+    <polygon points="212,526 512,692 512,822 212,656" fill="url(#grassLeft)"/>
+    <polygon points="512,692 812,526 812,656 512,822" fill="url(#grassRight)"/>
+
+    <g opacity="0.35" stroke="#b8f29e" stroke-width="4" stroke-linecap="round">
+      <path d="M322 506h58"/>
+      <path d="M403 462h44"/>
+      <path d="M624 506h68"/>
+      <path d="M557 584h42"/>
+      <path d="M292 580h38"/>
+    </g>
+    <g fill="#d7ffd2" opacity="0.55">
+      <circle cx="352" cy="526" r="6"/>
+      <circle cx="438" cy="492" r="4"/>
+      <circle cx="592" cy="515" r="5"/>
+      <circle cx="662" cy="560" r="4"/>
+      <circle cx="476" cy="604" r="4"/>
+      <circle cx="718" cy="522" r="5"/>
+    </g>
+  </g>
+
+  <g filter="url(#softShadow)">
+    <text x="518" y="600"
+          text-anchor="middle"
+          font-family="Arial Black, Arial, sans-serif"
+          font-size="490"
+          font-weight="900"
+          fill="#643710"
+          opacity="0.7"
+          transform="translate(26 34)">R</text>
+    <text x="512" y="584"
+          text-anchor="middle"
+          font-family="Arial Black, Arial, sans-serif"
+          font-size="490"
+          font-weight="900"
+          fill="url(#rFace)"
+          stroke="#fff7cf"
+          stroke-width="16"
+          paint-order="stroke fill">R</text>
+    <path d="M374 637 512 714 650 637" fill="none" stroke="#ffd85a" stroke-width="14" stroke-linecap="round" opacity="0.72"/>
+  </g>
+</svg>
