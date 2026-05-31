@@ -16,6 +16,15 @@ build/      Generated object files and logs, ignored by git
 bin/        Generated executables and runtime DLLs, ignored by git
 ```
 
+## Build / Run Scripts
+
+```text
+scripts/mac-build-and-run-gui.command       macOS SDL2 GUI build + run
+scripts/mac-build-and-run-terminal.command  macOS ncurses terminal build + run
+scripts/windows-build-and-run-gui.bat       Windows/MSYS2 SDL2 GUI build + run
+scripts/windows-build-and-run-terminal.bat  Windows WSL ncurses terminal build + run
+```
+
 ## Windows Build
 
 Use MSYS2 UCRT64:

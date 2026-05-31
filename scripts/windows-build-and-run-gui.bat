@@ -10,7 +10,7 @@ for %%I in ("%SCRIPT_DIR%..") do set "REPO=%%~fI"
 
 REM Important: do NOT put the log inside build/, because `make clean`
 REM deletes build/ and Windows will lock the log while this script writes it.
-set "LOG=%REPO%\windows-build-log.txt"
+set "LOG=%REPO%\windows-gui-build-log.txt"
 
 echo Realm Windows GUI build
 echo Repo: %REPO%

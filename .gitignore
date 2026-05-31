@@ -36,6 +36,11 @@
 *.log
 build-log.txt
 windows-build-log.txt
+windows-gui-build-log.txt
+windows-terminal-build-log.txt
+mac-build-log.txt
+mac-gui-build-log.txt
+mac-terminal-build-log.txt
 realm-run.log
 realm-save.txt
 logs/

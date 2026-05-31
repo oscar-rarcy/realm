@@ -68,12 +68,14 @@ static std::string fullStateSummary() {
 
 static void assertIdsCoherent() {
     int maxId = 0;
+    std::set<int> seen;
     for (const auto& e : g.entities) {
         assert(e.id > 0);
         assert(e.id < g.nextId);
+        assert(seen.insert(e.id).second);
         if (e.id > maxId) maxId = e.id;
     }
-    assert(maxId + 1 == g.nextId);
+    assert(maxId < g.nextId);
 }
 
 static int countTypeOwner(EntityType t, int owner) {

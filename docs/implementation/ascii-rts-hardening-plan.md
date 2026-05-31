@@ -42,7 +42,7 @@ Important files:
 * `src/display.cpp`
 * `docs/gfx-renderer.md`
 * `docs/tests/manual-test-plan.md`
-* `scripts/windows-build-and-run.bat`
+* `scripts/windows-build-and-run-gui.bat`
 
 ## Status key
 

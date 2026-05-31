@@ -19,6 +19,8 @@ else
   EXEEXT :=
 endif
 
+UNAME_S := $(shell uname -s 2>/dev/null || echo Unknown)
+
 # -------------------------------------------------------------------
 # Targets / objects
 # -------------------------------------------------------------------
@@ -72,7 +74,12 @@ TEST_OBJS := \
 # Libraries
 # -------------------------------------------------------------------
 NCURSES_CFLAGS := $(shell $(PKG_CONFIG) --cflags ncursesw 2>/dev/null)
-NCURSES_LIBS := $(shell $(PKG_CONFIG) --libs ncursesw 2>/dev/null || echo -lncursesw)
+ifeq ($(UNAME_S),Darwin)
+  NCURSES_FALLBACK_LIBS := -lncurses
+else
+  NCURSES_FALLBACK_LIBS := -lncursesw
+endif
+NCURSES_LIBS := $(shell $(PKG_CONFIG) --libs ncursesw 2>/dev/null || echo $(NCURSES_FALLBACK_LIBS))
 
 SDL_CFLAGS := $(shell $(PKG_CONFIG) --cflags sdl2 SDL2_ttf 2>/dev/null)
 SDL_LIBS := $(shell $(PKG_CONFIG) --libs sdl2 SDL2_ttf 2>/dev/null)
