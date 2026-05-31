@@ -1743,14 +1743,13 @@ void tickAnimals() {
             }
         }
 
-        // Boars charge nearby units; hitting them triggers a rampage (wider search range).
-        if (e.type == E_BOAR) {
-            int chargeRange = (e.alertTicks > 0) ? 8 : 3;
+        // Boars only charge when provoked (alertTicks > 0). Calm boars are passive.
+        if (e.type == E_BOAR && e.alertTicks > 0) {
             if (e.state == S_IDLE || (e.state == S_MOVING && e.path.empty())) {
                 for (auto& o : g.entities) {
                     if (!o.alive || o.owner == OWNER_NATURE || !isUnit(o.type)) continue;
                     if (o.state == S_GARRISONED) continue;
-                    if (dist(e.x, e.y, o.x, o.y) <= chargeRange) { orderAttack(e, o.id); break; }
+                    if (dist(e.x, e.y, o.x, o.y) <= 4) { orderAttack(e, o.id); break; }
                 }
             }
         }
