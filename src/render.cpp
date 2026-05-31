@@ -586,12 +586,12 @@ void renderMap() {
                 emojiStr = getEntityEmoji(ent->type);
 
                 // Colour pair: ownership → background colour.
-                // Farms keep wheat colours regardless of owner.
+                // Completed farms keep wheat colours regardless of owner.
                 // Gaia/nature (animals) use type-specific foreground colours with
                 // no ownership background — they are neutral entities.
                 // Ships keep the wood-deck background for their hull look.
-                if (ent->type == E_FARM)
-                    cp = (g.tick%40 < 20) ? CP_WHEAT : CP_WHEAT_GOLD;
+                if (ent->type == E_FARM && !ent->underConstruction)
+                    cp = (getSeason() == SUMMER) ? CP_WHEAT_GOLD : CP_WHEAT;
                 else if (ent->owner == OWNER_NATURE) {
                     if      (ent->type == E_WOLF)  cp = CP_WOLF;
                     else if (ent->type == E_SHEEP) cp = CP_SHEEP;
