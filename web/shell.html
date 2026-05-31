@@ -137,8 +137,17 @@
 
     for (const eventName of ['keydown', 'keyup', 'wheel']) {
       window.addEventListener(eventName, (event) => {
+        if (eventName === 'wheel') {
+          event.preventDefault();
+          return;
+        }
+        if (event.ctrlKey || event.metaKey || event.altKey) return;
         const keys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ', 'PageUp', 'PageDown', 'Home', 'End'];
-        if (eventName === 'wheel' || keys.includes(event.key)) event.preventDefault();
+        const key = event.key;
+        const interceptKey =
+          keys.includes(key) ||
+          (typeof key === 'string' && key.length === 1);
+        if (interceptKey) event.preventDefault();
       }, { passive: false });
     }
   </script>
