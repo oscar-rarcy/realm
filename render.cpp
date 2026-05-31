@@ -733,19 +733,11 @@ void getTerrainVisual(Terrain t, int x, int y, char& ch, int& cp) {
             if (t==T_WHEAT) { ch='.'; cp=CP_WIN_GROUND; }
             if (t==T_FOREST) { ch='t'; cp=CP_WIN_TREE; }
             if (t==T_PINE)   cp=CP_WIN_PINE;
-            // Rivers and marshes freeze over
-            float freezeAmt = std::min(1.0f, 0.25f + p * 1.1f);
-            if (t==T_WATER  && shouldShowSeasonAt(x,y,freezeAmt)) { ch='='; cp=CP_WIN_ICE; }
-            if (t==T_SHALLOWS && shouldShowSeasonAt(x,y,freezeAmt)) { ch='='; cp=CP_WIN_ICE; }
-            if (t==T_MARSH  && shouldShowSeasonAt(x,y,freezeAmt)) { ch='='; cp=CP_WIN_ICE; }
-            if (t==T_REEDS  && shouldShowSeasonAt(x,y,freezeAmt)) { ch='='; cp=CP_WIN_ICE; }
-            // Thaw at the tail end of winter
+            // Tail-end visual thaw for snow-dusted non-snow terrain (hills etc).
             if (p > 0.85f) {
                 float thaw = (p-0.85f)*6.67f;
                 if ((cp==CP_WIN_GROUND) && t!=T_SNOW && shouldShowSeasonAt(x+100,y+100,thaw))
                     { ch='.'; cp=CP_GRASS; }
-                if (cp==CP_WIN_ICE && (t==T_WATER||t==T_SHALLOWS) && shouldShowSeasonAt(x+200,y+200,thaw*0.7f))
-                    { ch='~'; cp=CP_WATER; }
             }
             break;
         }}
