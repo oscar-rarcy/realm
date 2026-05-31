@@ -866,15 +866,19 @@ static void updateMiddlePan(int px, int py) {
         g.viewY = s.panStartViewY - (int)std::lround(dy / (float)std::max(1, s.tile));
     }
     clampView();
+}
 
-    int mx, my;
-    if (screenToMap(px, py, mx, my)) {
-        g.cursorX = mx;
-        g.cursorY = my;
+static void moveCursorToViewCenter() {
+    if (s.isometric) {
+        IsoOffsetBounds b = isoVisibleOffsetBounds();
+        g.cursorX = g.viewX + (b.minSx + b.maxSx) / 2;
+        g.cursorY = g.viewY + (b.minSy + b.maxSy) / 2;
     } else {
-        g.cursorX = std::max(0, std::min(g.viewX + g.viewW / 2, MAP_W - 1));
-        g.cursorY = std::max(0, std::min(g.viewY + g.viewH / 2, MAP_H - 1));
+        g.cursorX = g.viewX + topDownFullColumns() / 2;
+        g.cursorY = g.viewY + topDownFullRows() / 2;
     }
+    g.cursorX = std::max(0, std::min(g.cursorX, MAP_W - 1));
+    g.cursorY = std::max(0, std::min(g.cursorY, MAP_H - 1));
 }
 
 static int keyToInput(SDL_Keycode key) {
@@ -1160,7 +1164,7 @@ static void drawIsoTileForeground(int mx, int my) {
 static void drawMapIso() {
     SDL_Rect mr = mapRect();
     setDraw(rgb(4,6,8)); SDL_RenderFillRect(s.ren, &mr);
-    updateViewMetrics(true);
+    updateViewMetrics(!s.middleDown);
     SDL_RenderSetClipRect(s.ren, &mr);
 
     IsoOffsetBounds b = isoVisibleOffsetBounds();
@@ -1205,7 +1209,7 @@ static void drawMap() {
     if (s.isometric) { drawMapIso(); return; }
     SDL_Rect mr = mapRect();
     setDraw(rgb(4,6,8)); SDL_RenderFillRect(s.ren, &mr);
-    updateViewMetrics(true);
+    updateViewMetrics(!s.middleDown);
     SDL_RenderSetClipRect(s.ren, &mr);
 
     for (int sy=0; sy<g.viewH; ++sy) {
@@ -1701,6 +1705,7 @@ void gfxPollInput(bool& quitRequested) {
             }
             if (e.button.button == SDL_BUTTON_MIDDLE) {
                 if (s.middleDown) updateMiddlePan(e.button.x, e.button.y);
+                moveCursorToViewCenter();
                 s.middleDown = false;
                 continue;
             }

@@ -152,6 +152,41 @@ static int runUiTestMode() {
         ok = captureUiFrame((outDir / "13-minimap-pan.bmp").string()) && ok;
     }
 
+    {
+        const int panelW = 286;
+        const int mapW = width - panelW;
+        const int startX = mapW - 36;
+        const int startY = height - 88;
+
+        SDL_Event down{};
+        down.type = SDL_MOUSEBUTTONDOWN;
+        down.button.button = SDL_BUTTON_MIDDLE;
+        down.button.x = startX;
+        down.button.y = startY;
+        SDL_PushEvent(&down);
+
+        for (int i = 0; i < 4; ++i) {
+            SDL_Event move{};
+            move.type = SDL_MOUSEMOTION;
+            move.motion.state = SDL_BUTTON_MMASK;
+            move.motion.x = startX - 55 * (i + 1);
+            move.motion.y = startY - 28 * (i + 1);
+            SDL_PushEvent(&move);
+        }
+
+        SDL_Event up{};
+        up.type = SDL_MOUSEBUTTONUP;
+        up.button.button = SDL_BUTTON_MIDDLE;
+        up.button.x = startX - 220;
+        up.button.y = startY - 112;
+        SDL_PushEvent(&up);
+
+        bool quitRequested = false;
+        gfxPollInput(quitRequested);
+        ok = !quitRequested && ok;
+        ok = captureUiFrame((outDir / "14-middle-pan-edge.bmp").string()) && ok;
+    }
+
     if (std::getenv("REALM_UI_CAPTURE_TEST")) {
         SDL_Event event{};
         event.type = SDL_KEYDOWN;
