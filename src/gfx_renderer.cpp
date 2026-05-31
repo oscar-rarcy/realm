@@ -562,6 +562,39 @@ static IsoOffsetBounds isoVisibleOffsetBounds() {
     };
 }
 
+static int topDownFullColumns() {
+    SDL_Rect mr = mapRect();
+    return std::max(1, std::min(MAP_W, mr.w / std::max(1, s.tile)));
+}
+
+static int topDownFullRows() {
+    SDL_Rect mr = mapRect();
+    return std::max(1, std::min(MAP_H, mr.h / std::max(1, s.tile)));
+}
+
+static void cameraBounds(int& minX, int& maxX, int& minY, int& maxY) {
+    if (s.isometric) {
+        IsoOffsetBounds b = isoVisibleOffsetBounds();
+        const int pad = 2;
+        int minVisibleX = b.minSx + pad;
+        int maxVisibleX = b.maxSx - pad;
+        int minVisibleY = b.minSy + pad;
+        int maxVisibleY = b.maxSy - pad;
+        if (minVisibleX > maxVisibleX) { minVisibleX = b.minSx; maxVisibleX = b.maxSx; }
+        if (minVisibleY > maxVisibleY) { minVisibleY = b.minSy; maxVisibleY = b.maxSy; }
+        minX = -maxVisibleX;
+        maxX = MAP_W - 1 - minVisibleX;
+        minY = -maxVisibleY;
+        maxY = MAP_H - 1 - minVisibleY;
+        return;
+    }
+
+    minX = 0;
+    minY = 0;
+    maxX = std::max(0, MAP_W - topDownFullColumns());
+    maxY = std::max(0, MAP_H - topDownFullRows());
+}
+
 static bool pointInDiamond(int px, int py, int cx, int cy, int hw, int hh) {
     if (hw <= 0 || hh <= 0) return false;
     float dx = std::abs(px - cx) / (float)hw;
@@ -670,18 +703,58 @@ static void updateViewMetrics(bool keepCursor = true) {
     }
 
     if (keepCursor) {
-        if (g.cursorX < g.viewX) g.viewX = g.cursorX;
-        if (g.cursorY < g.viewY) g.viewY = g.cursorY;
-        if (g.cursorX >= g.viewX + g.viewW) g.viewX = g.cursorX - g.viewW + 1;
-        if (g.cursorY >= g.viewY + g.viewH) g.viewY = g.cursorY - g.viewH + 1;
+        if (s.isometric) {
+            IsoOffsetBounds b = isoVisibleOffsetBounds();
+            const int pad = 2;
+            int minOffsetX = b.minSx + pad;
+            int maxOffsetX = b.maxSx - pad;
+            int minOffsetY = b.minSy + pad;
+            int maxOffsetY = b.maxSy - pad;
+            if (minOffsetX > maxOffsetX) { minOffsetX = b.minSx; maxOffsetX = b.maxSx; }
+            if (minOffsetY > maxOffsetY) { minOffsetY = b.minSy; maxOffsetY = b.maxSy; }
+
+            int offsetX = g.cursorX - g.viewX;
+            int offsetY = g.cursorY - g.viewY;
+            if (offsetX < minOffsetX) g.viewX = g.cursorX - minOffsetX;
+            if (offsetX > maxOffsetX) g.viewX = g.cursorX - maxOffsetX;
+            if (offsetY < minOffsetY) g.viewY = g.cursorY - minOffsetY;
+            if (offsetY > maxOffsetY) g.viewY = g.cursorY - maxOffsetY;
+        } else {
+            int fullW = topDownFullColumns();
+            int fullH = topDownFullRows();
+            if (g.cursorX < g.viewX) g.viewX = g.cursorX;
+            if (g.cursorY < g.viewY) g.viewY = g.cursorY;
+            if (g.cursorX >= g.viewX + fullW) g.viewX = g.cursorX - fullW + 1;
+            if (g.cursorY >= g.viewY + fullH) g.viewY = g.cursorY - fullH + 1;
+        }
     }
-    g.viewX = std::max(0, std::min(g.viewX, MAP_W - g.viewW));
-    g.viewY = std::max(0, std::min(g.viewY, MAP_H - g.viewH));
+    int minX, maxX, minY, maxY;
+    cameraBounds(minX, maxX, minY, maxY);
+    g.viewX = std::max(minX, std::min(g.viewX, maxX));
+    g.viewY = std::max(minY, std::min(g.viewY, maxY));
 }
 
 static void clampView() {
-    g.viewX = std::max(0, std::min(g.viewX, MAP_W - g.viewW));
-    g.viewY = std::max(0, std::min(g.viewY, MAP_H - g.viewH));
+    int minX, maxX, minY, maxY;
+    cameraBounds(minX, maxX, minY, maxY);
+    g.viewX = std::max(minX, std::min(g.viewX, maxX));
+    g.viewY = std::max(minY, std::min(g.viewY, maxY));
+}
+
+static void centerViewOnTile(int mx, int my) {
+    updateViewMetrics(false);
+    mx = std::max(0, std::min(mx, MAP_W - 1));
+    my = std::max(0, std::min(my, MAP_H - 1));
+
+    if (s.isometric) {
+        IsoOffsetBounds b = isoVisibleOffsetBounds();
+        g.viewX = mx - (b.minSx + b.maxSx) / 2;
+        g.viewY = my - (b.minSy + b.maxSy) / 2;
+    } else {
+        g.viewX = mx - topDownFullColumns() / 2;
+        g.viewY = my - topDownFullRows() / 2;
+    }
+    clampView();
 }
 
 static bool screenToMap(int px, int py, int& mx, int& my) {
@@ -726,11 +799,9 @@ static void setZoom(int newTile, int anchorX = -1, int anchorY = -1) {
     int oldMx = g.cursorX, oldMy = g.cursorY;
     if (anchorX >= 0 && anchorY >= 0) screenToMap(anchorX, anchorY, oldMx, oldMy);
     s.tile = newTile;
-    updateViewMetrics(false);
     g.cursorX = std::max(0, std::min(oldMx, MAP_W-1));
     g.cursorY = std::max(0, std::min(oldMy, MAP_H-1));
-    g.viewX = std::max(0, std::min(g.cursorX - g.viewW/2, MAP_W - g.viewW));
-    g.viewY = std::max(0, std::min(g.cursorY - g.viewH/2, MAP_H - g.viewH));
+    centerViewOnTile(g.cursorX, g.cursorY);
     // Text textures may be re-used scaled; no need to rebuild font cache.
 }
 
@@ -1104,6 +1175,7 @@ static void drawMap() {
     for (int sy=0; sy<g.viewH; ++sy) {
         for (int sx=0; sx<g.viewW; ++sx) {
             int mx = g.viewX + sx, my = g.viewY + sy;
+            if (!inBounds(mx, my)) continue;
             SDL_Rect r{mr.x + sx*s.tile, mr.y + sy*s.tile, s.tile, s.tile};
             drawTile(mx,my,r);
         }
@@ -1139,9 +1211,24 @@ static void drawMiniMap(int x, int y, int w, int h) {
         }
     }
     SDL_SetRenderDrawBlendMode(s.ren, SDL_BLENDMODE_BLEND);
-    SDL_Rect view{x + g.viewX*w/MAP_W, y + g.viewY*h/MAP_H,
-                  std::max(2,g.viewW*w/MAP_W), std::max(2,g.viewH*h/MAP_H)};
-    setDraw(rgb(255,255,255,210)); SDL_RenderDrawRect(s.ren, &view);
+    int vx0 = g.viewX, vy0 = g.viewY;
+    int vx1 = g.viewX + g.viewW, vy1 = g.viewY + g.viewH;
+    if (s.isometric) {
+        IsoOffsetBounds b = isoVisibleOffsetBounds();
+        vx0 = g.viewX + b.minSx;
+        vx1 = g.viewX + b.maxSx + 1;
+        vy0 = g.viewY + b.minSy;
+        vy1 = g.viewY + b.maxSy + 1;
+    }
+    vx0 = std::max(0, std::min(vx0, MAP_W));
+    vy0 = std::max(0, std::min(vy0, MAP_H));
+    vx1 = std::max(0, std::min(vx1, MAP_W));
+    vy1 = std::max(0, std::min(vy1, MAP_H));
+    if (vx1 > vx0 && vy1 > vy0) {
+        SDL_Rect view{x + vx0*w/MAP_W, y + vy0*h/MAP_H,
+                      std::max(2,(vx1-vx0)*w/MAP_W), std::max(2,(vy1-vy0)*h/MAP_H)};
+        setDraw(rgb(255,255,255,210)); SDL_RenderDrawRect(s.ren, &view);
+    }
 }
 
 static void drawTopBar() {
@@ -1439,9 +1526,7 @@ int gfxShowSplash() {
 }
 
 void gfxOnNewGame() {
-    updateViewMetrics(false);
-    g.viewX = std::max(0, std::min(g.cursorX - g.viewW/2, MAP_W - g.viewW));
-    g.viewY = std::max(0, std::min(g.cursorY - g.viewH/2, MAP_H - g.viewH));
+    centerViewOnTile(g.cursorX, g.cursorY);
 }
 
 void gfxPollInput(bool& quitRequested) {

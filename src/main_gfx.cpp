@@ -102,6 +102,22 @@ static int runUiTestMode() {
     gfxOnNewGame();
     ok = captureUiFrame((outDir / "09-center-isometric.bmp").string()) && ok;
 
+    g.cursorX = MAP_W - 1;
+    g.cursorY = 0;
+    gfxSetProjection(true);
+    gfxOnNewGame();
+    ok = captureUiFrame((outDir / "10-top-right-isometric.bmp").string()) && ok;
+
+    g.cursorX = MAP_W - 1;
+    g.cursorY = MAP_H - 1;
+    gfxSetProjection(false);
+    gfxOnNewGame();
+    ok = captureUiFrame((outDir / "11-bottom-right-topdown.bmp").string()) && ok;
+
+    gfxSetProjection(true);
+    gfxOnNewGame();
+    ok = captureUiFrame((outDir / "12-bottom-right-isometric.bmp").string()) && ok;
+
     std::cerr << "realm: ui test " << (ok ? "complete" : "failed") << " dir=" << outDir.string() << "\n";
     return ok ? 0 : 1;
 }
