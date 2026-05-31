@@ -47,6 +47,7 @@ struct Gfx {
 
     bool leftDown = false;
     bool middleDown = false;
+    bool miniMapDown = false;
     int dragStartX = 0, dragStartY = 0;
     int panStartMouseX = 0, panStartMouseY = 0;
     int panStartViewX = 0, panStartViewY = 0;
@@ -506,6 +507,11 @@ static SDL_Rect panelRect() {
     return SDL_Rect{s.winW - s.panelW, 0, s.panelW, s.winH};
 }
 
+static SDL_Rect miniMapRect() {
+    SDL_Rect pr = panelRect();
+    return SDL_Rect{pr.x + 14, 12, std::max(1, pr.w - 28), 110};
+}
+
 static int isoHalfW() { return std::max(8, s.tile); }
 static int isoHalfH() { return std::max(5, s.tile / 2); }
 
@@ -760,6 +766,31 @@ static void centerViewOnTile(int mx, int my) {
         g.viewY = my - topDownFullRows() / 2;
     }
     clampView();
+}
+
+static bool screenToMiniMapTile(int px, int py, int& mx, int& my, bool clampToMiniMap = false) {
+    SDL_Rect r = miniMapRect();
+    if (clampToMiniMap) {
+        px = std::max(r.x, std::min(px, r.x + r.w - 1));
+        py = std::max(r.y, std::min(py, r.y + r.h - 1));
+    } else if (px < r.x || py < r.y || px >= r.x + r.w || py >= r.y + r.h) {
+        return false;
+    }
+
+    int lx = std::max(0, std::min(px - r.x, r.w - 1));
+    int ly = std::max(0, std::min(py - r.y, r.h - 1));
+    mx = std::max(0, std::min(lx * MAP_W / std::max(1, r.w), MAP_W - 1));
+    my = std::max(0, std::min(ly * MAP_H / std::max(1, r.h), MAP_H - 1));
+    return true;
+}
+
+static bool moveViewFromMiniMap(int px, int py, bool clampToMiniMap = false) {
+    int mx = 0, my = 0;
+    if (!screenToMiniMapTile(px, py, mx, my, clampToMiniMap)) return false;
+    g.cursorX = mx;
+    g.cursorY = my;
+    centerViewOnTile(mx, my);
+    return true;
 }
 
 static bool screenToMap(int px, int py, int& mx, int& my) {
@@ -1257,7 +1288,8 @@ static void drawPanel() {
 
     int x = pr.x + 14, y = 12;
     int textW = std::max(1, pr.w - 28);
-    drawMiniMap(x, y, pr.w-28, 110); y += 124;
+    SDL_Rect mini = miniMapRect();
+    drawMiniMap(mini.x, mini.y, mini.w, mini.h); y += 124;
 
     drawText(x, y, "Realm", rgb(245,245,230)); y += 22;
     std::ostringstream c; c << "Cursor: (" << g.cursorX << "," << g.cursorY << ")";
@@ -1622,6 +1654,10 @@ void gfxPollInput(bool& quitRequested) {
             if (e.wheel.y < 0) setZoom(s.tile - 3, mx, my);
         }
         if (e.type == SDL_MOUSEMOTION) {
+            if (s.miniMapDown) {
+                moveViewFromMiniMap(e.motion.x, e.motion.y, true);
+                continue;
+            }
             if (s.middleDown) {
                 updateMiddlePan(e.motion.x, e.motion.y);
                 continue;
@@ -1636,6 +1672,12 @@ void gfxPollInput(bool& quitRequested) {
             int mx,my;
             if (e.button.button == SDL_BUTTON_MIDDLE) {
                 startMiddlePan(e.button.x, e.button.y);
+            } else if (e.button.button == SDL_BUTTON_LEFT &&
+                       moveViewFromMiniMap(e.button.x, e.button.y)) {
+                s.miniMapDown = true;
+                s.leftDown = false;
+                s.middleDown = false;
+                g.dragging = false;
             } else if (screenToMap(e.button.x, e.button.y, mx, my)) {
                 g.cursorX = mx; g.cursorY = my;
                 if (g.mode == M_RALLY_SET || g.mode == M_ATTACK_MOVE) {
@@ -1650,6 +1692,13 @@ void gfxPollInput(bool& quitRequested) {
         }
         if (e.type == SDL_MOUSEBUTTONUP) {
             int mx,my;
+            if (e.button.button == SDL_BUTTON_LEFT && s.miniMapDown) {
+                moveViewFromMiniMap(e.button.x, e.button.y, true);
+                s.miniMapDown = false;
+                s.leftDown = false;
+                g.dragging = false;
+                continue;
+            }
             if (e.button.button == SDL_BUTTON_MIDDLE) {
                 if (s.middleDown) updateMiddlePan(e.button.x, e.button.y);
                 s.middleDown = false;

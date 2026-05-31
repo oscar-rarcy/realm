@@ -118,6 +118,40 @@ static int runUiTestMode() {
     gfxOnNewGame();
     ok = captureUiFrame((outDir / "12-bottom-right-isometric.bmp").string()) && ok;
 
+    {
+        const int panelW = 286;
+        const int miniX = width - panelW + 14;
+        const int miniY = 12;
+        const int miniW = panelW - 28;
+        const int miniH = 110;
+
+        SDL_Event down{};
+        down.type = SDL_MOUSEBUTTONDOWN;
+        down.button.button = SDL_BUTTON_LEFT;
+        down.button.x = miniX + miniW / 4;
+        down.button.y = miniY + miniH / 4;
+        SDL_PushEvent(&down);
+
+        SDL_Event move{};
+        move.type = SDL_MOUSEMOTION;
+        move.motion.state = SDL_BUTTON_LMASK;
+        move.motion.x = miniX + miniW - 4;
+        move.motion.y = miniY + miniH - 4;
+        SDL_PushEvent(&move);
+
+        SDL_Event up{};
+        up.type = SDL_MOUSEBUTTONUP;
+        up.button.button = SDL_BUTTON_LEFT;
+        up.button.x = move.motion.x;
+        up.button.y = move.motion.y;
+        SDL_PushEvent(&up);
+
+        bool quitRequested = false;
+        gfxPollInput(quitRequested);
+        ok = !quitRequested && ok;
+        ok = captureUiFrame((outDir / "13-minimap-pan.bmp").string()) && ok;
+    }
+
     if (std::getenv("REALM_UI_CAPTURE_TEST")) {
         SDL_Event event{};
         event.type = SDL_KEYDOWN;
