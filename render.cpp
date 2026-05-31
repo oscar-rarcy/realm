@@ -1123,29 +1123,36 @@ void renderMap() {
         }
     }
 
-    // Weather overlay: very gentle pulse — ~1.5 Hz, never overlays units/buildings.
-    if (g.weather != W_CLEAR && (g.tick % 8) == 0) {
-        bool snowWeather = (g.weather == W_SNOW);
-        int density = (g.weather == W_STORM) ? 2 : 1; // percent — very sparse
-        int frame = g.tick;
+    // Snowflakes: drawn every tick; hash seed changes every 12 ticks (~1 second)
+    // so each flake stays visible for roughly a second before positions reshuffle.
+    if (g.weather == W_SNOW) {
+        int frame = g.tick / 12;
         for (int sy = 0; sy < g.viewH; sy++) for (int sx = 0; sx < g.viewW; sx++) {
             int mx = g.viewX + sx, my = g.viewY + sy;
             if (!inBounds(mx,my) || !g.map[my][mx].visible[0]) continue;
-            if (entityAt(mx, my)) continue; // don't paint over units/buildings
+            if (entityAt(mx, my)) continue;
             unsigned h = ((unsigned)(mx*73856093u) ^ (unsigned)(my*19349663u) ^ (unsigned)(frame*83492791u));
+            if ((int)(h % 100) >= 1) continue;
+            attron(COLOR_PAIR(CP_SNOW_FALL)|A_BOLD);
+            if (displayMode == DM_ASCII) mvaddch(sy+2, sx * tileW, '*');
+            else                         mvprintw(sy+2, sx * tileW, u8"✦");
+            attroff(COLOR_PAIR(CP_SNOW_FALL)|A_BOLD);
+        }
+    }
+
+    // Rain / storm: fast flicker kept on a short interval for patter effect.
+    if ((g.weather == W_RAIN || g.weather == W_STORM) && (g.tick % 4) == 0) {
+        int density = (g.weather == W_STORM) ? 2 : 1;
+        for (int sy = 0; sy < g.viewH; sy++) for (int sx = 0; sx < g.viewW; sx++) {
+            int mx = g.viewX + sx, my = g.viewY + sy;
+            if (!inBounds(mx,my) || !g.map[my][mx].visible[0]) continue;
+            if (entityAt(mx, my)) continue;
+            unsigned h = ((unsigned)(mx*73856093u) ^ (unsigned)(my*19349663u) ^ (unsigned)(g.tick*83492791u));
             if ((int)(h % 100) >= density) continue;
-            if (snowWeather) {
-                // Transparent-bg white glyph: flake adopts whatever terrain colour is beneath it.
-                attron(COLOR_PAIR(CP_SNOW_FALL)|A_BOLD);
-                if (displayMode == DM_ASCII) mvaddch(sy+2, sx * tileW, '*');
-                else                         mvprintw(sy+2, sx * tileW, u8"✦");
-                attroff(COLOR_PAIR(CP_SNOW_FALL)|A_BOLD);
-            } else {
-                attron(COLOR_PAIR(CP_RAIN)|A_BOLD);
-                if (displayMode == DM_ASCII) mvaddch(sy+2, sx * tileW, '.');
-                else                         mvprintw(sy+2, sx * tileW, u8"·");
-                attroff(COLOR_PAIR(CP_RAIN)|A_BOLD);
-            }
+            attron(COLOR_PAIR(CP_RAIN)|A_BOLD);
+            if (displayMode == DM_ASCII) mvaddch(sy+2, sx * tileW, '.');
+            else                         mvprintw(sy+2, sx * tileW, u8"·");
+            attroff(COLOR_PAIR(CP_RAIN)|A_BOLD);
         }
     }
 }
