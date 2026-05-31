@@ -1,8 +1,164 @@
 #include "realm.h"
 
+#include <iostream>
+
+// Single right-click / Enter command from a selected player unit onto (x,y).
+// Picks the right verb based on what's at the tile: help-build / tend-farm /
+// garrison / attack / gather / sow-farm / fish / move. Used by both the
+// keyboard Enter handler and the mouse right-click handler so the two paths
+// can never drift out of sync.
+static void cmdAtTileSingle(Entity* sel, int x, int y) {
+    if (!sel || sel->owner != 0 || !isUnit(sel->type)) return;
+    Entity* tgt = entityAt(x, y);
+    bool visible = g.map[y][x].visible[0];
+
+    if (tgt && tgt->alive && tgt->owner == 0 && tgt->underConstruction && sel->type == E_PEASANT) {
+        orderHelp(*sel, tgt->id); setStatus("Helping build..."); return;
+    }
+    if (tgt && tgt->alive && tgt->owner == 0 && tgt->type == E_FARM
+        && !tgt->underConstruction && sel->type == E_PEASANT) {
+        orderHelp(*sel, tgt->id); setStatus("Tending farm..."); return;
+    }
+    if (tgt && tgt->alive && tgt->owner == 0 && !tgt->underConstruction
+        && canGarrisonIn(tgt->type) && sel->type != E_CATAPULT) {
+        orderGarrison(*sel, tgt->id); return;
+    }
+    if (tgt && tgt->alive && tgt->owner != 0 && visible) {
+        orderAttack(*sel, tgt->id); setStatus("Attacking!"); return;
+    }
+    if (sel->type == E_PEASANT) {
+        Terrain ter = g.map[y][x].terrain;
+        bool isW = (ter==T_FOREST||ter==T_PINE||ter==T_PALM||ter==T_DEAD_TREE);
+        if ((ter==T_GOLD||isW||ter==T_BERRY) && g.map[y][x].resources > 0) {
+            orderGather(*sel, x, y);
+            setStatus(ter==T_GOLD ? "Mining gold..."
+                    : ter==T_BERRY ? "Picking berries..." : "Chopping wood...");
+            return;
+        }
+        if (ter == T_WHEAT && !tgt && canPlace(E_FARM, x, y, 0)) {
+            int fid = spawnEntity(E_FARM, 0, x, y, true);
+            orderHelp(*sel, fid); setStatus("Working wheat field...");
+            return;
+        }
+        orderMove(*sel, x, y); setStatus("Moving..."); return;
+    }
+    if (sel->type == E_FISHING_BOAT) {
+        Terrain ter = g.map[y][x].terrain;
+        if (ter == T_FISH && g.map[y][x].resources > 0) {
+            orderGather(*sel, x, y); setStatus("Fishing..."); return;
+        }
+        orderMove(*sel, x, y); setStatus("Moving..."); return;
+    }
+    orderMove(*sel, x, y); setStatus("Moving...");
+}
+
+// Group right-click / Enter command — applies to every entity in
+// g.selectedIds. Same path for keyboard and mouse.
+static void cmdAtTileGroup(int x, int y) {
+    Entity* tgt = entityAt(x, y);
+    bool visible = g.map[y][x].visible[0];
+    if (tgt && tgt->alive && tgt->owner == 0
+        && !tgt->underConstruction && canGarrisonIn(tgt->type)) {
+        for (int id : g.selectedIds) {
+            Entity* u = findEntity(id);
+            if (u && u->alive && u->owner == 0 && isUnit(u->type) && u->type != E_CATAPULT)
+                orderGarrison(*u, tgt->id);
+        }
+        setStatus("Garrisoning...");
+        return;
+    }
+    if (tgt && tgt->alive && tgt->owner != 0 && visible) {
+        orderGroupAttack(tgt->id); return;
+    }
+    orderGroupMove(x, y);
+}
+
+// Renderer-neutral helpers used by the optional SDL frontend. The terminal
+// path still uses handleInput(), but the graphical renderer has real pixel
+// mouse coordinates, so it calls these directly after converting pixels to
+// map tiles. Keeping the command/select logic here prevents the two frontends
+// from drifting apart.
+void rendererCommandAtTile(int x, int y) {
+    if (!inBounds(x, y)) return;
+    g.cursorX = x; g.cursorY = y;
+    if (g.selectedIds.size() > 1) cmdAtTileGroup(x, y);
+    else                          cmdAtTileSingle(findEntity(g.selectedId), x, y);
+}
+
+void rendererSelectAtTile(int x, int y) {
+    if (!inBounds(x, y)) return;
+    g.cursorX = x; g.cursorY = y;
+    Entity* ent = entityAtOwner(x, y, 0);
+    if (ent) {
+        g.selectedId = ent->id;
+        g.selectedIds.clear();
+        setStatus(std::string("Selected: ") + STATS[ent->type].name);
+        return;
+    }
+    Entity* any = entityAt(x, y);
+    if (any && any->alive && g.map[y][x].visible[0]) {
+        g.selectedId = any->id;
+        g.selectedIds.clear();
+        setStatus(std::string(any->owner==OWNER_NATURE ? "Animal: " : "Enemy ") + STATS[any->type].name);
+    } else {
+        g.selectedId = -1;
+        g.selectedIds.clear();
+    }
+}
+
+void rendererBoxSelect(int x0, int y0, int x1, int y1) {
+    x0 = std::max(0, std::min(x0, MAP_W-1));
+    x1 = std::max(0, std::min(x1, MAP_W-1));
+    y0 = std::max(0, std::min(y0, MAP_H-1));
+    y1 = std::max(0, std::min(y1, MAP_H-1));
+    if (x0 > x1) std::swap(x0, x1);
+    if (y0 > y1) std::swap(y0, y1);
+    g.selectedIds.clear();
+    g.selectedId = -1;
+    for (auto& e : g.entities) {
+        if (!e.alive || e.owner != 0 || !isUnit(e.type)) continue;
+        if (e.state == S_GARRISONED) continue;
+        if (e.x >= x0 && e.x <= x1 && e.y >= y0 && e.y <= y1) {
+            g.selectedIds.push_back(e.id);
+            if (g.selectedId < 0) g.selectedId = e.id;
+        }
+    }
+    if (!g.selectedIds.empty())
+        setStatus(std::to_string(g.selectedIds.size()) + " units selected");
+}
+
+void rendererSelectAllOfTypeInView(int x, int y) {
+    if (!inBounds(x, y)) return;
+    Entity* ent = entityAtOwner(x, y, 0);
+    if (!ent || !isUnit(ent->type)) return;
+    EntityType t = ent->type;
+    g.selectedIds.clear();
+    g.selectedId = -1;
+    for (auto& e : g.entities) {
+        if (!e.alive || e.owner != 0 || e.type != t) continue;
+        if (e.state == S_GARRISONED) continue;
+        if (e.x < g.viewX || e.x >= g.viewX + g.viewW) continue;
+        if (e.y < g.viewY || e.y >= g.viewY + g.viewH) continue;
+        g.selectedIds.push_back(e.id);
+        if (g.selectedId < 0) g.selectedId = e.id;
+    }
+    if (!g.selectedIds.empty())
+        setStatus(std::to_string(g.selectedIds.size()) + " " + STATS[t].name + "s selected");
+}
+
 void handleInput(int ch) {
     if (ch == ERR) return;
-    if (ch == 'q' || ch == 'Q') { endwin(); exit(0); }
+    if (ch == 'x' || ch == 'X') {
+        endwin(); exit(0);
+    }
+    if (ch == 'q' || ch == 'Q') {
+        g.returnToMenu = true;
+        std::cerr << "realm: resign/return-to-menu requested tick=" << g.tick << "\n";
+        return;
+    }
+    if ((ch=='\n'||ch==KEY_ENTER||ch=='\r') && g.mode==M_GAME_OVER) {
+        g.returnToMenu = true; return;
+    }
     if ((ch=='p'||ch=='P') && (g.mode==M_NORMAL||g.mode==M_PAUSED)) {
         g.mode = (g.mode==M_PAUSED) ? M_NORMAL : M_PAUSED; return;
     }
@@ -55,10 +211,20 @@ void handleInput(int ch) {
             if (ch=='m'||ch=='M') tt = E_MILITIA;
             else if (ch=='a'||ch=='A') tt = E_ARCHER;
             else if (ch=='c'||ch=='C') tt = E_CATAPULT;
+            else if (ch=='r'||ch=='R') tt = E_RAM;
         }
         else if (sel->type == E_STABLE) { if (ch=='k'||ch=='K') tt = E_KNIGHT; }
-        else if (sel->type == E_DOCK)   { if (ch=='b'||ch=='B') tt = E_FISHING_BOAT; }
-        if (tt != E_NONE) { orderTrain(*sel, tt); g.mode = M_NORMAL; }
+        else if (sel->type == E_DOCK)   {
+            if      (ch=='b'||ch=='B') tt = E_FISHING_BOAT;
+            else if (ch=='w'||ch=='W') tt = E_WARSHIP;
+            else if (ch=='t'||ch=='T') tt = E_TRANSPORT;
+        }
+        if (tt != E_NONE) {
+            orderTrain(*sel, tt);
+            // Keep train mode open so repeated unit keys queue more units. This
+            // avoids P becoming Pause immediately after queueing a peasant.
+            if (findEntity(g.selectedId)) g.mode = M_TRAIN_SELECT;
+        }
         if (ch == 27) g.mode = M_NORMAL;
         return;
     }
@@ -215,7 +381,7 @@ void handleInput(int ch) {
             if (bs->researching != 0) { setStatus("Already researching."); return; }
             if (pl.gold < gold || pl.wood < wood) { setStatus("Not enough resources!"); return; }
             pl.gold -= gold; pl.wood -= wood;
-            bs->researching = bit; bs->prodProgress = 0; bs->prodTime = ticks;
+            bs->researching = bit; bs->researchProgress = 0; bs->researchTime = ticks;
             setStatus(startMsg);
         };
         // ~75 sec at 80 ms tick = 940 ticks.
@@ -241,6 +407,36 @@ void handleInput(int ch) {
     case KEY_HOME:   g.cursorX -= 10; break;
     case KEY_END:    g.cursorX += 10; break;
 
+    case '?':
+        g.helpOverlay = !g.helpOverlay;
+        setStatus(g.helpOverlay ? "Help open." : "Help closed.");
+        break;
+
+    case 'd': case 'D':
+        g.diagnostics = !g.diagnostics;
+        setStatus(g.diagnostics ? "Diagnostics on." : "Diagnostics off.");
+        break;
+
+    case 'v': case 'V':
+        if (saveGame("realm-save.txt")) {
+            setStatus("Saved realm-save.txt");
+            std::cerr << "realm: saved realm-save.txt tick=" << g.tick << "\n";
+        } else {
+            setStatus("Save failed.");
+            std::cerr << "realm: save failed realm-save.txt tick=" << g.tick << "\n";
+        }
+        break;
+
+    case 'l': case 'L':
+        if (loadGame("realm-save.txt")) {
+            setStatus("Loaded realm-save.txt");
+            std::cerr << "realm: loaded realm-save.txt tick=" << g.tick << "\n";
+        } else {
+            setStatus("Load failed.");
+            std::cerr << "realm: load failed realm-save.txt\n";
+        }
+        break;
+
     case ' ': {
         Entity* ent = entityAtOwner(g.cursorX, g.cursorY, 0);
         if (ent) {
@@ -262,60 +458,8 @@ void handleInput(int ch) {
     }
 
     case '\n': case '\r': case KEY_ENTER: {
-        if (g.selectedIds.size() > 1) {
-            // Group command
-            Entity* tgt = entityAt(g.cursorX, g.cursorY);
-            if (tgt && tgt->alive && tgt->owner == 0 && !tgt->underConstruction && canGarrisonIn(tgt->type)) {
-                for (int id : g.selectedIds) {
-                    Entity* u = findEntity(id);
-                    if (u && u->alive && u->owner == 0 && isUnit(u->type) && u->type != E_CATAPULT)
-                        orderGarrison(*u, tgt->id);
-                }
-                setStatus("Garrisoning...");
-            } else if (tgt && tgt->alive && tgt->owner != 0 && g.map[g.cursorY][g.cursorX].visible[0]) {
-                orderGroupAttack(tgt->id);
-            } else {
-                orderGroupMove(g.cursorX, g.cursorY);
-            }
-        } else {
-            Entity* sel = findEntity(g.selectedId);
-            if (!sel || sel->owner != 0 || !isUnit(sel->type)) break;
-            Entity* tgt = entityAt(g.cursorX, g.cursorY);
-            if (tgt && tgt->alive && tgt->owner == 0 && tgt->underConstruction && sel->type == E_PEASANT) {
-                orderHelp(*sel, tgt->id);
-                setStatus("Helping build...");
-            } else if (tgt && tgt->alive && tgt->owner == 0 && tgt->type == E_FARM && !tgt->underConstruction && sel->type == E_PEASANT) {
-                orderHelp(*sel, tgt->id);
-                setStatus("Tending farm...");
-            } else if (tgt && tgt->alive && tgt->owner == 0 && !tgt->underConstruction && canGarrisonIn(tgt->type) && sel->type != E_CATAPULT) {
-                orderGarrison(*sel, tgt->id);
-            } else if (tgt && tgt->alive && tgt->owner != 0 && g.map[g.cursorY][g.cursorX].visible[0]) {
-                orderAttack(*sel, tgt->id);
-                setStatus("Attacking!");
-            } else if (sel->type == E_PEASANT) {
-                Terrain ter = g.map[g.cursorY][g.cursorX].terrain;
-                bool isW = (ter==T_FOREST||ter==T_PINE||ter==T_PALM||ter==T_DEAD_TREE);
-                if ((ter==T_GOLD||isW) && g.map[g.cursorY][g.cursorX].resources > 0) {
-                    orderGather(*sel, g.cursorX, g.cursorY);
-                    setStatus(ter==T_GOLD ? "Mining gold..." : "Chopping wood...");
-                } else if (ter == T_WHEAT && !tgt && canPlace(E_FARM, g.cursorX, g.cursorY, 0)) {
-                    int fid = spawnEntity(E_FARM, 0, g.cursorX, g.cursorY, true);
-                    orderHelp(*sel, fid);
-                    setStatus("Working wheat field...");
-                } else {
-                    orderMove(*sel, g.cursorX, g.cursorY);
-                    setStatus("Moving...");
-                }
-            } else if (sel->type == E_FISHING_BOAT) {
-                Terrain ter = g.map[g.cursorY][g.cursorX].terrain;
-                if (ter == T_FISH && g.map[g.cursorY][g.cursorX].resources > 0) {
-                    orderGather(*sel, g.cursorX, g.cursorY); setStatus("Fishing...");
-                } else { orderMove(*sel, g.cursorX, g.cursorY); setStatus("Moving..."); }
-            } else {
-                orderMove(*sel, g.cursorX, g.cursorY);
-                setStatus("Moving...");
-            }
-        }
+        if (g.selectedIds.size() > 1) cmdAtTileGroup(g.cursorX, g.cursorY);
+        else                          cmdAtTileSingle(findEntity(g.selectedId), g.cursorX, g.cursorY);
         break;
     }
 
@@ -339,10 +483,10 @@ void handleInput(int ch) {
         break;
     }
 
-    // Eject garrison from selected building
+    // Eject garrison from selected building or transport
     case 'U': case 'u': {
         Entity* sel = findEntity(g.selectedId);
-        if (sel && sel->alive && sel->owner == 0 && isBuilding(sel->type) && canGarrisonIn(sel->type)) {
+        if (sel && sel->alive && sel->owner == 0 && canGarrisonIn(sel->type)) {
             int n = (int)sel->garrison.size();
             if (n > 0) { ejectGarrison(*sel); setStatus(std::to_string(n) + " unit(s) ejected"); }
             else setStatus("No garrison to eject");
@@ -390,16 +534,19 @@ void handleInput(int ch) {
         break;
     }
 
-    // Gate toggle: cycle auto / locked-open / locked-closed
+    // Gate toggle: cycle auto -> locked-open -> locked-closed -> auto
     case 'O': {
         Entity* sel = findEntity(g.selectedId);
         if (sel && sel->alive && sel->owner==0 && sel->type==E_GATE && !sel->underConstruction) {
-            if (sel->gatherType == 0) {
-                sel->gatherType = 1; // enter manual lock in current state
-                setStatus(sel->carrying > 0 ? "Gate locked open" : "Gate locked closed");
+            if (!sel->gateLocked) {
+                sel->gateLocked = true; sel->gateOpen = true;
+                setStatus("Gate locked open");
+            } else if (sel->gateOpen) {
+                sel->gateOpen = false;
+                setStatus("Gate locked closed");
             } else {
-                sel->carrying = (sel->carrying > 0) ? 0 : 1; // toggle state
-                setStatus(sel->carrying > 0 ? "Gate locked open" : "Gate locked closed");
+                sel->gateLocked = false;
+                setStatus("Gate auto");
             }
         }
         break;
@@ -423,12 +570,12 @@ void handleInput(int ch) {
         if (!g.selectedIds.empty()) {
             for (int id : g.selectedIds) {
                 Entity* e = findEntity(id);
-                if (e && (e->type==E_MILITIA||e->type==E_ARCHER||e->type==E_KNIGHT||e->type==E_CATAPULT))
+                if (e && isMilitary(e->type))
                     { hasMilitarySel = true; break; }
             }
         } else if (g.selectedId >= 0) {
             Entity* e = findEntity(g.selectedId);
-            if (e && (e->type==E_MILITIA||e->type==E_ARCHER||e->type==E_KNIGHT||e->type==E_CATAPULT))
+            if (e && isMilitary(e->type))
                 hasMilitarySel = true;
         }
         if (hasMilitarySel) {
@@ -438,7 +585,7 @@ void handleInput(int ch) {
             g.selectedIds.clear(); g.selectedId = -1;
             for (auto& e : g.entities) {
                 if (!e.alive || e.owner != 0 || e.state == S_GARRISONED) continue;
-                if (e.type==E_MILITIA||e.type==E_ARCHER||e.type==E_KNIGHT||e.type==E_CATAPULT) {
+                if (isMilitary(e.type)) {
                     g.selectedIds.push_back(e.id);
                     if (g.selectedId < 0) { g.selectedId=e.id; g.cursorX=e.x; g.cursorY=e.y; }
                 }
@@ -653,49 +800,8 @@ void handleInput(int ch) {
         else if (me.bstate & (BUTTON3_CLICKED | BUTTON3_PRESSED)) {
             // Right click: issue command at cursor position
             g.dragging = false;
-            if (g.selectedIds.size() > 1) {
-                Entity* tgt = entityAt(mapX, mapY);
-                if (tgt && tgt->alive && tgt->owner == 0 && !tgt->underConstruction && canGarrisonIn(tgt->type)) {
-                    for (int id : g.selectedIds) {
-                        Entity* u = findEntity(id);
-                        if (u && u->alive && u->owner == 0 && isUnit(u->type) && u->type != E_CATAPULT)
-                            orderGarrison(*u, tgt->id);
-                    }
-                    setStatus("Garrisoning...");
-                } else if (tgt && tgt->alive && tgt->owner != 0 && g.map[mapY][mapX].visible[0])
-                    orderGroupAttack(tgt->id);
-                else
-                    orderGroupMove(mapX, mapY);
-            } else {
-                Entity* sel = findEntity(g.selectedId);
-                if (!sel || sel->owner != 0 || !isUnit(sel->type)) break;
-                Entity* tgt = entityAt(mapX, mapY);
-                if (tgt && tgt->alive && tgt->owner == 0 && tgt->underConstruction && sel->type == E_PEASANT) {
-                    orderHelp(*sel, tgt->id); setStatus("Helping build...");
-                } else if (tgt && tgt->alive && tgt->owner == 0 && tgt->type == E_FARM && !tgt->underConstruction && sel->type == E_PEASANT) {
-                    orderHelp(*sel, tgt->id); setStatus("Tending farm...");
-                } else if (tgt && tgt->alive && tgt->owner == 0 && !tgt->underConstruction && canGarrisonIn(tgt->type) && sel->type != E_CATAPULT) {
-                    orderGarrison(*sel, tgt->id);
-                } else if (tgt && tgt->alive && tgt->owner != 0 && g.map[mapY][mapX].visible[0]) {
-                    orderAttack(*sel, tgt->id); setStatus("Attacking!");
-                } else if (sel->type == E_PEASANT) {
-                    Terrain ter = g.map[mapY][mapX].terrain;
-                    bool isW = (ter==T_FOREST||ter==T_PINE||ter==T_PALM||ter==T_DEAD_TREE);
-                    if ((ter==T_GOLD||isW) && g.map[mapY][mapX].resources > 0) {
-                        orderGather(*sel, mapX, mapY);
-                        setStatus(ter==T_GOLD ? "Mining gold..." : "Chopping wood...");
-                    } else if (ter == T_WHEAT && !tgt && canPlace(E_FARM, mapX, mapY, 0)) {
-                        int fid = spawnEntity(E_FARM, 0, mapX, mapY, true);
-                        orderHelp(*sel, fid);
-                        setStatus("Working wheat field...");
-                    } else { orderMove(*sel, mapX, mapY); setStatus("Moving..."); }
-                } else if (sel->type == E_FISHING_BOAT) {
-                    Terrain ter = g.map[mapY][mapX].terrain;
-                    if (ter == T_FISH && g.map[mapY][mapX].resources > 0) {
-                        orderGather(*sel, mapX, mapY); setStatus("Fishing...");
-                    } else { orderMove(*sel, mapX, mapY); setStatus("Moving..."); }
-                } else { orderMove(*sel, mapX, mapY); setStatus("Moving..."); }
-            }
+            if (g.selectedIds.size() > 1) cmdAtTileGroup(mapX, mapY);
+            else                          cmdAtTileSingle(findEntity(g.selectedId), mapX, mapY);
         }
         // All other events (pure movement): cursor already updated above
         break;

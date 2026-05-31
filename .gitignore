@@ -1,14 +1,94 @@
-# Build output
-realm
+# -------------------------------------------------------------------
+# Build outputs
+# -------------------------------------------------------------------
+
+/bin/
+/build/
+/dist/
+/out/
+
 *.o
+*.obj
 *.d
+*.a
+*.lib
+*.so
+*.dylib
+*.dll
+*.exe
+*.out
+*.pdb
+*.ilk
+*.idb
 
-# macOS
-.DS_Store
+/realm
+/realm.exe
+/realm-gfx
+/realm-gfx.exe
+/realm.out
+/realm.app/
+/realm.dSYM/
 
-# JetBrains IDE
+# -------------------------------------------------------------------
+# Generated build/runtime logs
+# -------------------------------------------------------------------
+
+*.log
+build-log.txt
+windows-build-log.txt
+realm-run.log
+realm-save.txt
+logs/
+tmp/
+temp/
+
+# -------------------------------------------------------------------
+# CMake and generated dependency files
+# -------------------------------------------------------------------
+
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+compile_commands.json
+CTestTestfile.cmake
+Testing/
+.deps/
+*.gcda
+*.gcno
+*.gcov
+
+# -------------------------------------------------------------------
+# IDEs / editors
+# -------------------------------------------------------------------
+
 .idea/
+.vscode/
+*.code-workspace
 
-# Swap / temp
 *.swp
+*.swo
 *~
+*.bak
+*.tmp
+*.temp
+
+# -------------------------------------------------------------------
+# OS files
+# -------------------------------------------------------------------
+
+.DS_Store
+.AppleDouble
+.LSOverride
+
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# -------------------------------------------------------------------
+# Local scratch
+# -------------------------------------------------------------------
+
+notes.txt
+scratch/
+.junie/

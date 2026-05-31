@@ -1,840 +1,912 @@
-# ASCII RTS hardening plan
+# Realm hardening plan
+
+Last updated: 2026-05-31
+
+Current baseline commit: `63eda5a Build Windows GUI renderer and clean project layout`
 
 ## Goal
 
-Harden the current ASCII RTS prototype by fixing correctness bugs, applying agreed gameplay decisions, adding repeatable tests, and documenting remaining follow-up work.
+Harden the current Realm RTS prototype by keeping the existing compact C++ codebase reliable, testable, and easier to work on. This is not an ECS rewrite.
 
-This is not a rewrite. Keep the project compact and C++/ncurses-based. Do not convert the game to ECS. Split files and clarify state only where it reduces current risk.
+The project is no longer root-file-only or ncurses-only. It now has a Windows-first SDL2 GUI build and a retained terminal/ncurses frontend for Linux/macOS/WSL.
 
-Relevant project files currently include:
+## Current project layout
 
-* `main.cpp`
-* `realm.h`
-* `globals.cpp`
-* `entity.cpp`
-* `input.cpp`
-* `render.cpp`
-* `mapgen.cpp`
+```text
+src/        C++ implementation files
+include/    Project headers
+docs/       Design notes, renderer notes, manual test plan, implementation plans
+scripts/    Convenience launch/build scripts
+build/      Generated object files and logs, ignored by git
+bin/        Generated executables and Windows runtime DLLs, ignored by git
+```
+
+Important files:
+
 * `Makefile`
-* `.gitignore`
-* `realm.command`
-
----
+* `README.md`
+* `include/realm.h`
+* `include/display.h`
+* `include/gfx_renderer.h`
+* `src/main.cpp`
+* `src/main_gfx.cpp`
+* `src/globals.cpp`
+* `src/entity.cpp`
+* `src/orders.cpp`
+* `src/simulation.cpp`
+* `src/ai.cpp`
+* `src/input.cpp`
+* `src/render.cpp`
+* `src/gfx_renderer.cpp`
+* `src/mapgen.cpp`
+* `src/display.cpp`
+* `docs/gfx-renderer.md`
+* `docs/tests/manual-test-plan.md`
+* `scripts/windows-build-and-run.bat`
 
 ## Status key
 
 * `[ ]` Not started
-* `[~]` In progress
+* `[~]` Partially done or needs verification
 * `[x]` Done
-* `[!]` Blocked / needs decision
+* `[!]` Blocked or needs a decision
 
----
+## Current verified baseline
 
-## Accepted decisions
-
-These decisions are settled for this pass.
-
-* [ ] AI may pull peasants from gathering/returning when construction is important.
-* [ ] Forest-like terrain is non-buildable.
-* [ ] Forest-like terrain remains passable for now.
-* [ ] Berry bushes are gatherable food.
-* [ ] Starting town halls may be free through setup/spawn logic.
-* [ ] Player/AI-built town halls must have a real resource cost.
-* [ ] Enemy owners 1, 2, and 3 should not render as animals.
-* [ ] Do not rewrite into ECS.
-* [ ] Split overloaded entity fields where practical.
-* [ ] Add headless tests rather than relying only on manual ncurses playtesting.
-* [ ] Add build/dependency documentation.
-
----
-
-## Phase 0: Baseline
-
-### Tasks
-
-* [ ] Record current normal build result.
-* [ ] Record current warning output.
-* [ ] Record whether `<ncurses.h>` is available locally.
-* [ ] Record whether the game launches locally.
-* [ ] Record whether the game can run for several minutes without crashing.
-* [ ] Record any obvious current runtime issues before making changes.
-
-### Notes to fill in
+These results are from the current Windows/MSYS2 UCRT64 environment plus WSL Ubuntu where noted.
 
 ```text
-Baseline date:
-Compiler:
-Platform:
-ncurses available:
-Normal build command:
-Normal build result:
-Warnings:
+Baseline date: 2026-05-31
+Platform: Windows, MSYS2 UCRT64
+Primary build command:
+  mingw32-make gfx
+Clean build command previously verified:
+  mingw32-make clean && mingw32-make gfx
+Windows output:
+  bin/realm.exe
+Runtime DLL placement:
+  bin/*.dll copied by Makefile
+Runtime smoke command:
+  REALM_SMOKE_TEST=1 bin/realm.exe
 Runtime smoke result:
-Known baseline issues:
+  exit code 0, realm-run.log reaches "realm: main screen ready"
+Match smoke command:
+  REALM_SMOKE_TEST=match REALM_SEED=2468 REALM_HUMAN_CORNER=1 REALM_BIOME=0 bin/realm.exe
+Match smoke result:
+  exit code 0, realm-run.log reaches "realm: match smoke complete tick=60"
+Compiler warnings:
+  Windows GUI build is currently clean under -Wall -Wextra
+Terminal/ncurses build:
+  WSL Ubuntu `make clean && make terminal`, exit code 0, no -Wall/-Wextra warnings
+Debug/sanitizer build:
+  Windows debug target implemented and verified; native Windows sanitizer documented as unsupported
+  WSL Ubuntu `make sanitize`, exit code 0 with ASan/UBSan and REALM_TEST_LONG_TICKS=2000
+Headless tests:
+  implemented via mingw32-make test, exit code 0; default long simulation is 10,000 ticks
 ```
 
----
+## Implemented in 2026-05-31 hardening pass
 
-## Phase 1: Safety and correctness fixes
+* [x] Cleared entities, projectiles, action markers, selections, groups, and transient match state on every new match while preserving vector reservation.
+* [x] Added deterministic startup through `REALM_SEED`, `REALM_HUMAN_CORNER`, `REALM_BIOME`, `initGameWithSeed()`, and match-start logging.
+* [x] Added occupied-start hostile-wildlife exclusion and corrected sheep clusters to occupied starts only.
+* [x] Added guaranteed nearby wood and berry resources around starts.
+* [x] Added a headless test target covering placement bounds, state names, traits, command bindings, reset, deterministic startup, supply reservation, town hall cost, start safety, save/load, and AI progression.
+* [x] Added entity trait helpers for worker/gather/build/military/ranged/naval/siege/wildlife/dropoff/training categories.
+* [x] Added explicit cargo/resource state and removed `gatherType` / `carrying` overloads.
+* [x] Split training progress from research progress.
+* [x] Added a shared occupancy grid helper used by placement and pathfinding.
+* [x] Switched `g.entities` to `std::deque` so appending spawned entities does not invalidate active entity references.
+* [x] Added save/load to `realm-save.txt`.
+* [x] Added SDL and terminal diagnostics toggles.
+* [x] Added recoverable validation/logging for stale cursor, selection, control group, target, marker, and projectile state, with stricter debug assertions in `make debug`.
+* [x] Added SDL and terminal cursor-tile HUD details.
+* [x] Added a shared SDL/terminal help overlay on `?`.
+* [x] Kept train mode open after queueing so repeated unit keys queue more units.
+* [x] Added temporary visual command markers.
+* [x] Added debug, sanitizer-policy, test, and packaging Makefile targets/docs.
+* [x] Split player order/group command logic from `src/entity.cpp` into `src/orders.cpp`.
+* [x] Split simulation tick and validation recovery logic from `src/main.cpp` into `src/simulation.cpp`.
+* [x] Added deterministic SDL match smoke mode with `REALM_SMOKE_TEST=match`.
+* [x] Centralized death-reference cleanup so normal combat no longer produces stale-target validation repairs.
 
-### 1.1 Add top-level bounds check to `canPlace()`
+## Player feedback incorporated
 
-#### Problem
+Source: informal player feedback reviewed on 2026-05-31.
 
-`canPlace()` can read `g.map[y][x]` before checking whether `x,y` are in bounds, especially for farms.
+The feedback was used as a signal to find real issues, not as a direct implementation spec. Accepted hardening items from that review:
 
-#### Required change
+* [x] Fix match reset: starting a second game in the same process must clear old entities and projectiles.
+* [x] Add a two-games-in-one-process regression or smoke test.
+* [x] Add occupied-start safety checks so hostile wildlife and enemy-owned units cannot begin too close to an active starting base.
+* [x] Re-test early "enemy militia near town hall" reports after reset is fixed. Initial spawn currently creates town halls and peasants only.
+* [x] Improve SDL HUD cursor-tile information: show terrain, biome, resource, and visible unit/object stack for the square under the cursor, especially when nothing is selected.
+* [x] Improve training flow so repeated unit-key presses can queue more units without accidentally pausing immediately after the first peasant.
+* [x] Expand the visible legend/help for owner colours, neutral animals, resources, landmarks, red alert markers, danger markers, resign, and exit.
+* [~] Tune early boar/sheep behaviour only after reset and start-safety fixes are verified.
+* [x] Add a lightweight visual command marker for issued tasks.
+* [x] Add deterministic seed/startup controls so spawn and balance reports are reproducible.
+* [x] Add save/resume support for debugging and longer play sessions.
 
-* [ ] Add an immediate `inBounds(x, y)` check at the top of `canPlace()`.
-* [ ] Ensure every direct `g.map[y][x]` read in placement logic is protected.
-* [ ] Keep existing multi-tile footprint bounds logic.
+Feedback items not accepted as immediate implementation work:
 
-#### Tests
+* Mouse and keyboard already drive the same game cursor in SDL; only terminal-specific friction needs repro.
+* Boars are already supposed to target units rather than buildings; any building attack report needs reproduction.
+* Enemy peasants should already use owner-specific colours; add regression/manual checks before changing the palette.
 
-* [ ] `canPlace(E_FARM, -1, 0, owner)` returns false and does not crash.
-* [ ] `canPlace(E_FARM, 0, -1, owner)` returns false and does not crash.
-* [ ] `canPlace(E_FARM, MAP_W, 0, owner)` returns false and does not crash.
-* [ ] `canPlace(E_FARM, 0, MAP_H, owner)` returns false and does not crash.
-* [ ] Valid farm placement still works on allowed terrain outside winter.
+## Accepted decisions and current status
 
----
+These are the decisions from the earlier review, updated to match the current code.
 
-### 1.2 Make entity-state rendering safe
+* [x] AI may pull peasants from gathering/returning when construction is important.
+  * Implemented in `src/ai.cpp` via `aiWorker()`.
+* [x] Forest-like terrain is non-buildable.
+  * Implemented in `canPlace()` for `T_FOREST`, `T_PINE`, `T_PALM`, and `T_DEAD_TREE`.
+* [x] Forest-like terrain remains passable for now.
+  * `isPassable()` does not block forest terrain.
+* [x] Berry bushes are gatherable food.
+  * `orderGather()`, `S_GATHERING`, `S_RETURNING`, AI gathering, mapgen, and rendering all know about `T_BERRY`.
+* [x] Starting town halls may be free through setup/spawn logic.
+  * `initGame()` still spawns starting town halls directly.
+* [x] Player/AI-built town halls must have a real resource cost.
+  * `E_TOWNHALL` has cost `200g/150w` in `src/globals.cpp`.
+* [x] Enemy owners 1, 2, and 3 should not render as animals.
+  * Terminal renderer has owner colour pairs for players 0-3.
+  * SDL renderer also treats non-nature owners as faction-owned.
+* [x] Do not rewrite into ECS.
+  * Current structure remains a compact procedural C++ game.
+* [x] Split overloaded entity fields where practical.
+  * `gateOpen`, `gateLocked`, cargo/resource state, farm stored food, production rally, training progress, and research progress are now explicit fields.
+* [~] Replace repeated hard-coded entity-type checks with explicit capabilities/traits where practical.
+* [x] Add headless tests rather than relying only on manual playtesting.
+* [x] Add build/dependency documentation.
+  * Windows, GUI, terminal basics, project layout, and smoke test are documented.
+  * Debug/test build docs now exist.
 
-#### Problem
+## Completed since the original plan
 
-The renderer uses a fixed state-name array that does not cover every `EntityState`, especially `S_ENTERING` and `S_GARRISONED`.
+* [x] Reorganized source into `src/`, headers into `include/`, scripts into `scripts/`, and reference notes into `docs/reference/`.
+* [x] Updated `.gitignore` so generated `bin/`, `build/`, object files, DLLs, executables, and logs do not clutter git.
+* [x] Added `README.md`.
+* [x] Added SDL2/SDL_ttf graphical renderer.
+* [x] Added native Windows/MSYS2 UCRT64 GUI build path.
+* [x] Changed native Windows output to `bin/realm.exe`.
+* [x] Made Windows build copy required runtime DLLs beside `bin/realm.exe`.
+* [x] Added `REALM_SMOKE_TEST=1` runtime smoke path.
+* [x] Added `realm-run.log` startup milestones.
+* [x] Fixed SDL `SDL_main` link issue by including SDL main handling in the GUI entrypoint.
+* [x] Fixed the previous warning set:
+  * misleading indentation in `orderBuild()` and `orderTrain()`
+  * invalid `case '='+128` in `display.cpp`
+  * misleading indentation in `gfx_renderer.cpp`
+* [x] Added SDL isometric/top-down projection switch.
+* [x] Added middle-button drag panning in SDL.
+* [x] Changed in-match controls so `Q` resigns/returns to menu and `X` exits the app.
+* [x] Kept `R` for rally/research to avoid conflicting gameplay bindings.
 
-#### Required change
+## Phase 1: Safety and correctness
 
-* [ ] Add a safe helper, e.g. `stateName(EntityState state)`.
-* [ ] Use a `switch`, not unchecked array indexing.
-* [ ] Cover every defined `EntityState`.
-* [ ] Return `"Unknown"` for invalid/default values.
-* [ ] Replace all direct state-name array indexing.
+### 1.1 Placement bounds
 
-#### Tests
+Status: `[x]`
 
-* [ ] Every defined `EntityState` returns non-null display text.
-* [ ] Selecting an entity in `S_ENTERING` does not crash.
-* [ ] Selecting an entity in `S_GARRISONED` does not crash.
-* [ ] Debug/sanitizer build reports no out-of-bounds read from state display.
+Implemented:
 
----
+* [x] `canPlace()` has a top-level `inBounds(x, y)` guard.
+* [x] Farm terrain reads are protected by that guard.
+* [x] Multi-tile footprint checks still validate every footprint tile.
 
-### 1.3 Fix enemy rendering for owners 2 and 3
+Tests:
 
-#### Problem
+* [x] Headless tests cover out-of-bounds farm and building placement.
 
-The main map treats only `owner == 1` as enemy. Owners 2 and 3 can fall through into animal/default colouring.
+### 1.2 Safe entity-state rendering
 
-#### Required change
+Status: `[x]`
 
-* [ ] Treat any live entity with `owner > 0 && owner < MAX_PLAYERS` as enemy/faction-owned on the main map.
-* [ ] Keep neutral animals classified separately.
-* [ ] Make main-map logic consistent with minimap logic.
-* [ ] Optional: add faction-specific colours if this is simple. Do not block this pass on it.
+Implemented:
 
-#### Tests
+* [x] Terminal renderer uses `stateName(EntityState)` switch.
+* [x] SDL renderer uses `stateName(EntityState)` switch.
+* [x] `S_ENTERING` and `S_GARRISONED` are covered.
+* [x] Invalid/default values return `"Unknown"`.
 
-* [ ] Owner 1 unit renders/classifies as enemy.
-* [ ] Owner 2 unit renders/classifies as enemy.
-* [ ] Owner 3 unit renders/classifies as enemy.
-* [ ] Sheep/deer/wolves still render/classify as animals.
-* [ ] Neutral entities do not accidentally become enemies.
+Tests:
 
----
+* [x] Headless tests cover all valid `EntityState` names plus an invalid-state fallback.
 
-### 1.4 Add supply reservation for queued and in-production units
+### 1.3 Enemy owner rendering
 
-#### Problem
+Status: `[x]` for implementation, `[~]` for automated tests
 
-Training checks only current supply. Queued and in-production units can allow actual supply to exceed the cap later.
+Implemented:
 
-#### Required change
+* [x] Terminal owner colour pairs exist for owners 0, 1, 2, and 3.
+* [x] Owner colours are separate from neutral animal colours.
+* [x] SDL renderer treats player slots separately from `OWNER_NATURE`.
 
-* [ ] Add helper for current supply used.
-* [ ] Add helper for reserved supply used.
-* [ ] Reserved supply must include:
+Tests:
 
-  * live units
-  * currently producing unit in each production building
-  * queued units in each production building queue
-* [ ] `orderTrain()` must check reserved supply.
-* [ ] UI population forecast should use the same helper or match its logic.
-* [ ] AI training should use the same rule.
+* [x] Trait tests cover neutral hostile wildlife classification separately from military/player categories.
+* [~] Renderer colour classification is still primarily covered by manual SDL/terminal checks rather than golden-frame tests.
 
-#### Tests
+### 1.4 Supply reservation
 
-* [ ] At 9/10 supply, queueing one 1-supply unit succeeds.
-* [ ] Immediately queueing another 1-supply unit is blocked.
-* [ ] Completing queued units does not push actual supply above cap.
-* [ ] Cancelling/removing queued items updates reserved supply if cancellation exists.
-* [ ] Unit death updates current/reserved supply correctly.
-* [ ] AI cannot overqueue past supply cap.
+Status: `[x]`
 
----
+Implemented:
 
-### 1.5 Add real build cost for town halls
+* [x] Added `reservedSupply(int owner)` in `src/entity.cpp`.
+* [x] Includes live units, currently-producing units, and queued units.
+* [x] `orderTrain()` checks reserved supply.
+* [x] AI uses `orderTrain()`, so it goes through the same cap rule.
 
-#### Problem
+Tests:
 
-Town halls appear to have zero cost, but expansion logic can build them. This creates free expansion.
+* [x] Headless tests queue over the cap and assert reserved supply never exceeds `supplyMax`.
+* [x] UI population uses the same `reservedSupply()` forecast path.
 
-#### Required change
+### 1.5 Town hall cost
 
-* [ ] Assign a real cost to `E_TOWNHALL`.
-* [ ] Starting town halls should still be spawned directly during setup without charging resources.
-* [ ] Ordered construction of town halls must check affordability.
-* [ ] Ordered construction of town halls must deduct resources.
-* [ ] AI expansion must respect the same cost.
-* [ ] Document the chosen placeholder cost if balance is not final.
+Status: `[x]` for implementation and core tests, `[~]` for final balance
 
-#### Tests
+Implemented:
 
-* [ ] Starting game still creates starting town halls even with low starting resources.
-* [ ] Player cannot build a town hall without required resources.
-* [ ] Player resources are deducted when ordering town hall construction.
-* [ ] AI cannot build free town halls.
-* [ ] AI can still expand once it has enough resources.
+* [x] `E_TOWNHALL` now costs `200g/150w`.
+* [x] Starting town halls are still spawned directly in setup.
+* [x] Ordered town hall construction uses normal affordability/deduction logic.
+* [x] AI expansion uses `orderBuild()`, so it pays the same cost.
 
----
+Tests:
 
-### 1.6 Audit enum-indexed arrays and unchecked lookups
+* [x] Headless tests confirm starting town halls spawn through setup and ordered town halls deduct cost.
+* [~] Final balance cost remains deferred until longer play sessions.
 
-#### Problem
+### 1.6 Enum-indexed lookup audit
 
-The state-name renderer is one known case, but similar unchecked enum-indexed arrays may exist.
+Status: `[x]`
 
-#### Required change
+Done:
 
-* [ ] Search for array indexing by enum values.
-* [ ] Confirm each indexed array covers every enum value or has bounds checks.
-* [ ] Replace fragile cases with helper functions or safe switches.
+* [x] Known unsafe state-name lookup was replaced.
+* [x] Debug and test targets now exist.
+* [x] `make debug` builds the headless tests with debug symbols, libstdc++ assertions, and `REALM_DEBUG_ASSERTS`.
 
-#### Tests
+Still needed:
 
-* [ ] Debug/sanitizer build reports no enum-indexed out-of-bounds access during headless simulation.
-* [ ] Manual selection/rendering of varied entity states does not crash.
+* [x] Search/audit all enum-indexed arrays touched in this pass; unsafe state-name indexing was replaced, and remaining fixed arrays are either range-controlled or visual lookup tables.
+* [x] Native Windows sanitizer remains intentionally disabled; WSL Ubuntu `make sanitize` is verified.
 
----
+### 1.7 Match reset between games
+
+Status: `[x]`
+
+Problem:
+
+* `initGame()` resets counters, selections, players, and map state, but the match-scoped entity/projectile containers are only reserved, not cleared.
+* Starting a new game in the same process can therefore leave old units, buildings, animals, and projectiles in the next match.
+* This likely explains playtest reports of unfair spawns, enemy units near the player town hall, or immediate danger after playing multiple games in a row.
+
+Required change:
+
+* [x] Clear `g.entities` at the start of `initGame()`.
+* [x] Clear `g.projectiles` at the start of `initGame()`.
+* [x] Reset any other match-scoped transient state discovered while making this change.
+* [x] Keep capacity reservation if it is still useful for reference-invalidation mitigation.
+
+Tests:
+
+* [x] Start a game, record live entity count and owner/type summary.
+* [x] Start a second game in the same process.
+* [x] Confirm the second game contains only the expected initial entities plus freshly generated wildlife/resources.
+* [x] Confirm no stale projectiles survive the restart.
+* [x] Confirm `nextId` and entity IDs are coherent after restart.
 
 ## Phase 2: Gameplay decisions
 
-### 2.1 Fix AI construction deadlock
+### 2.1 AI construction deadlock
 
-#### Problem
+Status: `[x]`
 
-AI calls gathering before construction. `aiGather()` assigns all idle peasants to resources. Later construction code asks for idle peasants and finds none, so AI can stall at the opening economy and remain stuck at the population cap.
+Implemented:
 
-#### Required change
+* [x] `aiWorker()` prefers idle peasants.
+* [x] If none are idle, it pulls peasants from `S_GATHERING` or `S_RETURNING`.
+* [x] AI houses, military buildings, towers, farms, docks, castles, and town halls use this worker path.
 
-* [ ] Add helper such as `aiWorker(int owner, bool allowPullFromGathering)`.
-* [ ] Prefer idle peasants.
-* [ ] For important construction, allow pulling workers from:
+Tests:
 
-  * `S_GATHERING`
-  * `S_RETURNING`
-  * possibly `S_MOVING` if clearly part of gathering/returning and safe to interrupt
-* [ ] Do not pull peasants that are:
+* [x] Headless tests run a deterministic 5,000 tick AI progression scenario.
+* [x] Tests assert the AI increases supply capacity or starts production-building progress instead of stalling at 10/10.
 
-  * dead
-  * under construction
-  * garrisoned
-  * already building
-  * entering a building
-* [ ] Use this helper for AI houses, military buildings, towers, mills, farms, and town halls.
-* [ ] Ensure issuing a build order clears or overrides the old gather order safely.
-* [ ] Critical construction, especially houses when supply-blocked, may pull any valid worker.
-* [ ] Non-critical construction should prefer idle workers, then pull gatherers only if needed.
+### 2.2 Forest non-buildable, still passable
 
-#### Tests
+Status: `[x]`
 
-* [ ] Run a fresh headless simulation for 5,000 ticks.
-* [ ] AI does not remain stuck at 10/10 population.
-* [ ] AI builds at least one supply structure or otherwise increases supply cap.
-* [ ] AI builds at least one military production building if resources permit.
-* [ ] AI trains at least one military unit if resources permit.
-* [ ] AI does not assign the same peasant to multiple construction orders in the same tick.
-* [ ] Pulling a gathering/returning worker for construction does not crash.
+Implemented:
 
----
+* [x] `canPlace()` rejects `T_FOREST`, `T_PINE`, `T_PALM`, and `T_DEAD_TREE`.
+* [x] `isPassable()` still allows those terrain types.
 
-### 2.2 Make forest-like terrain non-buildable but still passable
+Tests:
 
-#### Problem
+* [x] Headless tests assert forest terrain is passable but non-buildable.
 
-Forest-like terrain appears to be buildable. That makes resource terrain unclear and can erase forests unintentionally.
+### 2.3 Berries as food
 
-#### Required change
+Status: `[x]`
 
-* [ ] Identify all forest-like terrain, likely including:
+Implemented:
 
-  * `T_FOREST`
-  * `T_PINE`
-  * `T_PALM`
-  * `T_DEADTREE`
-  * any other tree/wood terrain
-* [ ] Update `canPlace()` so buildings cannot be placed on these tiles.
-* [ ] Do not change `isPassable()` for these tiles in this pass unless required by existing logic.
-* [ ] Keep units able to path through forest-like terrain for now.
+* [x] Berries appear in map generation.
+* [x] Peasants can gather berries.
+* [x] Berries return food.
+* [x] Berry resources deplete and become grass.
+* [x] AI can choose berries as a resource.
+* [x] Terminal and SDL renderers show berry terrain.
 
-#### Tests
+Tests:
 
-* [ ] `canPlace(E_HOUSE, forestTile, owner)` returns false.
-* [ ] `canPlace(E_BARRACKS, forestTile, owner)` returns false.
-* [ ] `canPlace(E_FARM, forestTile, owner)` returns false.
-* [ ] Units can still path through forest-like terrain.
-* [ ] Map generation still produces navigable starts.
+* [x] Headless tests cover berry gathering, food delivery, and depletion to grass.
 
----
+### 2.4 Starting resources
 
-### 2.3 Make berries gatherable food
+Status: `[x]`
 
-#### Problem
+Implemented:
 
-Berry terrain exists and visually reads as a food source, but peasants do not currently gather from it.
+* [x] Starting areas are cleared.
+* [x] Gold is placed near each corner start.
+* [x] Sheep spawn near each corner.
+* [x] Wild deer, boar, wolves, berries, wheat, and forests are generated.
 
-#### Required change
+Tests:
 
-* [ ] Add berries to the food-gathering economy.
-* [ ] Peasants ordered to berry tiles should gather food.
-* [ ] Berry tiles should have finite resource value or use an existing depletion model.
-* [ ] Depleted berries should become appropriate empty terrain, probably grass.
-* [ ] Terrain info/UI should describe berries as food.
-* [ ] AI should be able to use nearby berries as a food source.
+* [x] `initGameWithSeed()` provides deterministic repeated mapgen checks.
+* [x] Occupied starts receive nearby guaranteed wood and berries.
+* [x] Headless tests assert reachable wood, food, and gold across deterministic seed ranges.
 
-#### Tests
+### 2.5 Food economy clarity
 
-* [ ] Peasant ordered to berry tile begins gathering food.
-* [ ] Peasant returns food to a valid drop-off.
-* [ ] Player food increases after return.
-* [ ] Berry resource amount decreases.
-* [ ] Depleted berries disappear or become non-resource terrain.
-* [ ] AI can choose berries as a food source.
-* [ ] Ordering a peasant to non-resource terrain still fails or does nothing safely.
+Status: `[x]` for current mechanics/docs, `[~]` for final balance
 
----
+Currently implemented food sources:
 
-### 2.4 Guarantee reasonable starting resources
+* [x] Berries
+* [x] Hunting animals
+* [x] Farms and farm tending
+* [x] Wheat/farm interactions
+* [x] Fishing
+* [x] Winter food pressure
 
-#### Problem
+Done:
 
-Starting areas may not always have accessible wood, food, and gold.
+* [x] README and in-game help document food sources, drop-off behavior, farm/mill tending, and winter starvation.
+* [x] SDL and terminal help use the same command/food/winter notes.
+* [~] Peasant gold cost remains a balance decision after longer play sessions.
 
-#### Required change
+### 2.6 In-game help/reference screen
 
-* [ ] In map generation, after clearing or stamping start areas, guarantee starter resources near each player start:
+Status: `[x]`
 
-  * accessible woodline or tree cluster
-  * accessible food source, preferably berries/sheep/deer
-  * accessible gold
-* [ ] Ensure guaranteed resources are in bounds.
-* [ ] Ensure guaranteed resources are reachable by a peasant.
-* [ ] Keep placement organic enough that the map still feels procedural.
+Done:
 
-#### Tests
+* [x] `?` toggles a help overlay.
+* [x] The shared command table feeds SDL and terminal help text.
+* [x] Help includes selection, command/move/attack/gather, build, train, rally/research, groups, diagnostics, save/load, pause, resign, exit, cancel, SDL zoom/pan/projection, food, winter, owner colours, neutral animals, and combat alerts.
 
-For each start position:
+### 2.7 Starting safety and early danger
 
-* [ ] Wood exists within a reasonable radius.
-* [ ] Food exists within a reasonable radius.
-* [ ] Gold exists within a reasonable radius.
-* [ ] Each guaranteed source is in bounds.
-* [ ] Each guaranteed source is reachable by a peasant.
-* [ ] Test multiple seeds if deterministic seeding exists or can be added.
+Status: `[x]`
 
----
+Problem:
 
-### 2.5 Clarify and sanity-check the food economy
+* Player feedback reported peasants spawning near boars, enemy units, or enemy bases and dying almost immediately.
+* The strongest confirmed cause is the match-reset bug in Phase 1.7.
+* A separate likely issue remains: wildlife is generated after starts and boars/wolves do not have an explicit no-spawn radius around occupied starts.
 
-#### Problem
+Required change:
 
-The food loop is less obvious than wood/gold. The game has hunting, farms, wheat/farms, fishing, winter food pressure, and now berries. The player needs a coherent rule model.
+* [x] Fix Phase 1.7 before tuning balance.
+* [x] Add an occupied-start exclusion radius for hostile wildlife, especially boars and wolves.
+* [x] Ensure enemy-owned initial entities cannot be placed close to the human start except through intended corner placement.
+* [x] Re-test reports of early enemy militia after reset; initial spawn should remain town hall plus peasants only.
+* [x] Add a danger/readability pass only after invalid early danger has been removed.
 
-#### Required change
+Tests:
 
-* [ ] Review all food sources:
+* [x] Across deterministic seeds, assert no boars or wolves spawn within the chosen safety radius of occupied starts.
+* [x] Across deterministic seeds, assert enemy initial units/buildings are only at valid occupied starts.
+* [x] Run two games in one process and repeat the same safety checks on the second game.
 
-  * berries
-  * hunting
-  * farms
-  * wheat/farm terrain, if distinct
-  * fishing
-  * any passive food systems
-* [ ] Confirm what drop-off buildings accept food.
-* [ ] Confirm whether farms require mills.
-* [ ] Confirm whether farms require peasants to tend them.
-* [ ] Confirm how winter food pressure works.
-* [ ] Confirm what happens when food reaches zero.
-* [ ] Keep current peasant cost unless it is clearly inconsistent.
-* [ ] If peasants still cost gold, document that as intentional for now.
-* [ ] Make UI/help text match actual mechanics.
+### 2.8 Early animal balance
 
-#### Tests
+Status: `[x]`
 
-* [ ] Each intended food source can actually produce food.
-* [ ] Each unintended/decorative food-looking tile is either removed, renamed, or made functional.
-* [ ] Food drop-off rules are consistent.
-* [ ] Winter food behaviour is understandable and does not create immediate unavoidable failure.
-* [ ] Help text matches implemented mechanics.
+Problem:
 
----
+* Boars can kill early peasants too reliably if they are close to a start.
+* Sheep may move/flee fast enough that new players find them awkward to interact with.
 
-### 2.6 Add in-game help/reference screen
+Required order:
 
-#### Problem
+* [x] First fix match reset.
+* [x] Then add start exclusion for hostile wildlife.
+* [~] Then tune boar aggression, attack, alert radius, or speed only if playtests still show unfair early losses.
+* [~] Tune sheep movement/flee behaviour only after core safety issues are fixed and manual playtests still show friction.
 
-The game has many controls and mechanics, but no clear in-game reference.
+Do not change yet:
 
-#### Required change
+* [x] Do not nerf boars solely from reports that may have been caused by stale entities.
+* [x] Do not change boar building targeting without a reproduction; boars currently target units.
 
-* [ ] Add a simple help screen or overlay, probably bound to `?`.
-* [ ] Keep it concise and readable in terminal dimensions.
-* [ ] Include:
+### 2.9 Deterministic startup and reproducible scenarios
 
-  * basic controls
-  * selection and movement
-  * attack / attack-move
-  * gathering wood/gold/food
-  * berries as food
-  * hunting and animal food
-  * farms and mills
-  * fishing if usable
-  * building and training
-  * rally points
-  * garrison/eject
-  * gates/walls
-  * control groups
-  * seasons
-  * winter food pressure
-  * weather/night visibility effects
-  * pause/quit controls
-* [ ] Ensure help can be closed without disrupting the game.
+Status: `[x]`
 
-#### Tests
+Problem:
 
-* [ ] Pressing `?` opens help.
-* [ ] Help screen renders within terminal bounds.
-* [ ] Closing help returns to game.
-* [ ] Help text does not desync from actual implemented controls.
-* [ ] Help works in normal play and while units are selected.
+* Spawn, mapgen, wildlife, and balance bugs are hard to act on when a playtest report cannot be reproduced.
+* Current startup uses random choices for map generation and starting corner.
 
----
+Required change:
+
+* [x] Add a deterministic seed input for map generation and simulation startup.
+* [x] Allow debug launch options for AI count, biome, human starting corner, and possibly projection/renderer.
+* [x] Log the seed, biome, AI count, starting corner, and build/version information at match start.
+* [x] Make playtest reports actionable by asking for or recording the seed and startup options.
+* [x] Keep normal "random game" behaviour as the default.
+
+Tests:
+
+* [x] Same seed/options produce the same starting map and initial entity summary.
+* [x] Different seeds still produce varied maps.
+* [x] Seed and startup options are recorded in `realm-run.log`.
 
 ## Phase 3: Architecture cleanup
 
-### 3.1 Remove or reduce overloaded `Entity` fields
+### 3.1 Overloaded `Entity` fields
 
-#### Problem
+Status: `[x]`
 
-Several fields currently carry unrelated meanings depending on entity type or system. This makes future bugs likely.
+Done:
 
-Known examples:
+* [x] Added explicit `gateOpen`.
+* [x] Added explicit `gateLocked`.
+* [x] Updated gate rendering, passability, toggling, and auto-open logic.
+* [x] Replaced `gatherType` with explicit `CargoResource` state.
+* [x] Replaced unit `carrying` with explicit `Cargo` amount/type/source.
+* [x] Replaced farm `carrying` reuse with `storedFood`.
+* [x] Replaced resource/farm return reuse of `rallyX` / `rallyY` with `resourceX` / `resourceY` and cargo source coordinates.
+* [x] Replaced shared `prodProgress` / `prodTime` with separate training and research progress fields.
+* [x] `rallyX` / `rallyY` now cover production rally points only.
 
-* `gatherType` is used for resource type and gate lock/manual state.
-* `carrying` is used for resource cargo and gate open/closed state.
-* `prodProgress` / `prodTime` are used for training and research.
-* `rallyX` / `rallyY` are used for production rally points and gather-return targets.
+Next step:
 
-#### Required change
+* [x] Introduce a small resource/cargo representation before touching more systems.
 
-* [ ] Split resource-carrying fields from gate fields.
-* [ ] Split gate state into explicit fields, e.g. `gateOpen`, `gateLocked`.
-* [ ] Split production progress from research progress where practical.
-* [ ] Split rally point from gather/drop-off target where practical.
-* [ ] Initialise all new fields safely.
-* [ ] Update rendering, input, orders, AI, and simulation references.
+### 3.2 Entity capabilities and traits
 
-Possible direction:
+Status: `[~]`
 
-```cpp
-struct Entity {
-    ResourceType carriedResource;
-    int carriedAmount;
+Problem:
 
-    int gatherTargetX;
-    int gatherTargetY;
-    int dropoffX;
-    int dropoffY;
+* The simulation often asks "is this exact type?" where it should ask "can this entity do this?" or "does this entity belong to this category?"
+* Examples to reduce over time:
+  * `type == E_PEASANT` should usually become a capability such as `canGather`, `canBuild`, or `isWorker`.
+  * `type == E_MILITIA || type == E_ARCHER || ...` should usually become traits such as `isMilitary`, `isInfantry`, `isRanged`, `isSiege`, or `canAttack`.
+  * `type == E_WOLF || type == E_BOAR` style checks should usually become traits such as `isWildAnimal`, `isCarnivore`, `isHostileWildlife`, or `attacksUnits`.
+  * Building checks should use traits such as `isBuilding`, `trainsUnits`, `isDropoff`, `storesUnits`, or `isDefense`.
+* This matters because adding a new unit/building currently requires hunting through scattered type lists, which is easy to miss.
 
-    int rallyX;
-    int rallyY;
+Required change:
 
-    EntityType producing;
-    int productionProgress;
-    int productionTime;
+* [x] Add a compact capability/trait representation to the entity definition data, probably near `EntityStats`.
+* [x] Prefer named helper functions such as `canGather(type)`, `isInfantry(type)`, `isHostileWildlife(type)`, and `isDropoff(type)` over scattered conditionals.
+* [x] Start with traits that remove real duplication in AI, input/orders, combat targeting, rendering classification, and HUD display.
+* [ ] Keep exact-type checks only where the specific type genuinely matters, such as a town hall having a specific training menu.
+* [x] Do this incrementally; do not turn it into a large data-driven rewrite before tests exist.
 
-    int researchId;
-    int researchProgress;
-    int researchTime;
+Tests:
 
-    bool gateOpen;
-    bool gateLocked;
-};
-```
+* [x] Worker capability tests cover peasants.
+* [x] Combat category tests cover infantry, ranged, siege, ships, and hostile wildlife.
+* [~] Owner/render classification tests distinguish neutral animals from enemy categories through traits, but renderer golden-frame tests are still absent.
+* [~] Adding a new military unit is easier through trait data; some exact-type checks remain for specific menus, building behavior, and animal-specific behavior.
 
-Use names that fit the existing code. Do not over-engineer.
+### 3.3 Reference invalidation risk from `g.entities`
 
-#### Tests
+Status: `[x]`
 
-* [ ] Existing wood gathering still works.
-* [ ] Existing gold gathering still works.
-* [ ] New berry gathering works.
-* [ ] Existing gate open/close/lock behaviour still works.
-* [ ] Unit training still works.
-* [ ] Research still works.
-* [ ] Rally points still work.
-* [ ] Debug/sanitizer build reports no uninitialised field use.
+Current state:
 
----
+* `g.entities` is now a `std::deque`, so appending spawned entities during a tick does not invalidate active entity references/pointers.
+* A 10,000 tick deterministic AI simulation now runs through the headless harness.
 
-### 3.2 Reduce reference invalidation risk from `g.entities`
+Done:
 
-#### Problem
+* [x] Add deferred spawn queue, or switch container strategy if safer.
+* [x] Keep long simulation coverage to catch regressions.
 
-The code relies on `g.entities.reserve(8192)` to avoid dangling references while spawning during ticks. This is fragile.
+Follow-up:
 
-#### Required change
+* [x] Extend the long simulation target beyond the original 5,000 tick AI progression run.
 
-Pick the smallest safe approach.
+### 3.4 Occupancy-grid helper
 
-Preferred:
+Status: `[x]`
 
-* [ ] Add deferred spawn queue.
-* [ ] Do not `push_back()` into `g.entities` while holding references/iterators during tick processing.
-* [ ] Queue spawn requests and flush them after the current tick phase.
+Current state:
 
-Alternative:
+* [x] Pathfinding pre-scans buildings into a flat boolean map for faster blocked-tile checks.
+* [x] Shared `OccupancyGrid` helper exists for placement and pathfinding.
+* [x] The helper keeps garrisoned/dead entities out of occupancy.
 
-* [ ] Convert `g.entities` to `std::deque<Entity>` if that is safer and less invasive.
+Follow-up:
 
-Do not perform a large rewrite unless needed.
+* [~] Consider using the helper in renderer tile stack summaries if render/selection occupancy logic grows further.
 
-#### Tests
+### 3.5 Split `entity.cpp`
 
-* [ ] Completed unit training still spawns units.
-* [ ] Projectiles still spawn.
-* [ ] Wildlife/AI spawning still works if present.
-* [ ] 10,000-tick headless simulation does not crash.
-* [ ] Address/undefined sanitizer reports no reference invalidation issue.
+Status: `[x]`
 
----
+Current state:
 
-### 3.3 Add occupancy-grid helper if practical
+* [x] AI code is now in `src/ai.cpp`.
+* [x] Player order/group command logic is now in `src/orders.cpp`.
+* [x] Simulation tick and validation recovery logic is now in `src/simulation.cpp`.
+* [ ] `src/entity.cpp` still contains economy, combat, construction, projectiles, weather/seasons, garrisoning, and win checks.
 
-#### Problem
+Still needed:
 
-Rendering and selection can repeatedly scan all entities with `entityAt(x, y)`. This is simple but scales poorly and can create inconsistent lookup behaviour.
+* [x] Split only after tests exist, or when touching a subsystem for functional work.
+* [ ] Candidate files: `economy.cpp`, `combat.cpp`.
 
-#### Required change
+### 3.6 Render/input/simulation boundaries
 
-If practical:
+Status: `[~]`
 
-* [ ] Add a per-tick or per-frame occupancy helper.
-* [ ] Use it for render-time entity lookup.
-* [ ] Use it for selection/path blocking only if safe.
-* [ ] Garrisoned/dead entities should not occupy map tiles.
-* [ ] Document any deferred occupancy work if too invasive.
+Improved:
 
-Possible shape:
+* [x] SDL frontend calls shared command/select helpers in `src/input.cpp`.
+* [x] SDL renderer has its own frontend file and does not require ncurses.
+* [x] `tickSimulationOnce()` centralizes the simulation tick for SDL, terminal, and headless tests.
+* [x] `tickSimulationOnce()` now lives outside frontend startup code in `src/simulation.cpp`.
+* [x] Headless simulation builds without ncurses or SDL.
 
-```cpp
-struct OccupancyGrid {
-    int entityIdAt[MAP_H][MAP_W];
-};
-```
+Still needed:
 
-#### Tests
+* [ ] Avoid adding more simulation mutation to render code.
+* [ ] Move shared state-display helpers if both frontends continue duplicating them.
 
-* [ ] Occupancy grid agrees with existing `entityAt()` for known positions.
-* [ ] Rendering still shows units/buildings correctly.
-* [ ] Selection still selects the correct entity.
-* [ ] Garrisoned entities do not occupy map tiles.
-* [ ] Dead entities do not occupy map tiles.
+### 3.7 Central command and keybinding registry
 
----
+Status: `[~]`
 
-### 3.4 Split `entity.cpp` if safe
+Problem:
 
-#### Problem
+* Controls, HUD hints, menu text, help overlays, SDL input, and terminal input can drift from each other.
+* Recent changes such as `Q` resigning and `X` exiting are easy to document in one renderer and miss in another.
 
-`entity.cpp` appears to contain orders, economy, AI, combat, projectiles, construction, and simulation. It is becoming too broad.
+Required change:
 
-#### Required change
+* [x] Add a shared command/keybinding definition table for gameplay commands.
+* [x] Use the shared table for help text and renderer help overlays.
+* [x] Include command id, display label, key(s), allowed modes, and short help text.
+* [x] Keep renderer-only inputs, such as mouse-wheel zoom or middle-button pan, clearly scoped but still documented from a shared source.
+* [x] Add a simple check that every documented gameplay command has an input binding.
 
-Split only where safe and low-risk.
+Tests:
 
-Possible files:
+* [x] Help/control text includes resign, exit, pause, train, build, rally, attack-move, groups, help, save/load, diagnostics, renderer-only controls, and escape/cancel.
+* [x] SDL and terminal help overlays agree for shared commands because they read the same table.
+* [x] Updating a binding in the table updates the displayed help text.
 
-* `orders.cpp`
-* `economy.cpp`
-* `combat.cpp`
-* `ai.cpp`
-* `simulation.cpp`
+### 3.8 Runtime diagnostics and debug overlay
 
-Rules:
+Status: `[x]`
 
-* [ ] Do not change behaviour purely as part of moving code.
-* [ ] Keep declarations in `realm.h` or add a small internal header if needed.
-* [ ] Avoid circular dependencies.
-* [ ] Update Makefile source list.
+Problem:
 
-#### Tests
+* Reports about stuck modes, odd selections, stale entities, or confusing spawns require inspecting internal state.
+* Logs now prove splash startup and deterministic match-smoke startup, and diagnostics expose match-level state during debugging.
 
-* [ ] Normal build succeeds.
-* [ ] Debug build succeeds.
-* [ ] No duplicate symbol/linker errors.
-* [ ] Headless tests still pass.
+Required change:
 
----
+* [x] Add a debug diagnostics mode or overlay that can show cursor tile, selected entity id/type/state/order/target, current mode, entity count, projectile count, seed, AI count, biome, and tick.
+* [x] Add log milestones for match start, resign/return-to-menu, match restart, save, load, and recoverable validation errors.
+* [x] Keep diagnostics out of the normal player-facing UI unless explicitly enabled.
+* [x] Make diagnostics available in SDL first; terminal can follow if useful.
 
-### 3.5 Keep render/input/simulation boundaries clean
+Tests:
 
-#### Problem
+* [x] Headless reset tests and match-start logs cover entity/projectile counts across second-game startup.
+* [x] SDL and terminal diagnostics identify selected entity state and current command mode.
+* [x] Match-start logs include seed, AI count, human corner, biome, entity count, and projectile count.
 
-As features accumulate, rendering and input should not become simulation owners.
+## Phase 4: Build, docs, warnings, tooling
 
-#### Required change
+### 4.1 Build/dependency documentation
 
-During cleanup:
+Status: `[x]`
 
-* [ ] `render.cpp` should display state, not advance simulation.
-* [ ] `input.cpp` should translate input into orders, not contain large simulation rules.
-* [ ] AI logic should live outside rendering/input.
-* [ ] Economy/combat/order logic should not depend on ncurses.
-* [ ] Headless tests should exercise simulation without rendering.
-* [ ] Minor UI-only counters/status-message timers may remain near UI code if already structured that way, but avoid adding new simulation mutation to rendering.
+Done:
 
-#### Tests
+* [x] Root `README.md` exists.
+* [x] Windows/MSYS2 dependencies documented.
+* [x] Windows build and runtime smoke documented.
+* [x] Unix-like GUI/terminal commands documented.
+* [x] `docs/gfx-renderer.md` documents renderer-specific behavior.
 
-* [ ] Headless build can compile simulation without ncurses rendering.
-* [ ] No new simulation rule is added only to render code.
-* [ ] Input-triggered actions call order functions rather than duplicating simulation rules.
+Done:
 
----
+* [x] README documents debug and test targets.
+* [x] README and renderer docs document deterministic match smoke mode.
+* [x] README and renderer docs document native Windows ncurses limitations and Unix-like terminal commands.
+* [x] Makefile help reports the native Windows terminal limitation.
 
-## Phase 4: Build, docs, warnings, and tooling
+### 4.2 Debug/sanitizer Makefile target
 
-### 4.1 Add build/dependency documentation
+Status: `[x]`
 
-#### Required change
+Still needed:
 
-* [ ] Update `README.md` or create it if missing.
-* [ ] Document required dependencies.
-* [ ] Document normal build.
-* [ ] Document debug build.
-* [ ] Document test build.
-* [ ] Document what to do if `<ncurses.h>` is missing.
+* [x] Add debug target.
+* [x] Add sanitizer flags where available.
+* [x] Account for platform-specific sanitizer availability on Windows/MSYS2.
+* [x] Confirm terminal and/or headless debug link path.
 
-Suggested content:
+### 4.3 Warning tracking
 
-```md
-## Build
+Status: `[x]`
 
-Linux:
-
-sudo apt install build-essential libncurses-dev
-make
-
-macOS:
-
-brew install ncurses
-make
-
-If the compiler cannot find `ncurses.h`, install the ncurses development package and check include/library paths.
-
-## Debug build
-
-make debug
-
-## Tests
-
-make test
-```
-
-#### Tests
-
-* [ ] README instructions match actual Makefile targets.
-* [ ] Fresh clone instructions are sufficient for a developer with ncurses installed.
-* [ ] Missing-ncurses failure mode is documented.
-
----
-
-### 4.2 Add debug/sanitizer Makefile target
-
-#### Required change
-
-Add a debug target similar to:
-
-```make
-debug: CXXFLAGS = -std=c++17 -g -O0 -Wall -Wextra -fsanitize=address,undefined
-debug: LDFLAGS = -lncurses -fsanitize=address,undefined
-debug: clean $(TARGET)
-```
-
-Adjust to current Makefile structure.
-
-Also consider a warnings-focused target.
-
-#### Tests
-
-* [ ] `make clean`
-* [ ] `make`
-* [ ] `make debug`
-* [ ] Debug build links successfully.
-* [ ] If sanitizer runtime is unavailable on a platform, document that in this file.
-
----
-
-### 4.3 Track and reduce compiler warnings
-
-#### Required change
-
-* [ ] Record existing warnings before changes.
-* [ ] Do not introduce new warnings.
-* [ ] Fix warnings that touch changed code.
-* [ ] Prefer getting `-Wall -Wextra` clean if practical.
-* [ ] If warnings remain, document each remaining warning and why it was deferred.
-
-#### Warning log
+Current warning log:
 
 ```text
-Baseline warnings:
+Baseline warnings from the previous Windows GUI build:
+- entity.cpp misleading indentation in orderBuild/orderTrain
+- display.cpp switch case outside char range
+- gfx_renderer.cpp misleading indentation
 
-Remaining warnings after hardening:
+Current Windows GUI build:
+- clean under -Wall -Wextra
 
-Deferred warnings and reasons:
+Current WSL Ubuntu terminal build:
+- clean under -Wall -Wextra
+
+Current WSL Ubuntu sanitizer target:
+- ASan/UBSan headless tests pass with REALM_TEST_LONG_TICKS=2000
 ```
 
----
+Done:
 
-## Phase 5: Headless tests
+* [x] Re-run terminal/ncurses build on WSL/Linux/macOS.
+* [x] Record Windows debug findings once target exists.
+* [x] Record sanitizer findings on WSL/Linux/macOS.
 
-### 5.1 Add headless simulation/test mode
+### 4.4 Windows packaging and release checklist
 
-#### Required change
+Status: `[x]` after final verification on Windows/MSYS2
 
-Add a way to run simulation tests without ncurses UI.
+Problem:
 
-Possible approach:
+* The project now has a Windows-first GUI executable with runtime DLL dependencies.
+* Build outputs are ignored, but there is no repeatable release/package checklist yet.
 
-* [ ] Add compile flag such as `REALM_HEADLESS`.
-* [ ] Exclude ncurses-dependent rendering/input in test builds.
-* [ ] Add a test executable, e.g. `tests/realm_headless_tests.cpp`.
-* [ ] Add `make test`.
-* [ ] Use simple `assert()` tests unless adding a framework is clearly worth it.
+Required change:
 
-#### Required test groups
+* [x] Add a documented packaging checklist for `bin/realm.exe`, required DLLs, README, and any runtime assets.
+* [x] Consider a packaging target that creates a clean zip from `bin/` after a successful build.
+* [x] Verify packaged builds run outside the repo root.
+* [x] Include `REALM_SMOKE_TEST=1` and `REALM_SMOKE_TEST=match` as packaging verification paths.
+* [x] Document where logs are written and whether they are packaged or generated at runtime.
 
-##### Placement bounds
+Tests:
 
-* [ ] Out-of-bounds `canPlace()` calls return false.
-* [ ] Out-of-bounds `canPlace()` calls do not crash.
-* [ ] Valid placement still works.
+* [x] Clean Windows GUI build succeeds.
+* [x] Packaged output contains `realm.exe` and all required DLLs.
+* [x] Packaged `realm.exe` launches and reaches the main screen smoke milestone.
+* [x] Packaged `realm.exe` starts a deterministic match and reaches the match smoke milestone.
+* [x] Generated logs and temporary files remain ignored by git.
 
-##### Entity-state names
+### 4.5 Crash/assertion policy
 
-* [ ] Every `EntityState` has a safe display name.
-* [ ] Invalid/default value returns `"Unknown"` or equivalent.
-* [ ] No state-name lookup indexes past an array.
+Status: `[x]` for implemented policy and recoverable tests, `[~]` for broader invariant catalog
 
-##### Enemy owner classification
+Problem:
 
-* [ ] Owner 1 is enemy/faction-owned.
-* [ ] Owner 2 is enemy/faction-owned.
-* [ ] Owner 3 is enemy/faction-owned.
-* [ ] Neutral animals are not enemy/faction-owned.
+* Debug builds should catch impossible state early, but release builds should avoid hard-crashing on recoverable bad state.
 
-##### Supply reservation
+Required change:
 
-* [ ] Queued units reserve population.
-* [ ] In-production units reserve population.
-* [ ] Queues cannot over-reserve past the cap.
-* [ ] Completed units do not exceed cap.
-* [ ] AI uses the same rules.
+* [x] Add debug assertions for invalid map coordinates, invalid entity ids, impossible entity states, stale selected units, and invalid orders.
+* [x] Prefer recoverable validation/logging in release builds where bad input can be ignored safely.
+* [~] Keep unrecoverable impossible entity/map state fatal in debug; release currently logs unrecovered validation failures and continues where possible.
+* [x] Route repeated recoverable errors to throttled diagnostics/logging without flooding logs.
 
-##### AI progression
+Tests:
 
-* [ ] Run a fresh game for 5,000 ticks.
-* [ ] AI does not remain stuck at 10/10 population.
-* [ ] AI builds at least one supply structure or otherwise increases supply.
-* [ ] AI builds at least one military production building if resources permit.
-* [ ] AI trains at least one military unit if resources permit.
-* [ ] No builder is assigned two construction jobs in the same tick.
+* [x] Debug/headless tests run with `REALM_DEBUG_ASSERTS` and validation coverage.
+* [x] Release/headless path handles invalid selection, control group, and cursor inputs without crashing.
+* [x] Logs include phase, tick, seed, and validation error for recoverable errors.
 
-##### Berry gathering
+## Phase 5: Tests
 
-* [ ] Peasant gathers from berries.
-* [ ] Peasant returns food to valid drop-off.
-* [ ] Food increases.
-* [ ] Berry resource decreases.
-* [ ] Depleted berry tile becomes non-resource terrain.
+### 5.1 Automated headless tests
 
-##### Forest buildability/passability
+Status: `[x]`
 
-* [ ] Buildings cannot be placed on forest-like terrain.
-* [ ] Units can still path through forest-like terrain.
+This is now the highest-leverage next step.
 
-##### Town hall cost
+Required first test harness:
 
-* [ ] Starting spawn bypasses cost.
-* [ ] Ordered town hall construction requires resources.
-* [ ] Ordered town hall construction deducts resources.
-* [ ] AI cannot build free town halls.
+* [x] Compile game logic without ncurses/SDL.
+* [x] Exclude terminal render/input and SDL renderer.
+* [x] Add a test executable, for example `tests/realm_headless_tests.cpp`.
+* [x] Add `make test`.
+* [x] Start with simple `assert()` tests unless a framework becomes useful.
 
-##### Starting resources
+Initial test groups:
 
-* [ ] Each start has reachable wood within a reasonable radius.
-* [ ] Each start has reachable food within a reasonable radius.
-* [ ] Each start has reachable gold within a reasonable radius.
-* [ ] Run across multiple seeds if possible.
+* [x] Placement bounds.
+* [x] Match reset between consecutive games.
+* [x] Deterministic seed/startup reproducibility.
+* [x] Mapgen invariants across many seeds.
+* [x] Forest buildability/passability.
+* [x] State-name coverage.
+* [x] Enemy owner classification.
+* [x] Supply reservation.
+* [x] Town hall cost.
+* [x] Berry gathering and depletion.
+* [x] AI progression for 5,000 ticks.
+* [x] Starting resource reachability.
+* [x] Starting safety and hostile-wildlife exclusion.
+* [x] Save/load round-trip.
+* [x] Long simulation invariants currently run for 10,000 AI ticks.
 
-##### Long simulation invariants
+### 5.2 Existing runtime smoke
 
-* [ ] Run 10,000 ticks.
-* [ ] No live entity has out-of-bounds coordinates.
-* [ ] No entity has invalid state.
-* [ ] No player has negative resources unless debt is intentional.
-* [ ] No player’s actual supply exceeds supply cap.
-* [ ] No crash under debug/sanitizer build.
+Status: `[x]`
 
----
+Implemented:
 
-## Phase 6: Manual ncurses smoke test
+* [x] `REALM_SMOKE_TEST=1` exits after the SDL splash renders.
+* [x] Success writes `realm: main screen ready` to `realm-run.log`.
+* [x] Verified on Windows with exit code 0.
+* [x] `REALM_SMOKE_TEST=match` starts a deterministic match, runs 60 simulation ticks, renders SDL frames, exits 0, and writes `realm: match smoke complete tick=60`.
 
-Run the actual game after automated tests pass.
+Limitations:
 
-### Manual checklist
+* [x] Match smoke now starts a match.
+* [x] Match smoke now exercises simulation, AI startup, and SDL rendering beyond the main screen.
+* [~] It still does not synthesize interactive keyboard or mouse input.
 
-* [ ] Start a new game.
-* [ ] Select peasants.
-* [ ] Gather wood.
-* [ ] Gather gold.
-* [ ] Gather berries/food.
-* [ ] Build house.
-* [ ] Build barracks.
-* [ ] Build farm.
-* [ ] Attempt to build on forest and confirm blocked.
-* [ ] Confirm units can still walk through forest.
-* [ ] Attempt to build town hall without enough resources and confirm blocked.
-* [ ] Build town hall with enough resources and confirm resources deducted.
-* [ ] Queue units up to supply cap and confirm overqueue is blocked.
-* [ ] Select units in varied states and confirm state display is safe.
-* [ ] Garrison and eject units.
-* [ ] Use gates/walls if available.
-* [ ] Use control groups.
-* [ ] Scout until enemy owners 1/2/3 are visible.
-* [ ] Confirm AI owners 1/2/3 do not render as animals.
-* [ ] Let the game run until AI builds economy and military.
-* [ ] Open and close help screen with `?`.
-* [ ] Confirm minimap still works.
-* [ ] Confirm side panel still works.
-* [ ] Confirm bottom command panel still works.
-* [ ] Confirm terrain info still works.
-* [ ] Confirm fog/night/weather rendering still works.
+### 5.3 Mapgen invariant tests
 
-### Manual result
+Status: `[x]`
+
+Required checks:
+
+* [x] Occupied starts are not boxed in.
+* [x] Occupied starts have reachable wood, food, and gold.
+* [x] Hostile wildlife does not spawn inside the start-safety radius.
+* [x] Enemy starts are separated by a minimum distance through fixed corner starts.
+* [x] Generated maps retain enough passable area for scouting and combat.
+* [x] Resource and landmark placement does not overwrite starting town halls or peasants.
+* [x] Tests run across deterministic seed ranges; failing assertions are tied to the current seed loop.
+
+### 5.4 Save and resume
+
+Status: `[x]` for initial debug-friendly save/load
+
+Problem:
+
+* Save/resume is useful for players, but also important for debugging rare bugs because a bad state can be captured and replayed.
+
+Required change:
+
+* [x] Define a versioned save format for match state.
+* [x] Save enough state to resume exactly: map tiles/resources, entities, projectiles, players, AI timers, current tick, random seed/state if needed, selected/cursor/view state, current mode where safe, season/weather/day state, and victory state.
+* [x] Prefer a readable/debuggable format at first unless file size becomes a real problem.
+* [x] Add save and load commands behind explicit keys/menu actions.
+* [x] On load, validate file version and reject incompatible/corrupt saves with a clear error.
+* [x] Ensure save files do not get committed accidentally unless they are intentional fixtures.
+
+Tests:
+
+* [x] Save immediately after match start, load, and compare entity/player/map summary.
+* [x] Save after combat/economy/training, load, and continue ticking without crash.
+* [~] Save, exit process, restart, load, and resume remains a manual path; exact in-process save/resume is automated.
+* [x] Invalid/corrupt save files fail cleanly.
+* [x] A deterministic save fixture path is generated under `build/` during tests and proves exact resume across future ticks.
+
+## Phase 6: Player-facing UX and manual smoke testing
+
+### 6.1 HUD and cursor-tile information
+
+Status: `[x]`
+
+Required change:
+
+* [x] When nothing is selected, show information for the square under the cursor instead of only "No selection".
+* [x] SDL HUD should include cursor tile terrain, biome, resource, and visible unit/object stack.
+* [x] Terminal and SDL should have equivalent cursor-tile semantics even if the layout differs.
+* [x] If units are selected, keep selected-unit details prominent but still expose cursor-tile context where practical.
+* [x] Keep resources at the top and controls/help at the bottom where the renderer layout supports it.
+
+### 6.2 Training and command-mode controls
+
+Status: `[x]`
+
+Required change:
+
+* [x] Decide whether train mode stays open after queueing a unit.
+* [x] If train mode stays open, ensure repeated `P` queues peasants from a town hall.
+* [x] Avoid accidental pause immediately after queueing one peasant.
+* [x] Confirm `Esc` cancels build, train, wall, rally, attack-move, research, and any new command modes.
+* [x] Update all control text after any keybinding change.
+
+### 6.3 Legend, colour, and danger readability
+
+Status: `[~]`
+
+Required change:
+
+* [x] Add or expand a clear colour key for player units, enemy owners, neutral animals, resources, and landmarks.
+* [x] Explain pulsing red `!` combat alerts and any danger markers.
+* [x] Verify enemy peasants do not use the same visual treatment as player peasants in SDL and terminal.
+* [ ] Review sheep colour after owner-colour regression checks exist.
+* [ ] Make resources and landmarks more visually distinct where the current glyph/colour is ambiguous.
+
+### 6.4 Visual action markers
+
+Status: `[x]`
+
+Required change:
+
+* [x] Add a lightweight marker when assigning a move, gather, attack, build, or rally task.
+* [x] Keep the marker temporary and renderer-friendly.
+* [x] Ensure it does not obscure selection, danger, or combat alerts.
+
+### 6.5 Input and UI scale testing
+
+Status: `[~]`
+
+Required change:
+
+* [x] Add manual checks for small windows, large windows, high-DPI displays, and text clipping.
+* [ ] Run the small/large/high-DPI checks on physical displays.
+* [ ] Verify HUD panels do not overlap the map or each other.
+* [ ] Verify buttons/control text remain legible and do not overflow.
+* [ ] Verify cursor, selected units, drag boxes, action markers, and danger markers remain visible at different zoom levels.
+* [ ] Verify mouse and keyboard cursor movement remain coherent after resize/zoom/projection changes.
+
+### 6.6 Manual smoke checklist
+
+Current manual checklist lives in:
+
+* `docs/tests/manual-test-plan.md`
+
+Update needed:
+
+* [x] Add SDL-specific checks for:
+  * middle-button drag panning
+  * mouse-wheel zoom
+  * top-down/isometric toggle
+  * `Q` resigns to menu during a match
+  * `X` exits app
+  * Windows launch from `bin/realm.exe`
+  * cursor-tile HUD shows terrain, biome, resource, and entities
+  * repeated peasant queueing does not accidentally pause
+  * red alert/danger markers are explained
+  * owner colours distinguish player, enemies, and neutral entities
+  * deterministic seed/options are visible in logs or diagnostics
+  * save/resume round-trip works from a running match
+  * diagnostics overlay/logs show selected entity, mode, cursor tile, and entity counts
+  * small/large/high-DPI window layouts do not clip important UI
+* [x] Keep ncurses checks separate from SDL checks.
+
+Manual ncurses result:
 
 ```text
 Manual smoke test date:
@@ -844,81 +916,91 @@ Result:
 Issues found:
 ```
 
----
+Manual SDL result:
 
-## Definition of done
+```text
+Manual smoke test date:
+Platform:
+Renderer:
+Result:
+Issues found:
+```
 
-This hardening pass is complete when:
+## Recommended next work order
 
-* [ ] `make clean && make` passes.
-* [ ] `make debug` passes, or platform limitation is documented.
-* [ ] `make test` or equivalent headless test command passes.
-* [ ] Headless AI progression test proves AI no longer stalls at 10/10.
-* [ ] Headless long simulation test passes.
-* [ ] Manual ncurses smoke test passes.
-* [ ] `README.md` documents dependencies, build, debug build, and tests.
-* [ ] This progress file is updated.
-* [ ] Any deferred item is explicitly listed below.
-* [ ] No accepted design decision remains ambiguous in code comments or docs.
+Do these before more gameplay changes:
 
----
+1. Fix match reset between consecutive games.
+2. Add a two-games-in-one-process regression or smoke test.
+3. Add a deterministic seed or test hook for mapgen.
+4. Add occupied-start safety checks for hostile wildlife and enemy initial entities.
+5. Add a headless test harness and `make test`.
+6. Add placement, state-name, supply reservation, town hall cost, berry, reset, and start-safety tests.
+7. Add an AI progression test.
+8. Add debug/sanitizer target.
+9. Re-run terminal/ncurses build after the project layout change.
+10. Update manual test plan with SDL-specific controls and player-feedback checks.
+11. Add logging of seed/startup options so manual reports are reproducible.
+
+Then continue gameplay hardening:
+
+1. Guarantee reachable starting wood/food/gold for every start.
+2. Improve HUD cursor-tile information and selected/tile entity display.
+3. Improve training-mode flow and pause/training key UX.
+4. Add in-game help overlay.
+5. Clarify/document food economy rules.
+6. Add legend/danger-marker explanations.
+7. Add visual command markers.
+8. Tune boars/sheep only after reset and spawn-safety checks are verified.
+9. Add entity capability/trait helpers and replace the highest-risk hard-coded type lists.
+10. Add a central command/keybinding registry.
+11. Add runtime diagnostics overlay/logging.
+12. Add save/resume with a versioned debug-friendly save format.
+13. Add packaging/release checklist.
+14. Add input/UI scale testing.
+15. Continue reducing overloaded `Entity` fields.
+16. Address `g.entities` reference invalidation risk.
+17. Consider occupancy grid only after tests exist.
+
+## Definition of done for the next hardening pass
+
+The next hardening pass is complete when:
+
+* [x] `mingw32-make clean && mingw32-make gfx` passes on Windows.
+* [x] `REALM_SMOKE_TEST=1 bin/realm.exe` exits 0 and logs `realm: main screen ready`.
+* [x] Terminal build is verified on a Unix-like environment, or limitation is documented.
+* [x] `make test` exists and passes.
+* [x] Debug/sanitizer target exists or platform limitation is documented.
+* [x] Starting a second game in the same process does not retain stale entities or projectiles.
+* [x] Deterministic seed/options can reproduce a starting map and are logged.
+* [x] AI progression test proves AI no longer stalls at 10/10.
+* [x] Start-safety checks pass across deterministic seeds.
+* [x] Save/resume round-trip works and has at least one regression fixture path.
+* [x] Long simulation test passes.
+* [x] Runtime diagnostics can show match seed, mode, cursor tile, selected entity state, entity count, and projectile count.
+* [~] Manual SDL smoke checklist is updated and run.
+* [~] Manual ncurses smoke checklist is updated and run if terminal support remains in scope.
+* [x] README/docs match actual commands.
+* [x] This plan is updated again with results.
 
 ## Do not do in this pass
 
-Do not:
-
-* [ ] Rewrite into ECS.
-* [ ] Redesign all pathfinding around blocking forests.
-* [ ] Hide failing tests by weakening assertions.
-* [ ] Treat manual playtesting as a substitute for headless tests.
-
----
+* [x] Do not rewrite into ECS.
+* [x] Do not redesign all pathfinding around blocking forests.
+* [x] Do not hide failing tests by weakening assertions.
+* [x] Do not treat manual playtesting as a substitute for headless tests.
+* [x] Do not make a large `entity.cpp` split before there is test coverage for moved behavior.
 
 ## Deferred follow-ups
-
-Use this section for work intentionally left after the hardening pass.
 
 ```text
-Deferred item:
-Reason:
-Risk:
-Suggested follow-up:
-```
+Deferred item: Full balance pass.
+Reason: Town hall cost and food economy are now functional enough to test, but not final.
+Risk: AI/player pacing may feel uneven.
+Suggested follow-up: Balance after deterministic tests and manual play sessions.
 
----
-
-## Implementation report template
-
-When this pass is complete, write a final report using this structure.
-
-```md
-# ASCII RTS hardening implementation report
-
-## Summary
-
-## Files changed
-
-## Behaviour changes players will notice
-
-## Bugs fixed
-
-## Design decisions implemented
-
-## Tests added
-
-## Commands run
-
-- `make clean && make`
-- `make debug`
-- `make test`
-
-## Results
-
-## Manual smoke test
-
-## Remaining warnings
-
-## Deferred follow-ups
-
-## Notes for future work
+Deferred item: Full renderer parity.
+Reason: SDL and terminal frontends now share simulation but not all UI affordances.
+Risk: Controls/help can drift.
+Suggested follow-up: Add shared control/help text source or renderer-specific manual checks.
 ```

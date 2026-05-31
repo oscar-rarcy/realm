@@ -1,5 +1,19 @@
 #include "realm.h"
+
+#include <algorithm>
+#include <cassert>
 #include <cmath>
+#include <cstdint>
+#include <fstream>
+#include <iomanip>
+#include <limits>
+#include <sstream>
+#include <utility>
+#include <vector>
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 // ============================================================
 // TIME
@@ -26,17 +40,207 @@ bool isDawn()  { float b = getBrightness(); return b >= 0.3f && b < 0.55f && g.d
 // ============================================================
 // HELPERS
 // ============================================================
+void realmSrand(unsigned seed) {
+    g.rngState = seed ? seed : 1u;
+}
+
+int realmRand() {
+    g.rngState = g.rngState * 1664525u + 1013904223u;
+    return (int)((g.rngState >> 1) & 0x7fffffffu);
+}
+
 int  dist(int x1,int y1,int x2,int y2)  { return std::max(std::abs(x1-x2), std::abs(y1-y2)); }
 int  mdist(int x1,int y1,int x2,int y2) { return std::abs(x1-x2) + std::abs(y1-y2); }
 bool inBounds(int x, int y)              { return x >= 0 && x < MAP_W && y >= 0 && y < MAP_H; }
 
+static Cargo emptyCargo() {
+    return {CR_NONE, 0, -1, -1};
+}
+
+const char* cargoResourceName(CargoResource r) {
+    switch (r) {
+        case CR_GOLD: return "gold";
+        case CR_WOOD: return "wood";
+        case CR_FOOD: return "food";
+        case CR_FISH: return "fish";
+        case CR_NONE: return "nothing";
+    }
+    return "unknown";
+}
+
+CargoResource resourceForTerrain(Terrain t) {
+    if (t == T_GOLD) return CR_GOLD;
+    if (t == T_FOREST || t == T_PINE || t == T_PALM || t == T_DEAD_TREE) return CR_WOOD;
+    if (t == T_BERRY) return CR_FOOD;
+    if (t == T_FISH) return CR_FISH;
+    return CR_NONE;
+}
+
+bool terrainMatchesResource(Terrain t, CargoResource r) {
+    return resourceForTerrain(t) == r;
+}
+
+const char* stateName(EntityState s) {
+    switch (s) {
+        case S_IDLE:       return "Idle";
+        case S_MOVING:     return "Moving";
+        case S_ATTACKING:  return "Attacking";
+        case S_GATHERING:  return "Gathering";
+        case S_BUILDING:   return "Building";
+        case S_TRAINING:   return "Training";
+        case S_RETURNING:  return "Returning";
+        case S_DEAD:       return "Dead";
+        case S_ENTERING:   return "Boarding";
+        case S_GARRISONED: return "Garrisoned";
+    }
+    return "Unknown";
+}
+
+const char* terrainName(Terrain t) {
+    switch (t) {
+        case T_GRASS: return "Grass"; case T_TALL_GRASS: return "Tall grass";
+        case T_FLOWERS: return "Flowers"; case T_MEADOW: return "Meadow";
+        case T_FOREST: return "Forest"; case T_PINE: return "Pine";
+        case T_PALM: return "Palm"; case T_DEAD_TREE: return "Dead tree";
+        case T_MOUNTAIN: return "Mountain"; case T_HILLS: return "Hills";
+        case T_STONE: return "Stone"; case T_WATER: return "Water";
+        case T_SHALLOWS: return "Shallows"; case T_MARSH: return "Marsh";
+        case T_REEDS: return "Reeds"; case T_GOLD: return "Gold";
+        case T_SAND: return "Sand"; case T_DUNES: return "Dunes";
+        case T_SNOW: return "Snow"; case T_ICE: return "Ice";
+        case T_DIRT: return "Dirt"; case T_ROAD: return "Road";
+        case T_MUD: return "Mud"; case T_WHEAT: return "Wheat";
+        case T_BERRY: return "Berries"; case T_FISH: return "Fish";
+        case T_RUINS: return "Ruins"; case T_GRAVEL: return "Gravel";
+        case T_LAVA: return "Lava"; case T_ASH: return "Ash";
+        case T_CASTLE_WALL: return "Castle wall";
+        case T_CASTLE_FLOOR: return "Castle floor";
+        case T_CASTLE_GATE: return "Castle gate";
+    }
+    return "Unknown";
+}
+
+const char* biomeName(Biome b) {
+    switch (b) {
+        case B_TEMPERATE: return "Temperate"; case B_DESERT: return "Desert";
+        case B_SNOW: return "Snow"; case B_SWAMP: return "Swamp";
+        case B_FOREST: return "Forest"; case B_VOLCANIC: return "Volcanic";
+        case B_OCEAN: return "Coastal";
+    }
+    return "Unknown";
+}
+
+const char* modeName(GameMode m) {
+    switch (m) {
+        case M_NORMAL: return "Normal"; case M_BUILD_SELECT: return "Build";
+        case M_TRAIN_SELECT: return "Train"; case M_WALL_DRAG: return "Wall";
+        case M_PAUSED: return "Paused"; case M_GAME_OVER: return "Game over";
+        case M_RALLY_SET: return "Rally"; case M_RESEARCH_SELECT: return "Research";
+        case M_ATTACK_MOVE: return "Attack move";
+    }
+    return "Unknown";
+}
+
+const CommandBinding* gameplayCommands(int& count) {
+    static const CommandBinding commands[] = {
+        {"select", "Select", "Space/click", "Normal", "Select unit or building"},
+        {"command", "Command", "Enter/R-click", "Normal", "Move, attack, gather, help, or garrison"},
+        {"help", "Help", "?", "Any", "Toggle in-game help"},
+        {"build", "Build", "B", "Normal", "Open peasant build menu"},
+        {"train", "Train", "T", "Normal", "Open production queue; repeat unit keys to queue"},
+        {"attack_move", "Attack move", "A", "Normal", "Select all military or set attack-move target"},
+        {"rally", "Rally/research", "R", "Normal", "Set rally point or open blacksmith research"},
+        {"groups", "Groups", "G, 1-9", "Normal", "Assign and recall control groups"},
+        {"pause", "Pause", "P", "Normal", "Toggle pause"},
+        {"diagnostics", "Diagnostics", "D/F8", "Normal", "Toggle debug diagnostics"},
+        {"save", "Save", "V/F5", "Normal", "Save current match"},
+        {"load", "Load", "L/F9", "Normal", "Load saved match"},
+        {"resign", "Resign", "Q", "Normal", "Return to main menu"},
+        {"exit", "Exit", "X", "Any", "Exit the application"},
+        {"cancel", "Cancel", "Esc", "Command modes", "Cancel build, train, wall, rally, attack-move, or research"},
+        {"zoom", "Zoom", "+/-/wheel", "SDL", "Zoom map"},
+        {"pan", "Pan", "Middle-drag", "SDL", "Pan map"},
+        {"projection", "Projection", "F6/F7", "SDL", "Switch top-down/isometric projection"}
+    };
+    count = (int)(sizeof(commands) / sizeof(commands[0]));
+    return commands;
+}
+
+std::string commandHelpLine() {
+    int n = 0;
+    const CommandBinding* c = gameplayCommands(n);
+    std::string out;
+    for (int i = 0; i < n; i++) {
+        if (i) out += "  ";
+        out += c[i].keys;
+        out += ':';
+        out += c[i].label;
+    }
+    return out;
+}
+
+bool validateGameState(std::string* error) {
+    auto fail = [&](const std::string& msg) {
+        if (error) *error = msg;
+        return false;
+    };
+    if (!inBounds(g.cursorX, g.cursorY)) return fail("cursor out of bounds");
+    if (g.selectedId < -1) return fail("selected id is below sentinel");
+    if (g.selectedId >= g.nextId) return fail("selected id is beyond nextId");
+    if (g.selectedId > 0 && !findEntity(g.selectedId)) return fail("selected id does not reference a live entity");
+    for (int id : g.selectedIds)
+        if (id <= 0 || id >= g.nextId || !findEntity(id)) return fail("selectedIds contains invalid entity id");
+    for (const auto& group : g.controlGroups)
+        for (int id : group)
+            if (id <= 0 || id >= g.nextId || !findEntity(id)) return fail("control group contains invalid entity id");
+    for (const auto& e : g.entities) {
+        if (e.id <= 0 || e.id >= g.nextId) return fail("entity id outside valid range");
+        if (e.type < E_NONE || e.type > E_BOAR) return fail("entity type outside valid range");
+        if (e.owner < 0 || e.owner > OWNER_NATURE) return fail("entity owner outside valid range");
+        if (!inBounds(e.x, e.y)) return fail("entity position out of bounds");
+        if (e.state < S_IDLE || e.state > S_GARRISONED) return fail("entity state outside valid range");
+        if (e.targetId < -1 || e.targetId >= g.nextId) return fail("entity target id outside valid range");
+        if (e.targetId > 0 && !findEntity(e.targetId)) return fail("entity target id does not reference a live entity");
+        if (e.targetX != -1 && e.targetY != -1 && !inBounds(e.targetX, e.targetY)) return fail("entity target position out of bounds");
+        if (e.resourceX != -1 && e.resourceY != -1 && !inBounds(e.resourceX, e.resourceY)) return fail("entity resource source out of bounds");
+        if (e.cargo.type < CR_NONE || e.cargo.type > CR_FISH) return fail("cargo resource outside valid range");
+        if (e.cargo.amount < 0) return fail("cargo amount below zero");
+        if (e.cargo.amount > 0 && e.cargo.type == CR_NONE) return fail("cargo amount without resource type");
+        if (e.cargo.sourceX != -1 && e.cargo.sourceY != -1 && !inBounds(e.cargo.sourceX, e.cargo.sourceY)) return fail("cargo source out of bounds");
+        if (e.storedFood < 0) return fail("stored food below zero");
+        if (e.producing < E_NONE || e.producing > E_BOAR) return fail("producing type outside valid range");
+        if (e.trainProgress < 0 || e.trainTime < 0 || e.researchProgress < 0 || e.researchTime < 0)
+            return fail("progress counters below zero");
+        if (e.producing == E_NONE && (e.trainProgress != 0 || e.trainTime != 0))
+            return fail("training progress without production");
+        if (e.researching == 0 && (e.researchProgress != 0 || e.researchTime != 0))
+            return fail("research progress without research");
+        if (e.pathIdx < 0 || e.pathIdx > (int)e.path.size()) return fail("entity path index outside valid range");
+        for (auto pt : e.path)
+            if (!inBounds(pt.first, pt.second)) return fail("entity path point out of bounds");
+        for (int q : e.queue)
+            if (q < E_NONE || q > E_BOAR) return fail("queue type outside valid range");
+        for (int gid : e.garrison)
+            if (gid <= 0 || gid >= g.nextId || !findEntity(gid)) return fail("garrison id outside valid range");
+    }
+    for (const auto& m : g.actionMarkers)
+        if (!inBounds(m.x, m.y) || m.ticks < 0) return fail("action marker outside valid range");
+    for (const auto& p : g.projectiles) {
+        if (p.life < 0) return fail("projectile life below zero");
+        if (!std::isfinite(p.x) || !std::isfinite(p.y) || !std::isfinite(p.tx) || !std::isfinite(p.ty))
+            return fail("projectile coordinate is not finite");
+    }
+    return true;
+}
+
 bool isPassable(int x, int y) {
     if (!inBounds(x, y)) return false;
     Terrain t = g.map[y][x].terrain;
-    // Winter converts water → T_ICE (passable but slow). Glaciers from mapgen are also T_ICE.
-    // Shallows + reeds are water tiles for boats only — land units can't ford them.
+    // Land units can wade through shallows and reeds (slow, see moveAlongPath), but
+    // deep water and fish shoals block them. Winter freezes water → T_ICE which is
+    // passable everywhere as a slick. Mountains/stone/walls always block.
     return t != T_MOUNTAIN && t != T_WATER && t != T_STONE && t != T_CASTLE_WALL
-        && t != T_FISH && t != T_SHALLOWS && t != T_REEDS;
+        && t != T_FISH && t != T_LAVA;
 }
 
 bool isPassableWater(int x, int y) {
@@ -84,6 +288,12 @@ bool isDetectedBy(int x, int y, int observerOwner) {
 
 void setStatus(const std::string& msg) { g.statusMsg = msg; g.statusTimer = 35; }
 
+void addActionMarker(int x, int y, char glyph) {
+    if (!inBounds(x, y)) return;
+    g.actionMarkers.push_back({x, y, 18, glyph});
+    if (g.actionMarkers.size() > 32) g.actionMarkers.erase(g.actionMarkers.begin());
+}
+
 Entity* findEntity(int id) {
     for (auto& e : g.entities) if (e.id == id && e.alive) return &e;
     return nullptr;
@@ -93,11 +303,13 @@ Entity* findDepot(Entity& e) {
     Entity* best = nullptr; int bestD = 99999;
     for (auto& o : g.entities) {
         if (!o.alive || o.owner != e.owner || o.underConstruction) continue;
-        bool isBase = (o.type == E_TOWNHALL || o.type == E_CASTLE) && e.gatherType != 2;
-        bool isWood = (o.type == E_LUMBER_CAMP && e.gatherType == 1);
-        bool isGold = (o.type == E_MINING_CAMP && e.gatherType == 0);
-        bool isFish = (o.type == E_DOCK        && e.gatherType == 2);
-        if (isBase || isWood || isGold || isFish) {
+        bool isBase = (o.type == E_TOWNHALL || o.type == E_CASTLE) && e.cargo.type != CR_FISH;
+        bool isWood = (o.type == E_LUMBER_CAMP && e.cargo.type == CR_WOOD);
+        bool isGold = (o.type == E_MINING_CAMP && e.cargo.type == CR_GOLD);
+        bool isFish = (o.type == E_DOCK        && e.cargo.type == CR_FISH);
+        // Mill accepts food deliveries from farm couriers (and berry pickers).
+        bool isFood = (o.type == E_MILL        && e.cargo.type == CR_FOOD);
+        if (isBase || isWood || isGold || isFish || isFood) {
             int d = mdist(e.x, e.y, o.x, o.y);
             if (d < bestD) { bestD = d; best = &o; }
         }
@@ -125,20 +337,49 @@ Entity* entityAtOwner(int x, int y, int owner) {
     return nullptr;
 }
 
+void buildOccupancyGrid(OccupancyGrid& grid, bool includeUnits, bool includeBuildings, int ignoreEntityId) {
+    memset(grid.occupied, 0, sizeof(grid.occupied));
+    for (const auto& e : g.entities) {
+        if (!e.alive || e.state == S_GARRISONED || e.id == ignoreEntityId) continue;
+        bool building = isBuilding(e.type);
+        if ((building && !includeBuildings) || (!building && !includeUnits)) continue;
+        if (e.type == E_GATE && e.gateOpen && includeBuildings) continue;
+        const EntityStats& s = STATS[e.type];
+        int w = building ? s.sizeW : 1;
+        int h = building ? s.sizeH : 1;
+        for (int dy = 0; dy < h; dy++) for (int dx = 0; dx < w; dx++) {
+            int x = e.x + dx, y = e.y + dy;
+            if (inBounds(x, y)) grid.occupied[y][x] = true;
+        }
+    }
+}
+
+bool isOccupied(const OccupancyGrid& grid, int x, int y) {
+    return inBounds(x, y) && grid.occupied[y][x];
+}
+
 bool canPlace(EntityType type, int x, int y, int owner) {
     (void)owner;
+    // Top-level bounds check protects every g.map read below, including the
+    // farm-only terrain read that previously ran before any inBounds check.
+    if (!inBounds(x, y)) return false;
     // Farms can only be sown on open ground, not in winter
     if (type == E_FARM) {
         if (getSeason() == WINTER) return false;
         Terrain t = g.map[y][x].terrain;
         if (t!=T_GRASS&&t!=T_MEADOW&&t!=T_TALL_GRASS&&t!=T_FLOWERS&&t!=T_DIRT&&t!=T_WHEAT) return false;
     }
+    OccupancyGrid occ{};
+    buildOccupancyGrid(occ, true, true);
     auto& s = STATS[type];
     for (int dy = 0; dy < s.sizeH; dy++) for (int dx = 0; dx < s.sizeW; dx++) {
         int nx = x+dx, ny = y+dy;
         if (!inBounds(nx,ny) || !isPassable(nx,ny)) return false;
-        if (g.map[ny][nx].terrain == T_GOLD) return false;
-        if (entityAt(nx,ny)) return false;
+        Terrain ter = g.map[ny][nx].terrain;
+        if (ter == T_GOLD) return false;
+        // Forests are resource terrain — chop the trees before you can build here.
+        if (ter==T_FOREST||ter==T_PINE||ter==T_PALM||ter==T_DEAD_TREE) return false;
+        if (isOccupied(occ, nx, ny)) return false;
     }
     // Docks must sit on the shoreline — at least one neighbouring tile must be water.
     if (type == E_DOCK) {
@@ -163,6 +404,22 @@ void updateSupply(int owner) {
     }
     g.players[owner].supplyMax = mx;
     g.players[owner].supply    = used;
+}
+
+// Supply already in use plus everything currently producing or queued. Used by
+// orderTrain so a flurry of queued units can't push live supply over the cap
+// once they all spawn.
+int reservedSupply(int owner) {
+    int used = 0;
+    for (auto& e : g.entities) {
+        if (!e.alive || e.owner != owner) continue;
+        used += STATS[e.type].supplyUsed;
+        if (isBuilding(e.type) && !e.underConstruction) {
+            if (e.producing != E_NONE) used += STATS[e.producing].supplyUsed;
+            for (int q : e.queue) used += STATS[(EntityType)q].supplyUsed;
+        }
+    }
+    return used;
 }
 
 // ============================================================
@@ -213,22 +470,9 @@ std::vector<std::pair<int,int>> findPath(int sx, int sy, int tx, int ty, int /*m
         tx = bx; ty = by;
     }
 
-    // Pre-scan buildings into a flat bool map — O(1) lookup vs O(N) entityAt per step.
-    // Boats also block each other since they occupy water tiles.
-    static bool bldMap[MAP_H][MAP_W];
-    memset(bldMap, 0, sizeof(bldMap));
-    for (auto& e : g.entities) {
-        if (!e.alive) continue;
-        if (isBuilding(e.type)) {
-            if (e.type == E_GATE && e.carrying > 0) continue;
-            auto& s = STATS[e.type];
-            for (int dy2 = 0; dy2 < s.sizeH; dy2++) for (int dx2 = 0; dx2 < s.sizeW; dx2++) {
-                int bx = e.x+dx2, by = e.y+dy2;
-                if (inBounds(bx,by)) bldMap[by][bx] = true;
-            }
-        }
-    }
-    bldMap[ty][tx] = false; // always allow reaching the destination
+    OccupancyGrid blockers{};
+    buildOccupancyGrid(blockers, false, true);
+    blockers.occupied[ty][tx] = false; // always allow reaching the destination
 
     static int  gScore[MAP_H][MAP_W];
     static int  visited[MAP_H][MAP_W];  // == vgen → discovered (g+parent valid)
@@ -272,13 +516,13 @@ std::vector<std::pair<int,int>> findPath(int sx, int sy, int tx, int ty, int /*m
             int nx = cx+dx8[i], ny = cy+dy8[i];
             if (!inBounds(nx,ny)) continue;
             if (closed[ny][nx] == vgen) continue;
-            if (!pass(nx,ny) || bldMap[ny][nx]) continue;
+            if (!pass(nx,ny) || isOccupied(blockers, nx, ny)) continue;
             // Forbid corner-cutting between two blocked cardinals on a diagonal step.
             if (i & 1) {
                 int hx = cx+dx8[i], hy = cy;
                 int vx = cx,         vy = cy+dy8[i];
-                if (!pass(hx,hy) || bldMap[hy][hx]) continue;
-                if (!pass(vx,vy) || bldMap[vy][vx]) continue;
+                if (!pass(hx,hy) || isOccupied(blockers, hx, hy)) continue;
+                if (!pass(vx,vy) || isOccupied(blockers, vx, vy)) continue;
             }
             int ng = gc + cost8[i];
             if (visited[ny][nx] == vgen && ng >= gScore[ny][nx]) continue;
@@ -314,7 +558,9 @@ int spawnEntity(EntityType type, int owner, int x, int y, bool built) {
     e.state = S_IDLE; e.targetId = -1; e.targetX = -1; e.targetY = -1;
     e.producing = E_NONE; e.underConstruction = !built; e.alive = true;
     e.rallyX = x + STATS[type].sizeW; e.rallyY = y + STATS[type].sizeH;
-    if (type == E_FISHING_BOAT) e.gatherType = 2; // fish
+    e.resourceX = -1; e.resourceY = -1;
+    e.cargo = emptyCargo();
+    if (type == E_FISHING_BOAT) e.cargo.type = CR_FISH;
     g.entities.push_back(e);
     updateSupply(owner);
     return e.id;
@@ -326,7 +572,7 @@ void updateFog() {
     int nightPen = isNight() ? 2 : (isDusk()||isDawn()) ? 1 : 0;
     if (getSeason() == WINTER) nightPen += 1; // blizzards eat sight
     if (g.weather == W_STORM) nightPen += 1;
-    else if (g.weather == W_RAIN) nightPen += (nightPen > 0 ? 0 : 1); // mild rain dimming by day
+    else if (g.weather == W_RAIN || g.weather == W_SNOW) nightPen += (nightPen > 0 ? 0 : 1);
     for (auto& e : g.entities) {
         if (!e.alive || e.owner >= OWNER_NATURE) continue;
         if (e.state == S_GARRISONED) continue;
@@ -349,6 +595,220 @@ void updateFog() {
     }
 }
 
+void tickActionMarkers() {
+    for (auto& m : g.actionMarkers) if (m.ticks > 0) m.ticks--;
+    g.actionMarkers.erase(std::remove_if(g.actionMarkers.begin(), g.actionMarkers.end(),
+        [](const ActionMarker& m){ return m.ticks <= 0; }), g.actionMarkers.end());
+}
+
+static void writeIntVec(std::ostream& os, const std::vector<int>& v) {
+    os << v.size();
+    for (int x : v) os << ' ' << x;
+}
+
+static bool readIntVec(std::istream& is, std::vector<int>& v) {
+    size_t n = 0;
+    if (!(is >> n)) return false;
+    v.clear();
+    v.reserve(n);
+    for (size_t i = 0; i < n; i++) {
+        int x = 0;
+        if (!(is >> x)) return false;
+        v.push_back(x);
+    }
+    return true;
+}
+
+bool saveGame(const std::string& path) {
+    std::ofstream os(path);
+    if (!os) return false;
+    os << std::setprecision(std::numeric_limits<float>::max_digits10);
+    os << "REALM_SAVE 3\n";
+    os << "META " << g.seed << ' ' << g.startupAIs << ' ' << g.humanCorner << ' '
+       << g.matchNumber << ' ' << g.biomeChoice << ' ' << g.tick << ' '
+       << (int)g.mode << ' ' << g.cursorX << ' ' << g.cursorY << ' '
+       << g.viewX << ' ' << g.viewY << ' ' << g.viewW << ' ' << g.viewH << ' '
+       << g.selectedId << ' ' << g.winner << ' ' << g.aiTimer << ' ' << g.farmTimer << ' '
+       << g.animalTimer << ' '
+       << g.dayPhase << ' ' << g.seasonPhase << ' ' << g.prevSeason << ' '
+       << g.weather << ' ' << g.weatherTimer << ' ' << g.nextId << ' ' << g.rngState << ' '
+       << (g.returnToMenu ? 1 : 0) << ' ' << (g.diagnostics ? 1 : 0) << ' '
+       << (g.helpOverlay ? 1 : 0) << "\n";
+    for (int p = 0; p <= MAX_PLAYERS; p++) {
+        const Player& pl = g.players[p];
+        os << "PLAYER " << p << ' ' << pl.gold << ' ' << pl.wood << ' ' << pl.food << ' '
+           << pl.supply << ' ' << pl.supplyMax << ' ' << (pl.alive ? 1 : 0) << ' '
+           << pl.research << ' ' << pl.aiWaveCd << "\n";
+    }
+    os << "SELECTED ";
+    writeIntVec(os, g.selectedIds);
+    os << "\n";
+    for (int i = 0; i < 9; i++) {
+        os << "GROUP " << i << ' ';
+        writeIntVec(os, g.controlGroups[i]);
+        os << "\n";
+    }
+    os << "MAP " << MAP_W << ' ' << MAP_H << "\n";
+    for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
+        const Tile& t = g.map[y][x];
+        os << "TILE " << x << ' ' << y << ' ' << (int)t.terrain << ' ' << t.resources << ' '
+           << (int)t.biome << ' ' << (int)t.preWinterTerrain << ' ' << t.wear;
+        for (int p = 0; p < MAX_PLAYERS; p++) os << ' ' << (t.visible[p] ? 1 : 0);
+        for (int p = 0; p < MAX_PLAYERS; p++) os << ' ' << (t.explored[p] ? 1 : 0);
+        os << "\n";
+    }
+    os << "ENTITIES " << g.entities.size() << "\n";
+    for (const Entity& e : g.entities) {
+        os << "ENTITY " << e.id << ' ' << (int)e.type << ' ' << e.owner << ' ' << e.x << ' ' << e.y
+           << ' ' << e.hp << ' ' << e.maxHp << ' ' << (int)e.state << ' ' << e.targetId
+           << ' ' << e.targetX << ' ' << e.targetY << ' ' << e.pathIdx << ' ' << e.moveCd
+           << ' ' << e.atkCd << ' ' << e.gatherCd << ' ' << (int)e.cargo.type << ' '
+           << e.cargo.amount << ' ' << e.cargo.sourceX << ' ' << e.cargo.sourceY << ' '
+           << (int)e.producing << ' ' << e.trainProgress << ' ' << e.trainTime << ' '
+           << e.researchProgress << ' ' << e.researchTime << ' '
+           << (e.underConstruction ? 1 : 0) << ' ' << (e.alive ? 1 : 0) << ' '
+           << e.rallyX << ' ' << e.rallyY << ' ' << e.resourceX << ' ' << e.resourceY << ' '
+           << e.storedFood << ' ' << e.stuckTicks << ' '
+           << e.alertTicks << ' ' << e.rallySet << ' ' << e.researching << ' '
+           << e.attackMove << ' ' << e.holdPosition << ' ' << (e.gateOpen ? 1 : 0) << ' '
+           << (e.gateLocked ? 1 : 0);
+        os << " PATH " << e.path.size();
+        for (auto pt : e.path) os << ' ' << pt.first << ' ' << pt.second;
+        os << " QUEUE ";
+        writeIntVec(os, e.queue);
+        os << " GARRISON ";
+        writeIntVec(os, e.garrison);
+        os << "\n";
+    }
+    os << "PROJECTILES " << g.projectiles.size() << "\n";
+    for (const Projectile& p : g.projectiles) {
+        os << "PROJECTILE " << p.x << ' ' << p.y << ' ' << p.tx << ' ' << p.ty << ' '
+           << (int)p.glyph << ' ' << p.color << ' ' << p.life << ' ' << (p.alive ? 1 : 0) << "\n";
+    }
+    os << "MARKERS " << g.actionMarkers.size() << "\n";
+    for (const ActionMarker& m : g.actionMarkers)
+        os << "MARKER " << m.x << ' ' << m.y << ' ' << m.ticks << ' ' << (int)m.glyph << "\n";
+    return true;
+}
+
+bool loadGame(const std::string& path) {
+    std::ifstream is(path);
+    if (!is) return false;
+    std::string tag;
+    int version = 0;
+    if (!(is >> tag >> version) || tag != "REALM_SAVE" || version != 3) return false;
+    Game ng{};
+    if (!(is >> tag) || tag != "META") return false;
+    int mode = 0, ret = 0, diag = 0, help = 0;
+    if (!(is >> ng.seed >> ng.startupAIs >> ng.humanCorner >> ng.matchNumber >> ng.biomeChoice
+          >> ng.tick >> mode >> ng.cursorX >> ng.cursorY >> ng.viewX >> ng.viewY
+          >> ng.viewW >> ng.viewH >> ng.selectedId >> ng.winner >> ng.aiTimer >> ng.farmTimer
+          >> ng.animalTimer
+          >> ng.dayPhase >> ng.seasonPhase >> ng.prevSeason >> ng.weather >> ng.weatherTimer
+          >> ng.nextId >> ng.rngState >> ret >> diag >> help)) return false;
+    ng.mode = (GameMode)mode;
+    ng.returnToMenu = ret != 0;
+    ng.diagnostics = diag != 0;
+    ng.helpOverlay = help != 0;
+    for (int i = 0; i < 9; i++) ng.controlGroups[i].clear();
+    for (int p = 0; p <= MAX_PLAYERS; p++) {
+        int idx = -1, alive = 0;
+        if (!(is >> tag) || tag != "PLAYER") return false;
+        if (!(is >> idx)) return false;
+        if (idx < 0 || idx > MAX_PLAYERS) return false;
+        Player& pl = ng.players[idx];
+        if (!(is >> pl.gold >> pl.wood >> pl.food >> pl.supply >> pl.supplyMax
+              >> alive >> pl.research >> pl.aiWaveCd)) return false;
+        pl.alive = alive != 0;
+    }
+    if (!(is >> tag) || tag != "SELECTED") return false;
+    if (!readIntVec(is, ng.selectedIds)) return false;
+    for (int i = 0; i < 9; i++) {
+        int idx = -1;
+        if (!(is >> tag) || tag != "GROUP") return false;
+        if (!(is >> idx) || idx < 0 || idx >= 9) return false;
+        if (!readIntVec(is, ng.controlGroups[idx])) return false;
+    }
+    int mw = 0, mh = 0;
+    if (!(is >> tag >> mw >> mh) || tag != "MAP" || mw != MAP_W || mh != MAP_H) return false;
+    for (int i = 0; i < MAP_W * MAP_H; i++) {
+        int x = 0, y = 0, ter = 0, biome = 0, pre = 0;
+        if (!(is >> tag) || tag != "TILE") return false;
+        Tile t{};
+        if (!(is >> x >> y >> ter >> t.resources >> biome >> pre >> t.wear)) return false;
+        if (!inBounds(x, y)) return false;
+        t.terrain = (Terrain)ter;
+        t.biome = (Biome)biome;
+        t.preWinterTerrain = (Terrain)pre;
+        for (int p = 0; p < MAX_PLAYERS; p++) { int v = 0; if (!(is >> v)) return false; t.visible[p] = v != 0; }
+        for (int p = 0; p < MAX_PLAYERS; p++) { int v = 0; if (!(is >> v)) return false; t.explored[p] = v != 0; }
+        ng.map[y][x] = t;
+    }
+    size_t n = 0;
+    if (!(is >> tag >> n) || tag != "ENTITIES") return false;
+    ng.entities.clear();
+    for (size_t i = 0; i < n; i++) {
+        if (!(is >> tag) || tag != "ENTITY") return false;
+        Entity e{};
+        int type = 0, state = 0, producing = 0, under = 0, alive = 0, gateOpen = 0, gateLocked = 0;
+        int cargoType = 0;
+        if (!(is >> e.id >> type >> e.owner >> e.x >> e.y >> e.hp >> e.maxHp >> state
+              >> e.targetId >> e.targetX >> e.targetY >> e.pathIdx >> e.moveCd >> e.atkCd
+              >> e.gatherCd >> cargoType >> e.cargo.amount >> e.cargo.sourceX >> e.cargo.sourceY
+              >> producing >> e.trainProgress >> e.trainTime >> e.researchProgress >> e.researchTime
+              >> under >> alive >> e.rallyX >> e.rallyY >> e.resourceX >> e.resourceY >> e.storedFood >> e.stuckTicks
+              >> e.alertTicks >> e.rallySet >> e.researching >> e.attackMove >> e.holdPosition
+              >> gateOpen >> gateLocked)) return false;
+        e.type = (EntityType)type;
+        e.state = (EntityState)state;
+        e.cargo.type = (CargoResource)cargoType;
+        e.producing = (EntityType)producing;
+        e.underConstruction = under != 0;
+        e.alive = alive != 0;
+        e.gateOpen = gateOpen != 0;
+        e.gateLocked = gateLocked != 0;
+        size_t pathN = 0;
+        if (!(is >> tag >> pathN) || tag != "PATH") return false;
+        e.path.reserve(pathN);
+        for (size_t j = 0; j < pathN; j++) {
+            int x = 0, y = 0;
+            if (!(is >> x >> y)) return false;
+            e.path.push_back({x, y});
+        }
+        if (!(is >> tag) || tag != "QUEUE") return false;
+        if (!readIntVec(is, e.queue)) return false;
+        if (!(is >> tag) || tag != "GARRISON") return false;
+        if (!readIntVec(is, e.garrison)) return false;
+        ng.entities.push_back(e);
+    }
+    if (!(is >> tag >> n) || tag != "PROJECTILES") return false;
+    ng.projectiles.clear();
+    ng.projectiles.reserve(std::max<size_t>(256, n));
+    for (size_t i = 0; i < n; i++) {
+        if (!(is >> tag) || tag != "PROJECTILE") return false;
+        Projectile p{};
+        int glyph = 0, alive = 0;
+        if (!(is >> p.x >> p.y >> p.tx >> p.ty >> glyph >> p.color >> p.life >> alive)) return false;
+        p.glyph = (char)glyph;
+        p.alive = alive != 0;
+        ng.projectiles.push_back(p);
+    }
+    if (!(is >> tag >> n) || tag != "MARKERS") return false;
+    ng.actionMarkers.clear();
+    ng.actionMarkers.reserve(n);
+    for (size_t i = 0; i < n; i++) {
+        if (!(is >> tag) || tag != "MARKER") return false;
+        ActionMarker m{};
+        int glyph = 0;
+        if (!(is >> m.x >> m.y >> m.ticks >> glyph)) return false;
+        m.glyph = (char)glyph;
+        ng.actionMarkers.push_back(m);
+    }
+    g = std::move(ng);
+    for (int p = 0; p < MAX_PLAYERS; p++) updateSupply(p);
+    return true;
+}
+
 // ============================================================
 // COMBAT / ORDERS
 // ============================================================
@@ -358,6 +818,13 @@ static int unitAtk(const Entity& e) {
     int r = g.players[e.owner].research;
     if ((e.type == E_MILITIA || e.type == E_KNIGHT) && (r & R_IRON_WEAPONS)) a += 2;
     return a;
+}
+// Building-damage multiplier: catapults are siege specialists, everyone else
+// is bad at chewing through walls. Returns the damage actually applied.
+static int damageVs(EntityType attacker, EntityType target, int rawDmg) {
+    if (!isBuilding(target)) return rawDmg;
+    if (attacker == E_CATAPULT) return (rawDmg * 3) / 2; // 1.5x
+    return std::max(1, rawDmg / 2);                       // 0.5x, floor 1
 }
 static int unitRange(const Entity& e) {
     int rng = STATS[e.type].range;
@@ -383,201 +850,38 @@ Entity* findNearestEnemy(Entity& e, int range) {
     return best;
 }
 
-void orderMove(Entity& e, int tx, int ty) {
-    e.state = S_MOVING; e.targetX = tx; e.targetY = ty; e.targetId = -1;
-    e.stuckTicks = 0;
-    e.attackMove = 0; e.holdPosition = 0;
-    e.path = findPathFor(e, tx, ty); e.pathIdx = 0;
-    if (e.path.empty() && (e.x != tx || e.y != ty)) {
-        e.state = S_IDLE;
-        if (e.owner == 0) setStatus("Can't reach there.");
-    }
-}
-
-// Attack-move: walk toward (tx,ty) but engage anything along the way.
-static void orderAttackMove(Entity& e, int tx, int ty) {
-    orderMove(e, tx, ty);
-    e.attackMove = 1;
-}
-
-void orderAttack(Entity& e, int tid) {
-    Entity* t = findEntity(tid);
-    if (!t) return;
-    e.holdPosition = 0;
-    e.state = S_ATTACKING; e.targetId = tid;
-}
-
-void orderGather(Entity& e, int tx, int ty) {
-    Terrain ter = g.map[ty][tx].terrain;
-    bool isW    = (ter==T_FOREST||ter==T_PINE||ter==T_PALM||ter==T_DEAD_TREE);
-    bool isFishT = (ter == T_FISH);
-    // Peasants gather wood/gold; boats fish.
-    if (e.type == E_PEASANT) {
-        if (ter != T_GOLD && !isW) return;
-        e.gatherType = (ter == T_GOLD) ? 0 : 1;
-    } else if (e.type == E_FISHING_BOAT) {
-        if (!isFishT) return;
-        e.gatherType = 2;
-    } else return;
-    e.state = S_GATHERING; e.targetX = tx; e.targetY = ty;
-    // Path to nearest adjacent passable tile so units don't block each other on the same node
-    bool naval = isNaval(e.type);
-    int bestAX = tx, bestAY = ty, bestAD = 99999;
-    for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
-        if (dx==0 && dy==0) continue;
-        int nx = tx+dx, ny = ty+dy;
-        if (!inBounds(nx,ny)) continue;
-        bool ok = naval ? isPassableWater(nx,ny) : isPassable(nx,ny);
-        if (!ok) continue;
-        int d = mdist(e.x, e.y, nx, ny);
-        if (d < bestAD) { bestAD = d; bestAX = nx; bestAY = ny; }
-    }
-    e.path = findPathFor(e, bestAX, bestAY); e.pathIdx = 0;
-    e.gatherCd = 0; e.carrying = 0;
-    e.rallyX = tx; e.rallyY = ty;
-}
-
-void orderBuild(Entity& e, EntityType bt, int bx, int by) {
-    if (e.type != E_PEASANT) return;
-    Player& p = g.players[e.owner];
-    if (p.gold < STATS[bt].costGold || p.wood < STATS[bt].costWood) {
-        if (e.owner == 0) setStatus("Not enough resources!"); return;
-    }
-    if (!canPlace(bt, bx, by, e.owner)) {
-        if (e.owner == 0) setStatus("Can't build there!"); return;
-    }
-    p.gold -= STATS[bt].costGold; p.wood -= STATS[bt].costWood;
-    int bid = spawnEntity(bt, e.owner, bx, by, false);
-    e.state = S_BUILDING; e.targetId = bid; e.targetX = bx; e.targetY = by;
-    // Pick nearest passable tile adjacent to the building footprint
-    int bldW = STATS[bt].sizeW, bldH = STATS[bt].sizeH;
-    int bestAX = bx-1, bestAY = by, bestAD = 99999;
-    for (int dy = -1; dy <= bldH; dy++) for (int dx = -1; dx <= bldW; dx++) {
-        if (dx>=0 && dx<bldW && dy>=0 && dy<bldH) continue;
-        int nx = bx+dx, ny = by+dy;
-        if (inBounds(nx,ny) && isPassable(nx,ny)) {
-            int d = mdist(e.x, e.y, nx, ny);
-            if (d < bestAD) { bestAD = d; bestAX = nx; bestAY = ny; }
-        }
-    }
-    e.path = findPathFor(e, bestAX, bestAY); e.pathIdx = 0;
-}
-
-void orderTrain(Entity& bld, EntityType ut) {
-    if (!isBuilding(bld.type) || bld.underConstruction) return;
-    // Queue if busy; reject only when queue is full.
-    if (bld.producing != E_NONE && (int)bld.queue.size() >= 5) {
-        if (bld.owner==0) setStatus("Queue full!"); return;
-    }
-    Player& p = g.players[bld.owner];
-    if (p.gold < STATS[ut].costGold || p.wood < STATS[ut].costWood) {
-        if (bld.owner==0) setStatus("Not enough resources!"); return;
-    }
-    if (p.supply + STATS[ut].supplyUsed > p.supplyMax) {
-        if (bld.owner==0) setStatus("Need more houses!"); return;
-    }
-    int foodCost = 0;
-    if (ut==E_MILITIA||ut==E_ARCHER) foodCost = 20;
-    else if (ut==E_KNIGHT) foodCost = 40;
-    else if (ut==E_CATAPULT) foodCost = 30;
-    if (p.food < foodCost) { if (bld.owner==0) setStatus("Need more food!"); return; }
-    p.food -= foodCost;
-    p.gold -= STATS[ut].costGold; p.wood -= STATS[ut].costWood;
-    if (bld.producing == E_NONE) {
-        bld.producing = ut; bld.prodProgress = 0; bld.prodTime = STATS[ut].trainTime;
-        bld.state = S_TRAINING;
-    } else {
-        bld.queue.push_back((int)ut);
-        if (bld.owner == 0) setStatus("Queued.");
-    }
-}
-
-// Lower priority = closer to the front of the formation (toward the destination).
-static int rolePriority(EntityType t) {
-    switch (t) {
-        case E_KNIGHT:   return 0;
-        case E_MILITIA:  return 1;
-        case E_PEASANT:  return 2;
-        case E_ARCHER:   return 3;
-        case E_CATAPULT: return 4;
-        default:         return 5;
-    }
-}
-
-// Group move with role-aware formation:
-// melee occupy the rows facing the target, ranged hang back.
-// If attackMove is true, all units engage opportunistically en route.
-static void groupMoveCore(int tx, int ty, bool attackMove) {
-    std::vector<Entity*> units;
-    for (int id : g.selectedIds) {
-        Entity* e = findEntity(id);
-        if (e && e->alive && e->owner == 0 && isUnit(e->type))
-            units.push_back(e);
-    }
-    if (units.empty()) return;
-    std::sort(units.begin(), units.end(), [](Entity* a, Entity* b) {
-        return rolePriority(a->type) < rolePriority(b->type);
-    });
-    int N = (int)units.size();
-    int cols = std::max(1, (int)ceil(sqrt((double)N)));
-    int rows = (N + cols - 1) / cols;
-    int half = (cols - 1) / 2;
-
-    // Approach direction: from group centroid toward target.
-    int cx = 0, cy = 0;
-    for (Entity* u : units) { cx += u->x; cy += u->y; }
-    cx /= N; cy /= N;
-    int dx = tx - cx, dy = ty - cy;
-    bool horizontal = std::abs(dx) >= std::abs(dy);
-    int sx = (dx > 0) ? 1 : (dx < 0 ? -1 : 1);
-    int sy = (dy > 0) ? 1 : (dy < 0 ? -1 : 1);
-
-    // Generate slots: row 0 = the front (at the target), receding back toward approach.
-    std::vector<std::pair<int,int>> slots;
-    slots.reserve(N);
-    for (int r = 0; r < rows && (int)slots.size() < N; r++) {
-        for (int c = 0; c < cols && (int)slots.size() < N; c++) {
-            int slotX, slotY;
-            if (horizontal) { slotX = tx - sx*r; slotY = ty + (c - half); }
-            else            { slotX = tx + (c - half); slotY = ty - sy*r; }
-            slotX = std::max(0, std::min(slotX, MAP_W-1));
-            slotY = std::max(0, std::min(slotY, MAP_H-1));
-            slots.push_back({slotX, slotY});
-        }
-    }
-    // Assign role-sorted units to ordered slots: front-line goes first.
-    for (int i = 0; i < N && i < (int)slots.size(); i++) {
-        if (attackMove) orderAttackMove(*units[i], slots[i].first, slots[i].second);
-        else            orderMove(*units[i], slots[i].first, slots[i].second);
-    }
-    setStatus(attackMove ? "Attack-move in formation!" : "Group moving in formation...");
-}
-
-void orderGroupMove(int tx, int ty)        { groupMoveCore(tx, ty, false); }
-void orderGroupAttackMove(int tx, int ty)  { groupMoveCore(tx, ty, true); }
-
-void orderGroupAttack(int tid) {
-    for (int id : g.selectedIds) {
-        Entity* e = findEntity(id);
-        if (e && e->alive && e->owner == 0 && isUnit(e->type))
-            orderAttack(*e, tid);
-    }
-    setStatus("Group attacking!");
-}
-
 // ============================================================
 // GARRISON
 // ============================================================
 bool canGarrisonIn(EntityType bt) {
-    return bt==E_TOWER || bt==E_TOWNHALL || bt==E_CASTLE || bt==E_HOUSE;
+    return bt==E_TOWER || bt==E_TOWNHALL || bt==E_CASTLE || bt==E_HOUSE || bt==E_TRANSPORT;
 }
 int garrisonCap(EntityType bt) {
     switch (bt) {
-        case E_TOWER:    return 3;
-        case E_HOUSE:    return 4;
-        case E_TOWNHALL: return 6;
-        case E_CASTLE:   return 10;
-        default:         return 0;
+        case E_TOWER:     return 3;
+        case E_HOUSE:     return 4;
+        case E_TOWNHALL:  return 6;
+        case E_CASTLE:    return 10;
+        case E_TRANSPORT: return 4;
+        default:          return 0;
+    }
+}
+
+static void clearReferencesToEntity(int id) {
+    if (g.selectedId == id) g.selectedId = -1;
+    g.selectedIds.erase(std::remove(g.selectedIds.begin(), g.selectedIds.end(), id), g.selectedIds.end());
+    for (auto& group : g.controlGroups)
+        group.erase(std::remove(group.begin(), group.end(), id), group.end());
+
+    for (auto& e : g.entities) {
+        if (e.targetId == id) {
+            e.targetId = -1;
+            e.path.clear();
+            e.pathIdx = 0;
+            if (e.state == S_ATTACKING || e.state == S_BUILDING || e.state == S_RETURNING || e.state == S_ENTERING)
+                e.state = S_IDLE;
+        }
+        e.garrison.erase(std::remove(e.garrison.begin(), e.garrison.end(), id), e.garrison.end());
     }
 }
 
@@ -608,6 +912,9 @@ void ejectGarrison(Entity& bld) {
             si++;
         } else {
             u->alive = false; u->state = S_DEAD;
+            u->targetId = -1; u->targetX = -1; u->targetY = -1;
+            u->path.clear(); u->pathIdx = 0;
+            clearReferencesToEntity(u->id);
         }
     }
     bld.garrison.clear();
@@ -617,9 +924,14 @@ void ejectGarrison(Entity& bld) {
 // Centralized death handler: marks dead, ejects garrison, ruins terrain, updates supply.
 static void killEntity(Entity& t) {
     if (!t.alive) return;
+    int id = t.id;
     t.alive = false; t.state = S_DEAD;
+    t.targetId = -1; t.targetX = -1; t.targetY = -1;
+    t.path.clear(); t.pathIdx = 0;
+    clearReferencesToEntity(id);
+    // Anything that can hold a garrison (buildings + transports) drops its cargo on death.
+    if (canGarrisonIn(t.type)) ejectGarrison(t);
     if (isBuilding(t.type)) {
-        ejectGarrison(t);
         // Large buildings leave a permanent scar — the floor goes to ruins.
         auto& s = STATS[t.type];
         if (s.sizeW * s.sizeH >= 4 && t.type != E_FARM) {
@@ -641,7 +953,9 @@ void orderGarrison(Entity& e, int buildingId) {
     if (!bld || !bld->alive || bld->underConstruction) return;
     if (bld->owner != e.owner) return;
     if (!canGarrisonIn(bld->type)) return;
-    if (!isUnit(e.type) || e.type == E_CATAPULT) return;
+    if (!isUnit(e.type) || isSiege(e.type)) return;
+    // Naval units can't board buildings or each other.
+    if (isNaval(e.type)) return;
     if ((int)bld->garrison.size() >= garrisonCap(bld->type)) {
         if (e.owner == 0) setStatus(std::string(STATS[bld->type].name) + " is full");
         return;
@@ -663,7 +977,7 @@ void orderGarrison(Entity& e, int buildingId) {
 }
 
 void orderHelp(Entity& e, int buildingId) {
-    if (e.type != E_PEASANT) return;
+    if (!canBuild(e.type)) return;
     Entity* bld = findEntity(buildingId);
     if (!bld || !bld->alive) return;
     // Allow tending a completed farm; otherwise only work on buildings under construction
@@ -698,7 +1012,7 @@ void moveAlongPath(Entity& e) {
     // Units share tiles freely; buildings block, except open gates
     Entity* blk = entityAt(nx, ny);
     if (blk && blk->id != e.id && isBuilding(blk->type)) {
-        bool isOpenGate = (blk->type == E_GATE && blk->carrying > 0);
+        bool isOpenGate = (blk->type == E_GATE && blk->gateOpen);
         if (!isOpenGate) {
             // Tolerate transient blocks; only repath after several stuck ticks (staggered by id).
             e.stuckTicks++;
@@ -732,7 +1046,7 @@ void moveAlongPath(Entity& e) {
     Terrain ter = g.map[ny][nx].terrain;
     int spd = STATS[e.type].speed;
     if (ter==T_ROAD||ter==T_DIRT||ter==T_CASTLE_FLOOR) spd = std::max(1, spd-1);
-    else if (ter==T_MARSH||ter==T_SHALLOWS||ter==T_SAND||ter==T_SNOW||ter==T_ICE) spd += 1;
+    else if (ter==T_MARSH||ter==T_SHALLOWS||ter==T_SAND||ter==T_SNOW||ter==T_ICE||ter==T_ASH) spd += 1;
     else if (ter==T_MUD) spd += 2; // bogged down
     if (getSeason() == WINTER) spd = std::max(spd, STATS[e.type].speed+1);
     // Weather: rain and storm bog down movement on natural ground.
@@ -755,8 +1069,9 @@ void moveAlongPath(Entity& e) {
     }
 }
 
-// Scan explored/visible tiles for a resource matching e.gatherType; re-issue gather if found.
+// Scan explored/visible tiles for a resource matching the entity cargo type; re-issue gather if found.
 static bool findNearbyResource(Entity& e) {
+    if (e.cargo.type == CR_NONE) return false;
     int bestD = 99999, bx = -1, by = -1;
     int r = FOG_RADIUS * 4;
     for (int dy = -r; dy <= r; dy++) for (int dx = -r; dx <= r; dx++) {
@@ -765,11 +1080,7 @@ static bool findNearbyResource(Entity& e) {
         if (e.owner < OWNER_NATURE && !g.map[ny][nx].explored[e.owner]) continue;
         if (g.map[ny][nx].resources <= 0) continue;
         Terrain t = g.map[ny][nx].terrain;
-        bool match = false;
-        if      (e.gatherType == 0) match = (t == T_GOLD);
-        else if (e.gatherType == 1) match = (t==T_FOREST||t==T_PINE||t==T_PALM||t==T_DEAD_TREE);
-        else if (e.gatherType == 2) match = (t == T_FISH);
-        if (!match) continue;
+        if (!terrainMatchesResource(t, e.cargo.type)) continue;
         int d = mdist(e.x, e.y, nx, ny);
         if (d < bestD) { bestD = d; bx = nx; by = ny; }
     }
@@ -788,8 +1099,8 @@ void tickEntity(Entity& e) {
         int bonus = 0;
         for (auto& o : g.entities)
             if (o.alive && o.owner==e.owner && o.type==E_BLACKSMITH && !o.underConstruction) { bonus=1; break; }
-        e.prodProgress += 1 + bonus;
-        if (e.prodProgress >= e.prodTime) {
+        e.trainProgress += 1 + bonus;
+        if (e.trainProgress >= e.trainTime) {
             auto& bs = STATS[e.type]; bool placed = false;
             bool produceNaval = isNaval(e.producing);
             int newId = -1;
@@ -806,36 +1117,35 @@ void tickEntity(Entity& e) {
             // If no spawn spot was found, keep the unit queued and retry next tick
             // instead of silently consuming it — resources were already spent.
             if (!placed) {
-                e.prodProgress = e.prodTime; // stay at completion threshold
+                e.trainProgress = e.trainTime; // stay at completion threshold
             } else {
                 // Send to rally point if the building has a player-set one
                 if (e.rallySet && newId >= 0) {
                     Entity* nu = findEntity(newId);
                     if (nu) orderMove(*nu, e.rallyX, e.rallyY);
                 }
-                e.producing = E_NONE; e.state = S_IDLE;
-                if (e.owner==0) { setStatus("Training complete!"); beep(); }
+                e.producing = E_NONE; e.trainProgress = 0; e.trainTime = 0; e.state = S_IDLE;
+                if (e.owner==0) setStatus("Training complete!");
                 // Pop the next queued unit straight into production.
                 if (!e.queue.empty()) {
                     EntityType next = (EntityType)e.queue.front();
                     e.queue.erase(e.queue.begin());
-                    e.producing = next; e.prodProgress = 0;
-                    e.prodTime = STATS[next].trainTime; e.state = S_TRAINING;
+                    e.producing = next; e.trainProgress = 0;
+                    e.trainTime = STATS[next].trainTime; e.state = S_TRAINING;
                 }
             }
         }
     }
     // Research progress (Blacksmith). Independent of unit production.
     if (e.researching != 0 && !e.underConstruction) {
-        e.prodProgress += 1;
-        if (e.prodProgress >= e.prodTime) {
+        e.researchProgress += 1;
+        if (e.researchProgress >= e.researchTime) {
             g.players[e.owner].research |= e.researching;
             int bit = e.researching;
-            e.researching = 0; e.prodProgress = 0; e.prodTime = 0;
+            e.researching = 0; e.researchProgress = 0; e.researchTime = 0;
             if (e.owner == 0) {
                 if (bit == R_IRON_WEAPONS) setStatus("Iron Weapons researched — militia/knights +2 atk!");
                 else if (bit == R_CROSSBOWS) setStatus("Crossbows researched — archers +2 range!");
-                beep();
             }
         }
     }
@@ -854,7 +1164,7 @@ void tickEntity(Entity& e) {
             e.hp += 2;
             if (e.hp >= e.maxHp) {
                 e.hp = e.maxHp; e.underConstruction = false; updateSupply(e.owner);
-                if (e.owner==0) { setStatus(std::string(STATS[e.type].name) + " complete!"); beep(); }
+                if (e.owner==0) setStatus(std::string(STATS[e.type].name) + " complete!");
                 for (auto& o : g.entities) {
                     if (!o.alive || o.state!=S_BUILDING || o.targetId!=e.id) continue;
                     // For farms: keep tending — S_BUILDING handler routes to its farm branch.
@@ -879,14 +1189,19 @@ void tickEntity(Entity& e) {
 
     switch (e.state) {
     case S_IDLE:
-        if (!e.holdPosition && e.type != E_PEASANT && e.type != E_FISHING_BOAT && STATS[e.type].atk > 0) {
-            Entity* en = findNearestEnemy(e, unitRange(e)+1);
+        // Military auto-engages anything visible within fog radius — units now
+        // close in on threats they can see rather than waiting to be poked.
+        if (!e.holdPosition && isMilitary(e.type) && canAttack(e.type) && e.type != E_RAM) {
+            // Melee units engage at 5 tiles; ranged at full fog radius — prevents
+            // instant magnetic battles where everyone charges across the map.
+            int aggroRange = isRanged(e.type) ? std::max(FOG_RADIUS, unitRange(e)+1) : 5;
+            Entity* en = findNearestEnemy(e, aggroRange);
             if (en) orderAttack(e, en->id);
         }
         // Boats auto-fish when idle — find a fish shoal, gather, return to dock.
         if (e.type == E_FISHING_BOAT && (g.tick + e.id) % 12 == 0) {
             // If carrying fish but no dock when we landed here, retry now (player may have rebuilt).
-            if (e.carrying > 0) {
+            if (e.cargo.amount > 0) {
                 Entity* dep = findDepot(e);
                 if (dep) {
                     e.state = S_RETURNING; e.targetId = dep->id;
@@ -912,10 +1227,18 @@ void tickEntity(Entity& e) {
     case S_ATTACKING: {
         Entity* t = findEntity(e.targetId);
         if (!t || !t->alive) { e.state = S_IDLE; break; }
+        // Target ducked into a building — they're untouchable, go idle. Without
+        // this the attacker keeps swinging at the garrisoned position and the
+        // target dies inside the safe building.
+        if (t->state == S_GARRISONED) { e.state = S_IDLE; e.targetId = -1; break; }
         int d = dist(e.x, e.y, t->x, t->y);
+        // Catapults need standoff — too close to arm the sling properly.
+        if (e.type == E_CATAPULT && d < 2) { e.state = S_IDLE; break; }
         if (d <= unitRange(e)) {
             if (e.atkCd <= 0) {
-                t->hp -= unitAtk(e);
+                int rawDmg = unitAtk(e);
+                int dmg = damageVs(e.type, t->type, rawDmg);
+                t->hp -= dmg;
                 e.atkCd = STATS[e.type].atkSpeed;
                 e.alertTicks = 12; t->alertTicks = 12;
                 if (isRanged(e.type)) {
@@ -923,9 +1246,28 @@ void tickEntity(Entity& e) {
                     int pcol = (e.type==E_CATAPULT) ? CP_PROJ_BOULDER : CP_PROJ_ARROW;
                     spawnProjectile(e.x, e.y, t->x, t->y, pc, pcol);
                 }
+                // Catapult splash: 1-tile radius around impact centre, ~1/3 of the
+                // raw damage to anyone but the prime target (per-victim building
+                // modifier still applies). Friendly fire is on.
+                if (e.type == E_CATAPULT) {
+                    auto& ts = STATS[t->type];
+                    int tcx = t->x + ts.sizeW/2, tcy = t->y + ts.sizeH/2;
+                    int primeId = t->id, splashRaw = rawDmg / 3;
+                    for (auto& o : g.entities) {
+                        if (!o.alive || o.id == primeId) continue;
+                        auto& os = STATS[o.type];
+                        int ox = std::max(o.x, std::min(tcx, o.x + os.sizeW - 1));
+                        int oy = std::max(o.y, std::min(tcy, o.y + os.sizeH - 1));
+                        if (std::abs(ox - tcx) <= 1 && std::abs(oy - tcy) <= 1) {
+                            int splashDmg = damageVs(E_CATAPULT, o.type, splashRaw);
+                            o.hp -= splashDmg; o.alertTicks = 12;
+                            if (o.hp <= 0) killEntity(o);
+                        }
+                    }
+                }
                 if (t->hp <= 0) {
                     if (t->owner == OWNER_NATURE && e.owner < OWNER_NATURE) {
-                        int food = (t->type==E_SHEEP)?80:(t->type==E_DEER)?120:30;
+                        int food = (t->type==E_SHEEP)?80:(t->type==E_DEER)?120:(t->type==E_BOAR)?100:30;
                         g.players[e.owner].food += food;
                         if (e.owner==0) setStatus(std::string("Got ") + std::to_string(food) + " food!");
                     }
@@ -949,16 +1291,18 @@ void tickEntity(Entity& e) {
         int d = dist(e.x, e.y, e.targetX, e.targetY);
         if (d <= 1) {
             Tile& tile = g.map[e.targetY][e.targetX];
-            bool isW    = (tile.terrain==T_FOREST||tile.terrain==T_PINE||tile.terrain==T_PALM||tile.terrain==T_DEAD_TREE);
+            bool isW     = (tile.terrain==T_FOREST||tile.terrain==T_PINE||tile.terrain==T_PALM||tile.terrain==T_DEAD_TREE);
+            bool isBerry = (tile.terrain == T_BERRY);
             bool isFishT = (tile.terrain == T_FISH);
-            if ((tile.terrain==T_GOLD||isW||isFishT) && tile.resources > 0) {
+            if ((tile.terrain==T_GOLD||isW||isBerry||isFishT) && tile.resources > 0) {
                 e.gatherCd++;
                 if (e.gatherCd >= GATHER_TICKS) {
                     e.gatherCd = 0;
                     int amt = std::min(GATHER_RATE, tile.resources);
-                    tile.resources -= amt; e.carrying += amt;
-                    if (tile.resources <= 0) tile.terrain = isFishT ? T_WATER : T_DIRT;
-                    if (e.carrying >= CARRY_MAX || tile.resources <= 0) {
+                    tile.resources -= amt; e.cargo.amount += amt;
+                    if (tile.resources <= 0)
+                        tile.terrain = isFishT ? T_WATER : isBerry ? T_GRASS : T_DIRT;
+                    if (e.cargo.amount >= CARRY_MAX || tile.resources <= 0) {
                         Entity* dep = findDepot(e);
                         if (dep) {
                             e.state = S_RETURNING; e.targetId = dep->id;
@@ -990,16 +1334,29 @@ void tickEntity(Entity& e) {
         }
         int d = dist(e.x, e.y, dep->x, dep->y);
         if (d <= STATS[dep->type].sizeW + 1) {
-            if (e.gatherType == 0)      g.players[e.owner].gold += e.carrying;
-            else if (e.gatherType == 1) g.players[e.owner].wood += e.carrying;
-            else                        g.players[e.owner].food += e.carrying;
-            e.carrying = 0;
-            Tile& rt = g.map[e.rallyY][e.rallyX];
+            if (e.cargo.type == CR_GOLD)      g.players[e.owner].gold += e.cargo.amount;
+            else if (e.cargo.type == CR_WOOD) g.players[e.owner].wood += e.cargo.amount;
+            else                              g.players[e.owner].food += e.cargo.amount;
+            e.cargo.amount = 0;
+            // Farm courier: cargo source stores the farm we came from; return and resume tending.
+            if (e.cargo.type == CR_FOOD && inBounds(e.cargo.sourceX, e.cargo.sourceY)) {
+                Entity* home = entityAt(e.cargo.sourceX, e.cargo.sourceY);
+                if (home && home->alive && home->type == E_FARM
+                    && home->owner == e.owner && !home->underConstruction) {
+                    e.state = S_BUILDING; e.targetId = home->id;
+                    e.targetX = home->x; e.targetY = home->y;
+                    e.path = findPathFor(e, home->x, home->y); e.pathIdx = 0;
+                    break;
+                }
+            }
+            if (!inBounds(e.resourceX, e.resourceY)) { e.state = S_IDLE; break; }
+            Tile& rt = g.map[e.resourceY][e.resourceX];
             bool isW = (rt.terrain==T_FOREST||rt.terrain==T_PINE||rt.terrain==T_PALM||rt.terrain==T_DEAD_TREE);
+            bool isBerry = (rt.terrain == T_BERRY);
             bool isFishT = (rt.terrain == T_FISH);
-            if ((rt.terrain==T_GOLD||isW||isFishT) && rt.resources > 0) {
-                e.state = S_GATHERING; e.targetX = e.rallyX; e.targetY = e.rallyY;
-                e.path = findPathFor(e, e.rallyX, e.rallyY); e.pathIdx = 0;
+            if ((rt.terrain==T_GOLD||isW||isBerry||isFishT) && rt.resources > 0) {
+                e.state = S_GATHERING; e.targetX = e.resourceX; e.targetY = e.resourceY;
+                e.path = findPathFor(e, e.resourceX, e.resourceY); e.pathIdx = 0;
             } else {
                 // Rally point depleted — seek another nearby node of the same type
                 if (!findNearbyResource(e)) e.state = S_IDLE;
@@ -1055,9 +1412,27 @@ void tickEntity(Entity& e) {
     case S_BUILDING: {
         Entity* bld = findEntity(e.targetId);
         if (!bld || !bld->alive) { e.state = S_IDLE; break; }
-        // Tending a completed farm — stay adjacent
+        // Tending a completed farm — stay adjacent and ferry ripe harvest to a depot
         if (!bld->underConstruction && bld->type == E_FARM) {
-            if (dist(e.x, e.y, bld->x, bld->y) > 1) {
+            int d = dist(e.x, e.y, bld->x, bld->y);
+            // Pick up ripe wheat once enough has accumulated to make the trip worthwhile
+            if (d <= 1 && bld->storedFood >= 5 && e.cargo.amount == 0) {
+                int take = std::min(bld->storedFood, CARRY_MAX);
+                e.cargo = {CR_FOOD, take, bld->x, bld->y};
+                e.resourceX = bld->x; e.resourceY = bld->y;
+                bld->storedFood -= take;
+                Entity* dep = findDepot(e);
+                if (dep) {
+                    e.state = S_RETURNING;
+                    e.targetId = dep->id; e.targetX = dep->x; e.targetY = dep->y;
+                    e.path = findPathFor(e, dep->x, dep->y); e.pathIdx = 0;
+                } else {
+                    // No depot available — drop the harvest back on the farm and keep tending
+                    bld->storedFood += take; e.cargo.amount = 0;
+                }
+                break;
+            }
+            if (d > 1) {
                 moveAlongPath(e);
                 if (e.path.empty()) { e.path = findPathFor(e, bld->x, bld->y); e.pathIdx = 0; }
             }
@@ -1123,9 +1498,13 @@ void tickTowers() {
         Entity* en = findNearestEnemy(e, rng);
         if (en) {
             if (e.atkCd <= 0) {
-                en->hp -= atk; e.atkCd = isTower ? STATS[E_TOWER].atkSpeed : 9;
+                // Towers/garrison-fire respect the same building-damage rule —
+                // garrisoned archers can wear down walls but not blow them open.
+                int dmg = damageVs(E_ARCHER, en->type, atk);
+                en->hp -= dmg; e.atkCd = isTower ? STATS[E_TOWER].atkSpeed : 9;
                 en->alertTicks = 12;
-                spawnProjectile(sx, sy, en->x, en->y, '*', CP_PROJ_TOWER);
+                // Bolt-style projectile so tower fire reads as arrows instead of stars.
+                spawnProjectile(sx, sy, en->x, en->y, '-', CP_PROJ_TOWER);
                 if (en->hp <= 0) killEntity(*en);
             } else e.atkCd--;
         } else if (e.atkCd > 0) e.atkCd--;
@@ -1135,13 +1514,13 @@ void tickTowers() {
 void tickGates() {
     for (auto& gate : g.entities) {
         if (!gate.alive || gate.type != E_GATE || gate.underConstruction) continue;
-        if (gate.gatherType == 1) continue; // manually locked — don't auto-toggle
+        if (gate.gateLocked) continue; // manually locked — don't auto-toggle
         bool allyNear = false;
         for (auto& u : g.entities) {
             if (!u.alive || u.owner != gate.owner || isBuilding(u.type)) continue;
             if (dist(u.x, u.y, gate.x, gate.y) <= 2) { allyNear = true; break; }
         }
-        gate.carrying = allyNear ? 1 : 0;
+        gate.gateOpen = allyNear;
     }
 }
 
@@ -1153,10 +1532,11 @@ void tickFarms() {
     // Wheat dies at the onset of winter
     if (getSeason() == WINTER) {
         for (auto& e : g.entities)
-            if (e.alive && e.type == E_FARM) { e.alive = false; e.state = S_DEAD; }
+            if (e.alive && e.type == E_FARM) killEntity(e);
         return;
     }
 
+    const int FARM_CAP = 20;
     int bonus = (getSeason() == SUMMER) ? 1 : 0;
     for (int p = 0; p < MAX_PLAYERS; p++) {
         bool hasMill = false;
@@ -1166,13 +1546,38 @@ void tickFarms() {
 
         for (auto& farm : g.entities) {
             if (!farm.alive || farm.type!=E_FARM || farm.owner!=p || farm.underConstruction) continue;
-            // Any adjacent peasant (explicitly tending or just idle nearby) counts
+            // Any adjacent peasant (explicitly tending or just idle nearby) keeps the wheat growing
             bool tended = false;
             for (auto& u : g.entities) {
-                if (!u.alive || u.owner!=p || u.type!=E_PEASANT) continue;
+                if (!u.alive || u.owner!=p || !isWorker(u.type)) continue;
                 if (dist(u.x, u.y, farm.x, farm.y) <= 1) { tended=true; break; }
             }
-            if (tended) g.players[p].food += 3 + bonus;
+            // Food ripens on the farm itself (capped); a courier peasant carries it
+            // to a Mill or Town Hall — see S_BUILDING farm-tending branch.
+            if (tended && farm.storedFood < FARM_CAP)
+                farm.storedFood = std::min(FARM_CAP, farm.storedFood + 3 + bonus);
+
+            // AI helper: if ripe food is sitting on an AI farm with no courier
+            // assigned, grab the nearest idle owner-peasant and send them to tend.
+            // Player keeps explicit control — never auto-yanks the player's peasants.
+            if (p != 0 && farm.storedFood >= 5) {
+                bool assigned = false;
+                for (auto& u : g.entities) {
+                    if (!u.alive || u.owner!=p || !isWorker(u.type)) continue;
+                    if (u.state == S_BUILDING && u.targetId == farm.id) { assigned = true; break; }
+                }
+                if (!assigned) {
+                    Entity* best = nullptr; int bestD = 99999;
+                    for (auto& u : g.entities) {
+                        if (!u.alive || u.owner!=p || !isWorker(u.type)) continue;
+                        if (u.state != S_IDLE) continue;
+                        if (u.cargo.amount > 0) continue;
+                        int d = mdist(u.x, u.y, farm.x, farm.y);
+                        if (d <= 12 && d < bestD) { bestD = d; best = &u; }
+                    }
+                    if (best) orderHelp(*best, farm.id);
+                }
+            }
         }
     }
 }
@@ -1219,8 +1624,8 @@ static void applyWinter() {
     // Cull a chunk of wildlife — the herd is thinned by the cold.
     for (auto& e : g.entities) {
         if (!e.alive || e.owner != OWNER_NATURE) continue;
-        if (e.type != E_DEER && e.type != E_SHEEP) continue;
-        if (rand() % 100 < 35) killEntity(e);
+        if (e.type != E_DEER && e.type != E_SHEEP && e.type != E_BOAR) continue;
+        if (realmRand() % 100 < 35) killEntity(e);
     }
     if (g.players[0].alive) setStatus("Winter falls. The land freezes over.");
 }
@@ -1239,8 +1644,9 @@ void tickThaw() {
     if (g.tick % 5 != 0) return;
     if (getSeason() != SPRING) return;
     float progress = getSeasonProgress();
-    // Patchy melt completes by ~60% of spring so the world looks alive by mid-season.
-    int threshold = std::max(0, (int)(progress * 1700.0f));
+    // Patchy melt completes by ~40% of spring — earlier sessions felt snowy way too
+    // deep into the season. Tiles thaw faster, world greens up quickly.
+    int threshold = std::max(0, (int)(progress * 2600.0f));
     for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
         Tile& t = g.map[y][x];
         if (t.terrain != T_SNOW && t.terrain != T_ICE) continue;
@@ -1320,7 +1726,7 @@ void tickPaving() {
                 t.terrain = T_DIRT; t.preWinterTerrain = T_DIRT;
             }
             // Dirt slowly regrows — patches of grass return after long disuse
-            if (t.wear == 0 && t.terrain == T_DIRT && (rand() % 500) == 0) {
+            if (t.wear == 0 && t.terrain == T_DIRT && (realmRand() % 500) == 0) {
                 t.terrain = T_GRASS; t.preWinterTerrain = T_GRASS;
             }
         }
@@ -1331,12 +1737,15 @@ void tickPaving() {
 // WEATHER
 // ============================================================
 void tickWeather() {
-    // Mud creation/drying happens on its own cadence regardless of state changes.
+    Season s = getSeason();
+    float sp = getSeasonProgress();
+
+    // Snow doesn't create mud; rain/storm do.
     if (g.tick % 50 == 0) {
         if (g.weather == W_RAIN || g.weather == W_STORM) {
             int hits = (g.weather == W_STORM) ? 60 : 30;
             for (int i = 0; i < hits; i++) {
-                int x = rand() % MAP_W, y = rand() % MAP_H;
+                int x = realmRand() % MAP_W, y = realmRand() % MAP_H;
                 Tile& t = g.map[y][x];
                 if (t.terrain == T_GRASS || t.terrain == T_MEADOW
                  || t.terrain == T_DIRT  || t.terrain == T_TALL_GRASS) {
@@ -1344,35 +1753,82 @@ void tickWeather() {
                 }
             }
         } else {
-            // Drying — mud reverts to dirt over time once skies clear.
+            // Drying — mud reverts to dirt once skies clear (or freeze over).
             for (int i = 0; i < 40; i++) {
-                int x = rand() % MAP_W, y = rand() % MAP_H;
+                int x = realmRand() % MAP_W, y = realmRand() % MAP_H;
                 Tile& t = g.map[y][x];
                 if (t.terrain == T_MUD) t.terrain = T_DIRT;
             }
         }
     }
-    if (g.weatherTimer > 0) { g.weatherTimer--; return; }
-    // Roll for transition. Season biases the result.
-    int roll = rand() % 100;
-    Season s = getSeason();
-    int rainBias = (s == AUTUMN) ? 50 : (s == SPRING) ? 35 : (s == WINTER) ? 20 : 25;
-    int stormBias = (s == AUTUMN) ? 15 : 8;
-    if (g.weather == W_CLEAR) {
-        if (roll < stormBias)              g.weather = W_STORM;
-        else if (roll < rainBias)          g.weather = W_RAIN;
-        g.weatherTimer = 400 + rand() % 800; // ~30s-100s
-    } else {
-        // Rain/storm linger then break.
-        if (roll < 60) g.weather = W_CLEAR;
-        else if (g.weather == W_RAIN && roll < 75) g.weather = W_STORM;
-        else if (g.weather == W_STORM && roll < 80) g.weather = W_RAIN;
-        g.weatherTimer = 300 + rand() % 600;
+
+    // Season-appropriate weather: rain/storm can't persist into winter; snow can't persist into spring/summer.
+    if (s == WINTER && (g.weather == W_RAIN || g.weather == W_STORM)) {
+        g.weather = W_SNOW;
+        g.weatherTimer = 300;
+        if (g.players[0].alive) setStatus("The rain turns to snow.");
+        return;
     }
+    bool lateAutumn = (s == AUTUMN && sp > 0.5f);
+    if (!lateAutumn && s != WINTER && g.weather == W_SNOW) {
+        g.weather = W_CLEAR;
+        g.weatherTimer = 100;
+        if (g.players[0].alive) setStatus("The skies clear.");
+        return;
+    }
+
+    if (g.weatherTimer > 0) { g.weatherTimer--; return; }
+
+    int roll = realmRand() % 100;
+
+    if (s == WINTER) {
+        // Winter: only clear or snow.
+        if (g.weather == W_CLEAR) {
+            if (roll < 40) { g.weather = W_SNOW; g.weatherTimer = 500 + realmRand() % 900; }
+            else             g.weatherTimer = 300 + realmRand() % 500;
+        } else { // W_SNOW
+            if (roll < 50) g.weather = W_CLEAR;
+            g.weatherTimer = 300 + realmRand() % 600;
+        }
+    } else if (lateAutumn) {
+        // Late autumn: rain fades, first snows begin. Progress 0.5→1 maps to 0→1 of this range.
+        float late = (sp - 0.5f) * 2.0f;
+        int snowBias  = (int)(late * 30);           // up to 30% snow chance by end of autumn
+        int rainBias  = (int)(50 * (1.0f - late * 0.6f)); // rain fades 50→20
+        int stormBias = (int)(15 * (1.0f - late));  // storms fade out entirely
+        if (g.weather == W_CLEAR) {
+            if      (roll < stormBias)              g.weather = W_STORM;
+            else if (roll < rainBias)               g.weather = W_RAIN;
+            else if (roll < rainBias + snowBias)    g.weather = W_SNOW;
+            g.weatherTimer = 400 + realmRand() % 800;
+        } else {
+            if (roll < 60) g.weather = W_CLEAR;
+            else if (g.weather == W_RAIN  && roll < 75) g.weather = W_STORM;
+            else if (g.weather == W_STORM && roll < 80) g.weather = W_RAIN;
+            // snow just clears, doesn't escalate
+            g.weatherTimer = 300 + realmRand() % 600;
+        }
+    } else {
+        // Spring / summer / early autumn: rain and storms only.
+        int rainBias  = (s == AUTUMN) ? 50 : (s == SPRING) ? 35 : 25;
+        int stormBias = (s == AUTUMN) ? 15 : 8;
+        if (g.weather == W_CLEAR) {
+            if (roll < stormBias)     g.weather = W_STORM;
+            else if (roll < rainBias) g.weather = W_RAIN;
+            g.weatherTimer = 400 + realmRand() % 800;
+        } else {
+            if (roll < 60) g.weather = W_CLEAR;
+            else if (g.weather == W_RAIN  && roll < 75) g.weather = W_STORM;
+            else if (g.weather == W_STORM && roll < 80) g.weather = W_RAIN;
+            g.weatherTimer = 300 + realmRand() % 600;
+        }
+    }
+
     if (g.players[0].alive) {
-        if (g.weather == W_RAIN)  setStatus("Rain begins.");
+        if      (g.weather == W_RAIN)  setStatus("Rain begins.");
         else if (g.weather == W_STORM) setStatus("A storm rolls in!");
-        else                       setStatus("The skies clear.");
+        else if (g.weather == W_SNOW)  setStatus("Snow begins to fall.");
+        else                           setStatus("The skies clear.");
     }
 }
 
@@ -1380,12 +1836,39 @@ void tickWeather() {
 // ANIMALS
 // ============================================================
 void tickAnimals() {
-    static int atick = 0; atick++;
+    g.animalTimer++;
     for (auto& e : g.entities) {
         if (!e.alive || e.owner != OWNER_NATURE) continue;
 
-        // Deer and sheep flee from nearby player units
-        if (e.type == E_DEER || e.type == E_SHEEP) {
+        // Deer flee in herds: one spooked deer panics nearby deer in the same direction.
+        if (e.type == E_DEER) {
+            if (e.state != S_MOVING || e.path.empty()) {
+                for (auto& o : g.entities) {
+                    if (!o.alive || o.owner==OWNER_NATURE || !isUnit(o.type)) continue;
+                    if (o.state == S_GARRISONED) continue;
+                    if (dist(e.x, e.y, o.x, o.y) <= 5) {
+                        int fx = std::max(1, std::min(e.x + (e.x-o.x)*4, MAP_W-2));
+                        int fy = std::max(1, std::min(e.y + (e.y-o.y)*4, MAP_H-2));
+                        if (isPassable(fx, fy)) {
+                            orderMove(e, fx, fy);
+                            // Spook nearby herd members to bolt the same way.
+                            for (auto& nb : g.entities) {
+                                if (!nb.alive || nb.type != E_DEER || nb.id == e.id) continue;
+                                if (nb.state == S_MOVING && !nb.path.empty()) continue;
+                                if (dist(e.x, e.y, nb.x, nb.y) > 6) continue;
+                                int nbfx = std::max(1, std::min(nb.x+(nb.x-o.x)*4, MAP_W-2));
+                                int nbfy = std::max(1, std::min(nb.y+(nb.y-o.y)*4, MAP_H-2));
+                                if (isPassable(nbfx, nbfy)) orderMove(nb, nbfx, nbfy);
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Sheep still flee individually.
+        if (e.type == E_SHEEP) {
             if (e.state != S_MOVING || e.path.empty()) {
                 for (auto& o : g.entities) {
                     if (!o.alive || o.owner==OWNER_NATURE || !isUnit(o.type)) continue;
@@ -1400,21 +1883,33 @@ void tickAnimals() {
             }
         }
 
-        // Wolves: usually flee settlements and hunt only isolated units.
-        // Winter strips their caution: they ignore settlements and hunt at longer range.
+        // Boars charge nearby units; hitting them triggers a rampage (wider search range).
+        if (e.type == E_BOAR) {
+            int chargeRange = (e.alertTicks > 0) ? 8 : 3;
+            if (e.state == S_IDLE || (e.state == S_MOVING && e.path.empty())) {
+                for (auto& o : g.entities) {
+                    if (!o.alive || o.owner == OWNER_NATURE || !isUnit(o.type)) continue;
+                    if (o.state == S_GARRISONED) continue;
+                    if (dist(e.x, e.y, o.x, o.y) <= chargeRange) { orderAttack(e, o.id); break; }
+                }
+            }
+        }
+
+        // Wolves: give buildings a modest berth in summer/spring; bolder in autumn/winter.
         if (e.type == E_WOLF) {
             bool winter = (getSeason() == WINTER);
-            int huntRange = winter ? 6 : 3;
+            int huntRange = winter ? 8 : 5;
+            int settleAvoid = winter ? 0 : 8; // smaller avoid radius — wolves press closer
             bool nearSettlement = false;
             int fleeX = -1, fleeY = -1;
-            if (!winter) {
+            if (settleAvoid > 0) {
                 for (auto& o : g.entities) {
                     if (!o.alive || o.owner == OWNER_NATURE || !isBuilding(o.type)) continue;
                     int d = dist(e.x, e.y, o.x, o.y);
-                    if (d <= 15) {
+                    if (d <= settleAvoid) {
                         nearSettlement = true;
-                        fleeX = std::max(1, std::min(e.x + (e.x - o.x)*4, MAP_W-2));
-                        fleeY = std::max(1, std::min(e.y + (e.y - o.y)*4, MAP_H-2));
+                        fleeX = std::max(1, std::min(e.x + (e.x - o.x)*3, MAP_W-2));
+                        fleeY = std::max(1, std::min(e.y + (e.y - o.y)*3, MAP_H-2));
                         break;
                     }
                 }
@@ -1433,8 +1928,8 @@ void tickAnimals() {
         }
 
         // Random wander when idle
-        if (e.state == S_IDLE && atick % (35 + (e.id%25)) == 0) {
-            int wx = e.x + (rand()%9)-4, wy = e.y + (rand()%9)-4;
+        if (e.state == S_IDLE && g.animalTimer % (35 + (e.id%25)) == 0) {
+            int wx = e.x + (realmRand()%9)-4, wy = e.y + (realmRand()%9)-4;
             wx = std::max(1, std::min(wx, MAP_W-2));
             wy = std::max(1, std::min(wy, MAP_H-2));
             if (isPassable(wx, wy)) orderMove(e, wx, wy);
@@ -1455,274 +1950,10 @@ void checkWin() {
         if (!hasBase) g.players[p].alive = false;
         else { aliveCount++; lastAlive = p; }
     }
+    // Human defeat ends the match immediately — no point watching the AIs fight
+    // each other after the player's been eliminated.
+    if (!g.players[0].alive) { g.winner = -1; g.mode = M_GAME_OVER; return; }
     if (aliveCount <= 1) { g.winner = lastAlive; g.mode = M_GAME_OVER; }
 }
 
-// ============================================================
-// AI
-// ============================================================
-int     aiCount(int o, EntityType t)    { int c=0; for(auto& e:g.entities) if(e.alive&&e.owner==o&&e.type==t&&!e.underConstruction)c++; return c; }
-int     aiCountAll(int o, EntityType t) { int c=0; for(auto& e:g.entities) if(e.alive&&e.owner==o&&e.type==t)c++;                    return c; }
-Entity* aiIdle(int o, EntityType t)     { for(auto& e:g.entities) if(e.alive&&e.owner==o&&e.type==t&&e.state==S_IDLE&&!e.underConstruction)return &e; return nullptr; }
-Entity* aiBldg(int o, EntityType t)     { for(auto& e:g.entities) if(e.alive&&e.owner==o&&e.type==t&&!e.underConstruction)return &e; return nullptr; }
-
-void aiGather(int o) {
-    for (auto& e : g.entities) {
-        if (!e.alive || e.owner!=o || e.type!=E_PEASANT || e.state!=S_IDLE) continue;
-        int bestD = 9999, bx = -1, by = -1;
-        for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
-            Terrain t = g.map[y][x].terrain;
-            bool isR = (t==T_GOLD||t==T_FOREST||t==T_PINE||t==T_PALM||t==T_DEAD_TREE);
-            if (isR && g.map[y][x].resources > 0) {
-                int d = mdist(e.x, e.y, x, y);
-                if (d < bestD) { bestD=d; bx=x; by=y; }
-            }
-        }
-        if (bx >= 0) orderGather(e, bx, by);
-    }
-}
-
-// Build placement: try near a given centre (random TH-relative if cx<0). Wider, more attempts.
-static void aiBuildSpotNear(int o, EntityType bt, int cx, int cy, int& ox, int& oy) {
-    if (cx < 0 || cy < 0) {
-        Entity* th = aiBldg(o, E_TOWNHALL);
-        if (!th) th = aiBldg(o, E_CASTLE);
-        if (!th) return;
-        cx = th->x; cy = th->y;
-    }
-    for (int r = 2; r < 18; r++) for (int a = 0; a < 24; a++) {
-        int bx = cx + (rand()%(r*2+1)) - r, by = cy + (rand()%(r*2+1)) - r;
-        if (canPlace(bt, bx, by, o)) { ox = bx; oy = by; return; }
-    }
-}
-void aiBuildSpot(int o, EntityType bt, int& ox, int& oy) { aiBuildSpotNear(o, bt, -1, -1, ox, oy); }
-
-// Scan player state — used to scale production and pick targets.
-struct AIIntel { int playerArmy; int playerCastles; int playerWalls; int playerPeasants; Entity* playerTH; };
-static AIIntel aiScout(int o) {
-    AIIntel x{0,0,0,0,nullptr};
-    for (auto& e : g.entities) {
-        if (!e.alive || e.owner == o || e.owner == OWNER_NATURE) continue;
-        if (e.state == S_GARRISONED) continue;
-        if (e.type == E_PEASANT) x.playerPeasants++;
-        else if (isUnit(e.type)) x.playerArmy++;
-        else if (e.type == E_CASTLE)  { x.playerCastles++; if (!x.playerTH) x.playerTH = &e; }
-        else if (e.type == E_WALL)    x.playerWalls++;
-        else if (e.type == E_TOWNHALL && !x.playerTH) x.playerTH = &e;
-    }
-    return x;
-}
-
-// Pick a target worth attacking from `attacker`'s position.
-// Priorities: peasants (raid), wounded enemies, towers, key buildings.
-static int aiPickTarget(int o, Entity* attacker) {
-    Entity* best = nullptr; int bestScore = -999999;
-    for (auto& e : g.entities) {
-        if (!e.alive || e.owner == o || e.owner == OWNER_NATURE) continue;
-        if (e.state == S_GARRISONED) continue;
-        int score = 0;
-        if      (e.type == E_PEASANT)                                score += 220;
-        else if (e.type == E_ARCHER || e.type == E_CATAPULT)         score += 180;
-        else if (isUnit(e.type))                                     score += 110;
-        else if (e.type == E_TOWER)                                  score += 140;
-        else if (e.type == E_BARRACKS || e.type == E_STABLE)         score += 90;
-        else if (e.type == E_FARM || e.type == E_MILL)               score += 70;
-        else if (e.type == E_TOWNHALL || e.type == E_CASTLE)         score += 50;
-        else if (isBuilding(e.type))                                 score += 25;
-        int missing = e.maxHp - e.hp;
-        score += missing / 3;            // finish wounded targets
-        int d = dist(attacker->x, attacker->y, e.x, e.y);
-        score -= d / 2;                  // prefer closer
-        if (score > bestScore) { bestScore = score; best = &e; }
-    }
-    return best ? best->id : -1;
-}
-
-static void tickAIForOwner(int o) {
-    Player& p = g.players[o];
-
-    int peas = aiCount(o,E_PEASANT), mil = aiCount(o,E_MILITIA);
-    int arch = aiCount(o,E_ARCHER),  kni = aiCount(o,E_KNIGHT);
-    int cat  = aiCountAll(o,E_CATAPULT);
-    int hous = aiCountAll(o,E_HOUSE), bar = aiCount(o,E_BARRACKS), stb = aiCount(o,E_STABLE);
-
-    AIIntel intel = aiScout(o);
-
-    aiGather(o);
-
-    // Caps scale with what the player has fielded — match and exceed.
-    int peasCap = std::max(12, intel.playerPeasants + 4);
-    int milCap  = std::max(8,  intel.playerArmy + 4);
-    int archCap = std::max(6,  intel.playerArmy/2 + 3);
-    int kniCap  = std::max(4,  intel.playerArmy/3 + 2);
-    int towerCap= (intel.playerArmy >= 6 || intel.playerCastles > 0) ? 4 : 2;
-
-    // === ECONOMY: peasants from every TH/Castle ===
-    if (peas < peasCap) {
-        for (auto& th : g.entities) {
-            if (!th.alive || th.owner != o || th.underConstruction) continue;
-            if (th.type != E_TOWNHALL && th.type != E_CASTLE) continue;
-            if (th.producing != E_NONE) continue;
-            if (p.gold >= 50) { orderTrain(th, E_PEASANT); break; }
-        }
-    }
-
-    // === SUPPLY: keep houses ahead of training ===
-    if (p.supply + 4 >= p.supplyMax && hous < 12 && p.wood >= 50) {
-        Entity* b = aiIdle(o, E_PEASANT);
-        if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_HOUSE,bx,by); if(bx>=0) orderBuild(*b,E_HOUSE,bx,by); }
-    }
-
-    // === MILITARY BUILDINGS ===
-    if (bar == 0 && p.wood >= 150 && peas >= 2) {
-        Entity* b = aiIdle(o, E_PEASANT);
-        if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_BARRACKS,bx,by); if(bx>=0) orderBuild(*b,E_BARRACKS,bx,by); }
-    }
-    if (bar == 1 && peas >= 6 && p.wood >= 150 && p.gold >= 100) {
-        // Second barracks doubles training throughput.
-        Entity* b = aiIdle(o, E_PEASANT);
-        if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_BARRACKS,bx,by); if(bx>=0) orderBuild(*b,E_BARRACKS,bx,by); }
-    }
-    if (aiCount(o,E_BLACKSMITH) == 0 && bar > 0 && p.wood >= 120) {
-        Entity* b = aiIdle(o, E_PEASANT);
-        if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_BLACKSMITH,bx,by); if(bx>=0) orderBuild(*b,E_BLACKSMITH,bx,by); }
-    }
-    if (stb == 0 && mil >= 3 && p.wood >= 200) {
-        Entity* b = aiIdle(o, E_PEASANT);
-        if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_STABLE,bx,by); if(bx>=0) orderBuild(*b,E_STABLE,bx,by); }
-    }
-
-    // === MILITARY UNITS — train at every barracks/stable in parallel ===
-    bool needCat = (intel.playerCastles > 0 || intel.playerWalls > 6);
-    for (auto& br : g.entities) {
-        if (!br.alive || br.owner != o || br.type != E_BARRACKS || br.underConstruction) continue;
-        if (br.producing != E_NONE) continue;
-        if (needCat && cat < 2 && p.gold >= 150 && p.wood >= 40 && p.food >= 30) { orderTrain(br, E_CATAPULT); continue; }
-        if (mil  < milCap  && p.gold >= 60 && p.food >= 20) { orderTrain(br, E_MILITIA); continue; }
-        if (arch < archCap && p.gold >= 70 && p.food >= 20) { orderTrain(br, E_ARCHER);  continue; }
-    }
-    for (auto& st : g.entities) {
-        if (!st.alive || st.owner != o || st.type != E_STABLE || st.underConstruction) continue;
-        if (st.producing != E_NONE) continue;
-        if (kni < kniCap && p.gold >= 120 && p.food >= 40) orderTrain(st, E_KNIGHT);
-    }
-
-    // === DEFENSE: towers scaled to threat ===
-    if (aiCountAll(o,E_TOWER) < towerCap && mil >= 2 && p.wood >= 100 && p.gold >= 50) {
-        Entity* b = aiIdle(o, E_PEASANT);
-        if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_TOWER,bx,by); if(bx>=0) orderBuild(*b,E_TOWER,bx,by); }
-    }
-
-    // === FOOD: mill + farms scale up before winter ===
-    if (aiCountAll(o,E_MILL) == 0 && p.wood >= 100) {
-        Entity* b = aiIdle(o, E_PEASANT);
-        if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_MILL,bx,by); if(bx>=0) orderBuild(*b,E_MILL,bx,by); }
-    }
-    int wantFarms = (getSeason() == AUTUMN) ? 8 : 4;
-    if (aiCountAll(o,E_MILL) > 0 && aiCountAll(o,E_FARM) < wantFarms && getSeason() != WINTER) {
-        Entity* b = aiIdle(o, E_PEASANT);
-        if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_FARM,bx,by); if(bx>=0) orderBuild(*b,E_FARM,bx,by); }
-    }
-
-    // === NAVAL: dock + boats if water nearby ===
-    if (aiCountAll(o,E_DOCK) == 0 && p.wood >= 100 && peas >= 4) {
-        Entity* th = aiBldg(o, E_TOWNHALL);
-        if (th) {
-            int bx=-1,by=-1; aiBuildSpotNear(o, E_DOCK, th->x, th->y, bx, by);
-            if (bx >= 0) {
-                Entity* b = aiIdle(o, E_PEASANT);
-                if (b) orderBuild(*b, E_DOCK, bx, by);
-            }
-        }
-    }
-    for (auto& dk : g.entities) {
-        if (!dk.alive || dk.owner != o || dk.type != E_DOCK || dk.underConstruction) continue;
-        if (dk.producing != E_NONE) continue;
-        if (aiCount(o,E_FISHING_BOAT) < 3 && p.gold >= 80 && p.wood >= 50) orderTrain(dk, E_FISHING_BOAT);
-    }
-
-    // === EXPANSION: forward TH halfway to the player ===
-    if (aiCountAll(o,E_TOWNHALL) + aiCountAll(o,E_CASTLE) < 2
-        && peas >= 9 && p.wood >= 260 && intel.playerTH) {
-        Entity* myTh = aiBldg(o, E_TOWNHALL);
-        if (!myTh) myTh = aiBldg(o, E_CASTLE);
-        if (myTh) {
-            int fx = (myTh->x + intel.playerTH->x) / 2;
-            int fy = (myTh->y + intel.playerTH->y) / 2;
-            int bx=-1, by=-1; aiBuildSpotNear(o, E_TOWNHALL, fx, fy, bx, by);
-            if (bx >= 0) {
-                Entity* b = aiIdle(o, E_PEASANT);
-                if (b) orderBuild(*b, E_TOWNHALL, bx, by);
-            }
-        }
-    }
-
-    // === GARRISON: pack archers into the nearest tower/TH/Castle ===
-    for (auto& bld : g.entities) {
-        if (!bld.alive || bld.owner != o || bld.underConstruction) continue;
-        if (!canGarrisonIn(bld.type)) continue;
-        if ((int)bld.garrison.size() >= garrisonCap(bld.type)) continue;
-        Entity* archer = nullptr; int bestD = 99999;
-        for (auto& u : g.entities) {
-            if (!u.alive || u.owner != o || u.state != S_IDLE) continue;
-            if (u.type != E_ARCHER) continue;
-            int d = mdist(u.x, u.y, bld.x, bld.y);
-            if (d < bestD) { bestD = d; archer = &u; }
-        }
-        if (archer) orderGarrison(*archer, bld.id);
-    }
-
-    // === ATTACK RHYTHM: send waves, smart targets ===
-    int army = mil + arch + kni + cat;
-    if (p.aiWaveCd > 0) p.aiWaveCd--;
-    int attackThreshold = 3;
-    if (army >= attackThreshold && p.aiWaveCd == 0) {
-        Entity* anchor = nullptr;
-        for (auto& e : g.entities) {
-            if (!e.alive || e.owner != o) continue;
-            if (!isUnit(e.type) || e.type == E_PEASANT || e.type == E_FISHING_BOAT) continue;
-            if (e.state != S_IDLE) continue;
-            anchor = &e; break;
-        }
-        if (anchor) {
-            int tid = aiPickTarget(o, anchor);
-            // Fallback: if intel found a TH, march on it directly (hunt the player out)
-            if (tid < 0 && intel.playerTH) tid = intel.playerTH->id;
-            if (tid >= 0) {
-                for (auto& e : g.entities) {
-                    if (!e.alive || e.owner != o) continue;
-                    if (!isUnit(e.type) || e.type == E_PEASANT || e.type == E_FISHING_BOAT) continue;
-                    if (e.state == S_IDLE) orderAttack(e, tid);
-                }
-                p.aiWaveCd = 5; // re-pick target every ~5 AI ticks
-            }
-        }
-    }
-
-    // === DEFENSE: respond to threats near any owned TH/Castle ===
-    for (auto& base : g.entities) {
-        if (!base.alive || base.owner != o) continue;
-        if (base.type != E_TOWNHALL && base.type != E_CASTLE) continue;
-        for (auto& en : g.entities) {
-            if (!en.alive || en.owner == o || en.owner == OWNER_NATURE) continue;
-            if (en.state == S_GARRISONED) continue;
-            if (dist(en.x, en.y, base.x, base.y) < 22) {
-                for (auto& d : g.entities)
-                    if (d.alive && d.owner == o && isUnit(d.type)
-                        && d.type != E_PEASANT && d.type != E_FISHING_BOAT && d.state == S_IDLE)
-                        orderAttack(d, en.id);
-                break;
-            }
-        }
-    }
-}
-
-void tickAI() {
-    g.aiTimer++;
-    if (g.aiTimer < 12) return;
-    g.aiTimer = 0;
-    for (int o = 1; o < MAX_PLAYERS; o++) {
-        if (!g.players[o].alive) continue;
-        tickAIForOwner(o);
-    }
-}
+// AI moved to ai.cpp.

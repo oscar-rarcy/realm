@@ -72,8 +72,10 @@ void initColors() {
     init_pair(CP_GRASS_LIGHT,   C::BRIGHT_GREEN, bg);
     init_pair(CP_GRASS_DRY,     C::YELLOW_GREEN, bg);
     init_pair(CP_TALL_GRASS,    C::MED_GREEN,    bg);
-    init_pair(CP_FLOWERS,       C::LAVENDER,     bg);
-    init_pair(CP_FLOWERS_BLUE,  C::MED_BLUE,     bg);
+    init_pair(CP_FLOWERS,        C::LAVENDER,     bg);
+    init_pair(CP_FLOWERS_BLUE,   C::MED_BLUE,     bg);
+    init_pair(CP_FLOWERS_YELLOW, C::BRIGHT_GOLD,  bg);
+    init_pair(CP_FLOWERS_RED,    C::BERRY_RED,    bg);
     init_pair(CP_MEADOW,        C::PALE_GREEN,   bg);
 
     init_pair(CP_FOREST,        C::MED_GREEN,    bg);
@@ -105,7 +107,7 @@ void initColors() {
 
     init_pair(CP_WHEAT,         C::WHEAT_GOLD,   bg);
     init_pair(CP_WHEAT_GOLD,    C::BRIGHT_GOLD,  bg);
-    init_pair(CP_BERRY,         C::BERRY_RED,    bg);
+    init_pair(CP_BERRY,         C::BERRY_RED,    C::DARK_GREEN);
 
     init_pair(CP_RUINS,         C::GRAY,         bg);
     init_pair(CP_GRAVEL,        C::MED_GRAY,     bg);
@@ -117,6 +119,8 @@ void initColors() {
     init_pair(CP_AUT_TREE_EARLY, C::YELLOW_GREEN, bg);
     init_pair(CP_AUT_TREE_MID,   C::ORANGE,       bg);
     init_pair(CP_AUT_TREE_LATE,  C::BROWN,        bg);
+    init_pair(CP_AUT_TREE_GOLD,  C::BRIGHT_GOLD,  bg);
+    init_pair(CP_AUT_TREE_RED,   C::RED,          bg);
     init_pair(CP_AUT_GRASS,      C::OLIVE,        bg);
     init_pair(CP_AUT_GRASS_LATE, C::BROWN,        bg);
 
@@ -130,6 +134,7 @@ void initColors() {
     init_pair(CP_NIGHT_WATER,    C::NAVY,         C::NEAR_BLACK);
     init_pair(CP_NIGHT_GROUND,   C::DARKER_GRAY,  bg);
     init_pair(CP_NIGHT_GOLD,     C::DARK_GOLD,    bg);
+    init_pair(CP_NIGHT_SNOW,     C::LIGHT_GRAY,   C::DARKER_GRAY);
 
     init_pair(CP_DAWN_SKY,       C::ORANGE,       bg);
     init_pair(CP_DUSK_SKY,       C::DUSK_PURPLE,  bg);
@@ -138,10 +143,18 @@ void initColors() {
     init_pair(CP_PLAYER_NIGHT,   C::PLAYER_DIM,   bg);
     init_pair(CP_ENEMY,          C::ENEMY_RED,    bg);
     init_pair(CP_ENEMY_NIGHT,    C::ENEMY_DIM,    bg);
+    // Ship deck: glyph sits on a wood-brown background tile so boats read as
+    // solid hulls instead of single floating characters on open water.
+    init_pair(CP_SHIP_PLAYER,    C::PLAYER_CYAN,  C::BROWN);
+    init_pair(CP_SHIP_ENEMY,     C::ENEMY_RED,    C::BROWN);
 
     init_pair(CP_PROJ_ARROW,     C::BRIGHT_GOLD,  bg);
     init_pair(CP_PROJ_BOULDER,   C::BRIGHT_GRAY,  bg);
     init_pair(CP_PROJ_TOWER,     C::BRIGHT_RED,   bg);
+    // Rain: a transparent blue dot — foreground colour only, no background fill.
+    init_pair(CP_RAIN,           C::ICE_BLUE,     bg);
+    // Falling snow: white glyph on transparent bg so flakes take the terrain's background.
+    init_pair(CP_SNOW_FALL,      C::SNOW_WHITE,   bg);
 
     init_pair(CP_UI_BAR,         C::UI_TEXT,      C::UI_BG);
     init_pair(CP_UI_TEXT,        C::UI_TEXT,      bg);
@@ -168,10 +181,56 @@ void initColors() {
     init_pair(CP_MM_CASTLE,      C::BRIGHT_GRAY,  C::NEAR_BLACK);
     init_pair(CP_SPRING_FLOWER,  C::LAVENDER,     bg);
 
+    init_pair(CP_LAVA,           C::ORANGE,       C::RED);
+    init_pair(CP_LAVA_HOT,       C::BRIGHT_GOLD,  C::RED);
+    init_pair(CP_ASH,            C::DARK_GRAY,    bg);
     init_pair(CP_DEER,           C::TAN,          bg);
     init_pair(CP_WOLF,           C::LIGHT_GRAY,   bg);
     init_pair(CP_SHEEP,          C::SNOW_WHITE,   bg);
+    init_pair(CP_BOAR,           C::BROWN,        bg);
     init_pair(CP_MM_ANIMAL,      C::TAN,          C::NEAR_BLACK);
+
+    // Ownership background colour pairs.
+    // Land units and buildings display the owner's colour as the BACKGROUND
+    // so ownership is visible regardless of what glyph mode (ASCII/emoji)
+    // is active.  Ships keep CP_SHIP_* (wood deck bg) for their hull look.
+    //
+    // Player 0 (human)  — cyan background
+    init_pair(CP_OWN_P0,       C::SNOW_WHITE,   C::PLAYER_CYAN);
+    init_pair(CP_OWN_P0_NIGHT, C::LIGHT_GRAY,   C::PLAYER_DIM);
+    // Player 1 (AI 1)   — red background
+    init_pair(CP_OWN_P1,       C::SNOW_WHITE,   C::ENEMY_RED);
+    init_pair(CP_OWN_P1_NIGHT, C::LIGHT_GRAY,   C::ENEMY_DIM);
+    // Player 2 (AI 2)   — orange background (distinct from red)
+    init_pair(CP_OWN_P2,       C::NEAR_BLACK,   C::ORANGE);
+    init_pair(CP_OWN_P2_NIGHT, C::NEAR_BLACK,   C::AMBER);
+    // Player 3 (AI 3)   — purple background
+    init_pair(CP_OWN_P3,       C::SNOW_WHITE,   C::DUSK_PURPLE);
+    init_pair(CP_OWN_P3_NIGHT, C::LIGHT_GRAY,   C::GRAY);
+}
+
+// ============================================================
+// OWNERSHIP COLOUR HELPER
+// Returns the colour pair that should be applied to a land unit
+// or building based on its owner.  Ships are excluded (callers
+// handle CP_SHIP_* separately).  Animals/Gaia use their own
+// type-specific pairs and are never passed here.
+// ============================================================
+static int ownerColorPair(int owner, bool night) {
+    if (night) {
+        switch (owner) {
+            case 0:  return CP_OWN_P0_NIGHT;
+            case 1:  return CP_OWN_P1_NIGHT;
+            case 2:  return CP_OWN_P2_NIGHT;
+            default: return CP_OWN_P3_NIGHT;
+        }
+    }
+    switch (owner) {
+        case 0:  return CP_OWN_P0;
+        case 1:  return CP_OWN_P1;
+        case 2:  return CP_OWN_P2;
+        default: return CP_OWN_P3;
+    }
 }
 
 // ============================================================
@@ -192,7 +251,12 @@ void getTerrainVisual(Terrain t, int x, int y, char& ch, int& cp) {
     switch (t) {
     case T_GRASS:        ch='.'; cp=CP_GRASS;       break;
     case T_TALL_GRASS:   ch='"'; cp=CP_TALL_GRASS;  break;
-    case T_FLOWERS:      ch='*'; cp=CP_FLOWERS;     break;
+    case T_FLOWERS: {
+        ch='*';
+        static const int fcp[] = {CP_FLOWERS, CP_FLOWERS_BLUE, CP_FLOWERS_YELLOW, CP_FLOWERS_RED};
+        cp = fcp[((unsigned)(x*7+y*13)^(unsigned)(x*3+y)) % 4];
+        break;
+    }
     case T_MEADOW:       ch=','; cp=CP_MEADOW;      break;
     case T_FOREST:       ch='T'; cp=CP_FOREST;      break;
     case T_PINE:         ch='Y'; cp=CP_PINE;        break;
@@ -214,10 +278,17 @@ void getTerrainVisual(Terrain t, int x, int y, char& ch, int& cp) {
     case T_ROAD:         ch='#'; cp=CP_ROAD;        break;
     case T_MUD:          ch=','; cp=CP_DIRT;        break;
     case T_WHEAT:        ch='%'; cp=CP_WHEAT;       break;
-    case T_BERRY:        ch='*'; cp=CP_BERRY;       break;
+    case T_BERRY:        ch=':'; cp=CP_BERRY;       break;
     case T_FISH:         ch=(g.tick%30<15)?'~':'"'; cp=CP_SHALLOWS; break;
     case T_RUINS:        ch='&'; cp=CP_RUINS;       break;
     case T_GRAVEL:       ch=':'; cp=CP_GRAVEL;      break;
+    case T_LAVA: {
+        int frame = (g.tick/4 + x*3 + y*5) % 6;
+        ch = (frame < 2) ? '~' : (frame < 4) ? '=' : '*';
+        cp = (frame == 1 || frame == 4) ? CP_LAVA_HOT : CP_LAVA;
+        break;
+    }
+    case T_ASH:          ch='.'; cp=CP_ASH;         break;
     case T_CASTLE_WALL:  ch='#'; cp=CP_CASTLE_WALL; break;
     case T_CASTLE_FLOOR: ch='.'; cp=CP_CASTLE_FLOOR;break;
     case T_CASTLE_GATE:  ch='='; cp=CP_CASTLE_GATE; break;
@@ -254,8 +325,12 @@ void getTerrainVisual(Terrain t, int x, int y, char& ch, int& cp) {
         case AUTUMN: {
             float p = sprog;
             if (t==T_FOREST) {
-                if (shouldShowSeasonAt(x,y,p*0.4f))                    cp = CP_AUT_TREE_EARLY;
-                if (p>0.3f && shouldShowSeasonAt(x,y,(p-0.3f)*1.4f))   cp = CP_AUT_TREE_MID;
+                // Per-tree hash gives orange/gold/red variety across the canopy.
+                int tv = (x*3571 + y*2371) % 3;
+                int earlyC = (tv==0) ? CP_AUT_TREE_EARLY : (tv==1) ? CP_AUT_TREE_GOLD : CP_AUT_TREE_RED;
+                int midC   = (tv==0) ? CP_AUT_TREE_MID   : (tv==1) ? CP_AUT_TREE_EARLY : CP_AUT_TREE_GOLD;
+                if (shouldShowSeasonAt(x,y,p*0.4f))                    cp = earlyC;
+                if (p>0.3f && shouldShowSeasonAt(x,y,(p-0.3f)*1.4f))   cp = midC;
                 if (p>0.6f && shouldShowSeasonAt(x,y,(p-0.6f)*2.5f)) { cp = CP_AUT_TREE_LATE; ch='t'; }
             }
             if (t==T_PINE && p>0.5f && shouldShowSeasonAt(x,y,(p-0.5f)*0.6f)) cp = CP_AUT_TREE_EARLY;
@@ -263,14 +338,21 @@ void getTerrainVisual(Terrain t, int x, int y, char& ch, int& cp) {
                 if (shouldShowSeasonAt(x,y,p*0.5f))                             cp = CP_AUT_GRASS;
                 if (p>0.6f && shouldShowSeasonAt(x,y,(p-0.6f)*2.0f)) { cp=CP_AUT_GRASS_LATE; if(t==T_TALL_GRASS)ch=','; }
             }
-            if (t==T_FLOWERS && shouldShowSeasonAt(x,y,p*0.7f))  { ch='.'; cp=CP_AUT_GRASS; }
+            // Flowers gone by autumn — immediately fade to grass colour.
+            if (t==T_FLOWERS) { ch='.'; cp=(p>0.5f) ? CP_AUT_GRASS_LATE : CP_AUT_GRASS; }
             if (t==T_WHEAT   && shouldShowSeasonAt(x,y,p))        { ch=','; cp=CP_DIRT; }
+            // Late autumn: first frost dusts the ground with light snow patches.
+            if (p > 0.65f) {
+                float frost = (p - 0.65f) * 2.86f; // 0→1 over the last 35% of autumn
+                if (t==T_GRASS||t==T_TALL_GRASS||t==T_MEADOW||t==T_FLOWERS||t==T_DIRT)
+                    if (shouldShowSeasonAt(x+50,y+50, frost*0.45f)) { ch='.'; cp=CP_WIN_GROUND; }
+            }
             break;
         }
         case WINTER: {
             float p = sprog;
-            // Snow blankets ground immediately, near-total by mid-winter
-            float snowAmt = std::min(1.0f, 0.55f + p * 0.5f);
+            // Patchy snow: never a full blanket — always some bare ground visible.
+            float snowAmt = std::min(0.80f, 0.30f + p * 0.55f);
             if (t==T_GRASS||t==T_TALL_GRASS||t==T_MEADOW||t==T_FLOWERS||t==T_DIRT||t==T_BERRY||t==T_GRAVEL)
                 if (shouldShowSeasonAt(x,y,snowAmt)) { ch='.'; cp=CP_WIN_GROUND; }
             if (t==T_HILLS && shouldShowSeasonAt(x,y,snowAmt)) cp=CP_WIN_GROUND;
@@ -295,19 +377,53 @@ void getTerrainVisual(Terrain t, int x, int y, char& ch, int& cp) {
         }}
     }
 
+    // Tundra (B_SNOW) is its own seasonal cycle. Native T_SNOW tiles used to
+    // stay snowy year-round, which read weird in summer. Now the tundra
+    // partially thaws in spring/autumn and almost fully greens in summer.
+    if (biome == B_SNOW && t == T_SNOW) {
+        switch (season) {
+        case SUMMER:
+            // Mostly bare ground and patchy grass.
+            if (shouldShowSeasonAt(x, y, 0.70f)) { ch='.'; cp=CP_GRASS_DRY; }
+            else                                 { ch=','; cp=CP_GRASS_LIGHT; }
+            break;
+        case SPRING: {
+            // Snow lingers near start, then patches of grass break through.
+            float thaw = std::min(1.0f, sprog * 1.4f);
+            if (shouldShowSeasonAt(x, y, thaw)) { ch='.'; cp=CP_GRASS_DRY; }
+            break;
+        }
+        case AUTUMN: {
+            // First frost — grass mostly, snow returns late.
+            float freeze = std::min(1.0f, sprog * 1.2f);
+            if (!shouldShowSeasonAt(x, y, freeze)) { ch=','; cp=CP_GRASS_DRY; }
+            break;
+        }
+        case WINTER:
+            break; // already full snow
+        }
+    }
+
     if (night) {
         if (cp==CP_GRASS||cp==CP_GRASS_LIGHT||cp==CP_GRASS_DRY||cp==CP_TALL_GRASS||cp==CP_MEADOW
-            ||cp==CP_AUT_GRASS||cp==CP_AUT_GRASS_LATE)
+            ||cp==CP_AUT_GRASS||cp==CP_AUT_GRASS_LATE
+            ||cp==CP_SPRING_FLOWER
+            ||cp==CP_FLOWERS||cp==CP_FLOWERS_BLUE||cp==CP_FLOWERS_YELLOW||cp==CP_FLOWERS_RED
+            ||cp==CP_BERRY||cp==CP_MARSH||cp==CP_REEDS)
             cp = CP_NIGHT_GRASS;
         if (cp==CP_FOREST||cp==CP_FOREST_DARK||cp==CP_PINE||cp==CP_PALM||cp==CP_DEAD_TREE
-            ||cp==CP_AUT_TREE_EARLY||cp==CP_AUT_TREE_MID||cp==CP_AUT_TREE_LATE||cp==CP_WIN_TREE)
+            ||cp==CP_AUT_TREE_EARLY||cp==CP_AUT_TREE_MID||cp==CP_AUT_TREE_LATE
+            ||cp==CP_AUT_TREE_GOLD||cp==CP_AUT_TREE_RED
+            ||cp==CP_WIN_TREE||cp==CP_WIN_PINE)
             cp = CP_NIGHT_TREE;
         if (cp==CP_WATER||cp==CP_WATER_SHIMMER||cp==CP_SHALLOWS) cp = CP_NIGHT_WATER;
         if (cp==CP_SAND||cp==CP_DUNES||cp==CP_DIRT||cp==CP_ROAD||cp==CP_GRAVEL
-            ||cp==CP_CASTLE_FLOOR||cp==CP_RUINS||cp==CP_WHEAT||cp==CP_WHEAT_GOLD)
+            ||cp==CP_CASTLE_FLOOR||cp==CP_RUINS||cp==CP_WHEAT||cp==CP_WHEAT_GOLD
+            ||cp==CP_HILLS||cp==CP_STONE)
             cp = CP_NIGHT_GROUND;
         if (cp==CP_GOLD||cp==CP_GOLD_SHIMMER) cp = CP_NIGHT_GOLD;
-        if (cp==CP_WIN_GROUND||cp==CP_SNOW_GROUND) cp = CP_FOG_EXPLORED;
+        // Snow tiles darken but stay distinctly lighter than bare ground at night.
+        if (cp==CP_WIN_GROUND||cp==CP_SNOW_GROUND) cp = CP_NIGHT_SNOW;
     }
 }
 
@@ -317,7 +433,8 @@ void getTerrainVisual(Terrain t, int x, int y, char& ch, int& cp) {
 void renderMap() {
     int maxY, maxX; getmaxyx(stdscr, maxY, maxX);
     int panelW = 24; g.viewW = maxX - panelW - 1; g.viewH = maxY - 4;
-    if (g.viewW < 30) g.viewW = maxX; if (g.viewH < 10) g.viewH = maxY - 2;
+    if (g.viewW < 30) g.viewW = maxX;
+    if (g.viewH < 10) g.viewH = maxY - 2;
     g.viewW = std::min(g.viewW, MAP_W); g.viewH = std::min(g.viewH, MAP_H);
 
     if (g.cursorX < g.viewX+3)            g.viewX = g.cursorX - 3;
@@ -385,47 +502,145 @@ void renderMap() {
             getTerrainVisual(tile.terrain, mx, my, ch, cp);
 
             if (!vis) {
-                if (isCur) { attron(COLOR_PAIR(CP_CURSOR)); mvaddch(scY, scX, ch); attroff(COLOR_PAIR(CP_CURSOR)); }
-                else { attron(COLOR_PAIR(CP_FOG_EXPLORED)); mvaddch(scY, scX, ch); attroff(COLOR_PAIR(CP_FOG_EXPLORED)); }
+                if (isCur) {
+                    attron(COLOR_PAIR(CP_CURSOR));
+                    if (displayMode == DM_ASCII) mvaddch(scY, scX, ch);
+                    else                         mvprintw(scY, scX, "%s", getCharEmoji(ch));
+                    attroff(COLOR_PAIR(CP_CURSOR));
+                } else {
+                    attron(COLOR_PAIR(CP_FOG_EXPLORED));
+                    if (displayMode == DM_ASCII) mvaddch(scY, scX, ch);
+                    else                         mvprintw(scY, scX, "%s", getCharEmoji(ch));
+                    attroff(COLOR_PAIR(CP_FOG_EXPLORED));
+                }
                 continue;
             }
 
-            // Wall drag preview overrides terrain
+            // Wall drag preview overrides terrain.
+            // Emoji mode shows ■ (solid block) matching the completed wall glyph.
             if (wallPrev[my][mx]) { ch = '#'; cp = CP_PLAYER; }
 
-            // Use a chtype-wide draw glyph so completed walls can use the ACS solid block
+            // Use a chtype-wide draw glyph so completed walls can use the ACS solid block.
             chtype drawCh = (chtype)ch;
             if (wallPrev[my][mx]) drawCh = ACS_CKBOARD;
 
             Entity* ent = entityAt(mx, my);
             // Cloaking: enemy units fade at night/storm unless a friendly eye is close.
+            // Wheat fields also conceal enemies — units in crops need close detection.
+            bool inCrop = ent && !isBuilding(ent->type) && tile.terrain == T_WHEAT;
             if (ent && ent->alive && ent->owner != 0 && ent->owner < MAX_PLAYERS
-                && isConcealing() && !isDetectedBy(mx, my, 0)) ent = nullptr;
+                && (isConcealing() || inCrop) && !isDetectedBy(mx, my, 0)) ent = nullptr;
+            // Render priority + stack count. When multiple units share a tile,
+            // prefer the highest-value military so e.g. knights show through a
+            // pile of peasants. Also count any same-owner combat units on the
+            // tile so we can show an uppercase glyph for stacks of 2+.
+            int stackedMil = 0;
+            if (ent && ent->alive && !isBuilding(ent->type)) {
+                auto isMil = [](EntityType t) {
+                    return t==E_MILITIA||t==E_ARCHER||t==E_KNIGHT||t==E_CATAPULT
+                        || t==E_WARSHIP;
+                };
+                int prio = isMil(ent->type) ? 1 : 0;
+                for (auto& other : g.entities) {
+                    if (!other.alive || other.state == S_GARRISONED) continue;
+                    if (other.x != mx || other.y != my) continue;
+                    if (other.owner != ent->owner) continue;
+                    if (!isMil(other.type)) continue;
+                    stackedMil++;
+                    if (prio == 0) { ent = &other; prio = 1; }
+                }
+            }
+            // emojiStr: the UTF-8 string to display in emoji mode.
+            // Initialised to terrain glyph; overridden when an entity is present.
+            const char* emojiStr = nullptr;
+
             if (ent && ent->alive) {
                 ch = STATS[ent->type].glyph;
+                // ASCII mode: uppercase glyph signals a stack of 2+ military.
+                // Emoji mode: no uppercase equivalent — stack not indicated.
+                if (displayMode == DM_ASCII && stackedMil >= 2 && ch >= 'a' && ch <= 'z')
+                    ch = ch - 'a' + 'A';
                 drawCh = (chtype)ch;
-                // Farms use natural wheat colouring regardless of owner
-                if (ent->type == E_FARM)      cp = (g.tick%40 < 20) ? CP_WHEAT : CP_WHEAT_GOLD;
-                else if (ent->owner == 0)     cp = night ? CP_PLAYER_NIGHT : CP_PLAYER;
-                else if (ent->owner == 1)     cp = night ? CP_ENEMY_NIGHT  : CP_ENEMY;
-                else if (ent->type == E_WOLF) cp = CP_WOLF;
-                else if (ent->type == E_SHEEP)cp = CP_SHEEP;
-                else                          cp = CP_DEER;
-                // Gate: glyph reflects open/closed state
-                if (ent->type == E_GATE && !ent->underConstruction) {
-                    ch = (ent->carrying > 0) ? '-' : '|';
-                    drawCh = (chtype)ch;
+
+                // Default emoji is the entity's body symbol.
+                emojiStr = getEntityEmoji(ent->type);
+
+                // Colour pair: ownership → background colour.
+                // Farms keep wheat colours regardless of owner.
+                // Gaia/nature (animals) use type-specific foreground colours with
+                // no ownership background — they are neutral entities.
+                // Ships keep the wood-deck background for their hull look.
+                if (ent->type == E_FARM)
+                    cp = (g.tick%40 < 20) ? CP_WHEAT : CP_WHEAT_GOLD;
+                else if (ent->owner == OWNER_NATURE) {
+                    if      (ent->type == E_WOLF)  cp = CP_WOLF;
+                    else if (ent->type == E_SHEEP) cp = CP_SHEEP;
+                    else if (ent->type == E_BOAR)  cp = CP_BOAR;
+                    else                           cp = CP_DEER;
+                } else {
+                    // Player-owned land units and buildings: background = owner colour.
+                    cp = ownerColorPair(ent->owner, night);
                 }
-                if (ent->underConstruction && g.tick%10 < 5) { ch = '#'; drawCh = (chtype)ch; }
-                // Dwarf-Fortress-style solid wall block when complete
-                if (ent->type == E_WALL && !ent->underConstruction) drawCh = ACS_CKBOARD;
-                // Recently in combat: gentle '!' pulse — ~1.5 Hz, not strobing
-                if (ent->alertTicks > 0 && (g.tick % 8) < 4) { ch = '!'; drawCh = (chtype)ch; }
+                // Ships override — wood-deck background preserved on water.
+                if (isNaval(ent->type))
+                    cp = (ent->owner == 0) ? CP_SHIP_PLAYER : CP_SHIP_ENEMY;
+
+                // State-specific glyph overrides (gate, construction, siege engines, alert).
+                if (ent->type == E_GATE && !ent->underConstruction) {
+                    ch = ent->gateOpen ? '-' : '|';
+                    drawCh = (chtype)ch;
+                    // ▬ = open (horizontal bar), ║ = closed (double vertical)
+                    emojiStr = ent->gateOpen ? "\xe2\x96\xac" : "\xe2\x95\x91";
+                }
+                if (ent->underConstruction && g.tick%10 < 5) {
+                    ch = '#'; drawCh = (chtype)ch;
+                    emojiStr = "\xe2\x96\xa0";  // ■ pulsing during construction
+                }
+                // Dwarf-Fortress-style solid wall block when complete.
+                // Emoji mode uses ■ (same visual intent, but valid UTF-8).
+                if (ent->type == E_WALL && !ent->underConstruction) {
+                    drawCh = ACS_CKBOARD;
+                    emojiStr = "\xe2\x96\xa0";  // ■ U+25A0
+                }
+                // Siege engine arm animations.
+                // Catapult: arm at rest = ◄ (loaded), arm firing = ╱ (swinging).
+                if (ent->type == E_CATAPULT) {
+                    bool firing = ent->state==S_ATTACKING && ent->atkCd > STATS[E_CATAPULT].atkSpeed*2/3;
+                    ch = firing ? '/' : '-'; drawCh = (chtype)ch;
+                    emojiStr = firing ? "\xe2\x95\xb1" : "\xe2\x97\x84"; // ╱ : ◄
+                }
+                // Ram: approaching = ► (pointer), ramming = ▶ (larger triangle, impact).
+                if (ent->type == E_RAM) {
+                    bool ramming = ent->state==S_ATTACKING && ent->atkCd > STATS[E_RAM].atkSpeed*2/3;
+                    ch = ramming ? '=' : '-'; drawCh = (chtype)ch;
+                    emojiStr = ramming ? "\xe2\x96\xb6" : "\xe2\x96\xba"; // ▶ : ►
+                }
+                // Recently in combat: gentle '!' pulse — ~1.5 Hz, not strobing.
+                if (ent->alertTicks > 0 && (g.tick % 8) < 4) {
+                    ch = '!'; drawCh = (chtype)ch;
+                    emojiStr = "!";
+                }
             }
+            // Projectile overwrites terrain/entity glyph; keep ASCII char for colour lookup.
             for (auto& p : g.projectiles) {
                 if (!p.alive) continue;
-                if ((int)roundf(p.x)==mx && (int)roundf(p.y)==my) { ch=p.glyph; cp=p.color; drawCh=(chtype)ch; }
+                if ((int)roundf(p.x)==mx && (int)roundf(p.y)==my) {
+                    ch = p.glyph; cp = p.color; drawCh = (chtype)ch;
+                    // Projectile emoji: boulder → ● (solid circle), arrow/bolt → · (dot)
+                    emojiStr = (p.color == CP_PROJ_BOULDER)
+                               ? "\xe2\x97\x8f"   // ● U+25CF
+                               : "\xc2\xb7";       // · U+00B7
+                }
             }
+            for (const auto& m : g.actionMarkers) {
+                if (m.x == mx && m.y == my && m.ticks > 0 && (g.tick % 6) < 4) {
+                    ch = m.glyph; cp = CP_UI_HIGH; drawCh = (chtype)ch;
+                    emojiStr = (m.glyph == '!') ? "!" : (m.glyph == '#') ? "\xe2\x96\xa0" : "\xc3\x97";
+                }
+            }
+
+            // When no entity is present, terrain char drives the emoji string.
+            if (!emojiStr) emojiStr = getCharEmoji(ch);
 
             bool isSel = false;
 
@@ -451,29 +666,61 @@ void renderMap() {
             bool onRangeRing = (ringR > 0)
                 && std::max(std::abs(mx - ringX), std::abs(my - ringY)) == ringR;
 
+            // Unified draw: ASCII uses mvaddch/chtype; emoji uses mvprintw with UTF-8.
+            // All subsequent positions use absolute mv* coords so ncurses' internal
+            // cursor model (which counts bytes, not columns) doesn't accumulate.
+            auto drawAt = [&](int y, int x, chtype dch, const char* estr) {
+                if (displayMode == DM_ASCII) mvaddch(y, x, dch);
+                else                         mvprintw(y, x, "%s", estr);
+            };
+
             if (isCur) {
-                attron(COLOR_PAIR(CP_CURSOR)); mvaddch(scY, scX, drawCh); attroff(COLOR_PAIR(CP_CURSOR));
+                attron(COLOR_PAIR(CP_CURSOR));
+                drawAt(scY, scX, drawCh, emojiStr);
+                attroff(COLOR_PAIR(CP_CURSOR));
             } else if (onBoxBorder) {
                 // Vivid selection-box border that pops on any terrain.
                 attron(COLOR_PAIR(CP_SUN)|A_BOLD|A_REVERSE);
-                mvaddch(scY, scX, drawCh);
+                drawAt(scY, scX, drawCh, emojiStr);
                 attroff(COLOR_PAIR(CP_SUN)|A_BOLD|A_REVERSE);
             } else if (onRangeRing && !ent) {
                 // Subtle range-ring marker on empty tiles only.
                 attron(COLOR_PAIR(CP_UI_HIGH)|A_DIM);
-                mvaddch(scY, scX, '.');
+                drawAt(scY, scX, '.', "\xc2\xb7");  // · U+00B7
                 attroff(COLOR_PAIR(CP_UI_HIGH)|A_DIM);
             } else {
                 int attr = COLOR_PAIR(cp);
                 if (ent && ent->alive) attr |= A_BOLD;
-                if (isSel)        attr |= A_UNDERLINE;
-                attron(attr); mvaddch(scY, scX, drawCh); attroff(attr);
+                // Selection highlight: A_REVERSE swaps owner bg ↔ fg so the
+                // player/enemy colour becomes the cell foreground — distinct
+                // from the ownership background on surrounding tiles.
+                if (isSel) attr |= A_REVERSE;
+                attron(attr);
+                drawAt(scY, scX, drawCh, emojiStr);
+                attroff(attr);
+            }
+
+            // Siege engines render as 2 chars: arm then body.
+            // ASCII: body char 'c' or 'r'.  Emoji: ⊙ (catapult barrel) or ▬ (ram).
+            if (ent && ent->alive && (ent->type==E_CATAPULT||ent->type==E_RAM)
+                    && sx+1 < g.viewW && !entityAt(mx+1, my)) {
+                char sc = (ent->type==E_CATAPULT) ? 'c' : 'r';
+                const char* bodyEmoji = (ent->type==E_CATAPULT)
+                    ? "\xe2\x8a\x99"   // ⊙ U+2299 catapult barrel
+                    : "\xe2\x96\xac";  // ▬ U+25AC ram body
+                int sattr = COLOR_PAIR(cp) | A_BOLD;
+                if (isSel) sattr |= A_REVERSE;
+                attron(sattr);
+                if (displayMode == DM_ASCII) mvaddch(scY, scX+1, sc);
+                else                         mvprintw(scY, scX+1, "%s", bodyEmoji);
+                attroff(sattr);
             }
         }
     }
 
     // Weather overlay: very gentle pulse — ~1.5 Hz, never overlays units/buildings.
     if (g.weather != W_CLEAR && (g.tick % 8) == 0) {
+        bool snowWeather = (g.weather == W_SNOW);
         int density = (g.weather == W_STORM) ? 2 : 1; // percent — very sparse
         int frame = g.tick;
         for (int sy = 0; sy < g.viewH; sy++) for (int sx = 0; sx < g.viewW; sx++) {
@@ -482,9 +729,18 @@ void renderMap() {
             if (entityAt(mx, my)) continue; // don't paint over units/buildings
             unsigned h = ((unsigned)(mx*73856093u) ^ (unsigned)(my*19349663u) ^ (unsigned)(frame*83492791u));
             if ((int)(h % 100) >= density) continue;
-            attron(COLOR_PAIR(CP_WATER_SHIMMER)|A_DIM);
-            mvaddch(sy+2, sx, '.');
-            attroff(COLOR_PAIR(CP_WATER_SHIMMER)|A_DIM);
+            if (snowWeather) {
+                // Transparent-bg white glyph: flake adopts whatever terrain colour is beneath it.
+                attron(COLOR_PAIR(CP_SNOW_FALL)|A_BOLD);
+                if (displayMode == DM_ASCII) mvaddch(sy+2, sx, '*');
+                else                         mvprintw(sy+2, sx, "\xe2\x9c\xa6"); // ✦
+                attroff(COLOR_PAIR(CP_SNOW_FALL)|A_BOLD);
+            } else {
+                attron(COLOR_PAIR(CP_RAIN)|A_BOLD);
+                if (displayMode == DM_ASCII) mvaddch(sy+2, sx, '.');
+                else                         mvprintw(sy+2, sx, "\xc2\xb7");     // ·
+                attroff(COLOR_PAIR(CP_RAIN)|A_BOLD);
+            }
         }
     }
 }
@@ -514,10 +770,19 @@ void renderUI() {
              p.gold, p.wood, p.food, p.supply, p.supplyMax, popForecast, idleCount, idleBldg);
 
     int iconX = maxX - 22;
-    if (getBrightness() > 0.5f) { attron(COLOR_PAIR(CP_SUN)|A_BOLD); mvprintw(0,iconX,"*"); attroff(COLOR_PAIR(CP_SUN)|A_BOLD); }
-    else { attron(COLOR_PAIR(CP_MOON)); mvprintw(0,iconX,"o"); attroff(COLOR_PAIR(CP_MOON)); }
+    if (getBrightness() > 0.5f) {
+        attron(COLOR_PAIR(CP_SUN)|A_BOLD);
+        // Emoji mode: ✦ (U+2726 BLACK FOUR POINTED STAR, width-1) for sun.
+        mvprintw(0, iconX, (displayMode == DM_EMOJI) ? "\xe2\x9c\xa6" : "*");
+        attroff(COLOR_PAIR(CP_SUN)|A_BOLD);
+    } else {
+        attron(COLOR_PAIR(CP_MOON));
+        // Emoji mode: ◐ (U+25D0 CIRCLE WITH LEFT HALF BLACK, width-1) for moon.
+        mvprintw(0, iconX, (displayMode == DM_EMOJI) ? "\xe2\x97\x90" : "o");
+        attroff(COLOR_PAIR(CP_MOON));
+    }
     attron(COLOR_PAIR(CP_UI_BAR));
-    const char* wn = (g.weather == W_STORM) ? "Storm" : (g.weather == W_RAIN) ? "Rain " : "Clear";
+    const char* wn = (g.weather == W_STORM) ? "Storm" : (g.weather == W_RAIN) ? "Rain " : (g.weather == W_SNOW) ? "Snow " : "Clear";
     mvprintw(0, iconX+1, " %-5s %-6s %s", getTimeName(), getSeasonName(), wn);
     attroff(COLOR_PAIR(CP_UI_BAR));
 
@@ -525,11 +790,12 @@ void renderUI() {
     attron(COLOR_PAIR(CP_UI_DIM)); mvhline(1, 0, '-', g.viewW); attroff(COLOR_PAIR(CP_UI_DIM));
     if (inBounds(g.cursorX, g.cursorY) && g.map[g.cursorY][g.cursorX].explored[0]) {
         Tile& ct = g.map[g.cursorY][g.cursorX];
-        const char* bn[] = {"Temperate","Desert","Tundra","Swamp","Woodland"};
+        const char* bn[] = {"Temperate","Desert","Tundra","Swamp","Woodland","Volcanic","Ocean"};
         const char* tn[] = {"Grassland","Tall Grass","Wildflowers","Meadow","Oak Forest","Pine Forest",
             "Palm Grove","Dead Tree","Mountain","Rolling Hills","Stone","Deep Water","Shallows",
             "Marshland","Reed Bed","Gold Deposit","Sandy Ground","Sand Dunes","Snow Cover","Frozen Ice",
             "Bare Earth","Stone Road","Mud","Wheat Field","Berry Bush","Fish Shoal","Ancient Ruins","Gravel",
+            "Lava Fissure","Volcanic Ash",
             "Castle Wall","Castle Floor","Castle Gate"};
         attron(COLOR_PAIR(CP_UI_TEXT)); mvprintw(1, 1, "%-16s", tn[ct.terrain]); attroff(COLOR_PAIR(CP_UI_TEXT));
         attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(1, 18, "[%s]", bn[ct.biome]); attroff(COLOR_PAIR(CP_UI_DIM));
@@ -562,6 +828,13 @@ void renderUI() {
             if (ent && ent->alive && ent->owner != 0 && ent->owner < MAX_PLAYERS
                 && isConcealing() && !isDetectedBy(mapX, mapY, 0)) ent = nullptr;
             if (ent && ent->alive) {
+                // Mirror main-map crop/cloaking on the minimap.
+                bool mmInCrop = !isBuilding(ent->type) && g.map[mapY][mapX].terrain == T_WHEAT;
+                if (ent->owner != 0 && ent->owner < MAX_PLAYERS
+                    && (isConcealing() || mmInCrop) && !isDetectedBy(mapX, mapY, 0))
+                    ent = nullptr;
+            }
+            if (ent && ent->alive) {
                 mch = isBuilding(ent->type) ? '#' : '*';
                 if      (ent->owner == 0)            mcp = CP_MM_PLAYER;
                 else if (ent->owner < MAX_PLAYERS)   mcp = CP_MM_ENEMY;
@@ -574,6 +847,36 @@ void renderUI() {
     // Selection info panel
     int iy = mmY + mmH + 1;
     attron(COLOR_PAIR(CP_UI_DIM)); mvhline(iy-1, panelX, '-', panelW); attroff(COLOR_PAIR(CP_UI_DIM));
+    if (inBounds(g.cursorX, g.cursorY)) {
+        const Tile& ct = g.map[g.cursorY][g.cursorX];
+        attron(COLOR_PAIR(CP_UI_TEXT));
+        mvprintw(iy++, panelX+1, "Tile: %.14s", terrainName(ct.terrain));
+        mvprintw(iy++, panelX+1, "Biome: %.13s", biomeName(ct.biome));
+        if (ct.resources > 0) mvprintw(iy++, panelX+1, "Resource: %d", ct.resources);
+        int stack = 0;
+        for (auto& e : g.entities) {
+            if (!e.alive || e.state == S_GARRISONED) continue;
+            auto& st = STATS[e.type];
+            bool covers = st.isBuilding
+                ? (g.cursorX>=e.x && g.cursorX<e.x+st.sizeW && g.cursorY>=e.y && g.cursorY<e.y+st.sizeH)
+                : (g.cursorX==e.x && g.cursorY==e.y);
+            if (!covers) continue;
+            if (stack == 0) mvprintw(iy++, panelX+1, "Stack:");
+            if (stack < 3) mvprintw(iy++, panelX+2, "%.16s", st.name);
+            stack++;
+        }
+        if (stack == 0) mvprintw(iy++, panelX+1, "Stack: empty");
+        else if (stack > 3) mvprintw(iy++, panelX+2, "+%d more", stack - 3);
+        attroff(COLOR_PAIR(CP_UI_TEXT));
+        if (g.diagnostics) {
+            attron(COLOR_PAIR(CP_UI_HIGH));
+            mvprintw(iy++, panelX+1, "Diag T%d M:%s", g.tick, modeName(g.mode));
+            mvprintw(iy++, panelX+1, "Ent:%d Proj:%d", (int)g.entities.size(), (int)g.projectiles.size());
+            mvprintw(iy++, panelX+1, "Seed:%u AI:%d", g.seed, g.startupAIs);
+            attroff(COLOR_PAIR(CP_UI_HIGH));
+        }
+        iy++;
+    }
 
     if (g.selectedIds.size() > 1) {
         // Multi-unit group summary
@@ -586,15 +889,16 @@ void renderUI() {
             case E_CATAPULT: counts[4]++; break; default: counts[5]++; break;
             }
         }
-        attron(COLOR_PAIR(CP_PLAYER)|A_BOLD);
+        attron(COLOR_PAIR(CP_OWN_P0)|A_BOLD);
         mvprintw(iy++, panelX+1, "Group: %d units", (int)g.selectedIds.size());
-        attroff(COLOR_PAIR(CP_PLAYER)|A_BOLD);
+        attroff(COLOR_PAIR(CP_OWN_P0)|A_BOLD);
         attron(COLOR_PAIR(CP_UI_TEXT));
-        if (counts[0]) mvprintw(iy++, panelX+1, "  p x%d Peasant",  counts[0]);
-        if (counts[1]) mvprintw(iy++, panelX+1, "  m x%d Militia",  counts[1]);
-        if (counts[2]) mvprintw(iy++, panelX+1, "  a x%d Archer",   counts[2]);
-        if (counts[3]) mvprintw(iy++, panelX+1, "  k x%d Knight",   counts[3]);
-        if (counts[4]) mvprintw(iy++, panelX+1, "  c x%d Catapult", counts[4]);
+        // Use the entity glyph/emoji for each unit type in the group summary.
+        if (counts[0]) mvprintw(iy++, panelX+1, "  %s x%d Peasant",  getEntityEmoji(E_PEASANT),  counts[0]);
+        if (counts[1]) mvprintw(iy++, panelX+1, "  %s x%d Militia",  getEntityEmoji(E_MILITIA),  counts[1]);
+        if (counts[2]) mvprintw(iy++, panelX+1, "  %s x%d Archer",   getEntityEmoji(E_ARCHER),   counts[2]);
+        if (counts[3]) mvprintw(iy++, panelX+1, "  %s x%d Knight",   getEntityEmoji(E_KNIGHT),   counts[3]);
+        if (counts[4]) mvprintw(iy++, panelX+1, "  %s x%d Catapult", getEntityEmoji(E_CATAPULT), counts[4]);
         if (counts[5]) mvprintw(iy++, panelX+1, "  + x%d Other",    counts[5]);
         attroff(COLOR_PAIR(CP_UI_TEXT));
         iy++;
@@ -628,30 +932,49 @@ void renderUI() {
                     case S_IDLE:      stDesc = "Idle"; break;
                     case S_MOVING:    stDesc = "Moving"; break;
                     case S_ATTACKING: stDesc = "Fighting"; break;
-                    case S_GATHERING: stDesc = (sel->gatherType==0) ? "Mining gold" : "Chopping wood"; break;
+                    case S_GATHERING:
+                        if      (sel->cargo.type == CR_GOLD) stDesc = "Mining gold";
+                        else if (sel->cargo.type == CR_WOOD) stDesc = "Chopping wood";
+                        else if (sel->cargo.type == CR_FISH) stDesc = "Fishing";
+                        else                                stDesc = "Picking berries";
+                        break;
                     case S_BUILDING:  { Entity* b = findEntity(sel->targetId);
                                         if (b && !b->underConstruction && b->type==E_FARM)
                                             stDesc = "Tending farm";
                                         else
                                             stDesc = b ? (std::string("Building ") + STATS[b->type].name) : "Building";
                                         break; }
-                    case S_RETURNING: stDesc = (sel->gatherType==0) ? "Carrying gold" : "Carrying wood"; break;
+                    case S_RETURNING:
+                        if      (sel->cargo.type == CR_GOLD) stDesc = "Carrying gold";
+                        else if (sel->cargo.type == CR_WOOD) stDesc = "Carrying wood";
+                        else if (sel->cargo.type == CR_FISH) stDesc = "Carrying fish";
+                        else                                stDesc = "Carrying food";
+                        break;
                     default:          stDesc = "Idle"; break;
                     }
                 } else {
-                    const char* sn[] = {"Idle","Moving","Attacking","Gathering","Building","Training","Returning","Dead"};
-                    stDesc = sn[sel->state];
+                    stDesc = stateName(sel->state);
                 }
                 attron(COLOR_PAIR(CP_UI_ACCENT)); mvprintw(iy++, panelX+1, "%s", stDesc.c_str()); attroff(COLOR_PAIR(CP_UI_ACCENT));
-                if (sel->carrying > 0) {
+                if (sel->cargo.amount > 0) {
+                    const char* what = cargoResourceName(sel->cargo.type);
                     attron(COLOR_PAIR(CP_UI_HIGH));
-                    mvprintw(iy++, panelX+1, "Carrying: %d %s", sel->carrying, sel->gatherType==0?"gold":"wood");
+                    mvprintw(iy++, panelX+1, "Carrying: %d %s", sel->cargo.amount, what);
                     attroff(COLOR_PAIR(CP_UI_HIGH));
+                }
+                // Transport cargo display + unload hint
+                if (sel->type == E_TRANSPORT && sel->owner == 0) {
+                    attron(COLOR_PAIR(CP_UI_HIGH));
+                    mvprintw(iy++, panelX+1, "Cargo: %d/%d", (int)sel->garrison.size(), garrisonCap(E_TRANSPORT));
+                    attroff(COLOR_PAIR(CP_UI_HIGH));
+                    attron(COLOR_PAIR(CP_UI_ACCENT));
+                    mvprintw(iy++, panelX+1, "[U] Unload");
+                    attroff(COLOR_PAIR(CP_UI_ACCENT));
                 }
             }
             if (sel->producing != E_NONE) {
                 iy++;
-                int pp = sel->prodProgress * 100 / std::max(1, sel->prodTime);
+                int pp = sel->trainProgress * 100 / std::max(1, sel->trainTime);
                 attron(COLOR_PAIR(CP_UI_HIGH)); mvprintw(iy++, panelX+1, "Training: %s", STATS[sel->producing].name);
                 int pb = panelW-4, pf = pp*pb/100;
                 for (int i = 0; i < pb; i++) { int c=(i<pf)?CP_UI_HIGH:CP_FOG; attron(COLOR_PAIR(c)); mvaddch(iy, panelX+1+i, (i<pf)?'=':'-'); attroff(COLOR_PAIR(c)); }
@@ -661,14 +984,19 @@ void renderUI() {
                 attron(COLOR_PAIR(CP_UI_DIM));
                 mvprintw(iy++, panelX+1, "Queue: %d", (int)sel->queue.size());
                 int n = std::min((int)sel->queue.size(), panelW-4);
-                for (int i = 0; i < n; i++)
-                    mvaddch(iy, panelX+1+i, STATS[(EntityType)sel->queue[i]].glyph);
+                for (int i = 0; i < n; i++) {
+                    // Each queue slot is one map-cell-width apart regardless of mode.
+                    if (displayMode == DM_ASCII)
+                        mvaddch(iy, panelX+1+i, STATS[(EntityType)sel->queue[i]].glyph);
+                    else
+                        mvprintw(iy, panelX+1+i, "%s", getEntityEmoji(sel->queue[i]));
+                }
                 iy++;
                 attroff(COLOR_PAIR(CP_UI_DIM));
             }
             if (sel->researching != 0) {
                 iy++;
-                int pp = sel->prodProgress * 100 / std::max(1, sel->prodTime);
+                int pp = sel->researchProgress * 100 / std::max(1, sel->researchTime);
                 const char* rn = (sel->researching == R_IRON_WEAPONS) ? "Iron Weapons" :
                                  (sel->researching == R_CROSSBOWS)   ? "Crossbows"    : "Research";
                 attron(COLOR_PAIR(CP_UI_HIGH)); mvprintw(iy++, panelX+1, "Researching: %s", rn);
@@ -693,13 +1021,14 @@ void renderUI() {
                     if (sel->type==E_CHURCH)     mvprintw(iy++, panelX+1, "Heals nearby +Vision");
                     if (sel->type==E_MARKET)     mvprintw(iy++, panelX+1, "Passive gold income");
                     if (sel->type==E_FARM)        { mvprintw(iy++, panelX+1, "Generates food");
-                                                     mvprintw(iy++, panelX+1, "Assign peasant to tend"); }
+                                                     mvprintw(iy++, panelX+1, "Assign peasant to tend");
+                                                     mvprintw(iy++, panelX+1, "Ripe: %d / 20", sel->storedFood); }
                     if (sel->type==E_LUMBER_CAMP) mvprintw(iy++, panelX+1, "Wood drop-off");
                     if (sel->type==E_MINING_CAMP) mvprintw(iy++, panelX+1, "Gold drop-off");
                     if (sel->type==E_MILL)        mvprintw(iy++, panelX+1, "Enables harvesting");
                     if (sel->type==E_GATE) {
-                        mvprintw(iy++, panelX+1, sel->carrying>0 ? "State: Open" : "State: Closed");
-                        mvprintw(iy++, panelX+1, sel->gatherType==1 ? "Mode: Locked" : "Mode: Auto");
+                        mvprintw(iy++, panelX+1, sel->gateOpen ? "State: Open" : "State: Closed");
+                        mvprintw(iy++, panelX+1, sel->gateLocked ? "Mode: Locked" : "Mode: Auto");
                         mvprintw(iy++, panelX+1, "[O] Toggle/Lock");
                     }
                     if (sel->type==E_CASTLE)     mvprintw(iy++, panelX+1, "+15 Supply, 350 HP");
@@ -714,22 +1043,70 @@ void renderUI() {
         } else {
             attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(iy, panelX+1, "No selection"); attroff(COLOR_PAIR(CP_UI_DIM));
             iy += 2;
-            attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(iy++, panelX+1, "-- Legend --"); attroff(COLOR_PAIR(CP_UI_DIM));
-            attron(COLOR_PAIR(CP_UI_TEXT));
-            mvprintw(iy++, panelX+1, "$ Gold   T Oak");
-            mvprintw(iy++, panelX+1, "^ Mtn    Y Pine");
-            mvprintw(iy++, panelX+1, "~ Water  n Hills");
-            mvprintw(iy++, panelX+1, "# Castle & Ruins");
-            attroff(COLOR_PAIR(CP_UI_TEXT)); iy++;
-            attron(COLOR_PAIR(CP_PLAYER));
-            mvprintw(iy++, panelX+1, "p Peasant  m Militia");
-            mvprintw(iy++, panelX+1, "a Archer   k Knight");
-            mvprintw(iy++, panelX+1, "c Catapult");
-            attroff(COLOR_PAIR(CP_PLAYER)); iy++;
-            attron(COLOR_PAIR(CP_DEER));
-            mvprintw(iy++, panelX+1, "d Deer  s Sheep");
-            mvprintw(iy++, panelX+1, "w Wolf");
-            attroff(COLOR_PAIR(CP_DEER));
+            if (displayMode == DM_ASCII) {
+                attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(iy++, panelX+1, "-- Legend (ASCII) --"); attroff(COLOR_PAIR(CP_UI_DIM));
+                attron(COLOR_PAIR(CP_UI_TEXT));
+                mvprintw(iy++, panelX+1, "$ Gold   T Oak");
+                mvprintw(iy++, panelX+1, "^ Mtn    Y Pine");
+                mvprintw(iy++, panelX+1, "~ Water  n Hills");
+                mvprintw(iy++, panelX+1, ": Berry  %% Wheat");
+                mvprintw(iy++, panelX+1, "# Castle & Ruins");
+                attroff(COLOR_PAIR(CP_UI_TEXT)); iy++;
+                attron(COLOR_PAIR(CP_OWN_P0));
+                mvprintw(iy++, panelX+1, "p Peasant  m Militia");
+                mvprintw(iy++, panelX+1, "a Archer   k Knight");
+                mvprintw(iy++, panelX+1, "c Catapult");
+                attroff(COLOR_PAIR(CP_OWN_P0)); iy++;
+                attron(COLOR_PAIR(CP_DEER));
+                mvprintw(iy++, panelX+1, "d Deer  s Sheep");
+                mvprintw(iy++, panelX+1, "w Wolf  o Boar");
+                attroff(COLOR_PAIR(CP_DEER));
+            } else {
+                // Emoji legend: show Unicode symbols + ownership colour key.
+                attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(iy++, panelX+1, "-- Legend (Emoji) --"); attroff(COLOR_PAIR(CP_UI_DIM));
+                // Terrain (two per row, explicit x for column 2)
+                attron(COLOR_PAIR(CP_UI_TEXT));
+                // Use mvprintw at explicit positions so multi-byte UTF-8 doesn't
+                // misalign ncurses' internal cursor for the right-column label.
+                mvprintw(iy,   panelX+1,  "\xe2\x99\xa6 Gold");     // ♦
+                mvprintw(iy++, panelX+10, "\xe2\x99\xa3 Oak");      // ♣
+                mvprintw(iy,   panelX+1,  "\xe2\x96\xb2 Mtn");      // ▲
+                mvprintw(iy++, panelX+10, "\xe2\x86\x91 Pine");      // ↑
+                mvprintw(iy,   panelX+1,  "\xe2\x89\x88 Water");     // ≈
+                mvprintw(iy++, panelX+10, "\xe2\x88\xa9 Hills");     // ∩
+                mvprintw(iy,   panelX+1,  "\xe2\x88\xb7 Berry");     // ∷
+                mvprintw(iy++, panelX+10, "\xc2\xa7 Wheat");         // §
+                mvprintw(iy,   panelX+1,  "\xe2\x96\xa0 Wall");      // ■
+                mvprintw(iy++, panelX+10, "\xc2\xb6 Ruins");         // ¶
+                attroff(COLOR_PAIR(CP_UI_TEXT)); iy++;
+                // Military units with player-colour background
+                attron(COLOR_PAIR(CP_OWN_P0)|A_BOLD);
+                mvprintw(iy,   panelX+1,  "\xe2\x99\x9f Peasant");   // ♟
+                mvprintw(iy++, panelX+12, "\xe2\x99\x99 Militia");   // ♙
+                mvprintw(iy,   panelX+1,  "\xe2\x99\x97 Archer");    // ♝
+                mvprintw(iy++, panelX+12, "\xe2\x99\x9e Knight");    // ♞
+                mvprintw(iy++, panelX+1,  "\xe2\x8a\x99 Catapult");  // ⊙
+                attroff(COLOR_PAIR(CP_OWN_P0)|A_BOLD); iy++;
+                // Animals (neutral — no ownership background)
+                attron(COLOR_PAIR(CP_DEER));
+                mvprintw(iy,   panelX+1,  "\xe2\x96\xb7 Deer");      // ▷
+                mvprintw(iy++, panelX+10, "\xe2\x97\x8c Sheep");     // ◌
+                mvprintw(iy,   panelX+1,  "\xe2\x97\x81 Wolf");      // ◁
+                mvprintw(iy++, panelX+10, "\xe2\x97\x8f Boar");      // ●
+                attroff(COLOR_PAIR(CP_DEER)); iy++;
+                // Ownership colour key
+                attron(COLOR_PAIR(CP_UI_DIM));
+                mvprintw(iy++, panelX+1, "Bg=owner colour:");
+                attroff(COLOR_PAIR(CP_UI_DIM));
+                attron(COLOR_PAIR(CP_OWN_P0)); mvprintw(iy, panelX+1, "You"); attroff(COLOR_PAIR(CP_OWN_P0));
+                attron(COLOR_PAIR(CP_OWN_P1)); mvprintw(iy, panelX+5, "P2");  attroff(COLOR_PAIR(CP_OWN_P1));
+                attron(COLOR_PAIR(CP_OWN_P2)); mvprintw(iy, panelX+8, "P3");  attroff(COLOR_PAIR(CP_OWN_P2));
+                attron(COLOR_PAIR(CP_OWN_P3)); mvprintw(iy, panelX+11,"P4");  attroff(COLOR_PAIR(CP_OWN_P3));
+                iy++;
+                attron(COLOR_PAIR(CP_UI_DIM));
+                mvprintw(iy++, panelX+1, "Sel=reversed bg");
+                attroff(COLOR_PAIR(CP_UI_DIM));
+            }
         }
     }
 
@@ -741,10 +1118,10 @@ void renderUI() {
     else if (g.mode == M_TRAIN_SELECT) {
         Entity* s2 = findEntity(g.selectedId);
         if (s2) {
-            if (s2->type==E_TOWNHALL)  mvprintw(botY2, 1, " TRAIN: [P]easant(50g) [Esc] ");
-            else if (s2->type==E_BARRACKS) mvprintw(botY2, 1, " TRAIN: [M]ilitia(60g) [A]rcher(70g) [C]atapult(150g+40w) [Esc] ");
-            else if (s2->type==E_STABLE)   mvprintw(botY2, 1, " TRAIN: [K]night(120g) [Esc] ");
-            else if (s2->type==E_DOCK)     mvprintw(botY2, 1, " TRAIN: [B]oat(80g+50w) [Esc] ");
+            if (s2->type==E_TOWNHALL)  mvprintw(botY2, 1, " TRAIN: [P]easant(50g), repeat keys to queue [Esc] ");
+            else if (s2->type==E_BARRACKS) mvprintw(botY2, 1, " TRAIN: [M]ilitia [A]rcher [C]atapult [R]am, repeat keys to queue [Esc] ");
+            else if (s2->type==E_STABLE)   mvprintw(botY2, 1, " TRAIN: [K]night, repeat keys to queue [Esc] ");
+            else if (s2->type==E_DOCK)     mvprintw(botY2, 1, " TRAIN: [B]oat [W]arship [T]ransport, repeat keys to queue [Esc] ");
         }
     } else if (g.mode == M_WALL_DRAG) {
         if (g.dragging)
@@ -755,13 +1132,13 @@ void renderUI() {
         attron(A_BOLD); mvprintw(botY2, 1, " PAUSED - Press [P] to resume "); attroff(A_BOLD);
     } else if (g.mode == M_GAME_OVER) {
         attron(A_BOLD);
-        if (g.winner==0) mvprintw(botY2, 1, " VICTORY! The realm is yours. [Q] Quit ");
-        else             mvprintw(botY2, 1, " DEFEAT! Your kingdom has fallen. [Q] Quit ");
+        if (g.winner==0) mvprintw(botY2, 1, " VICTORY! The realm is yours. [Enter/Q] Main menu  [X] Exit ");
+        else             mvprintw(botY2, 1, " DEFEAT! Your kingdom has fallen. [Enter/Q] Main menu  [X] Exit ");
         attroff(A_BOLD);
     } else if (g.groupAssignPending) {
         attron(A_BOLD); mvprintw(botY2, 1, " GROUP ASSIGN: Press [1]-[9] to assign selection to group, [Esc] to cancel "); attroff(A_BOLD);
     } else {
-        mvprintw(botY2, 1, " Arrows:Move  Spc:Select  Enter:Cmd  B:Build  T:Train  A:All Mil  G:Group  1-9:Groups  P:Pause  Q:Quit ");
+        mvprintw(botY2, 1, " Arrows:Move  Spc:Select  Enter:Cmd  B:Build T:Train ?:Help D:Diag V:Save L:Load Q:Resign X:Exit ");
     }
     attroff(COLOR_PAIR(CP_UI_BAR));
 
@@ -775,4 +1152,44 @@ void renderUI() {
     attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(botY1, maxX-12, "(%d,%d)", g.cursorX, g.cursorY); attroff(COLOR_PAIR(CP_UI_DIM));
 }
 
-void render() { erase(); renderMap(); renderUI(); refresh(); }
+static void renderHelpOverlay() {
+    if (!g.helpOverlay) return;
+    int maxY, maxX;
+    getmaxyx(stdscr, maxY, maxX);
+    int w = std::min(maxX - 4, 78);
+    int h = std::min(maxY - 4, 24);
+    int x = std::max(1, (maxX - w) / 2);
+    int y = std::max(1, (maxY - h) / 2);
+    attron(COLOR_PAIR(CP_UI_BAR));
+    for (int yy = 0; yy < h; yy++) mvhline(y + yy, x, ' ', w);
+    mvhline(y, x, '-', w);
+    mvhline(y + h - 1, x, '-', w);
+    mvvline(y, x, '|', h);
+    mvvline(y, x + w - 1, '|', h);
+    mvaddch(y, x, '+');
+    mvaddch(y, x + w - 1, '+');
+    mvaddch(y + h - 1, x, '+');
+    mvaddch(y + h - 1, x + w - 1, '+');
+    attroff(COLOR_PAIR(CP_UI_BAR));
+
+    int row = y + 1;
+    attron(COLOR_PAIR(CP_UI_HIGH)|A_BOLD);
+    mvprintw(row++, x + 2, "Realm Help");
+    attroff(COLOR_PAIR(CP_UI_HIGH)|A_BOLD);
+    int n = 0;
+    const CommandBinding* commands = gameplayCommands(n);
+    attron(COLOR_PAIR(CP_UI_TEXT));
+    for (int i = 0; i < n && row < y + h - 6; i++)
+        mvprintw(row++, x + 2, "%-16s %-14s %.36s", commands[i].keys, commands[i].label, commands[i].help);
+    row++;
+    mvprintw(row++, x + 2, "Food: berries, hunting, farms/mills, wheat, fishing.");
+    mvprintw(row++, x + 2, "Winter drains food; starvation damages units.");
+    mvprintw(row++, x + 2, "Owner backgrounds mark factions; animals are neutral.");
+    mvprintw(row++, x + 2, "! means recent combat; x/+/# are command markers.");
+    attroff(COLOR_PAIR(CP_UI_TEXT));
+    attron(COLOR_PAIR(CP_UI_HIGH));
+    mvprintw(y + h - 2, x + 2, "Press ? to close");
+    attroff(COLOR_PAIR(CP_UI_HIGH));
+}
+
+void render() { erase(); renderMap(); renderUI(); renderHelpOverlay(); refresh(); }

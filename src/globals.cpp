@@ -1,0 +1,36 @@
+#include "realm.h"
+
+Game g;
+
+const EntityStats STATS[] = {
+    {"None",       ' ',   0, 0,0,0,0,  0,  0,  0, 1,1,  0,0, false, 0},
+    {"Peasant",    'p',  35, 3,1,3,8, 50,  0, 40, 1,1,  0,1, false, TR_WORKER|TR_GATHERER|TR_BUILDER},
+    {"Militia",    'm',  70, 8,1,3,6, 60,  0, 50, 1,1,  0,1, false, TR_MILITARY|TR_INFANTRY},
+    {"Archer",     'a',  45, 6,5,3,7, 70,  0, 60, 1,1,  0,1, false, TR_MILITARY|TR_INFANTRY|TR_RANGED},
+    {"Knight",     'k', 110,14,1,1,5,120,  0, 80, 1,1,  0,2, false, TR_MILITARY},
+    {"Catapult",   'c',  70,25,8,8,12,150, 40, 90, 1,1,  0,3, false, TR_MILITARY|TR_RANGED|TR_SIEGE},
+    {"Fishing Boat",'b', 40, 0,0,5, 0, 80, 50, 60, 1,1,  0,1, false, TR_GATHERER|TR_NAVAL},
+    {"Warship",    'V',  70, 9,5,4, 7,150, 80,100, 1,1,  0,3, false, TR_MILITARY|TR_RANGED|TR_NAVAL},
+    {"Transport",  'F',  80, 0,0,5, 0, 80, 40, 70, 1,1,  0,2, false, TR_NAVAL|TR_GARRISON},
+    {"Ram",        '-',  80,28,1,6, 9, 70, 80, 80, 1,1,  0,3, false, TR_MILITARY|TR_SIEGE},
+    {"Town Hall",  'H', 240, 0,0,0,0,200,150,100, 3,3, 10,0, true, TR_DROPOFF|TR_TRAINS_UNITS|TR_GARRISON},
+    {"House",      'h', 100, 0,0,0,0,  0, 50, 60, 2,2,  5,0, true, TR_GARRISON},
+    {"Barracks",   'B', 120, 0,0,0,0,  0,150, 80, 3,2,  0,0, true, TR_TRAINS_UNITS},
+    {"Stable",     'S', 140, 0,0,0,0,  0,200,100, 3,2,  0,0, true, TR_TRAINS_UNITS},
+    {"Tower",      'X', 130,10,7,0,7, 50,100, 70, 1,1,  0,0, true, TR_DEFENSE|TR_RANGED|TR_GARRISON},
+    {"Farm",       '%',  20, 0,0,0,0,  0,  0, 15, 1,1,  0,0, true, 0},
+    {"Blacksmith", 'A', 100, 0,0,0,0,  0,120, 70, 2,2,  0,0, true, 0},
+    {"Church",     '+', 120, 0,0,0,0, 80,100, 90, 2,2,  0,0, true, 0},
+    {"Market",     'M', 100, 0,0,0,0,  0,100, 60, 2,2,  0,0, true, 0},
+    {"Wall",       '#', 120, 0,0,0,0,  0, 20, 15, 1,1,  0,0, true, 0},
+    {"Gate",       'G',  90, 0,0,0,0,  0, 30, 20, 1,1,  0,0, true, 0},
+    {"Castle",     'W', 350, 0,0,0,0,100,250,150, 4,4, 15,0, true, TR_TRAINS_UNITS|TR_DEFENSE|TR_GARRISON|TR_DROPOFF},
+    {"Lumber Camp",'L',  80, 0,0,0,0,  0, 80,  0, 2,2,  0,0, true, TR_DROPOFF},
+    {"Mining Camp",'N',  80, 0,0,0,0, 30, 60,  0, 2,2,  0,0, true, TR_DROPOFF},
+    {"Mill",       'O', 100, 0,0,0,0,  0,100, 80, 2,2,  0,0, true, TR_DROPOFF},
+    {"Dock",       'D', 100, 0,0,0,0,  0,100, 70, 2,2,  0,0, true, TR_DROPOFF|TR_TRAINS_UNITS},
+    {"Deer",       'd',  20, 0,0,2,0,  0,  0,  0, 1,1,  0,0, false, TR_WILD_ANIMAL},
+    {"Wolf",       'w',  35, 4,1,2,8,  0,  0,  0, 1,1,  0,0, false, TR_WILD_ANIMAL|TR_HOSTILE_WILDLIFE},
+    {"Sheep",      's',  12, 0,0,3,0,  0,  0,  0, 1,1,  0,0, false, TR_WILD_ANIMAL},
+    {"Boar",       'o',  40, 6,1,2,6,  0,  0,  0, 1,1,  0,0, false, TR_WILD_ANIMAL|TR_HOSTILE_WILDLIFE},
+};
