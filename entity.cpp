@@ -82,7 +82,9 @@ static void ensureDetectMap(int observerOwner) {
 }
 
 bool isDetectedBy(int x, int y, int observerOwner) {
-    if (!isConcealing()) return true;
+    // No short-circuit on time of day: wheat crops conceal enemies in broad
+    // daylight as well as night. Callers (render.cpp) already gate on whether
+    // concealment applies — this just answers "is a friendly eye nearby?".
     if (observerOwner < 0 || observerOwner >= MAX_PLAYERS) return true;
     if (!inBounds(x, y)) return false;
     ensureDetectMap(observerOwner);
@@ -470,9 +472,12 @@ Entity* findNearestEnemy(Entity& e, int range) {
         if (o.state == S_GARRISONED) continue;
         // Non-nature units do not auto-attack nature entities (deer/wolf/sheep)
         if (e.owner != OWNER_NATURE && o.owner == OWNER_NATURE) continue;
-        // Cloaking: if it's night/storm and no friendly eye is near the target, can't engage.
-        if (concealing && o.owner != OWNER_NATURE && e.owner < MAX_PLAYERS
-            && !isDetectedBy(o.x, o.y, e.owner)) continue;
+        // Cloaking: enemy hidden if (a) night/storm and not close-detected, or
+        // (b) standing in wheat and not close-detected. Buildings can't hide.
+        bool inCrop = !isBuilding(o.type) && g.map[o.y][o.x].terrain == T_WHEAT;
+        if ((concealing || inCrop) && o.owner != OWNER_NATURE
+                && e.owner < MAX_PLAYERS
+                && !isDetectedBy(o.x, o.y, e.owner)) continue;
         int d = dist(e.x, e.y, o.x, o.y);
         if (d < bestD) { bestD = d; best = &o; }
     }
@@ -1412,11 +1417,18 @@ void tickTowers() {
         if (e.atkCd <= 0) {
             // Pick the N nearest enemies in range and shoot each one.
             std::vector<Entity*> targets;
+            bool concealing = isConcealing();
             for (auto& o : g.entities) {
                 if (!o.alive || o.owner == e.owner) continue;
                 if (o.state == S_GARRISONED) continue;
                 if (e.owner != OWNER_NATURE && o.owner == OWNER_NATURE) continue;
                 if (dist(sx, sy, o.x, o.y) > rng) continue;
+                // Towers/castles can't shoot what they can't see — wheat hides
+                // enemies just like night/storm does, unless close-detected.
+                bool inCrop = !isBuilding(o.type) && g.map[o.y][o.x].terrain == T_WHEAT;
+                if ((concealing || inCrop) && o.owner != OWNER_NATURE
+                        && e.owner < MAX_PLAYERS
+                        && !isDetectedBy(o.x, o.y, e.owner)) continue;
                 targets.push_back(&o);
             }
             std::sort(targets.begin(), targets.end(), [sx,sy](Entity* a, Entity* b){
