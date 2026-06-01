@@ -342,15 +342,20 @@ void handleInput(int ch) {
     }
 
     switch (ch) {
-    // F5 saves, F9 loads. Single slot at ./realm.sav (per cwd).
-    case KEY_F(5): {
-        if (saveGame("realm.sav")) setStatus("Game saved (realm.sav).");
-        else                       setStatus("Save failed!");
+    // Save / load. F5-F8 = save slots 1-4, F9-F12 = load slots 1-4.
+    // Slot 1 is the quicksave.
+    case KEY_F(5): case KEY_F(6): case KEY_F(7): case KEY_F(8): {
+        int slot = (ch - KEY_F(5)) + 1;
+        char path[64]; snprintf(path, sizeof(path), "realm-slot%d.sav", slot);
+        if (saveGame(path)) setStatus(std::string("Saved to slot ") + std::to_string(slot) + ".");
+        else                setStatus("Save failed! (disk full?)");
         break;
     }
-    case KEY_F(9): {
-        if (loadGame("realm.sav")) setStatus("Game loaded.");
-        else                       setStatus("Load failed (no save?).");
+    case KEY_F(9): case KEY_F(10): case KEY_F(11): case KEY_F(12): {
+        int slot = (ch - KEY_F(9)) + 1;
+        char path[64]; snprintf(path, sizeof(path), "realm-slot%d.sav", slot);
+        if (loadGame(path)) setStatus(std::string("Loaded slot ") + std::to_string(slot) + ".");
+        else                setStatus("Load failed — no save, wrong version, or corrupt.");
         break;
     }
 

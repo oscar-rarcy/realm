@@ -172,8 +172,26 @@ static void aiTickTransports(int o) {
                 t.state = S_IDLE; t.path.clear();
             }
             if (atHomeShore) {
-                // Load idle military within 10 tiles.
+                // First slot: a peasant colonist so the AI can build a forward
+                // base on the enemy shore. Remaining slots: idle military.
                 int free = garrisonCap(E_TRANSPORT) - (int)t.garrison.size();
+                bool hasPeasant = false;
+                for (int gid : t.garrison) {
+                    Entity* g_e = findEntity(gid);
+                    if (g_e && g_e->type == E_PEASANT) { hasPeasant = true; break; }
+                }
+                if (!hasPeasant && free > 0) {
+                    Entity* nearestPeas = nullptr; int bestPD = 99999;
+                    for (auto& u : g.entities) {
+                        if (!u.alive || u.owner != o || u.type != E_PEASANT) continue;
+                        if (u.state != S_IDLE) continue;
+                        int d = mdist(u.x, u.y, t.x, t.y);
+                        if (d > 12) continue;
+                        if (d < bestPD) { bestPD = d; nearestPeas = &u; }
+                    }
+                    if (nearestPeas) { orderGarrison(*nearestPeas, t.id); free--; }
+                }
+                // Then load nearby idle military.
                 for (auto& u : g.entities) {
                     if (free <= 0) break;
                     if (!u.alive || u.owner != o) continue;
@@ -536,6 +554,33 @@ static void tickAIForOwner(int o) {
                     }
                 }
             }
+        }
+    }
+
+    // === COASTAL BEACHHEAD: any peasant landed near the enemy starts a forward base.
+    // A peasant marooned across the sea is the AI's signal to colonise — build a
+    // Castle near them so trained units spawn on the enemy island.
+    if (g.biomeChoice == B_OCEAN && intel.playerTH && p.gold >= 100 && p.wood >= 250) {
+        Entity* myHome = aiBldg(o, E_TOWNHALL);
+        if (!myHome) myHome = aiBldg(o, E_CASTLE);
+        for (auto& u : g.entities) {
+            if (!u.alive || u.owner != o || u.type != E_PEASANT) continue;
+            if (u.state != S_IDLE) continue;
+            // Peasant is "far from home" (across the sea) and "near the enemy".
+            int distHome  = myHome ? mdist(u.x, u.y, myHome->x, myHome->y) : 999;
+            int distEnemy = mdist(u.x, u.y, intel.playerTH->x, intel.playerTH->y);
+            if (distHome < 30) continue;       // still on home island
+            if (distEnemy > 30) continue;      // not actually close to enemy
+            // Existing forward base around here?
+            bool hasFwd = false;
+            for (auto& b : g.entities) {
+                if (!b.alive || b.owner != o) continue;
+                if (b.type != E_CASTLE && b.type != E_TOWNHALL && b.type != E_BARRACKS) continue;
+                if (mdist(b.x, b.y, u.x, u.y) < 12) { hasFwd = true; break; }
+            }
+            if (hasFwd) continue;
+            int bx=-1, by=-1; aiBuildSpotNear(o, E_CASTLE, u.x, u.y, bx, by);
+            if (bx >= 0) { orderBuild(u, E_CASTLE, bx, by); break; }
         }
     }
 
