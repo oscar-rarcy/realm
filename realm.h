@@ -152,6 +152,7 @@ struct Entity {
     bool gateOpen;   // E_GATE only: open (passable) vs closed (blocks pathing)
     bool gateLocked; // E_GATE only: manual mode — don't auto-toggle on ally proximity
     int convertTicks; // accumulated exposure to an enemy church; convert when threshold met
+    int retreating;   // >0 while fleeing to safety at low HP; suppresses auto-aggro
     std::vector<int> queue;    // pending EntityTypes to train (FIFO, max 5)
     std::vector<int> garrison; // unit ids currently inside this building
 };

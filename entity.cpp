@@ -166,7 +166,7 @@ bool canPlace(EntityType type, int x, int y, int owner) {
     if (type == E_FARM) {
         if (getSeason() == WINTER) return false;
         Terrain t = g.map[y][x].terrain;
-        if (t!=T_GRASS&&t!=T_MEADOW&&t!=T_TALL_GRASS&&t!=T_FLOWERS&&t!=T_DIRT&&t!=T_WHEAT) return false;
+        if (t!=T_GRASS&&t!=T_MEADOW&&t!=T_TALL_GRASS&&t!=T_FLOWERS&&t!=T_DIRT&&t!=T_WHEAT&&t!=T_SNOW) return false;
     }
     auto& s = STATS[type];
     for (int dy = 0; dy < s.sizeH; dy++) for (int dx = 0; dx < s.sizeW; dx++) {
@@ -415,11 +415,25 @@ static int unitAtk(const Entity& e) {
     int a = STATS[e.type].atk;
     int r = g.players[e.owner].research;
     if ((e.type == E_MILITIA || e.type == E_KNIGHT) && (r & R_IRON_WEAPONS)) a += 2;
+    // Shield wall: militia fight harder when shoulder-to-shoulder.
+    if (e.type == E_MILITIA) {
+        int allies = 0;
+        for (const auto& o : g.entities) {
+            if (!o.alive || o.id == e.id || o.owner != e.owner || o.type != E_MILITIA) continue;
+            if (dist(e.x, e.y, o.x, o.y) <= 1) { allies++; if (allies >= 2) break; }
+        }
+        a += allies;
+    }
     return a;
 }
 // Building-damage multiplier: catapults are siege specialists, everyone else
 // is bad at chewing through walls. Returns the damage actually applied.
+static bool isSiege(EntityType t) { return t==E_CATAPULT||t==E_RAM||t==E_WARSHIP; }
 static int damageVs(EntityType attacker, EntityType target, int rawDmg) {
+    // Walls and gates require siege to breach — swords bounce off stone.
+    if ((target==E_WALL||target==E_GATE) && !isSiege(attacker)) return 0;
+    // Knight plate: 25% reduction from melee (non-ranged, non-siege) attackers.
+    if (target==E_KNIGHT && !isRanged(attacker) && !isSiege(attacker)) rawDmg = rawDmg*3/4;
     if (!isBuilding(target)) return rawDmg;
     if (attacker == E_CATAPULT) return (rawDmg * 3) / 2; // 1.5x
     return std::max(1, rawDmg / 2);                       // 0.5x, floor 1
@@ -454,7 +468,7 @@ void orderMove(Entity& e, int tx, int ty) {
     if (!targetOk && e.owner == 0) setStatus("Can't move there.");
     e.state = S_MOVING; e.targetX = tx; e.targetY = ty; e.targetId = -1;
     e.stuckTicks = 0;
-    e.attackMove = 0; e.holdPosition = 0;
+    e.attackMove = 0; e.holdPosition = 0; e.retreating = 0;
     e.path = findPathFor(e, tx, ty); e.pathIdx = 0;
     if (e.path.empty() && (e.x != tx || e.y != ty)) {
         e.state = S_IDLE;
@@ -472,7 +486,7 @@ void orderAttack(Entity& e, int tid) {
     Entity* t = findEntity(tid);
     if (!t) return;
     if (e.type == E_RAM && !isBuilding(t->type)) return; // rams demolish buildings only
-    e.holdPosition = 0;
+    e.holdPosition = 0; e.retreating = 0;
     e.state = S_ATTACKING; e.targetId = tid;
 }
 
@@ -863,6 +877,18 @@ static bool findNearbyResource(Entity& e) {
     return false;
 }
 
+// Finds the nearest owned TC/Castle/Tower to flee to.
+static Entity* findSafeHaven(Entity& e) {
+    Entity* best = nullptr; int bestD = 99999;
+    for (auto& o : g.entities) {
+        if (!o.alive || o.owner != e.owner || o.underConstruction) continue;
+        if (o.type!=E_TOWNHALL && o.type!=E_CASTLE && o.type!=E_TOWER) continue;
+        int d = dist(e.x, e.y, o.x, o.y);
+        if (d < bestD) { bestD = d; best = &o; }
+    }
+    return best;
+}
+
 // ============================================================
 // ENTITY TICK
 // ============================================================
@@ -963,11 +989,49 @@ void tickEntity(Entity& e) {
     }
     if (!isUnit(e.type)) return;
 
+    // Retreat when critically wounded: flee toward nearest TC/Castle/Tower.
+    if (e.owner < OWNER_NATURE && e.type != E_PEASANT && !e.retreating
+            && e.hp * 100 < e.maxHp * 15) {
+        Entity* haven = findSafeHaven(e);
+        if (haven) {
+            e.retreating = 1; e.state = S_MOVING; e.attackMove = 0;
+            e.targetX = haven->x; e.targetY = haven->y; e.targetId = haven->id;
+            e.path = findPathFor(e, haven->x, haven->y); e.pathIdx = 0;
+        }
+    }
+    // Healed enough — stop fleeing.
+    if (e.retreating && e.hp * 100 >= e.maxHp * 30) e.retreating = 0;
+
     switch (e.state) {
     case S_IDLE:
+        // Retreating unit re-paths toward safety if it ended up idle.
+        if (e.retreating) {
+            Entity* haven = findSafeHaven(e);
+            if (haven && dist(e.x, e.y, haven->x, haven->y) > 2) {
+                e.state = S_MOVING;
+                e.path = findPathFor(e, haven->x, haven->y); e.pathIdx = 0;
+                e.targetX = haven->x; e.targetY = haven->y;
+            } else { e.retreating = 0; } // arrived — stand down
+            break;
+        }
+        // Archers kite: back away when an enemy closes to melee range.
+        if (e.type == E_ARCHER && e.owner < OWNER_NATURE) {
+            Entity* en = findNearestEnemy(e, 1);
+            if (en) {
+                int dx = e.x - en->x, dy = e.y - en->y;
+                int fleeX = std::max(0, std::min(MAP_W-1, e.x + (dx >= 0 ? 1 : -1) * 4));
+                int fleeY = std::max(0, std::min(MAP_H-1, e.y + (dy >= 0 ? 1 : -1) * 4));
+                if (isPassable(fleeX, fleeY)) {
+                    e.state = S_MOVING; e.attackMove = 0;
+                    e.path = findPathFor(e, fleeX, fleeY); e.pathIdx = 0;
+                    e.targetX = fleeX; e.targetY = fleeY;
+                    break;
+                }
+            }
+        }
         // Military auto-engages anything visible within fog radius — units now
         // close in on threats they can see rather than waiting to be poked.
-        if (!e.holdPosition && e.type != E_PEASANT && e.type != E_FISHING_BOAT
+        if (!e.holdPosition && !e.retreating && e.type != E_PEASANT && e.type != E_FISHING_BOAT
             && e.type != E_TRANSPORT && e.type != E_RAM && STATS[e.type].atk > 0
             && e.owner != OWNER_NATURE) {
             // Melee units engage at 5 tiles; ranged at full fog radius — prevents

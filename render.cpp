@@ -731,8 +731,12 @@ void getTerrainVisual(Terrain t, int x, int y, char& ch, int& cp) {
                 if (shouldShowSeasonAt(x,y,snowAmt)) { ch='.'; cp=CP_WIN_GROUND; }
             if (t==T_HILLS && shouldShowSeasonAt(x,y,snowAmt)) cp=CP_WIN_GROUND;
             if (t==T_WHEAT) { ch='.'; cp=CP_WIN_GROUND; }
-            if (t==T_FOREST) { ch='t'; cp=CP_WIN_TREE; }
-            if (t==T_PINE)   cp=CP_WIN_PINE;
+            if (t==T_FOREST) {
+                // ~50% of forest tiles get snow-laden boughs (white 'T'), rest are bare.
+                if (hash01(x,y,83) < 0.50f) { ch='T'; cp=CP_SNOW_FALL; }
+                else                         { ch='t'; cp=CP_WIN_TREE; }
+            }
+            if (t==T_PINE) cp = (hash01(x,y,89) < 0.60f) ? CP_SNOW_FALL : CP_WIN_PINE;
             // Tail-end visual thaw for snow-dusted non-snow terrain (hills etc).
             if (p > 0.85f) {
                 float thaw = (p-0.85f)*6.67f;
