@@ -390,6 +390,65 @@ static void tickAIForOwner(int o) {
         }
     }
 
+    // === FORWARD AGGRESSION: outpost near the player base ===
+    // Once mid-game and the AI has a real force, plant a Castle ~65% of the
+    // way to the enemy HQ and a Barracks beside it, so trained units spawn
+    // at their doorstep instead of marching across the whole map.
+    if (g.tick > 7000 && intel.playerTH && (mil + arch + kni + spr) >= 10) {
+        Entity* home = aiBldg(o, E_TOWNHALL);
+        if (!home) home = aiBldg(o, E_CASTLE);
+        if (home) {
+            int fx = home->x + (intel.playerTH->x - home->x) * 65 / 100;
+            int fy = home->y + (intel.playerTH->y - home->y) * 65 / 100;
+            // Already have a forward anchor near this position?
+            Entity* fwdAnchor = nullptr;
+            for (auto& e : g.entities) {
+                if (!e.alive || e.owner != o) continue;
+                if (e.type != E_CASTLE && e.type != E_TOWNHALL) continue;
+                if (dist(e.x, e.y, home->x, home->y) < 10) continue; // skip home base
+                if (dist(e.x, e.y, fx, fy) < 18) { fwdAnchor = &e; break; }
+            }
+            // Plant the forward Castle.
+            if (!fwdAnchor && p.gold >= 100 && p.wood >= 250) {
+                int bx=-1, by=-1; aiBuildSpotNear(o, E_CASTLE, fx, fy, bx, by);
+                if (bx >= 0) {
+                    Entity* b = aiWorker(o);
+                    if (b) orderBuild(*b, E_CASTLE, bx, by);
+                }
+            }
+            // Forward Barracks beside an existing forward anchor.
+            if (fwdAnchor && p.wood >= 150) {
+                bool hasBarr = false;
+                for (auto& e : g.entities) {
+                    if (!e.alive || e.owner != o || e.type != E_BARRACKS) continue;
+                    if (dist(e.x, e.y, fwdAnchor->x, fwdAnchor->y) < 10) { hasBarr = true; break; }
+                }
+                if (!hasBarr) {
+                    int bx=-1, by=-1; aiBuildSpotNear(o, E_BARRACKS, fwdAnchor->x, fwdAnchor->y, bx, by);
+                    if (bx >= 0) {
+                        Entity* b = aiWorker(o);
+                        if (b) orderBuild(*b, E_BARRACKS, bx, by);
+                    }
+                }
+            }
+            // Forward Tower for vision + harassment, once Barracks is up.
+            if (fwdAnchor && aiCountAll(o,E_TOWER) < towerCap + 1 && p.wood >= 100 && p.gold >= 50) {
+                bool hasTwr = false;
+                for (auto& e : g.entities) {
+                    if (!e.alive || e.owner != o || e.type != E_TOWER) continue;
+                    if (dist(e.x, e.y, fwdAnchor->x, fwdAnchor->y) < 8) { hasTwr = true; break; }
+                }
+                if (!hasTwr) {
+                    int bx=-1, by=-1; aiBuildSpotNear(o, E_TOWER, fwdAnchor->x, fwdAnchor->y, bx, by);
+                    if (bx >= 0) {
+                        Entity* b = aiWorker(o);
+                        if (b) orderBuild(*b, E_TOWER, bx, by);
+                    }
+                }
+            }
+        }
+    }
+
     // === GARRISON: pack archers into towers and TH/Castle only.
     // Cap at 2 per tower, 3 per TH/Castle. Don't absorb every archer —
     // the field needs a ranged component too.
