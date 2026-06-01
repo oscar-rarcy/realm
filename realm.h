@@ -13,8 +13,8 @@
 // ============================================================
 // CONSTANTS
 // ============================================================
-const int MAP_W        = 140;
-const int MAP_H        = 90;
+const int MAP_W        = 180;
+const int MAP_H        = 110;
 const int TICK_MS      = 80;
 const int FOG_RADIUS   = 7;
 const int GATHER_RATE  = 8;
@@ -197,6 +197,8 @@ extern Game g;
 
 // mapgen.cpp
 void generateMap();
+void clearStartArea(int cx, int cy, int radius);
+void placeGoldCluster(int cx, int cy, int count);
 
 // entity.cpp — time
 float       getBrightness();

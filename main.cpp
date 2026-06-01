@@ -39,10 +39,10 @@ static void forceUtf8Locale() {
 // Full splash screen. Sets g.biomeChoice and displayMode. Returns numAIs.
 static int showSplash() {
     static const char* biomeNames[] = {
-        "Temperate","Desert","Snow","Swamp","Forest","Volcanic","Ocean","Random"
+        "Temperate","Desert","Snow","Swamp","Forest","Ocean","Random"
     };
     int numAIs = 1;
-    int biomeIdx = 7; // 7 = random
+    int biomeIdx = 6; // 6 = random
 
     int maxY, maxX;
     while (true) {
@@ -93,7 +93,7 @@ static int showSplash() {
         attron(A_BOLD); pr(row++, col, "BIOME"); attroff(A_BOLD);
         pr(row++, col, "  [0] Random    [T] Temperate  [D] Desert");
         pr(row++, col, "  [S] Snow      [W] Swamp      [F] Forest");
-        pr(row++, col, "  [V] Volcanic  [C] Coastal");
+        pr(row++, col, "  [C] Coastal");
 
         row++;
         attron(A_BOLD); pr(row++, col, "DISPLAY"); attroff(A_BOLD);
@@ -115,18 +115,21 @@ static int showSplash() {
         if (ch=='1') numAIs=1;
         else if (ch=='2') numAIs=2;
         else if (ch=='3') numAIs=3;
-        else if (ch=='0') biomeIdx=7;
+        else if (ch=='0') biomeIdx=6;
         else if (ch=='t'||ch=='T') biomeIdx=0;
         else if (ch=='d'||ch=='D') biomeIdx=1;
         else if (ch=='s'||ch=='S') biomeIdx=2;
         else if (ch=='w'||ch=='W') biomeIdx=3;
         else if (ch=='f'||ch=='F') biomeIdx=4;
-        else if (ch=='v'||ch=='V') biomeIdx=5;
-        else if (ch=='c'||ch=='C') biomeIdx=6;
+        else if (ch=='c'||ch=='C') biomeIdx=5;
         else if (ch=='4') displayMode = DM_ASCII;
         else if (ch=='5') displayMode = DM_EMOJI;
     }
-    g.biomeChoice = (biomeIdx == 7) ? -1 : biomeIdx;
+    // 6 = Random/mixed; otherwise pass index 0..5 (Ocean is 5 in the local list,
+    // but B_OCEAN is enum value 6; remap so the engine sees the right Biome enum).
+    if (biomeIdx == 6)      g.biomeChoice = -1;
+    else if (biomeIdx == 5) g.biomeChoice = B_OCEAN;  // was index 6 before volcanic removal
+    else                    g.biomeChoice = biomeIdx;
     return numAIs;
 }
 
@@ -163,39 +166,108 @@ void initGame(int numAIs) {
 
     generateMap();
 
-    // Four corner spawn points: thX,thY, peasant row anchor pX,pY, pDir (+1 or -1 along X)
-    struct Spawn { int thX,thY, pX,pY, pDir; };
-    const Spawn corners[4] = {
-        {5,        5,        9,         9,         1},   // top-left
-        {MAP_W-9,  5,        MAP_W-14,  9,         1},   // top-right
-        {5,        MAP_H-9,  9,         MAP_H-5,   1},   // bottom-left
-        {MAP_W-9,  MAP_H-9,  MAP_W-14,  MAP_H-5,   1},   // bottom-right
-    };
-    // Free-for-all: one human at a random corner, up to numAIs at the others.
-    // Corners beyond what the player chose are left empty.
-    int humanCorner = rand() % 4;
-    int aiCounter = 0;
-    bool spawned[MAX_PLAYERS] = {false};
-    for (int c = 0; c < 4; c++) {
-        int owner;
-        if (c == humanCorner) owner = 0;
-        else {
-            if (aiCounter >= numAIs) continue;          // skip empty corner
-            owner = 1 + aiCounter++;
-            if (owner >= MAX_PLAYERS) continue;         // safety net
+    // === SPAWN PLACEMENT ===
+    // Build a candidate pool of well-spaced positions across the map (not just
+    // corners). Each candidate is scored by spawn-friendliness — open ground,
+    // not in mountains/water — and the top-scoring positions are chosen such
+    // that no two are within MIN_SPAWN_DIST tiles of each other.
+    struct Spawn { int thX, thY; };
+    const int needed = 1 + numAIs;
+    const int MIN_SPAWN_DIST = std::min(MAP_W, MAP_H) * 2 / 3; // ~73 on 110x180
+    const int EDGE = 12;
+
+    auto scoreSpawn = [](int cx, int cy) -> int {
+        // Reject if any tile in a 5x5 footprint is impassable / hostile.
+        for (int dy = -2; dy <= 2; dy++) for (int dx = -2; dx <= 2; dx++) {
+            int x = cx+dx, y = cy+dy;
+            if (!inBounds(x,y)) return -1;
+            Terrain t = g.map[y][x].terrain;
+            if (t==T_WATER||t==T_MOUNTAIN||t==T_LAVA||t==T_SHALLOWS||t==T_GOLD) return -1;
         }
+        int score = 100;
+        // Bonus: grass-heavy core (room to build).
+        int grass = 0;
+        for (int dy = -4; dy <= 4; dy++) for (int dx = -4; dx <= 4; dx++) {
+            int x = cx+dx, y = cy+dy;
+            if (!inBounds(x,y)) continue;
+            Terrain t = g.map[y][x].terrain;
+            if (t==T_GRASS||t==T_MEADOW||t==T_DIRT||t==T_TALL_GRASS) grass++;
+        }
+        score += grass;
+        // Bonus: forest within 10 tiles (wood is critical early).
+        bool hasWood = false;
+        for (int dy = -10; dy <= 10 && !hasWood; dy++)
+            for (int dx = -10; dx <= 10 && !hasWood; dx++) {
+                int x = cx+dx, y = cy+dy;
+                if (!inBounds(x,y)) continue;
+                Terrain t = g.map[y][x].terrain;
+                if (t==T_FOREST||t==T_PINE||t==T_PALM||t==T_DEAD_TREE) hasWood = true;
+            }
+        if (hasWood) score += 40; else score -= 30;
+        return score;
+    };
+
+    // Generate ~200 candidates, score each, sort high to low.
+    struct Cand { int x, y, score; };
+    std::vector<Cand> candidates;
+    candidates.reserve(220);
+    for (int i = 0; i < 220; i++) {
+        int cx = EDGE + rand() % (MAP_W - 2*EDGE);
+        int cy = EDGE + rand() % (MAP_H - 2*EDGE);
+        int s = scoreSpawn(cx, cy);
+        if (s > 0) candidates.push_back({cx, cy, s});
+    }
+    std::sort(candidates.begin(), candidates.end(),
+              [](const Cand& a, const Cand& b){ return a.score > b.score; });
+
+    // Greedily pick `needed` spawns, requiring each new pick to be at least
+    // MIN_SPAWN_DIST away from already-picked spawns.
+    std::vector<Spawn> spawns;
+    for (auto& c : candidates) {
+        if ((int)spawns.size() >= needed) break;
+        bool ok = true;
+        for (auto& s : spawns) {
+            if (dist(c.x, c.y, s.thX, s.thY) < MIN_SPAWN_DIST) { ok = false; break; }
+        }
+        if (ok) spawns.push_back({c.x, c.y});
+    }
+    // Fallback: if we couldn't find enough spaced spawns, relax the distance.
+    if ((int)spawns.size() < needed) {
+        int relaxed = MIN_SPAWN_DIST / 2;
+        for (auto& c : candidates) {
+            if ((int)spawns.size() >= needed) break;
+            bool dup = false;
+            for (auto& s : spawns) if (s.thX==c.x && s.thY==c.y) { dup = true; break; }
+            if (dup) continue;
+            bool ok = true;
+            for (auto& s : spawns) if (dist(c.x, c.y, s.thX, s.thY) < relaxed) { ok = false; break; }
+            if (ok) spawns.push_back({c.x, c.y});
+        }
+    }
+
+    // Randomise which spawn the human gets so AIs don't always get the prime spots.
+    if (spawns.size() > 1)
+        std::swap(spawns[0], spawns[rand() % spawns.size()]);
+
+    // Clear ground + place starter gold around each spawn, then drop entities.
+    bool spawned[MAX_PLAYERS] = {false};
+    for (int i = 0; i < (int)spawns.size() && i <= numAIs; i++) {
+        int owner = (i == 0) ? 0 : i; // i==0 is human, then AI 1, 2, 3
+        if (owner >= MAX_PLAYERS) break;
         spawned[owner] = true;
-        auto& s = corners[c];
-        spawnEntity(E_TOWNHALL, owner, s.thX, s.thY);
-        for (int i = 0; i < 4; i++) spawnEntity(E_PEASANT, owner, s.pX + i*s.pDir, s.pY);
+        clearStartArea(spawns[i].thX - 2, spawns[i].thY - 2, 6);
+        // Gold deposit a few tiles offset (not directly on the TH).
+        placeGoldCluster(spawns[i].thX + 9, spawns[i].thY + 4, 5);
+        spawnEntity(E_TOWNHALL, owner, spawns[i].thX, spawns[i].thY);
+        for (int j = 0; j < 4; j++)
+            spawnEntity(E_PEASANT, owner, spawns[i].thX + 4 + j, spawns[i].thY + 4);
     }
     // Mark any non-spawned slots dead so checkWin doesn't wait on them.
     for (int p = 1; p < MAX_PLAYERS; p++) if (!spawned[p]) g.players[p].alive = false;
     for (int p = 0; p < MAX_PLAYERS; p++) updateSupply(p);
 
-    auto& s0 = corners[humanCorner];
-    g.cursorX = s0.thX + 2; g.cursorY = s0.thY + 2;
-    g.viewX = std::max(0, s0.thX - 10); g.viewY = std::max(0, s0.thY - 5);
+    g.cursorX = spawns[0].thX + 2; g.cursorY = spawns[0].thY + 2;
+    g.viewX = std::max(0, spawns[0].thX - 10); g.viewY = std::max(0, spawns[0].thY - 5);
 
     // Spawn-safety: hostile/neutral wildlife must keep clear of every player
     // base so peasants don't get gored before they can react.
@@ -211,7 +283,7 @@ void initGame(int numAIs) {
     // Wild deer in herds of 3-6, each herd anchored to a random open spot.
     {
         int total = 0;
-        for (int h = 0; h < 7 && total < 30; h++) {
+        for (int h = 0; h < 10 && total < 42; h++) {
             int hx = -1, hy = -1;
             for (int t = 0; t < 300 && hx < 0; t++) {
                 int ax = 10 + rand()%(MAP_W-20), ay = 10 + rand()%(MAP_H-20);
@@ -234,7 +306,7 @@ void initGame(int numAIs) {
         }
     }
     // Wolves in forested areas — must spawn well clear of every player base.
-    for (int i = 0, t = 0; i < 5 && t < 600; t++) {
+    for (int i = 0, t = 0; i < 7 && t < 600; t++) {
         int ax = 10 + rand()%(MAP_W-20), ay = 10 + rand()%(MAP_H-20);
         Terrain tr = g.map[ay][ax].terrain;
         if ((tr==T_FOREST||tr==T_PINE||tr==T_TALL_GRASS) && !entityAt(ax,ay)
@@ -242,7 +314,7 @@ void initGame(int numAIs) {
             { spawnEntity(E_WOLF, OWNER_NATURE, ax, ay); i++; }
     }
     // Boars: same buffer as wolves — these are the biggest early-game peasant hazard.
-    for (int i = 0, t = 0; i < 14 && t < 800; t++) {
+    for (int i = 0, t = 0; i < 18 && t < 800; t++) {
         int ax = 10 + rand()%(MAP_W-20), ay = 10 + rand()%(MAP_H-20);
         Terrain tr = g.map[ay][ax].terrain;
         Biome  b  = g.map[ay][ax].biome;
@@ -251,9 +323,9 @@ void initGame(int numAIs) {
             && farFromAnyBase(ax, ay, 16))
             { spawnEntity(E_BOAR, OWNER_NATURE, ax, ay); i++; }
     }
-    // Domestic sheep near each player's town hall (one cluster per occupied corner)
-    for (int c = 0; c < 4; c++) {
-        int bx = corners[c].thX + 4, by = corners[c].thY + 4;
+    // Domestic sheep near each chosen player spawn (one cluster per spawn).
+    for (auto& sp : spawns) {
+        int bx = sp.thX + 4, by = sp.thY + 4;
         for (int i = 0, t = 0; i < 4 && t < 200; t++) {
             int ax = bx+(rand()%7)-3, ay = by+(rand()%7)-3;
             ax = std::max(1, std::min(ax, MAP_W-2)); ay = std::max(1, std::min(ay, MAP_H-2));

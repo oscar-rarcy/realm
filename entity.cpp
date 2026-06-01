@@ -433,8 +433,10 @@ static bool isSiege(EntityType t) { return t==E_CATAPULT||t==E_RAM||t==E_WARSHIP
 static int damageVs(EntityType attacker, EntityType target, int rawDmg, int targetOwner = -1) {
     // Walls and gates require siege to breach — swords bounce off stone.
     if ((target==E_WALL||target==E_GATE) && !isSiege(attacker)) return 0;
-    // Spearman anti-cavalry: braced spears gut warhorses.
-    if (attacker==E_SPEARMAN && target==E_KNIGHT) rawDmg += 8;
+    // Spearman anti-cavalry: braced spears gut warhorses. Bonus is large because
+    // it's the only way cost-equal Spear stacks beat Knights — 2 Spear (80g)
+    // need to reliably beat 1 Knight (120g) to make the RPS triangle real.
+    if (attacker==E_SPEARMAN && target==E_KNIGHT) rawDmg += 14;
     // Knight plate: 25% melee reduction, 40% if owner researched Plate Helm.
     // Spearmen still pierce armour regardless — they're the hard counter.
     if (target==E_KNIGHT && attacker!=E_SPEARMAN
