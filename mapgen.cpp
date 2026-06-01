@@ -51,8 +51,144 @@ static void placeCastleRuin(int cx, int cy, int size) {
         if (inBounds(c[0], c[1])) g.map[c[1]][c[0]].terrain = T_CASTLE_WALL;
 }
 
+// Distance helper for Voronoi continent generation — Euclidean (round shapes).
+static float edist(int x1, int y1, int x2, int y2) {
+    int dx = x1-x2, dy = y1-y2;
+    return std::sqrt((float)(dx*dx + dy*dy));
+}
+
+// Coastal map: 2-3 large landmasses separated by sea channels, with a few
+// small islands in between. Replaces the noise-soup archipelago.
+static void generateContinentMap() {
+    // Pick continent seeds, spread evenly across the map.
+    int n = 2 + (rand() % 2);                       // 2 or 3 continents
+    std::vector<std::pair<int,int>> seeds;
+    auto jitter = [](int v, int amt) { return v + (rand() % (2*amt + 1)) - amt; };
+    if (n == 2) {
+        seeds.push_back({jitter(MAP_W*1/4, 10), jitter(MAP_H/2, MAP_H/6)});
+        seeds.push_back({jitter(MAP_W*3/4, 10), jitter(MAP_H/2, MAP_H/6)});
+    } else {
+        seeds.push_back({jitter(MAP_W*1/4, 8), jitter(MAP_H*1/3, 6)});
+        seeds.push_back({jitter(MAP_W*3/4, 8), jitter(MAP_H*1/3, 6)});
+        seeds.push_back({jitter(MAP_W/2,    8), jitter(MAP_H*3/4, 6)});
+    }
+
+    // Continent radius: scales with map size. ~1/4 of the shorter dimension.
+    int contR = std::min(MAP_W, MAP_H) / 4 + 5;
+
+    // Assign every tile by (noise-perturbed) distance to nearest continent seed.
+    for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
+        float minD = 1e9f;
+        for (auto& s : seeds) {
+            float d = edist(x, y, s.first, s.second);
+            if (d < minD) minD = d;
+        }
+        // Wobble the coastline with noise so continents aren't perfect circles.
+        float wobble = sampleNoise(x*0.07f, y*0.07f) * 18.0f - 4.0f; // -4..+14
+        float adjD = minD + wobble;
+
+        Biome b; Terrain t;
+        if      (adjD < contR - 6) { b = B_TEMPERATE; t = T_GRASS;    }
+        else if (adjD < contR - 3) { b = B_TEMPERATE; t = (rand()%3==0) ? T_SAND : T_GRASS; }
+        else if (adjD < contR)     { b = B_TEMPERATE; t = T_SAND;     }    // beach
+        else if (adjD < contR + 3) { b = B_OCEAN;     t = T_SHALLOWS; }
+        else                       { b = B_OCEAN;     t = T_WATER;    }
+        g.map[y][x] = {t, 0, {}, {}, b, t, 0};
+    }
+
+    // Inland variety: scatter forest/meadow/tall grass on grass tiles.
+    for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
+        if (g.map[y][x].biome != B_TEMPERATE || g.map[y][x].terrain != T_GRASS) continue;
+        int r = rand() % 100;
+        if      (r < 12) { g.map[y][x].terrain = T_FOREST; g.map[y][x].resources = 100 + rand()%100; }
+        else if (r < 16) g.map[y][x].terrain = T_TALL_GRASS;
+        else if (r < 19) g.map[y][x].terrain = T_FLOWERS;
+        else if (r < 21) g.map[y][x].terrain = T_MEADOW;
+    }
+
+    // A few small islands scattered between continents — strategic stepping stones.
+    for (int i = 0; i < 9; i++) {
+        int ix = 15 + rand()%(MAP_W-30), iy = 15 + rand()%(MAP_H-30);
+        if (g.map[iy][ix].terrain != T_WATER) continue;
+        int sz = 1 + rand() % 2;
+        for (int dy = -sz-1; dy <= sz+1; dy++) for (int dx = -sz-1; dx <= sz+1; dx++) {
+            int nx = ix+dx, ny = iy+dy;
+            if (!inBounds(nx,ny)) continue;
+            int r2 = dx*dx + dy*dy;
+            if      (r2 <= sz*sz) {
+                Terrain isle = (rand()%3==0) ? T_FOREST : T_GRASS;
+                g.map[ny][nx].terrain = isle;
+                g.map[ny][nx].biome = B_TEMPERATE;
+                if (isle == T_FOREST) g.map[ny][nx].resources = 80 + rand()%60;
+            }
+            else if (r2 <= (sz+1)*(sz+1)) {
+                if (g.map[ny][nx].terrain == T_WATER) g.map[ny][nx].terrain = T_SHALLOWS;
+            }
+        }
+    }
+
+    // Fish in water (slightly denser than the standard map — more naval food).
+    for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
+        Terrain t = g.map[y][x].terrain;
+        if ((t == T_WATER || t == T_SHALLOWS) && rand() % 22 == 0) {
+            g.map[y][x].terrain = T_FISH;
+            g.map[y][x].resources = 80 + rand() % 70;
+        }
+    }
+
+    // Gold clusters on land only.
+    for (int i = 0; i < 14; i++) {
+        int gx = 15 + rand()%(MAP_W-30), gy = 15 + rand()%(MAP_H-30);
+        if (g.map[gy][gx].biome == B_TEMPERATE) placeGoldCluster(gx, gy, 3 + rand()%3);
+    }
+
+    // Berry, wheat, ruins on land.
+    for (int i = 0; i < 16; i++) {
+        int bx = 10 + rand()%(MAP_W-20), by = 10 + rand()%(MAP_H-20);
+        if (g.map[by][bx].biome != B_TEMPERATE) continue;
+        int sz = 1 + rand() % 2;
+        for (int dy = -sz; dy <= sz; dy++) for (int dx = -sz; dx <= sz; dx++) {
+            int nx = bx+dx, ny = by+dy;
+            if (!inBounds(nx,ny)) continue;
+            Terrain o = g.map[ny][nx].terrain;
+            if ((o==T_GRASS||o==T_TALL_GRASS||o==T_MEADOW) && rand()%3 != 0) {
+                g.map[ny][nx].terrain = T_BERRY;
+                g.map[ny][nx].resources = 50 + rand() % 40;
+            }
+        }
+    }
+    for (int i = 0; i < 12; i++) {
+        int wx = 10 + rand()%(MAP_W-20), wy = 10 + rand()%(MAP_H-20);
+        if (g.map[wy][wx].biome != B_TEMPERATE) continue;
+        int sz = 2 + rand() % 3;
+        for (int dy = -sz; dy <= sz; dy++) for (int dx = -sz; dx <= sz; dx++) {
+            int nx = wx+dx, ny = wy+dy;
+            if (inBounds(nx,ny) && g.map[ny][nx].terrain == T_GRASS && rand()%2==0)
+                g.map[ny][nx].terrain = T_WHEAT;
+        }
+    }
+    for (int i = 0; i < 15; i++) {
+        int rx = 10 + rand()%(MAP_W-20), ry = 10 + rand()%(MAP_H-20);
+        if (g.map[ry][rx].biome != B_TEMPERATE) continue;
+        for (int j = 0; j < 3+rand()%4; j++) {
+            int nx = rx + rand()%5-2, ny = ry + rand()%5-2;
+            if (inBounds(nx,ny) && g.map[ny][nx].terrain == T_GRASS) g.map[ny][nx].terrain = T_RUINS;
+        }
+    }
+
+    // One castle ruin per continent — a landmark on each landmass.
+    for (auto& s : seeds) placeCastleRuin(s.first - 3, s.second - 3, 6);
+
+    // Snapshot for winter thaw cycle.
+    for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++)
+        g.map[y][x].preWinterTerrain = g.map[y][x].terrain;
+}
+
 void generateMap() {
     initNoise();
+    // Coastal maps get their own special generator with proper continents.
+    if (g.biomeChoice == B_OCEAN) { generateContinentMap(); return; }
+
     for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
         // Two noise channels at different scales give organic biome regions.
         // n1 is the macro climate (hot/cold), n2 is the micro feature (wet/dry).
