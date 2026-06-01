@@ -412,48 +412,48 @@ static void tickAIForOwner(int o) {
     }
 
     // === ATTACK RHYTHM ===
-    int army = mil + arch + kni + spr + cat;
     if (p.aiWaveCd > 0) p.aiWaveCd--;
 
-    // Grace period before first attack. Threshold and send-fraction scale with game age.
+    // Count *idle* military — the units actually available to send. Counting total
+    // army (including units still deployed at the enemy base from prior waves)
+    // tricks the threshold into firing without enough reinforcements at home,
+    // causing the AI to dribble out single units after the first big push.
+    int idleArmy = 0;
+    Entity* anchor = nullptr;
+    for (auto& e : g.entities) {
+        if (!e.alive || e.owner != o) continue;
+        if (!isUnit(e.type) || e.type == E_PEASANT || e.type == E_FISHING_BOAT || e.type == E_TREBUCHET) continue;
+        if (e.state != S_IDLE) continue;
+        idleArmy++;
+        if (!anchor) anchor = &e;
+    }
+
+    // Grace period before first attack. Threshold scales with game age.
     const int graceTicks = 1500;          // ~2 minutes of setup time
     bool lateGame = g.tick > 12000;
     bool midGame  = g.tick > 6000;
-    int attackThreshold = (g.tick < graceTicks) ? 999 : (midGame ? 5 : 8);
+    int attackThreshold = (g.tick < graceTicks) ? 999 : (lateGame ? 4 : (midGame ? 5 : 7));
     int waveCooldown    = lateGame ? 6 : 10; // AI ticks between wave re-orders
-    // Send 50% early, 65% mid, 75% late — always keep a meaningful home guard.
-    int sendPct = lateGame ? 75 : (midGame ? 65 : 50);
-    int sendCap = std::max(3, army * sendPct / 100);
 
-    if (army >= attackThreshold && p.aiWaveCd == 0) {
-        Entity* anchor = nullptr;
-        for (auto& e : g.entities) {
-            if (!e.alive || e.owner != o) continue;
-            if (!isUnit(e.type) || e.type == E_PEASANT || e.type == E_FISHING_BOAT || e.type == E_TREBUCHET) continue;
-            if (e.state != S_IDLE) continue;
-            anchor = &e; break;
-        }
-        if (anchor) {
-            int tid    = aiPickTarget(o, anchor);
-            int siegeId = aiPickSiegeTarget(o, anchor);
-            // Fallback: march on known enemy HQ.
-            if (tid < 0 && intel.playerTH) tid = intel.playerTH->id;
-            if (tid >= 0) {
-                int sent = 0;
-                for (auto& e : g.entities) {
-                    if (sent >= sendCap) break;
-                    if (!e.alive || e.owner != o) continue;
-                    if (!isUnit(e.type) || e.type == E_PEASANT || e.type == E_FISHING_BOAT || e.type == E_TREBUCHET) continue;
-                    if (e.state == S_IDLE) {
-                        // Catapults seek siege targets; everyone else takes the general target.
-                        int myTarget = (e.type == E_CATAPULT && siegeId >= 0) ? siegeId : tid;
-                        e.attackMove = 1; // engage opportunistically on the march
-                        orderAttack(e, myTarget);
-                        sent++;
-                    }
+    if (idleArmy >= attackThreshold && p.aiWaveCd == 0 && anchor) {
+        int tid    = aiPickTarget(o, anchor);
+        int siegeId = aiPickSiegeTarget(o, anchor);
+        // Fallback: march on known enemy HQ.
+        if (tid < 0 && intel.playerTH) tid = intel.playerTH->id;
+        if (tid >= 0) {
+            // Send the whole idle pool — anything that survived a previous wave is
+            // already at the enemy base. Keep no home guard from the idle stack;
+            // home defence comes from towers + the defence block below.
+            for (auto& e : g.entities) {
+                if (!e.alive || e.owner != o) continue;
+                if (!isUnit(e.type) || e.type == E_PEASANT || e.type == E_FISHING_BOAT || e.type == E_TREBUCHET) continue;
+                if (e.state == S_IDLE) {
+                    int myTarget = (e.type == E_CATAPULT && siegeId >= 0) ? siegeId : tid;
+                    e.attackMove = 1;
+                    orderAttack(e, myTarget);
                 }
-                p.aiWaveCd = waveCooldown;
             }
+            p.aiWaveCd = waveCooldown;
         }
     }
 
