@@ -1337,8 +1337,9 @@ void tickTowers() {
         if (!e.alive || e.underConstruction) continue;
         if (!isBuilding(e.type)) continue;
         bool isTower    = (e.type == E_TOWER);
+        bool isCastle   = (e.type == E_CASTLE);
         bool canGarrAtk = canGarrisonIn(e.type) && !e.garrison.empty();
-        if (!isTower && !canGarrAtk) continue;
+        if (!isTower && !isCastle && !canGarrAtk) continue;
 
         int archers = 0, fighters = 0;
         for (int uid : e.garrison) {
@@ -1350,26 +1351,41 @@ void tickTowers() {
         int atk = STATS[e.type].atk + archers*5 + fighters*2;
         int rng = STATS[e.type].range;
         if (e.type == E_TOWNHALL && canGarrAtk) rng = std::max(rng, 6);
-        if (e.type == E_CASTLE   && canGarrAtk) rng = std::max(rng, 8);
+        if (isCastle) { rng = std::max(rng, 9); atk = std::max(atk, 12); }
         if (e.type == E_HOUSE    && canGarrAtk) rng = std::max(rng, 4);
         if (rng <= 0 || atk <= 0) { if (e.atkCd > 0) e.atkCd--; continue; }
 
         int sx = e.x + STATS[e.type].sizeW/2;
         int sy = e.y + STATS[e.type].sizeH/2;
-        // Build a temporary anchor entity for range checks (use e directly — its x,y is top-left, close enough)
-        Entity* en = findNearestEnemy(e, rng);
-        if (en) {
-            if (e.atkCd <= 0) {
-                // Towers/garrison-fire respect the same building-damage rule —
-                // garrisoned archers can wear down walls but not blow them open.
+        // Castles loose a volley: up to 4 arrows at the 4 nearest enemies per cycle.
+        // Towers/halls/houses still fire a single bolt.
+        int volley = isCastle ? 4 : 1;
+        int aShots = 0;
+        if (e.atkCd <= 0) {
+            // Pick the N nearest enemies in range and shoot each one.
+            std::vector<Entity*> targets;
+            for (auto& o : g.entities) {
+                if (!o.alive || o.owner == e.owner) continue;
+                if (o.state == S_GARRISONED) continue;
+                if (e.owner != OWNER_NATURE && o.owner == OWNER_NATURE) continue;
+                if (dist(sx, sy, o.x, o.y) > rng) continue;
+                targets.push_back(&o);
+            }
+            std::sort(targets.begin(), targets.end(), [sx,sy](Entity* a, Entity* b){
+                return dist(sx,sy,a->x,a->y) < dist(sx,sy,b->x,b->y);
+            });
+            for (Entity* en : targets) {
+                if (aShots >= volley) break;
                 int dmg = damageVs(E_ARCHER, en->type, atk);
-                en->hp -= dmg; e.atkCd = isTower ? STATS[E_TOWER].atkSpeed : 9;
-                en->alertTicks = 12;
-                // Bolt-style projectile so tower fire reads as arrows instead of stars.
+                en->hp -= dmg; en->alertTicks = 12;
                 spawnProjectile(sx, sy, en->x, en->y, '-', CP_PROJ_TOWER);
                 if (en->hp <= 0) killEntity(*en);
-            } else e.atkCd--;
-        } else if (e.atkCd > 0) e.atkCd--;
+                aShots++;
+            }
+            if (aShots > 0) {
+                e.atkCd = isTower ? STATS[E_TOWER].atkSpeed : (isCastle ? 6 : 9);
+            }
+        } else e.atkCd--;
     }
 }
 
