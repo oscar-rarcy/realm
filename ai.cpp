@@ -160,6 +160,7 @@ static void tickAIForOwner(int o) {
 
     int peas = aiCount(o,E_PEASANT), mil = aiCount(o,E_MILITIA);
     int arch = aiCount(o,E_ARCHER),  kni = aiCount(o,E_KNIGHT);
+    int spr  = aiCount(o,E_SPEARMAN);
     int cat  = aiCountAll(o,E_CATAPULT);
     int hous = aiCountAll(o,E_HOUSE), bar = aiCount(o,E_BARRACKS), stb = aiCount(o,E_STABLE);
 
@@ -232,9 +233,14 @@ static void tickAIForOwner(int o) {
         if (!br.alive || br.owner != o || br.type != E_BARRACKS || br.underConstruction) continue;
         if (br.producing != E_NONE) continue;
         if (needSiege && cat < 3 && p.gold >= 150 && p.wood >= 40 && p.food >= 30) { orderTrain(br, E_CATAPULT); continue; }
+        // Spearmen counter the player's cavalry — train them in response to knights.
+        int sprCap = std::max(4, intel.playerArmy/3 + 2);
+        bool needSpears = (spr < sprCap && p.gold >= 40 && p.food >= 20);
+        if (needSpears && spr < arch) { orderTrain(br, E_SPEARMAN); continue; }
         // Alternate militia and archers for a balanced field force.
         if (arch < mil && arch < archCap && p.gold >= 70 && p.food >= 20) { orderTrain(br, E_ARCHER);  continue; }
         if (mil < milCap               && p.gold >= 60 && p.food >= 20) { orderTrain(br, E_MILITIA); continue; }
+        if (needSpears                                                  ) { orderTrain(br, E_SPEARMAN); continue; }
         if (arch < archCap             && p.gold >= 70 && p.food >= 20) { orderTrain(br, E_ARCHER);  continue; }
     }
     for (auto& st : g.entities) {
@@ -329,7 +335,7 @@ static void tickAIForOwner(int o) {
     }
 
     // === ATTACK RHYTHM ===
-    int army = mil + arch + kni + cat;
+    int army = mil + arch + kni + spr + cat;
     if (p.aiWaveCd > 0) p.aiWaveCd--;
 
     // Grace period before first attack. Threshold and send-fraction scale with game age.

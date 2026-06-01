@@ -131,10 +131,12 @@ void handleInput(int ch) {
         else if (sel->type == E_BARRACKS) {
             if (ch=='m'||ch=='M') tt = E_MILITIA;
             else if (ch=='a'||ch=='A') tt = E_ARCHER;
+            else if (ch=='s'||ch=='S') tt = E_SPEARMAN;
             else if (ch=='c'||ch=='C') tt = E_CATAPULT;
             else if (ch=='r'||ch=='R') tt = E_RAM;
         }
         else if (sel->type == E_STABLE) { if (ch=='k'||ch=='K') tt = E_KNIGHT; }
+        else if (sel->type == E_CASTLE) { if (ch=='t'||ch=='T') tt = E_TREBUCHET; }
         else if (sel->type == E_DOCK)   {
             if      (ch=='b'||ch=='B') tt = E_FISHING_BOAT;
             else if (ch=='w'||ch=='W') tt = E_WARSHIP;
@@ -391,11 +393,31 @@ void handleInput(int ch) {
     case 't': case 'T': {
         Entity* sel = findEntity(g.selectedId);
         if (sel && sel->owner==0 && isBuilding(sel->type) && !sel->underConstruction) {
-            if (sel->type==E_TOWNHALL||sel->type==E_BARRACKS||sel->type==E_STABLE||sel->type==E_DOCK) {
+            if (sel->type==E_TOWNHALL||sel->type==E_BARRACKS||sel->type==E_STABLE||sel->type==E_DOCK||sel->type==E_CASTLE) {
                 g.mode = M_TRAIN_SELECT;
                 setStatus("Select unit to train...");
             } else setStatus("This building can't train.");
         } else setStatus("Select a production building!");
+        break;
+    }
+
+    // Trebuchet pack / deploy toggle
+    case 'D': case 'd': {
+        Entity* sel = findEntity(g.selectedId);
+        if (sel && sel->alive && sel->owner == 0 && sel->type == E_TREBUCHET) {
+            if (sel->packTicks > 0) { setStatus("Already transitioning."); break; }
+            if (sel->packed == 1) {
+                // Begin deploying.
+                sel->packed = 0; sel->packTicks = 40;
+                sel->state = S_IDLE; sel->path.clear(); sel->pathIdx = 0;
+                setStatus("Deploying trebuchet...");
+            } else {
+                // Begin packing.
+                sel->packed = 1; sel->packTicks = 40;
+                sel->state = S_IDLE; sel->targetId = -1;
+                setStatus("Packing trebuchet...");
+            }
+        } else setStatus("Select a trebuchet to pack/deploy.");
         break;
     }
 
@@ -489,12 +511,12 @@ void handleInput(int ch) {
         if (!g.selectedIds.empty()) {
             for (int id : g.selectedIds) {
                 Entity* e = findEntity(id);
-                if (e && (e->type==E_MILITIA||e->type==E_ARCHER||e->type==E_KNIGHT||e->type==E_CATAPULT||e->type==E_RAM))
+                if (e && (e->type==E_MILITIA||e->type==E_ARCHER||e->type==E_KNIGHT||e->type==E_SPEARMAN||e->type==E_CATAPULT||e->type==E_TREBUCHET||e->type==E_RAM))
                     { hasMilitarySel = true; break; }
             }
         } else if (g.selectedId >= 0) {
             Entity* e = findEntity(g.selectedId);
-            if (e && (e->type==E_MILITIA||e->type==E_ARCHER||e->type==E_KNIGHT||e->type==E_CATAPULT||e->type==E_RAM))
+            if (e && (e->type==E_MILITIA||e->type==E_ARCHER||e->type==E_KNIGHT||e->type==E_SPEARMAN||e->type==E_CATAPULT||e->type==E_TREBUCHET||e->type==E_RAM))
                 hasMilitarySel = true;
         }
         if (hasMilitarySel) {
@@ -504,7 +526,7 @@ void handleInput(int ch) {
             g.selectedIds.clear(); g.selectedId = -1;
             for (auto& e : g.entities) {
                 if (!e.alive || e.owner != 0 || e.state == S_GARRISONED) continue;
-                if (e.type==E_MILITIA||e.type==E_ARCHER||e.type==E_KNIGHT||e.type==E_CATAPULT||e.type==E_RAM) {
+                if (e.type==E_MILITIA||e.type==E_ARCHER||e.type==E_KNIGHT||e.type==E_SPEARMAN||e.type==E_CATAPULT||e.type==E_TREBUCHET||e.type==E_RAM) {
                     g.selectedIds.push_back(e.id);
                     if (g.selectedId < 0) { g.selectedId=e.id; g.cursorX=e.x; g.cursorY=e.y; }
                 }

@@ -45,7 +45,7 @@ enum Terrain {
 
 enum EntityType {
     E_NONE = 0,
-    E_PEASANT, E_MILITIA, E_ARCHER, E_KNIGHT, E_CATAPULT,
+    E_PEASANT, E_MILITIA, E_ARCHER, E_KNIGHT, E_SPEARMAN, E_CATAPULT, E_TREBUCHET,
     E_FISHING_BOAT, E_WARSHIP, E_TRANSPORT, E_RAM,
     E_TOWNHALL, E_HOUSE, E_BARRACKS, E_STABLE, E_TOWER,
     E_FARM, E_BLACKSMITH, E_CHURCH, E_MARKET, E_WALL, E_GATE, E_CASTLE,
@@ -120,7 +120,7 @@ extern const EntityStats STATS[];
 
 inline bool isUnit(EntityType t)     { return (t>=E_PEASANT&&t<=E_RAM)||(t>=E_DEER&&t<=E_BOAR); }
 inline bool isBuilding(EntityType t) { return t>=E_TOWNHALL&&t<=E_DOCK; }
-inline bool isRanged(EntityType t)   { return t==E_ARCHER||t==E_CATAPULT||t==E_WARSHIP; }
+inline bool isRanged(EntityType t)   { return t==E_ARCHER||t==E_CATAPULT||t==E_TREBUCHET||t==E_WARSHIP; }
 inline bool isNaval(EntityType t)    { return t==E_FISHING_BOAT||t==E_WARSHIP||t==E_TRANSPORT; }
 
 // ============================================================
@@ -153,6 +153,8 @@ struct Entity {
     bool gateLocked; // E_GATE only: manual mode — don't auto-toggle on ally proximity
     int convertTicks; // accumulated exposure to an enemy church; convert when threshold met
     int retreating;   // >0 while fleeing to safety at low HP; suppresses auto-aggro
+    int packed;       // E_TREBUCHET: 1 = mobile/packed, 0 = deployed/firing
+    int packTicks;    // E_TREBUCHET: ticks remaining in pack/unpack transition
     std::vector<int> queue;    // pending EntityTypes to train (FIFO, max 5)
     std::vector<int> garrison; // unit ids currently inside this building
 };

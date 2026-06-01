@@ -1029,6 +1029,16 @@ void renderMap() {
                     bool ramming = ent->state==S_ATTACKING && ent->atkCd > STATS[E_RAM].atkSpeed*2/3;
                     ch = ramming ? '=' : '-'; drawCh = (chtype)ch;
                 }
+                if (displayMode == DM_ASCII && ent->type == E_TREBUCHET) {
+                    if (ent->packTicks > 0)      { ch = ent->packed ? 'q' : 'Q'; }  // transition
+                    else if (ent->packed == 1)   { ch = 'q'; }                       // packed wagon
+                    else {
+                        // Deployed: arm rests as 'L', flips to '/' for 5 ticks after a shot.
+                        bool firing = ent->state==S_ATTACKING && ent->atkCd > STATS[E_TREBUCHET].atkSpeed - 5;
+                        ch = firing ? '/' : 'L';
+                    }
+                    drawCh = (chtype)ch;
+                }
                 // Peasant work/idle cycle (ASCII only — emoji peasants have their
                 // own state-aware glyph). Staggered per-id so a busy village
                 // doesn't strobe in sync.
@@ -1347,6 +1357,13 @@ void renderUI() {
                     mvprintw(iy++, panelX+1, "Carrying: %d %s", sel->carrying, what);
                     attroff(COLOR_PAIR(CP_UI_HIGH));
                 }
+                if (sel->type == E_TREBUCHET && sel->owner == 0) {
+                    attron(COLOR_PAIR(CP_UI_HIGH));
+                    if      (sel->packTicks > 0) mvprintw(iy++, panelX+1, "%s... %d", sel->packed?"Packing":"Deploying", sel->packTicks);
+                    else if (sel->packed)        mvprintw(iy++, panelX+1, "Packed (D to deploy)");
+                    else                          mvprintw(iy++, panelX+1, "Deployed (D to pack)");
+                    attroff(COLOR_PAIR(CP_UI_HIGH));
+                }
                 // Transport cargo display + unload hint
                 if (sel->type == E_TRANSPORT && sel->owner == 0) {
                     attron(COLOR_PAIR(CP_UI_HIGH));
@@ -1499,9 +1516,10 @@ void renderUI() {
         Entity* s2 = findEntity(g.selectedId);
         if (s2) {
             if (s2->type==E_TOWNHALL)  mvprintw(botY2, 1, " TRAIN: [P]easant(50g) [Esc] ");
-            else if (s2->type==E_BARRACKS) mvprintw(botY2, 1, " TRAIN: [M]ilitia(60g) [A]rcher(70g) [C]atapult(150g+40w) [R]am(70g+80w) [Esc] ");
+            else if (s2->type==E_BARRACKS) mvprintw(botY2, 1, " TRAIN: [M]ilitia(60g) [A]rcher(70g) [S]pearman(40g) [C]atapult(150g+40w) [R]am(70g+80w) [Esc] ");
             else if (s2->type==E_STABLE)   mvprintw(botY2, 1, " TRAIN: [K]night(120g) [Esc] ");
             else if (s2->type==E_DOCK)     mvprintw(botY2, 1, " TRAIN: [B]oat(80g+50w) [W]arship(150g+80w) [T]ransport(80g+40w) [Esc] ");
+            else if (s2->type==E_CASTLE)   mvprintw(botY2, 1, " TRAIN: [T]rebuchet(200g+250w) [Esc] ");
         }
     } else if (g.mode == M_WALL_DRAG) {
         if (g.dragging)

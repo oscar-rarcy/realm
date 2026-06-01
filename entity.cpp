@@ -373,6 +373,7 @@ int spawnEntity(EntityType type, int owner, int x, int y, bool built) {
     e.producing = E_NONE; e.underConstruction = !built; e.alive = true;
     e.rallyX = x + STATS[type].sizeW; e.rallyY = y + STATS[type].sizeH;
     if (type == E_FISHING_BOAT) e.gatherType = 2; // fish
+    if (type == E_TREBUCHET)   { e.packed = 1; e.packTicks = 0; } // spawn mobile
     g.entities.push_back(e);
     updateSupply(owner);
     return e.id;
@@ -428,14 +429,22 @@ static int unitAtk(const Entity& e) {
 }
 // Building-damage multiplier: catapults are siege specialists, everyone else
 // is bad at chewing through walls. Returns the damage actually applied.
-static bool isSiege(EntityType t) { return t==E_CATAPULT||t==E_RAM||t==E_WARSHIP; }
+static bool isSiege(EntityType t) { return t==E_CATAPULT||t==E_RAM||t==E_WARSHIP||t==E_TREBUCHET; }
 static int damageVs(EntityType attacker, EntityType target, int rawDmg) {
     // Walls and gates require siege to breach — swords bounce off stone.
     if ((target==E_WALL||target==E_GATE) && !isSiege(attacker)) return 0;
-    // Knight plate: 25% reduction from melee (non-ranged, non-siege) attackers.
-    if (target==E_KNIGHT && !isRanged(attacker) && !isSiege(attacker)) rawDmg = rawDmg*3/4;
-    if (!isBuilding(target)) return rawDmg;
-    if (attacker == E_CATAPULT) return (rawDmg * 3) / 2; // 1.5x
+    // Spearman anti-cavalry: braced spears gut warhorses.
+    if (attacker==E_SPEARMAN && target==E_KNIGHT) rawDmg += 8;
+    // Knight plate: 25% reduction from melee, but NOT vs spearmen (they pierce).
+    if (target==E_KNIGHT && attacker!=E_SPEARMAN
+            && !isRanged(attacker) && !isSiege(attacker)) rawDmg = rawDmg*3/4;
+    if (!isBuilding(target)) {
+        // Trebuchet is a city-killer — terrible vs personnel (massive splash but glancing).
+        if (attacker == E_TREBUCHET) return std::max(1, rawDmg / 4);
+        return rawDmg;
+    }
+    if (attacker == E_TREBUCHET) return rawDmg * 3;       // 3x: stone-shattering
+    if (attacker == E_CATAPULT)  return (rawDmg * 3) / 2; // 1.5x
     return std::max(1, rawDmg / 2);                       // 0.5x, floor 1
 }
 static int unitRange(const Entity& e) {
@@ -463,6 +472,15 @@ Entity* findNearestEnemy(Entity& e, int range) {
 }
 
 void orderMove(Entity& e, int tx, int ty) {
+    // Deployed trebuchet is rooted — must be packed (press P) before moving.
+    if (e.type == E_TREBUCHET && e.packed == 0) {
+        if (e.owner == 0) setStatus("Pack trebuchet first (D).");
+        return;
+    }
+    if (e.type == E_TREBUCHET && e.packTicks > 0) {
+        if (e.owner == 0) setStatus("Trebuchet is mid-deploy.");
+        return;
+    }
     // Warn if the clicked tile is impassable for this unit type.
     bool targetOk = isNaval(e.type) ? isPassableWater(tx, ty) : isPassable(tx, ty);
     if (!targetOk && e.owner == 0) setStatus("Can't move there.");
@@ -486,6 +504,10 @@ void orderAttack(Entity& e, int tid) {
     Entity* t = findEntity(tid);
     if (!t) return;
     if (e.type == E_RAM && !isBuilding(t->type)) return; // rams demolish buildings only
+    if (e.type == E_TREBUCHET && e.packed == 1) {
+        if (e.owner == 0) setStatus("Deploy trebuchet first (D).");
+        return;
+    }
     e.holdPosition = 0; e.retreating = 0;
     e.state = S_ATTACKING; e.targetId = tid;
 }
@@ -989,9 +1011,22 @@ void tickEntity(Entity& e) {
     }
     if (!isUnit(e.type)) return;
 
+    // Trebuchet pack/unpack transition: tick the timer; while > 0 do nothing.
+    if (e.type == E_TREBUCHET) {
+        if (e.packTicks > 0) {
+            e.packTicks--;
+            if (e.packTicks == 0) {
+                if (e.owner == 0)
+                    setStatus(e.packed ? "Trebuchet packed." : "Trebuchet deployed.");
+            }
+            return;
+        }
+    }
+
     // Retreat when critically wounded: flee toward nearest TC/Castle/Tower.
-    if (e.owner < OWNER_NATURE && e.type != E_PEASANT && !e.retreating
-            && e.hp * 100 < e.maxHp * 15) {
+    // Trebuchets don't auto-retreat — they pack and crawl, defeating the purpose.
+    if (e.owner < OWNER_NATURE && e.type != E_PEASANT && e.type != E_TREBUCHET
+            && !e.retreating && e.hp * 100 < e.maxHp * 15) {
         Entity* haven = findSafeHaven(e);
         if (haven) {
             e.retreating = 1; e.state = S_MOVING; e.attackMove = 0;
@@ -1031,8 +1066,10 @@ void tickEntity(Entity& e) {
         }
         // Military auto-engages anything visible within fog radius — units now
         // close in on threats they can see rather than waiting to be poked.
+        // Packed trebuchets are travelling, not fighting.
         if (!e.holdPosition && !e.retreating && e.type != E_PEASANT && e.type != E_FISHING_BOAT
             && e.type != E_TRANSPORT && e.type != E_RAM && STATS[e.type].atk > 0
+            && !(e.type == E_TREBUCHET && e.packed == 1)
             && e.owner != OWNER_NATURE) {
             // Melee units engage at 5 tiles; ranged at full fog radius — prevents
             // instant magnetic battles where everyone charges across the map.
