@@ -61,7 +61,7 @@ enum EntityState {
 enum GameMode  { M_NORMAL, M_BUILD_SELECT, M_TRAIN_SELECT, M_WALL_DRAG, M_PAUSED, M_GAME_OVER, M_RALLY_SET, M_RESEARCH_SELECT, M_ATTACK_MOVE, M_MARKET_TRADE };
 
 // Research bits stored in Player.research
-enum Research { R_IRON_WEAPONS = 1, R_CROSSBOWS = 2 };
+enum Research { R_IRON_WEAPONS = 1, R_CROSSBOWS = 2, R_PIKES = 4, R_COUNTERWEIGHT = 8, R_PLATE_HELM = 16 };
 enum Biome     { B_TEMPERATE, B_DESERT, B_SNOW, B_SWAMP, B_FOREST, B_VOLCANIC, B_OCEAN };
 enum Season    { SPRING = 0, SUMMER, AUTUMN, WINTER };
 enum Weather   { W_CLEAR = 0, W_RAIN, W_STORM, W_SNOW };

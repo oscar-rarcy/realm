@@ -335,6 +335,9 @@ void handleInput(int ch) {
         // ~75 sec at 80 ms tick = 940 ticks.
         if (ch == 'i' || ch == 'I') { startResearch(R_IRON_WEAPONS, 100, 100, 940, "Researching Iron Weapons..."); g.mode = M_NORMAL; }
         else if (ch == 'c' || ch == 'C') { startResearch(R_CROSSBOWS, 80, 80, 820, "Researching Crossbows..."); g.mode = M_NORMAL; }
+        else if (ch == 'p' || ch == 'P') { startResearch(R_PIKES, 100, 100, 900, "Researching Pikes..."); g.mode = M_NORMAL; }
+        else if (ch == 'w' || ch == 'W') { startResearch(R_COUNTERWEIGHT, 120, 150, 1000, "Researching Counterweight..."); g.mode = M_NORMAL; }
+        else if (ch == 'h' || ch == 'H') { startResearch(R_PLATE_HELM, 120, 100, 1000, "Researching Plate Helm..."); g.mode = M_NORMAL; }
         return;
     }
 
@@ -406,14 +409,15 @@ void handleInput(int ch) {
         Entity* sel = findEntity(g.selectedId);
         if (sel && sel->alive && sel->owner == 0 && sel->type == E_TREBUCHET) {
             if (sel->packTicks > 0) { setStatus("Already transitioning."); break; }
+            int pT = (g.players[0].research & R_COUNTERWEIGHT) ? 25 : 40;
             if (sel->packed == 1) {
                 // Begin deploying.
-                sel->packed = 0; sel->packTicks = 40;
+                sel->packed = 0; sel->packTicks = pT;
                 sel->state = S_IDLE; sel->path.clear(); sel->pathIdx = 0;
                 setStatus("Deploying trebuchet...");
             } else {
                 // Begin packing.
-                sel->packed = 1; sel->packTicks = 40;
+                sel->packed = 1; sel->packTicks = pT;
                 sel->state = S_IDLE; sel->targetId = -1;
                 setStatus("Packing trebuchet...");
             }
@@ -444,7 +448,7 @@ void handleInput(int ch) {
             setStatus("Trade (40→30): [G]old→Wood  [W]ood→Gold  [F]ood←Gold  [V]ictuals→Gold  [Esc]");
         } else if (sel->type == E_BLACKSMITH) {
             g.mode = M_RESEARCH_SELECT;
-            setStatus("Research: [I]ron Weapons 100g/100w  [C]rossbows 80g/80w  [Esc]");
+            setStatus("Research: [I]ron 100/100 [C]rossbows 80/80 [P]ikes 100/100 [W]eight 120/150 [H]elm 120/100 [Esc]");
         } else if (sel->type == E_TOWNHALL || sel->type == E_CASTLE
                 || sel->type == E_BARRACKS || sel->type == E_STABLE || sel->type == E_DOCK) {
             g.mode = M_RALLY_SET;

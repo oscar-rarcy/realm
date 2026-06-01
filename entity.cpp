@@ -430,16 +430,21 @@ static int unitAtk(const Entity& e) {
 // Building-damage multiplier: catapults are siege specialists, everyone else
 // is bad at chewing through walls. Returns the damage actually applied.
 static bool isSiege(EntityType t) { return t==E_CATAPULT||t==E_RAM||t==E_WARSHIP||t==E_TREBUCHET; }
-static int damageVs(EntityType attacker, EntityType target, int rawDmg) {
+static int damageVs(EntityType attacker, EntityType target, int rawDmg, int targetOwner = -1) {
     // Walls and gates require siege to breach — swords bounce off stone.
     if ((target==E_WALL||target==E_GATE) && !isSiege(attacker)) return 0;
     // Spearman anti-cavalry: braced spears gut warhorses.
     if (attacker==E_SPEARMAN && target==E_KNIGHT) rawDmg += 8;
-    // Knight plate: 25% reduction from melee, but NOT vs spearmen (they pierce).
+    // Knight plate: 25% melee reduction, 40% if owner researched Plate Helm.
+    // Spearmen still pierce armour regardless — they're the hard counter.
     if (target==E_KNIGHT && attacker!=E_SPEARMAN
-            && !isRanged(attacker) && !isSiege(attacker)) rawDmg = rawDmg*3/4;
+            && !isRanged(attacker) && !isSiege(attacker)) {
+        bool plate = (targetOwner >= 0 && targetOwner <= MAX_PLAYERS
+                      && (g.players[targetOwner].research & R_PLATE_HELM));
+        rawDmg = plate ? rawDmg*3/5 : rawDmg*3/4;
+    }
     if (!isBuilding(target)) {
-        // Trebuchet is a city-killer — terrible vs personnel (massive splash but glancing).
+        // Trebuchet is a city-killer — terrible vs personnel.
         if (attacker == E_TREBUCHET) return std::max(1, rawDmg / 4);
         return rawDmg;
     }
@@ -451,6 +456,7 @@ static int unitRange(const Entity& e) {
     int rng = STATS[e.type].range;
     int r = g.players[e.owner].research;
     if (e.type == E_ARCHER && (r & R_CROSSBOWS)) rng += 2;
+    if (e.type == E_SPEARMAN && (r & R_PIKES))   rng += 1;
     return rng;
 }
 
@@ -968,8 +974,11 @@ void tickEntity(Entity& e) {
             int bit = e.researching;
             e.researching = 0; e.prodProgress = 0; e.prodTime = 0;
             if (e.owner == 0) {
-                if (bit == R_IRON_WEAPONS) setStatus("Iron Weapons researched — militia/knights +2 atk!");
-                else if (bit == R_CROSSBOWS) setStatus("Crossbows researched — archers +2 range!");
+                if      (bit == R_IRON_WEAPONS)  setStatus("Iron Weapons researched — militia/knights +2 atk!");
+                else if (bit == R_CROSSBOWS)     setStatus("Crossbows researched — archers +2 range!");
+                else if (bit == R_PIKES)         setStatus("Pikes researched — spearmen +1 range!");
+                else if (bit == R_COUNTERWEIGHT) setStatus("Counterweight researched — trebuchets deploy faster!");
+                else if (bit == R_PLATE_HELM)    setStatus("Plate Helm researched — knights take less melee damage!");
             }
         }
     }
@@ -1116,7 +1125,7 @@ void tickEntity(Entity& e) {
         if (d <= unitRange(e)) {
             if (e.atkCd <= 0) {
                 int rawDmg = unitAtk(e);
-                int dmg = damageVs(e.type, t->type, rawDmg);
+                int dmg = damageVs(e.type, t->type, rawDmg, t->owner);
                 t->hp -= dmg;
                 e.atkCd = STATS[e.type].atkSpeed;
                 e.alertTicks = 12; t->alertTicks = 12;
@@ -1142,7 +1151,7 @@ void tickEntity(Entity& e) {
                         int ox = std::max(o.x, std::min(tcx, o.x + os.sizeW - 1));
                         int oy = std::max(o.y, std::min(tcy, o.y + os.sizeH - 1));
                         if (std::abs(ox - tcx) <= 1 && std::abs(oy - tcy) <= 1) {
-                            int splashDmg = damageVs(E_CATAPULT, o.type, splashRaw);
+                            int splashDmg = damageVs(E_CATAPULT, o.type, splashRaw, o.owner);
                             o.hp -= splashDmg; o.alertTicks = 12;
                             if (o.hp <= 0) killEntity(o);
                         }
@@ -1413,7 +1422,7 @@ void tickTowers() {
             });
             for (Entity* en : targets) {
                 if (aShots >= volley) break;
-                int dmg = damageVs(E_ARCHER, en->type, atk);
+                int dmg = damageVs(E_ARCHER, en->type, atk, en->owner);
                 en->hp -= dmg; en->alertTicks = 12;
                 spawnProjectile(sx, sy, en->x, en->y, '-', CP_PROJ_TOWER);
                 if (en->hp <= 0) killEntity(*en);

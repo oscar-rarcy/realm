@@ -909,11 +909,13 @@ void renderMap() {
             if (ent && ent->alive && ent->owner != 0 && ent->owner < MAX_PLAYERS
                 && (isConcealing() || inCrop) && !isDetectedBy(mx, my, 0)) ent = nullptr;
 
-            // Body tile: catapult/ram extend one cell right (arm + body = 2 chars).
+            // Body tile: catapult/ram/deployed-trebuchet extend one cell right.
             if (displayMode == DM_ASCII && !ent && inBounds(mx-1, my)) {
                 Entity* leftEnt = entityAt(mx-1, my);
-                if (leftEnt && leftEnt->alive && !leftEnt->underConstruction &&
-                    (leftEnt->type == E_CATAPULT || leftEnt->type == E_RAM)) {
+                bool isTwoTile = leftEnt && leftEnt->alive && !leftEnt->underConstruction &&
+                    (leftEnt->type == E_CATAPULT || leftEnt->type == E_RAM ||
+                     (leftEnt->type == E_TREBUCHET && leftEnt->packed == 0 && leftEnt->packTicks == 0));
+                if (isTwoTile) {
                     bool inCropLeft = !isBuilding(leftEnt->type) && g.map[my][mx-1].terrain == T_WHEAT;
                     bool leftCloaked = leftEnt->owner != 0 && leftEnt->owner < MAX_PLAYERS
                                     && (isConcealing() || inCropLeft) && !isDetectedBy(mx-1, my, 0);
@@ -921,7 +923,10 @@ void renderMap() {
                         bool bodyIsSel = (leftEnt->id == g.selectedId);
                         if (!bodyIsSel) for (int sid : g.selectedIds) if (sid == leftEnt->id) { bodyIsSel = true; break; }
                         int bcp = ownerColorPair(leftEnt->owner, night);
-                        char sc = (leftEnt->type == E_CATAPULT) ? 'c' : 'r';
+                        char sc;
+                        if      (leftEnt->type == E_CATAPULT)  sc = 'c';
+                        else if (leftEnt->type == E_RAM)       sc = 'r';
+                        else /* trebuchet deployed */          sc = 'Q'; // counterweight base
                         int sattr = COLOR_PAIR(bcp) | A_BOLD;
                         if (bodyIsSel) sattr |= A_REVERSE;
                         if (isCur) { attron(COLOR_PAIR(CP_CURSOR)); mvaddch(scY, scX, sc); attroff(COLOR_PAIR(CP_CURSOR)); }
@@ -1399,8 +1404,11 @@ void renderUI() {
             if (sel->researching != 0) {
                 iy++;
                 int pp = sel->prodProgress * 100 / std::max(1, sel->prodTime);
-                const char* rn = (sel->researching == R_IRON_WEAPONS) ? "Iron Weapons" :
-                                 (sel->researching == R_CROSSBOWS)   ? "Crossbows"    : "Research";
+                const char* rn = (sel->researching == R_IRON_WEAPONS)  ? "Iron Weapons" :
+                                 (sel->researching == R_CROSSBOWS)    ? "Crossbows"    :
+                                 (sel->researching == R_PIKES)        ? "Pikes"        :
+                                 (sel->researching == R_COUNTERWEIGHT)? "Counterweight":
+                                 (sel->researching == R_PLATE_HELM)   ? "Plate Helm"   : "Research";
                 attron(COLOR_PAIR(CP_UI_HIGH)); mvprintw(iy++, panelX+1, "Researching: %s", rn);
                 int pb = panelW-4, pf = pp*pb/100;
                 for (int i = 0; i < pb; i++) { int c=(i<pf)?CP_UI_HIGH:CP_FOG; attron(COLOR_PAIR(c)); mvaddch(iy, panelX+1+i, (i<pf)?'=':'-'); attroff(COLOR_PAIR(c)); }

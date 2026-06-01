@@ -102,6 +102,66 @@ static AIIntel aiScout(int o) {
     return x;
 }
 
+// Find the nearest enemy building to a trebuchet, for siege positioning.
+static Entity* aiNearestEnemyBuilding(int o, int x, int y) {
+    Entity* best = nullptr; int bestD = 99999;
+    for (auto& e : g.entities) {
+        if (!e.alive || e.owner == o || e.owner == OWNER_NATURE) continue;
+        if (!isBuilding(e.type)) continue;
+        int d = dist(x, y, e.x, e.y);
+        if (d < bestD) { bestD = d; best = &e; }
+    }
+    return best;
+}
+
+// Per-tick AI trebuchet management: pack/deploy/attack lifecycle.
+static void aiTickTrebuchets(int o) {
+    int rng = STATS[E_TREBUCHET].range; // 12
+    for (auto& t : g.entities) {
+        if (!t.alive || t.owner != o || t.type != E_TREBUCHET || t.underConstruction) continue;
+        if (t.packTicks > 0) continue; // mid-transition; wait
+        int pT = (g.players[o].research & R_COUNTERWEIGHT) ? 25 : 40;
+        Entity* tgt = aiNearestEnemyBuilding(o, t.x, t.y);
+        if (t.packed == 1) {
+            // Mobile: roll toward the nearest enemy building, deploy when in range.
+            if (!tgt) continue;
+            int d = dist(t.x, t.y, tgt->x, tgt->y);
+            if (d <= rng) {
+                t.packed = 0; t.packTicks = pT;
+                t.state = S_IDLE; t.path.clear(); t.pathIdx = 0;
+            } else if (t.state == S_IDLE) {
+                // March toward the target. Stop 2 tiles short of max range to give space to deploy.
+                int stopAt = rng - 1;
+                int sx = tgt->x, sy = tgt->y;
+                int dx = sx - t.x, dy = sy - t.y;
+                float L = std::sqrt((float)(dx*dx + dy*dy));
+                if (L < 1) continue;
+                int gx = t.x + (int)(dx * (1.0f - stopAt / L));
+                int gy = t.y + (int)(dy * (1.0f - stopAt / L));
+                gx = std::max(0, std::min(MAP_W-1, gx));
+                gy = std::max(0, std::min(MAP_H-1, gy));
+                orderMove(t, gx, gy);
+            }
+        } else {
+            // Deployed: find a target in range to attack. If under heavy fire, pack and run.
+            if (t.hp * 100 < t.maxHp * 25) {
+                t.packed = 1; t.packTicks = pT;
+                t.state = S_IDLE; t.targetId = -1;
+                continue;
+            }
+            if (!tgt || dist(t.x, t.y, tgt->x, tgt->y) > rng) {
+                // No targets in range — pack up and move closer.
+                t.packed = 1; t.packTicks = pT;
+                t.state = S_IDLE; t.targetId = -1;
+                continue;
+            }
+            if (t.state == S_IDLE || t.targetId != tgt->id) {
+                orderAttack(t, tgt->id);
+            }
+        }
+    }
+}
+
 // Pick the best target for a wave originating from `attacker`.
 // Priority adapts to game phase: early = raid workers, late = destroy HQ.
 static int aiPickTarget(int o, Entity* attacker) {
@@ -162,6 +222,7 @@ static void tickAIForOwner(int o) {
     int arch = aiCount(o,E_ARCHER),  kni = aiCount(o,E_KNIGHT);
     int spr  = aiCount(o,E_SPEARMAN);
     int cat  = aiCountAll(o,E_CATAPULT);
+    int treb = aiCountAll(o,E_TREBUCHET);
     int hous = aiCountAll(o,E_HOUSE), bar = aiCount(o,E_BARRACKS), stb = aiCount(o,E_STABLE);
 
     AIIntel intel = aiScout(o);
@@ -169,7 +230,10 @@ static void tickAIForOwner(int o) {
     aiGather(o);
 
     // Caps scale with what opponents have fielded — match and exceed.
+    // Peasant cap softens late-game: once economy is set, more peasants is wasted supply.
     int peasCap = std::max(12, intel.playerPeasants + 4);
+    if (g.tick > 9000) peasCap = std::min(peasCap, 18);   // late-game hard cap
+    if (g.tick > 15000) peasCap = std::min(peasCap, 14);  // end-game even tighter
     int milCap  = std::max(8,  intel.playerArmy + 4);
     int archCap = std::max(6,  intel.playerArmy/2 + 3);
     int kniCap  = std::max(4,  intel.playerArmy/3 + 2);
@@ -220,11 +284,16 @@ static void tickAIForOwner(int o) {
     }
 
     // === RESEARCH: queue at blacksmith once it's built ===
+    // Order: Iron → Crossbows → Pikes → Plate Helm → Counterweight.
+    // Counterweight last since it only matters once we're fielding trebuchets.
     for (auto& smith : g.entities) {
         if (!smith.alive || smith.owner != o || smith.type != E_BLACKSMITH || smith.underConstruction) continue;
-        if (smith.researching != 0) break; // already in progress
-        if (!(p.research & R_IRON_WEAPONS))  { smith.researching = R_IRON_WEAPONS; smith.prodProgress = 0; smith.prodTime = 350; break; }
-        if (!(p.research & R_CROSSBOWS))     { smith.researching = R_CROSSBOWS;    smith.prodProgress = 0; smith.prodTime = 350; break; }
+        if (smith.researching != 0) break;
+        if      (!(p.research & R_IRON_WEAPONS))  { smith.researching = R_IRON_WEAPONS;  smith.prodProgress=0; smith.prodTime=350; break; }
+        else if (!(p.research & R_CROSSBOWS))     { smith.researching = R_CROSSBOWS;     smith.prodProgress=0; smith.prodTime=350; break; }
+        else if (!(p.research & R_PIKES))         { smith.researching = R_PIKES;         smith.prodProgress=0; smith.prodTime=350; break; }
+        else if (!(p.research & R_PLATE_HELM))    { smith.researching = R_PLATE_HELM;    smith.prodProgress=0; smith.prodTime=400; break; }
+        else if (!(p.research & R_COUNTERWEIGHT) && aiCountAll(o,E_CASTLE) > 0) { smith.researching = R_COUNTERWEIGHT; smith.prodProgress=0; smith.prodTime=400; break; }
     }
 
     // === MILITARY UNITS — train at every barracks/stable in parallel ===
@@ -247,6 +316,14 @@ static void tickAIForOwner(int o) {
         if (!st.alive || st.owner != o || st.type != E_STABLE || st.underConstruction) continue;
         if (st.producing != E_NONE) continue;
         if (kni < kniCap && p.gold >= 120 && p.food >= 40) orderTrain(st, E_KNIGHT);
+    }
+    // Castles produce trebuchets — siege specialists, 1-2 max, only when sieging.
+    bool wantTreb = (intel.playerCastles > 0 || intel.playerWalls > 8 || (intel.playerArmy >= 10));
+    for (auto& cs : g.entities) {
+        if (!cs.alive || cs.owner != o || cs.type != E_CASTLE || cs.underConstruction) continue;
+        if (cs.producing != E_NONE) continue;
+        if (wantTreb && treb < 2 && p.gold >= 200 && p.wood >= 250 && p.food >= 40)
+            orderTrain(cs, E_TREBUCHET);
     }
 
     // === DEFENSE: towers scaled to threat ===
@@ -352,7 +429,7 @@ static void tickAIForOwner(int o) {
         Entity* anchor = nullptr;
         for (auto& e : g.entities) {
             if (!e.alive || e.owner != o) continue;
-            if (!isUnit(e.type) || e.type == E_PEASANT || e.type == E_FISHING_BOAT) continue;
+            if (!isUnit(e.type) || e.type == E_PEASANT || e.type == E_FISHING_BOAT || e.type == E_TREBUCHET) continue;
             if (e.state != S_IDLE) continue;
             anchor = &e; break;
         }
@@ -366,7 +443,7 @@ static void tickAIForOwner(int o) {
                 for (auto& e : g.entities) {
                     if (sent >= sendCap) break;
                     if (!e.alive || e.owner != o) continue;
-                    if (!isUnit(e.type) || e.type == E_PEASANT || e.type == E_FISHING_BOAT) continue;
+                    if (!isUnit(e.type) || e.type == E_PEASANT || e.type == E_FISHING_BOAT || e.type == E_TREBUCHET) continue;
                     if (e.state == S_IDLE) {
                         // Catapults seek siege targets; everyone else takes the general target.
                         int myTarget = (e.type == E_CATAPULT && siegeId >= 0) ? siegeId : tid;
@@ -421,6 +498,9 @@ static void tickAIForOwner(int o) {
         if (guard && threat) { guard->attackMove = 1; orderAttack(*guard, threat->id); }
         break; // one escort response per AI tick
     }
+
+    // Trebuchet management — pack/march/deploy/attack lifecycle.
+    aiTickTrebuchets(o);
 }
 
 void tickAI() {
