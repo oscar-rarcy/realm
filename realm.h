@@ -89,6 +89,8 @@ enum {
     CP_DAWN_SKY, CP_DUSK_SKY,
     CP_PLAYER, CP_PLAYER_NIGHT, CP_ENEMY, CP_ENEMY_NIGHT,
     CP_SHIP_PLAYER, CP_SHIP_ENEMY,
+    // Per-player ship hulls: brown deck, owner-coloured glyph.
+    CP_SHIP_P0, CP_SHIP_P1, CP_SHIP_P2, CP_SHIP_P3,
     CP_PROJ_ARROW, CP_PROJ_BOULDER, CP_PROJ_TOWER,
     CP_RAIN, CP_SNOW_FALL,
     CP_UI_BAR, CP_UI_TEXT, CP_UI_HIGH, CP_UI_DIM, CP_UI_ACCENT,
@@ -285,6 +287,10 @@ void render();
 
 // input.cpp
 void handleInput(int ch);
+
+// save.cpp
+bool saveGame(const char* path);
+bool loadGame(const char* path);
 
 // main.cpp
 void initGame(int numAIs);

@@ -114,6 +114,91 @@ static Entity* aiNearestEnemyBuilding(int o, int x, int y) {
     return best;
 }
 
+// Finds a water tile near a position that's adjacent to passable land.
+// Used as ferry endpoints on each coast.
+static bool findShoreTileNear(int cx, int cy, int searchR, int& ox, int& oy) {
+    for (int r = 1; r <= searchR; r++) {
+        for (int dy = -r; dy <= r; dy++) for (int dx = -r; dx <= r; dx++) {
+            int nx = cx+dx, ny = cy+dy;
+            if (!inBounds(nx,ny)) continue;
+            if (!isPassableWater(nx,ny)) continue;
+            // Adjacent passable land?
+            for (int dy2 = -1; dy2 <= 1; dy2++) for (int dx2 = -1; dx2 <= 1; dx2++) {
+                if (dx2 == 0 && dy2 == 0) continue;
+                int qx = nx+dx2, qy = ny+dy2;
+                if (inBounds(qx,qy) && isPassable(qx,qy)) { ox = nx; oy = ny; return true; }
+            }
+        }
+    }
+    return false;
+}
+
+// Per-tick AI transport behaviour. Amphibious assault lifecycle:
+//   empty -> sail to home shore -> load idle military -> sail to enemy shore
+//   -> eject troops -> empty -> repeat.
+static void aiTickTransports(int o) {
+    // Pick assault target: nearest enemy TC/Castle.
+    Entity* target = nullptr;
+    int bestD = 99999;
+    for (auto& e : g.entities) {
+        if (!e.alive || e.owner == o || e.owner == OWNER_NATURE) continue;
+        if (e.type != E_TOWNHALL && e.type != E_CASTLE) continue;
+        int d = mdist(0, 0, e.x, e.y);
+        if (d < bestD) { bestD = d; target = &e; }
+    }
+    Entity* home = nullptr;
+    for (auto& e : g.entities) {
+        if (!e.alive || e.owner != o) continue;
+        if (e.type != E_TOWNHALL && e.type != E_CASTLE) continue;
+        home = &e; break;
+    }
+    if (!target || !home) return;
+
+    int enemyShoreX = -1, enemyShoreY = -1;
+    if (!findShoreTileNear(target->x, target->y, 18, enemyShoreX, enemyShoreY)) return;
+    int homeShoreX = -1, homeShoreY = -1;
+    if (!findShoreTileNear(home->x, home->y, 18, homeShoreX, homeShoreY)) return;
+
+    for (auto& t : g.entities) {
+        if (!t.alive || t.owner != o || t.type != E_TRANSPORT || t.underConstruction) continue;
+
+        bool atHomeShore  = dist(t.x, t.y, homeShoreX,  homeShoreY)  <= 3;
+        bool atEnemyShore = dist(t.x, t.y, enemyShoreX, enemyShoreY) <= 3;
+
+        if (t.garrison.empty()) {
+            // Empty: head home to pick up troops.
+            if (atEnemyShore) {
+                // Just delivered — clear leftover orders so we'll sail home.
+                t.state = S_IDLE; t.path.clear();
+            }
+            if (atHomeShore) {
+                // Load idle military within 10 tiles.
+                int free = garrisonCap(E_TRANSPORT) - (int)t.garrison.size();
+                for (auto& u : g.entities) {
+                    if (free <= 0) break;
+                    if (!u.alive || u.owner != o) continue;
+                    if (!isUnit(u.type) || u.type == E_PEASANT
+                            || u.type == E_FISHING_BOAT || u.type == E_TREBUCHET) continue;
+                    if (isNaval(u.type)) continue;
+                    if (u.state != S_IDLE) continue;
+                    if (mdist(u.x, u.y, t.x, t.y) > 12) continue;
+                    orderGarrison(u, t.id);
+                    free--;
+                }
+            } else if (t.state == S_IDLE || t.path.empty()) {
+                orderMove(t, homeShoreX, homeShoreY);
+            }
+        } else {
+            // Loaded: sail to enemy shore and disembark.
+            if (atEnemyShore) {
+                ejectGarrison(t);
+            } else if (t.state == S_IDLE || t.path.empty()) {
+                orderMove(t, enemyShoreX, enemyShoreY);
+            }
+        }
+    }
+}
+
 // Per-tick AI trebuchet management: pack/deploy/attack lifecycle.
 static void aiTickTrebuchets(int o) {
     int rng = STATS[E_TREBUCHET].range; // 12
@@ -372,6 +457,11 @@ static void tickAIForOwner(int o) {
         if (dk.producing != E_NONE) continue;
         if (aiCount(o,E_FISHING_BOAT) < 3 && p.gold >= 80 && p.wood >= 50) { orderTrain(dk, E_FISHING_BOAT); continue; }
         if (aiCount(o,E_WARSHIP) < 2 && p.gold >= 150 && p.wood >= 80 && p.food >= 20) { orderTrain(dk, E_WARSHIP); continue; }
+        // Coastal maps: build a transport for amphibious assault on enemies on other islands.
+        if (g.biomeChoice == B_OCEAN && aiCount(o,E_TRANSPORT) < 1
+                && p.gold >= 80 && p.wood >= 40 && p.food >= 10) {
+            orderTrain(dk, E_TRANSPORT); continue;
+        }
     }
 
     // === EXPANSION: forward TH halfway to the nearest opponent ===
@@ -560,6 +650,9 @@ static void tickAIForOwner(int o) {
 
     // Trebuchet management — pack/march/deploy/attack lifecycle.
     aiTickTrebuchets(o);
+
+    // Coastal maps: AI transports ferry troops across the sea.
+    if (g.biomeChoice == B_OCEAN) aiTickTransports(o);
 }
 
 void tickAI() {

@@ -202,6 +202,10 @@ void initColors() {
     // solid hulls instead of single floating characters on open water.
     init_pair(CP_SHIP_PLAYER,    C::PLAYER_CYAN,  C::BROWN);
     init_pair(CP_SHIP_ENEMY,     C::ENEMY_RED,    C::BROWN);
+    init_pair(CP_SHIP_P0,        C::PLAYER_CYAN,  C::BROWN);
+    init_pair(CP_SHIP_P1,        C::ENEMY_RED,    C::BROWN);
+    init_pair(CP_SHIP_P2,        C::ORANGE,       C::BROWN);
+    init_pair(CP_SHIP_P3,        C::DUSK_PURPLE,  C::BROWN);
 
     init_pair(CP_PROJ_ARROW,     C::BRIGHT_GOLD,  tileBg(C::NEAR_BLACK));
     init_pair(CP_PROJ_BOULDER,   C::BRIGHT_GRAY,  tileBg(C::NEAR_BLACK));
@@ -987,8 +991,12 @@ void renderMap() {
                 } else {
                     cp = ownerColorPair(ent->owner, night);
                 }
-                if (displayMode == DM_ASCII && isNaval(ent->type))
-                    cp = (ent->owner == 0) ? CP_SHIP_PLAYER : CP_SHIP_ENEMY;
+                // All boats get a wood-brown deck regardless of display mode.
+                // Glyph colour is per-player so each side's fleet is identifiable.
+                if (isNaval(ent->type) && ent->owner < MAX_PLAYERS) {
+                    static const int shipCp[] = { CP_SHIP_P0, CP_SHIP_P1, CP_SHIP_P2, CP_SHIP_P3 };
+                    cp = shipCp[ent->owner];
+                }
                 // Farms are always wheat-gold — ownership doesn't change their colour.
                 if (ent->type == E_FARM && !ent->underConstruction)
                     cp = (getSeason() == SUMMER) ? CP_WHEAT_GOLD : CP_WHEAT;

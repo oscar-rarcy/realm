@@ -342,6 +342,18 @@ void handleInput(int ch) {
     }
 
     switch (ch) {
+    // F5 saves, F9 loads. Single slot at ./realm.sav (per cwd).
+    case KEY_F(5): {
+        if (saveGame("realm.sav")) setStatus("Game saved (realm.sav).");
+        else                       setStatus("Save failed!");
+        break;
+    }
+    case KEY_F(9): {
+        if (loadGame("realm.sav")) setStatus("Game loaded.");
+        else                       setStatus("Load failed (no save?).");
+        break;
+    }
+
     case KEY_UP:    g.cursorY--; break;
     case KEY_DOWN:  g.cursorY++; break;
     case KEY_LEFT:  g.cursorX--; break;

@@ -835,8 +835,9 @@ void moveAlongPath(Entity& e) {
         bool isOpenGate = (blk->type == E_GATE && blk->gateOpen);
         if (!isOpenGate) {
             // Tolerate transient blocks; only repath after several stuck ticks (staggered by id).
+            // Tightened threshold (was 3+id%5) so stuck units recover quicker.
             e.stuckTicks++;
-            int threshold = 3 + (e.id % 5);
+            int threshold = 2 + (e.id % 3);
             if (e.stuckTicks >= threshold) {
                 e.stuckTicks = 0;
                 int gx = e.path.empty() ? e.targetX : e.path.back().first;
@@ -1195,7 +1196,12 @@ void tickEntity(Entity& e) {
                 auto end = e.path.back();
                 if (dist(end.first, end.second, t->x, t->y) > 2) stale = true;
             }
-            if (stale) { e.path = findPathFor(e, t->x, t->y); e.pathIdx = 0; }
+            if (stale) {
+                e.path = findPathFor(e, t->x, t->y); e.pathIdx = 0;
+                // Target truly unreachable — drop back to idle so we don't spin
+                // re-pathing every tick. Auto-aggro will pick another fight.
+                if (e.path.empty()) { e.state = S_IDLE; e.targetId = -1; break; }
+            }
             moveAlongPath(e);
         }
         break;
