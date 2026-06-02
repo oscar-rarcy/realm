@@ -1,4 +1,5 @@
 #include "research_service.h"
+#include "core/game_events.h"
 
 CanResearchResult canResearch(const Game& game, int player, const Entity& building, ResearchId id) {
     const ResearchDef* def = researchDef(id);
@@ -32,7 +33,7 @@ bool startResearch(Game& game, int player, int buildingId, ResearchId id) {
 
     CanResearchResult result = canResearch(game, player, *building, id);
     if (!result.ok) {
-        if (player == 0) setStatus(result.reason);
+        emitStatusEvent(player, result.reason, GameEventType::CommandRejected);
         return false;
     }
 
@@ -43,6 +44,6 @@ bool startResearch(Game& game, int player, int buildingId, ResearchId id) {
     building->researching = def->bit;
     building->researchProgress = 0;
     building->researchTime = def->ticks;
-    if (player == 0) setStatus(def->startMessage);
+    emitStatusEvent(player, def->startMessage, GameEventType::ResearchStarted);
     return true;
 }

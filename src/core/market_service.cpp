@@ -1,4 +1,5 @@
 #include "market_service.h"
+#include "core/game_events.h"
 
 // Canonical exchange rates. These mirror the rates that were previously inline in
 // the input handler so the player-facing behavior is unchanged.
@@ -56,7 +57,7 @@ bool executeTrade(Game& game, int player, int marketId, MarketTradeType type) {
 
     CanTradeResult result = canTrade(game, player, *market, type);
     if (!result.ok) {
-        if (player == 0) setStatus(result.reason);
+        emitStatusEvent(player, result.reason, GameEventType::CommandRejected);
         return false;
     }
 
@@ -64,6 +65,6 @@ bool executeTrade(Game& game, int player, int marketId, MarketTradeType type) {
     Player& p = game.players[player];
     addResource(p, def->from, -def->fromAmount);
     addResource(p, def->to, def->toAmount);
-    if (player == 0) setStatus(def->successMessage);
+    emitStatusEvent(player, def->successMessage);
     return true;
 }

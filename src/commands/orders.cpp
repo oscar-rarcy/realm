@@ -1,11 +1,12 @@
 #include "realm.h"
 #include "commands/command.h"
 #include "core/build_service.h"
+#include "core/game_events.h"
 #include "core/production_service.h"
 
 void orderMove(Entity& e, int tx, int ty) {
     if (e.type == E_TREBUCHET && e.packed == 0) {
-        if (e.owner == 0) setStatus("Pack the trebuchet first [D].");
+        emitStatusEvent(e.owner, "Pack the trebuchet first [D].", GameEventType::CommandRejected);
         return;
     }
     e.state = S_MOVING; e.targetX = tx; e.targetY = ty; e.targetId = -1;
@@ -14,9 +15,9 @@ void orderMove(Entity& e, int tx, int ty) {
     e.path = findPath(e.x, e.y, tx, ty, 300, isNaval(e.type)); e.pathIdx = 0;
     if (e.path.empty() && (e.x != tx || e.y != ty)) {
         e.state = S_IDLE;
-        if (e.owner == 0) setStatus("Can't reach there.");
-    } else if (e.owner == 0) {
-        addActionMarker(tx, ty, 'x');
+        emitStatusEvent(e.owner, "Can't reach there.", GameEventType::CommandRejected);
+    } else {
+        emitActionMarkerEvent(e.owner, { tx, ty }, 'x');
     }
 }
 
@@ -30,13 +31,13 @@ void orderAttack(Entity& e, int tid) {
     if (!t) return;
     if (e.type == E_RAM && !isBuilding(t->type)) return; // rams demolish buildings only
     if (e.type == E_TREBUCHET && e.packed == 1) {
-        if (e.owner == 0) setStatus("Deploy the trebuchet first [D].");
+        emitStatusEvent(e.owner, "Deploy the trebuchet first [D].", GameEventType::CommandRejected);
         return;
     }
     if (e.type == E_TREBUCHET && e.packTicks > 0) return;
     e.holdPosition = 0;
     e.state = S_ATTACKING; e.targetId = tid;
-    if (e.owner == 0) addActionMarker(t->x, t->y, '!');
+    emitActionMarkerEvent(e.owner, { t->x, t->y }, '!');
 }
 
 void orderGather(Entity& e, int tx, int ty) {
@@ -49,7 +50,7 @@ void orderGather(Entity& e, int tx, int ty) {
         e.resourceY = ty;
         e.state = S_GATHERING; e.targetX = tx; e.targetY = ty;
         e.targetId = -1;
-        if (e.owner == 0) addActionMarker(tx, ty, '+');
+        emitActionMarkerEvent(e.owner, { tx, ty }, '+');
         int bestAX = tx, bestAY = ty, bestAD = 99999;
         for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
             if (dx==0 && dy==0) continue;
@@ -77,7 +78,7 @@ void orderGather(Entity& e, int tx, int ty) {
     e.resourceX = tx;
     e.resourceY = ty;
     e.state = S_GATHERING; e.targetX = tx; e.targetY = ty;
-    if (e.owner == 0) addActionMarker(tx, ty, '+');
+    emitActionMarkerEvent(e.owner, { tx, ty }, '+');
     // Path to nearest adjacent passable tile so units don't block each other on the same node
     bool naval = isNaval(e.type);
     int bestAX = tx, bestAY = ty, bestAD = 99999;
@@ -164,7 +165,7 @@ static void groupMoveCore(const Selection& selection, int tx, int ty, bool attac
         if (attackMove) orderAttackMove(*units[i], slots[i].first, slots[i].second);
         else            orderMove(*units[i], slots[i].first, slots[i].second);
     }
-    setStatus(attackMove ? "Attack-move in formation!" : "Group moving in formation...");
+    emitStatusEvent(0, attackMove ? "Attack-move in formation!" : "Group moving in formation...");
 }
 
 void orderGroupMove(const Selection& selection, int tx, int ty)        { groupMoveCore(selection, tx, ty, false); }
@@ -176,5 +177,5 @@ void orderGroupAttack(const Selection& selection, int tid) {
         if (e && e->alive && e->owner == 0 && isUnit(e->type))
             orderAttack(*e, tid);
     }
-    setStatus("Group attacking!");
+    emitStatusEvent(0, "Group attacking!");
 }

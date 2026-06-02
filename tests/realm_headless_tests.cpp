@@ -2,6 +2,7 @@
 #include "entity_animation.h"
 #include "commands/command.h"
 #include "core/build_service.h"
+#include "core/game_events.h"
 #include "core/production_service.h"
 #include "core/research_service.h"
 #include "core/market_service.h"
@@ -848,6 +849,23 @@ static void testBuildService() {
     assert(validateGameState(nullptr));
 }
 
+static void testGameEventSink() {
+    initGameWithSeed(1, 5101u, 0);
+    emitStatusEvent(0, "Human status");
+    assert(g.statusMsg == "Human status");
+    emitStatusEvent(1, "AI status");
+    assert(g.statusMsg == "Human status");
+
+    size_t markersBefore = g.actionMarkers.size();
+    emitActionMarkerEvent(0, { 10, 10 }, '!');
+    assert(g.actionMarkers.size() == markersBefore + 1);
+    assert(g.actionMarkers.back().x == 10 && g.actionMarkers.back().y == 10);
+    assert(g.actionMarkers.back().glyph == '!');
+
+    emitActionMarkerEvent(1, { 11, 11 }, '?');
+    assert(g.actionMarkers.size() == markersBefore + 1);
+}
+
 static void testBerryGatherAndDepletion() {
     initGameWithSeed(1, 3503u, 0);
     Entity* peasant = nullptr;
@@ -1133,6 +1151,7 @@ int main() {
     testCommandSelectionDriftProtection();
     testProductionService();
     testBuildService();
+    testGameEventSink();
     testBerryGatherAndDepletion();
     testMillFoodStockpile();
     testWinterPartialWaterFreeze();

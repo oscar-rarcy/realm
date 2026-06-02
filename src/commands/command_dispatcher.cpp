@@ -1,5 +1,6 @@
 #include "command.h"
 #include "core/build_service.h"
+#include "core/game_events.h"
 #include "core/production_service.h"
 #include "core/research_service.h"
 #include "core/market_service.h"
@@ -61,7 +62,7 @@ void dispatchCommand(Game& game, const Command& command) {
             selected->rallyX = command.targetTile.x;
             selected->rallyY = command.targetTile.y;
             selected->rallySet = 1;
-            setStatus("Rally point set.");
+            emitStatusEvent(selected->owner, "Rally point set.");
         }
         break;
     }
@@ -74,7 +75,7 @@ void dispatchCommand(Game& game, const Command& command) {
             if (selected && selected->alive && selected->owner == 0 && isUnit(selected->type)) {
                 orderMove(*selected, command.targetTile.x, command.targetTile.y);
                 selected->attackMove = 1;
-                setStatus("Attack-moving.");
+                emitStatusEvent(selected->owner, "Attack-moving.");
             }
         }
         break;

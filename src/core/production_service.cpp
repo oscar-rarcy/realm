@@ -1,4 +1,5 @@
 #include "production_service.h"
+#include "core/game_events.h"
 
 static const EntityType TOWN_HALL_UNITS[] = { E_PEASANT };
 static const EntityType BARRACKS_UNITS[] = { E_MILITIA, E_ARCHER, E_SPEARMAN, E_CATAPULT, E_RAM };
@@ -60,7 +61,7 @@ bool startTraining(Game& game, int player, int producerId, EntityType unitType) 
 
     CanTrainResult result = canTrain(game, player, *producer, unitType);
     if (!result.ok) {
-        if (player == 0) setStatus(result.reason);
+        emitStatusEvent(player, result.reason, GameEventType::CommandRejected);
         return false;
     }
 
@@ -75,9 +76,10 @@ bool startTraining(Game& game, int player, int producerId, EntityType unitType) 
         producer->trainProgress = 0;
         producer->trainTime = stats.trainTime;
         producer->state = S_TRAINING;
+        emitGameEvent({ GameEventType::TrainingStarted, player, producer->id, { -1, -1 }, "", 0 });
     } else {
         producer->queue.push_back((int)unitType);
-        if (player == 0) setStatus("Queued.");
+        emitStatusEvent(player, "Queued.", GameEventType::TrainingQueued);
     }
     return true;
 }

@@ -1,4 +1,5 @@
 #include "build_service.h"
+#include "core/game_events.h"
 
 #include <cstdlib>
 #include <vector>
@@ -38,7 +39,7 @@ bool startBuild(Game& game, int player, int builderId, EntityType buildingType, 
 
     CanStartBuildResult result = canStartBuild(game, player, *builder, buildingType, tile);
     if (!result.ok) {
-        if (player == 0) setStatus(result.reason);
+        emitStatusEvent(player, result.reason, GameEventType::CommandRejected);
         return false;
     }
 
@@ -46,7 +47,8 @@ bool startBuild(Game& game, int player, int builderId, EntityType buildingType, 
     p.gold -= STATS[buildingType].costGold;
     p.wood -= STATS[buildingType].costWood;
     int bid = spawnEntity(buildingType, player, tile.x, tile.y, false);
-    if (player == 0) addActionMarker(tile.x, tile.y, '#');
+    emitActionMarkerEvent(player, tile, '#');
+    emitGameEvent({ GameEventType::BuildingPlaced, player, bid, tile, "", 0 });
     builder->state = S_BUILDING;
     builder->targetId = bid;
     builder->targetX = tile.x;
@@ -76,7 +78,7 @@ bool startBuildLine(Game& game, int player, int builderId, EntityType buildingTy
     }
 
     if (tiles.empty()) {
-        if (player == 0) setStatus("Can't build there!");
+        emitStatusEvent(player, "Can't build there!", GameEventType::CommandRejected);
         return false;
     }
 
@@ -84,7 +86,7 @@ bool startBuildLine(Game& game, int player, int builderId, EntityType buildingTy
     int totalWood = (int)tiles.size() * STATS[buildingType].costWood;
     Player& p = game.players[player];
     if (p.gold < totalGold || p.wood < totalWood) {
-        if (player == 0) setStatus("Not enough resources!");
+        emitStatusEvent(player, "Not enough resources!", GameEventType::CommandRejected);
         return false;
     }
 
@@ -97,10 +99,8 @@ bool startBuildLine(Game& game, int player, int builderId, EntityType buildingTy
     }
     if (firstId >= 0) {
         orderHelp(*builder, firstId);
-        if (player == 0) {
-            addActionMarker(start.x, start.y, '#');
-            setStatus("Building walls...");
-        }
+        emitActionMarkerEvent(player, start, '#');
+        emitStatusEvent(player, "Building walls...", GameEventType::BuildingPlaced);
     }
     return true;
 }
