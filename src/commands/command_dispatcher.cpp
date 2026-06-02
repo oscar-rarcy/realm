@@ -77,7 +77,24 @@ void dispatchCommand(Game& game, const Command& command) {
             }
         }
         break;
-    default:
+    // The following command types are not (yet) routed through the dispatcher;
+    // they are handled directly by the input/render layers. They are listed
+    // explicitly (rather than via a default case) so that adding a new
+    // CommandType produces a compiler warning here until it is handled.
+    case CommandType::None:
+    case CommandType::Move:
+    case CommandType::Attack:
+    case CommandType::Gather:
+    case CommandType::Garrison:
+    case CommandType::EjectGarrison:
+    case CommandType::HoldPosition:
+    case CommandType::Stop:
+    case CommandType::AssignControlGroup:
+    case CommandType::RecallControlGroup:
+    case CommandType::TogglePause:
+    case CommandType::Save:
+    case CommandType::Load:
+    case CommandType::Resign:
         break;
     }
 }
