@@ -1,0 +1,30 @@
+{
+  "schema": "realm.terrain_sprite_spec.v1",
+  "asset_type": "feature",
+  "enum": "T_MOUNTAIN",
+  "slug": "mountain",
+  "name": "Mountain",
+  "ui_name": "Mountain",
+  "runtime": {
+    "glyph": "^"
+  },
+  "art": {
+    "projection": "transparent feature sprite anchored over a projected isometric map tile",
+    "layer_category": "features",
+    "terrain_type": "blocker terrain",
+    "visual_design": "Tall grey rock, high contrast peak, dark base",
+    "required_variants": "12 variants; cliff-edge masks; snowcap optional",
+    "runtime_notes": "Blocks land; not resource",
+    "team_color_required": false
+  },
+  "paths": {
+    "runtime_root": "assets/tiles/terrain/mountain",
+    "base": "assets/tiles/terrain/mountain.png"
+  },
+  "sources": [
+    "include/realm.h",
+    "src/entity.cpp",
+    "src/gfx_renderer.cpp",
+    "docs/tileset/realm_tileset_visual_audit.md"
+  ]
+}

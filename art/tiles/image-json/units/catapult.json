@@ -1,0 +1,116 @@
+{
+  "schema": "realm.sprite_spec.v1",
+  "asset_type": "unit",
+  "enum": "E_CATAPULT",
+  "slug": "catapult",
+  "name": "Catapult",
+  "runtime": {
+    "glyph": "c",
+    "stats": {
+      "max_hp": 70,
+      "attack": 25,
+      "range": 8,
+      "speed": 8,
+      "attack_speed_ticks": 12,
+      "cost_gold": 150,
+      "cost_wood": 40,
+      "train_time_ticks": 90,
+      "supply_provided": 0,
+      "supply_used": 3,
+      "traits": [
+        "TR_MILITARY",
+        "TR_RANGED",
+        "TR_SIEGE"
+      ]
+    },
+    "footprint": {
+      "w": 1,
+      "h": 1
+    },
+    "team_color_required": true
+  },
+  "art": {
+    "projection": "upright sprite anchored over projected isometric map tiles",
+    "directions": [
+      "front",
+      "back"
+    ],
+    "runtime_mirrors_horizontal": true,
+    "team_color_slots": [
+      "small pennants",
+      "side shield plaques",
+      "crew cloth"
+    ],
+    "visual_design": "Wood-and-iron torsion/sling machine; exaggerated throwing arm",
+    "source_role": "siege ranged, splash, standoff"
+  },
+  "states": [
+    "idle",
+    "roll",
+    "load",
+    "fire",
+    "recoil",
+    "damaged/alert",
+    "destroyed wreck",
+    "decayed wreckage"
+  ],
+  "actions": [
+    {
+      "id": "idle",
+      "description": "idle",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2
+    },
+    {
+      "id": "roll",
+      "description": "roll",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2
+    },
+    {
+      "id": "load",
+      "description": "load",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2
+    },
+    {
+      "id": "fire",
+      "description": "fire",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2
+    },
+    {
+      "id": "recoil",
+      "description": "recoil",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2
+    },
+    {
+      "id": "damaged_alert",
+      "description": "damaged/alert",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2
+    },
+    {
+      "id": "destroyed_wreck",
+      "description": "destroyed wreck",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2
+    },
+    {
+      "id": "decayed_wreckage",
+      "description": "decayed wreckage",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2
+    }
+  ],
+  "paths": {
+    "runtime_root": "assets/tiles/entities/catapult",
+    "manifest": "assets/tiles/entities/catapult/manifest.json"
+  },
+  "sources": [
+    "include/realm.h",
+    "src/globals.cpp",
+    "docs/tileset/realm_tileset_visual_audit.md"
+  ]
+}

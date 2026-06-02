@@ -1,0 +1,30 @@
+{
+  "schema": "realm.terrain_sprite_spec.v1",
+  "asset_type": "feature",
+  "enum": "T_GOLD",
+  "slug": "gold",
+  "name": "Gold",
+  "ui_name": "Gold Deposit",
+  "runtime": {
+    "glyph": "$"
+  },
+  "art": {
+    "projection": "transparent feature sprite anchored over a projected isometric map tile",
+    "layer_category": "features",
+    "terrain_type": "resource object",
+    "visual_design": "Bright ore vein/nuggets in rock/dirt",
+    "required_variants": "8 shimmer frames; 10 vein variants",
+    "runtime_notes": "Gatherable gold; depleted to dirt",
+    "team_color_required": false
+  },
+  "paths": {
+    "runtime_root": "assets/tiles/terrain/gold",
+    "base": "assets/tiles/terrain/gold.png"
+  },
+  "sources": [
+    "include/realm.h",
+    "src/entity.cpp",
+    "src/gfx_renderer.cpp",
+    "docs/tileset/realm_tileset_visual_audit.md"
+  ]
+}

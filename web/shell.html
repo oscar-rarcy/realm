@@ -6,7 +6,17 @@
   <title>Realm</title>
   <script>
     (function () {
-      var basePath = location.pathname.indexOf('/apps/realm') === 0 ? '/apps/realm/' : '/';
+      function hasPathPrefix(path, prefix) {
+        return path === prefix || path.indexOf(prefix + '/') === 0;
+      }
+      var path = location.pathname || '/';
+      var basePath = '/';
+      if (hasPathPrefix(path, '/apps/realm-ascii')) {
+        basePath = '/apps/realm-ascii/';
+      } else if (hasPathPrefix(path, '/apps/realm')) {
+        basePath = '/apps/realm/';
+      }
+      window.realmAssetBase = basePath;
       document.write('<base href="' + basePath + '">');
     }());
   </script>
@@ -103,8 +113,27 @@
       window.requestAnimationFrame(fitCanvas);
     }
 
+    async function toggleFullscreen() {
+      const target = document.getElementById('canvas-wrap');
+      try {
+        if (!document.fullscreenElement) {
+          await target.requestFullscreen?.();
+        } else {
+          await document.exitFullscreen?.();
+        }
+      } catch (error) {
+        console.warn(`Fullscreen unavailable: ${error?.message || error}`);
+      } finally {
+        scheduleFitCanvas();
+        canvas.focus();
+      }
+    }
+
+    window.realmToggleFullscreen = toggleFullscreen;
+
     window.addEventListener('resize', scheduleFitCanvas);
     window.addEventListener('orientationchange', scheduleFitCanvas);
+    document.addEventListener('fullscreenchange', scheduleFitCanvas);
     window.visualViewport?.addEventListener('resize', scheduleFitCanvas);
     fitCanvas();
 
@@ -141,6 +170,11 @@
       window.addEventListener(eventName, (event) => {
         if (eventName === 'wheel') {
           event.preventDefault();
+          return;
+        }
+        if (eventName === 'keydown' && (event.key === 'F11' || (event.altKey && event.key === 'Enter'))) {
+          event.preventDefault();
+          toggleFullscreen();
           return;
         }
         if (event.ctrlKey || event.metaKey || event.altKey) return;

@@ -58,6 +58,8 @@ const int SEASON_LENGTH= 3000;
 const int CARRY_MAX    = 20;
 const int MAX_PLAYERS  = 4;
 const int OWNER_NATURE = MAX_PLAYERS;
+const int DEATH_DECAY_TICKS = 375;  // 30 seconds at 80 ms/tick before corpse becomes skeleton/wreck.
+const int CORPSE_REMOVE_TICKS = 900; // Keep decayed remains visible for a while before pruning.
 
 // ============================================================
 // ENUMS
@@ -100,6 +102,84 @@ enum Biome     { B_TEMPERATE, B_DESERT, B_SNOW, B_SWAMP, B_FOREST, B_VOLCANIC, B
 enum Season    { SPRING = 0, SUMMER, AUTUMN, WINTER };
 enum Weather   { W_CLEAR = 0, W_RAIN, W_STORM, W_SNOW };
 enum CargoResource { CR_NONE = 0, CR_GOLD, CR_WOOD, CR_FOOD, CR_FISH };
+
+enum GroundType {
+    G_GRASS, G_MEADOW, G_DIRT, G_ROAD, G_MUD, G_SAND, G_DUNES,
+    G_SNOW, G_TUNDRA, G_ICE, G_WATER, G_SHALLOWS, G_MARSH,
+    G_GRAVEL, G_ASH, G_LAVA, G_HILLS, G_ROCKY, G_CASTLE_FLOOR
+};
+
+enum FeatureType {
+    F_NONE,
+    F_FOREST, F_PINE, F_PALM, F_DEAD_TREE,
+    F_BERRY_BUSH, F_WHEAT_CROP, F_FISH_SHOAL,
+    F_GOLD_DEPOSIT, F_STONE_BOULDERS, F_MOUNTAIN_PEAK,
+    F_REEDS, F_RUINS, F_CASTLE_WALL, F_CASTLE_GATE
+};
+
+enum FeatureState {
+    FS_DEFAULT,
+    FS_FULL, FS_MOSTLY_FULL, FS_MOSTLY_EMPTY, FS_DEPLETED,
+    FS_OPEN, FS_CLOSED, FS_LOCKED,
+    FS_DAMAGED, FS_BROKEN
+};
+
+enum FeatureTrait : uint32_t {
+    FT_BLOCKS_MOVEMENT       = 1u << 0,
+    FT_SLOWS_MOVEMENT        = 1u << 1,
+    FT_CONCEALS_UNITS        = 1u << 2,
+    FT_REDUCES_LINE_OF_SIGHT = 1u << 3,
+    FT_CAN_HIDE_WILDLIFE     = 1u << 4,
+    FT_HARVESTABLE           = 1u << 5
+};
+
+enum VisualDecalType {
+    VD_FLOWERS,
+    VD_TALL_GRASS,
+    VD_SCUFFS,
+    VD_PACKED_PATH,
+    VD_COBBLE_PATCH,
+    VD_WHEEL_RUTS,
+    VD_YARD_CLUTTER,
+    VD_CRATES_BARRELS,
+    VD_LOG_PILES,
+    VD_FARM_TRACKS,
+    VD_MUDDY_FOOTPRINTS,
+    VD_SNOW_TRAMPLED_PATH
+};
+
+enum BuildingVisualState {
+    BVS_CONSTRUCTION_0_FOUNDATION,
+    BVS_CONSTRUCTION_1_FRAME,
+    BVS_CONSTRUCTION_2_NEARLY_COMPLETE,
+    BVS_COMPLETE,
+    BVS_DAMAGED,
+    BVS_GARRISONED,
+    BVS_GARRISON_FIRING,
+    BVS_TRAINING_PEASANT,
+    BVS_TRAINING_INFANTRY,
+    BVS_TRAINING_CAVALRY,
+    BVS_TRAINING_SHIP,
+    BVS_RESEARCHING_IRON_WEAPONS,
+    BVS_RESEARCHING_CROSSBOWS
+};
+
+enum AnimalCarcassVisualState {
+    ACVS_ALIVE,
+    ACVS_DEAD_UNHARVESTED,
+    ACVS_PARTLY_HARVESTED,
+    ACVS_MOSTLY_HARVESTED,
+    ACVS_DEPLETED_SKELETON
+};
+
+enum TransportVisualState {
+    TVS_EMPTY,
+    TVS_LOADED_PARTIAL,
+    TVS_LOADED_FULL,
+    TVS_LOAD_UNLOAD,
+    TVS_WRECK,
+    TVS_DECAYED_WRECK
+};
 
 enum EntityTrait : uint32_t {
     TR_WORKER           = 1u << 0,
@@ -223,6 +303,15 @@ struct Tile {
     int wear;        // 0-100: traffic + creep. Drives dirt/road transitions and decay.
 };
 
+struct VisualTileParts {
+    GroundType ground = G_GRASS;
+    FeatureType feature = F_NONE;
+    FeatureState featureState = FS_DEFAULT;
+    int featureResources = 0;
+    uint32_t featureTraits = 0;
+    std::vector<VisualDecalType> decals;
+};
+
 struct Entity {
     int id; EntityType type; int owner, x, y, hp, maxHp;
     EntityState state; int targetId, targetX, targetY;
@@ -236,10 +325,15 @@ struct Entity {
     int storedFood;
     int stuckTicks;
     int alertTicks; // > 0 = recently in combat; render flashes '!'
+    int deathTicks; // S_DEAD corpse age; drives dead body -> skeleton/wreck visuals.
+    int carcassFoodRemaining; // Harvestable food left on dead deer/sheep/boar carcasses.
+    int carcassFoodMax;       // Original carcass food amount; wolves intentionally stay zero.
     int rallySet;   // 0 = default, 1 = player-set rally point honoured on training
     int researching; // Research bit currently being researched (Blacksmith only); 0 = none
     int attackMove;  // 1 = engage enemies opportunistically while moving
     int holdPosition;// 1 = ignore auto-aggro; only attack when explicitly ordered
+    int facingDx;    // last or intended facing delta, map-space x component
+    int facingDy;    // last or intended facing delta, map-space y component
     bool gateOpen;   // E_GATE only: open (passable) vs closed (blocks pathing)
     bool gateLocked; // E_GATE only: manual mode — don't auto-toggle on ally proximity
     std::vector<int> queue;    // pending EntityTypes to train (FIFO, max 5)
@@ -314,6 +408,22 @@ const char* modeName(GameMode m);
 const char* cargoResourceName(CargoResource r);
 CargoResource resourceForTerrain(Terrain t);
 bool    terrainMatchesResource(Terrain t,CargoResource r);
+const char* groundTypeName(GroundType g);
+const char* featureTypeName(FeatureType f);
+const char* featureStateName(FeatureState s);
+const char* visualDecalName(VisualDecalType d);
+VisualTileParts visualPartsForTile(const Tile& tile);
+VisualTileParts visualPartsForTerrain(Terrain terrain,Biome biome,int resources,int wear,bool gateOpen=false,bool gateLocked=false);
+uint32_t featureTraits(FeatureType feature);
+bool    featureConceals(FeatureType feature);
+bool    isConcealingTile(int x,int y);
+int     movementPenaltyForTile(const Tile& tile);
+BuildingVisualState buildingVisualState(const Entity& e);
+AnimalCarcassVisualState animalCarcassVisualState(const Entity& e);
+TransportVisualState transportVisualState(const Entity& e);
+const char* buildingVisualStateName(BuildingVisualState s);
+const char* animalCarcassVisualStateName(AnimalCarcassVisualState s);
+const char* transportVisualStateName(TransportVisualState s);
 const CommandBinding* gameplayCommands(int& count);
 std::string commandHelpLine();
 bool    validateGameState(std::string* error=nullptr);
@@ -329,6 +439,8 @@ Entity* findEntity(int id);
 Entity* findDepot(Entity& e);
 Entity* entityAt(int x,int y);
 Entity* entityAtOwner(int x,int y,int owner);
+Entity* corpseAt(int x,int y);
+bool    isHarvestableCarcass(const Entity& e);
 void    buildOccupancyGrid(OccupancyGrid& grid,bool includeUnits,bool includeBuildings,int ignoreEntityId=-1);
 bool    isOccupied(const OccupancyGrid& grid,int x,int y);
 bool    canPlace(EntityType type,int x,int y,int owner);
@@ -381,6 +493,7 @@ void updateFog();
 void tickActionMarkers();
 bool saveGame(const std::string& path);
 bool loadGame(const std::string& path);
+int  dumpMissingTilesetAssets();
 
 // entity.cpp — AI
 int     aiCount(int owner,EntityType t);

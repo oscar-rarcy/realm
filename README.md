@@ -1,183 +1,129 @@
 # Realm
 
-Small C++ RTS-style game with two frontends:
+Realm is a small real-time strategy game written in C++.
 
-- SDL2 graphical renderer, built by default.
-- ncurses terminal renderer for Linux/macOS/WSL.
+You build a base, control peasants and soldiers, gather resources, and fight AI opponents. It can run in a normal graphical window, in a text terminal, or in a browser.
 
-## Project Layout
+This README is written for someone who is new to coding. The short version is:
+
+1. If you just want to play, use the web version or a helper script.
+2. If you want to change the game, edit files in `src/` and `include/`.
+3. If you want to work on art, keep final game assets in `assets/` and art-making material in `art/`.
+
+## Play Online
+
+Current playable web versions:
+
+- ASCII version: `https://edwardcoventry.com/apps/realm-ascii`
+- Main Realm app: `https://edwardcoventry.com/apps/realm`
+
+The ASCII version is the safest one for simple playtesting because it avoids optional visual tileset work.
+
+## Run On Windows
+
+The easiest Windows path is to use the included scripts.
+
+You need MSYS2 installed at:
+
+```text
+C:\msys64
+```
+
+Then double-click or run:
+
+```text
+scripts\windows-build-and-run-gui.bat
+```
+
+That script installs/checks the needed MSYS2 packages, builds the graphical game, and starts it.
+
+For the local tileset lab, use:
+
+```text
+scripts\windows-build-and-run-lab.bat
+```
+
+Build logs are written to `logs/`. Build output goes in `build/` and `bin/`. These folders are generated and are ignored by git.
+
+## Basic Controls
+
+On the title screen:
+
+- `Enter`: start a match.
+- `1`, `2`, `3`: choose opponent count.
+- `T`, `D`, `S`, `W`, `F`, `V`, `C`, `0`: choose biome.
+
+In a match:
+
+- Arrow keys: move the map cursor.
+- `Space`: select the unit or building under the cursor.
+- `Enter`: command the selected unit.
+- `B`: build with a selected peasant.
+- `T`: train from a selected building.
+- `A`: select military, or attack-move when military is selected.
+- `.` or `,`: cycle to an idle peasant.
+- `F5`: save in the graphical version.
+- `F9`: load in the graphical version.
+- `?`: show in-game help.
+
+More playtest instructions live in `docs/tests/agent-playtest.md`.
+
+## Project Folders
 
 ```text
 src/        C++ implementation files
-include/    Public project headers
-docs/       Design notes, renderer notes, and manual test plans
-scripts/    Convenience launch/build scripts
-build/      Generated object files and logs, ignored by git
-bin/        Generated executables and runtime DLLs, ignored by git
+include/    C++ header files
+assets/     Final game assets that the game can load
+art/        Art references, prompts, generated candidates, and workbench files
+docs/       Notes, plans, test guides, and design docs
+scripts/    Helper scripts for building and running
+tests/      Automated tests
+web/        Browser shell files
+build/      Generated build/test output, ignored by git
+bin/        Generated executables and DLLs, ignored by git
+logs/       Generated wrapper logs, ignored by git
+dist/       Generated web deploy output, ignored by git
 ```
 
-## Build / Run Scripts
+Keep this rule in mind:
+
+- `assets/` is for final files the game actually loads.
+- `art/` is for things used to create assets.
+
+For example, final peasant PNGs belong in `assets/tiles/entities/...`, but generated image prompts, source sheets, and candidate images belong in `art/tiles/...`.
+
+## Local Visual Mode
+
+The repo has a default `.env` file:
 
 ```text
-scripts/mac-build-and-run-gui.command       macOS SDL2 GUI build + run
-scripts/mac-build-and-run-terminal.command  macOS ncurses terminal build + run
-scripts/windows-build-and-run-gui.bat       Windows/MSYS2 SDL2 GUI build + run
-scripts/windows-build-and-run-terminal.bat  Windows WSL ncurses terminal build + run
-scripts/build-web.sh                        Emscripten/WebAssembly Netlify build
+REALM_VISUAL_MODE=ascii-only
 ```
 
-## Web Build
+That keeps local builds in ASCII mode by default.
 
-Realm can be built as a browser-playable WebAssembly app with Emscripten:
+To opt in to the tileset menu on your machine only, copy `.env.local.example` to `.env.local` and set:
 
-```sh
-bash scripts/build-web.sh
+```text
+REALM_VISUAL_MODE=tileset-menu
 ```
 
-The static Netlify output is written to `dist/netlify/`. See
-`docs/web-build.md` for local run, Netlify deploy, branch mapping, and current
-web limitations.
+`.env.local` is ignored by git, so personal settings do not get committed.
 
-## Windows Build
+## Build From A Terminal
 
-Use MSYS2 UCRT64:
+Most people should use the helper scripts above. These commands are for developers who are already comfortable with a terminal.
+
+Windows MSYS2 UCRT64 graphical build:
 
 ```sh
-pacman -S --needed mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-make mingw-w64-ucrt-x86_64-pkgconf mingw-w64-ucrt-x86_64-SDL2 mingw-w64-ucrt-x86_64-SDL2_ttf
+pacman -S --needed mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-make mingw-w64-ucrt-x86_64-pkgconf mingw-w64-ucrt-x86_64-SDL2 mingw-w64-ucrt-x86_64-SDL2_ttf mingw-w64-ucrt-x86_64-libpng
 mingw32-make clean
 mingw32-make gfx
 ./bin/realm.exe
 ```
 
-The Windows build copies the required runtime DLLs into `bin/` beside `realm.exe`,
-so the executable can also be launched from PowerShell or Explorer.
-
-## Runtime Smoke Test
-
-```powershell
-$env:REALM_SMOKE_TEST = "1"
-Start-Process .\bin\realm.exe -Wait -PassThru
-Remove-Item Env:\REALM_SMOKE_TEST
-```
-
-A successful smoke writes `realm-run.log` with `realm: main screen ready` and
-exits with code `0`.
-
-To smoke a real deterministic match startup, simulation ticks, and SDL frame
-rendering:
-
-```powershell
-$env:REALM_SMOKE_TEST = "match"
-$env:REALM_SEED = "2468"
-$env:REALM_HUMAN_CORNER = "1"
-$env:REALM_BIOME = "0"
-Start-Process .\bin\realm.exe -Wait -PassThru
-Remove-Item Env:\REALM_SMOKE_TEST
-Remove-Item Env:\REALM_SEED
-Remove-Item Env:\REALM_HUMAN_CORNER
-Remove-Item Env:\REALM_BIOME
-```
-
-A successful match smoke logs `realm: match smoke complete tick=60`.
-
-## Headless Tests
-
-Run from an MSYS2 UCRT64 shell on Windows:
-
-```sh
-mingw32-make test
-```
-
-The test target builds `bin/realm_headless_tests.exe` without SDL or ncurses and
-checks placement bounds, state names, entity traits, command help bindings,
-two-games-in-one-process reset, deterministic startup, supply reservation, town
-hall cost, berry gathering/depletion, mapgen reachability across deterministic
-seeds, hostile wildlife start safety, exact save/resume, recoverable validation,
-and a 10,000 tick AI progression run.
-
-For debug assertions and symbols:
-
-```sh
-mingw32-make clean
-mingw32-make debug
-```
-
-`mingw32-make sanitize` is intentionally disabled on native Windows/MSYS2 in this
-Makefile. Use WSL/Linux/macOS for sanitizer runs:
-
-```sh
-make sanitize
-```
-
-The sanitizer target runs the same headless suite with ASan/UBSan and sets
-`REALM_TEST_LONG_TICKS=2000` so sanitizer verification remains practical. Plain
-`make test` / `mingw32-make test` still default to the 10,000 tick long run.
-
-## Graphical UI Screenshots
-
-To run a deterministic SDL UI pass and write screenshots for visual inspection:
-
-```sh
-make ui-test
-```
-
-The UI pass writes BMP screenshots to `build/ui-screenshots/`, covering top-down,
-isometric, selection, build menu, diagnostics, help overlay, and post-tick match
-states. You can override the output directory and capture size with
-`REALM_UI_TEST_DIR`, `REALM_UI_TEST_WIDTH`, and `REALM_UI_TEST_HEIGHT`.
-
-When switching between WSL/Linux `make` and Windows/MSYS2 `mingw32-make`, run
-`make clean` or `mingw32-make clean` first. Both toolchains use `build/obj`, so
-mixed object files can cause confusing link errors.
-
-## Reproducible Startup
-
-Normal games stay random by default. For reproducible reports, set these
-environment variables before launching:
-
-```powershell
-$env:REALM_SEED = "12345"
-$env:REALM_HUMAN_CORNER = "0"   # 0..3, or unset for random
-$env:REALM_BIOME = "0"          # -1 random, 0 temperate, 1 desert, 2 snow, 3 swamp, 4 forest, 5 volcanic, 6 coastal
-$env:REALM_DIAGNOSTICS = "1"
-.\bin\realm.exe
-```
-
-Match startup logs the seed, AI count, human corner, biome, entity count, and
-projectile count to `realm-run.log`.
-
-## Save / Load
-
-During a match:
-
-- SDL: `F5` saves, `F9` loads, `F8` toggles diagnostics, `?` opens help.
-- Terminal: `V` saves, `L` loads, `D` toggles diagnostics, `?` opens help.
-
-The default save file is `realm-save.txt`, which is ignored by git.
-
-## Food Economy
-
-Peasants gather food from berries and hunted animals, fishing boats gather fish
-for docks, and completed farms produce food when worked, especially around
-mills. Carried resources return to a town hall or the matching drop-off
-building. Winter applies periodic food pressure to living units; if the
-stockpile is empty, starvation damages units instead.
-
-## Packaging
-
-After a successful Windows GUI build:
-
-```sh
-mingw32-make package
-```
-
-This creates `bin/realm-windows.zip` from `realm.exe` and the copied runtime
-DLLs. Verify a package by extracting it away from the repo and running
-`REALM_SMOKE_TEST=match realm.exe`; logs are generated at runtime.
-
-## Unix-like Builds
-
-GUI:
+Linux/macOS graphical build:
 
 ```sh
 make clean
@@ -185,10 +131,115 @@ make gfx
 ./bin/realm-gfx
 ```
 
-Terminal:
+Linux/macOS terminal build:
 
 ```sh
 make clean
 make terminal
 ./bin/realm
 ```
+
+When switching between Windows/MSYS2 and WSL/Linux/macOS builds, run `make clean` or `mingw32-make clean` first. They share `build/obj`, and mixed object files can cause confusing errors.
+
+## Web Build
+
+Realm can be built for the browser with Emscripten:
+
+```sh
+bash scripts/build-web.sh
+```
+
+If Emscripten is not installed, this script can install the pinned SDK locally:
+
+```sh
+REALM_INSTALL_EMSDK=1 bash scripts/build-web.sh
+```
+
+The web output is written to `dist/netlify/`.
+
+To run the web output locally:
+
+```sh
+cd dist/netlify
+python3 -m http.server 4173
+```
+
+Then open:
+
+```text
+http://127.0.0.1:4173/
+```
+
+More web details are in `docs/web-build.md`.
+
+## Tests
+
+From MSYS2 UCRT64 on Windows:
+
+```sh
+mingw32-make test
+```
+
+From Linux/macOS/WSL:
+
+```sh
+make test
+```
+
+Browser smoke test after building and serving `dist/netlify/`:
+
+```sh
+npm install
+REALM_WEB_URL=http://127.0.0.1:4173/ npm run test:web
+```
+
+The automated tests check game rules, deterministic startup, save/load behavior, AI progression, and browser startup.
+
+## Save And Load
+
+During a match:
+
+- Graphical version: `F5` saves, `F9` loads.
+- Terminal version: `V` saves, `L` loads.
+
+The default save file is `realm-save.txt`, which is ignored by git.
+
+## Packaging
+
+After a successful Windows graphical build:
+
+```sh
+mingw32-make package
+```
+
+This creates:
+
+```text
+bin/realm-windows.zip
+```
+
+The zip contains `realm.exe` and the DLLs it needs.
+
+## If Something Goes Wrong
+
+Check these first:
+
+- Build logs: `logs/`
+- Generated executables: `bin/`
+- Generated build output: `build/`
+- Web output: `dist/netlify/`
+
+Common fixes:
+
+- If the build acts strange, run `mingw32-make clean` or `make clean`.
+- If Windows cannot find MSYS2, check that `C:\msys64` exists.
+- If the web build cannot find Emscripten, run `REALM_INSTALL_EMSDK=1 bash scripts/build-web.sh`.
+- If git shows files in `build/`, `bin/`, `logs/`, `dist/`, or `node_modules/`, they should normally be ignored generated files.
+
+## Deeper Docs
+
+- `docs/tests/manual-test-plan.md`: manual testing checklist.
+- `docs/tests/agent-playtest.md`: simple repeatable playtest guide.
+- `docs/web-build.md`: browser build and Netlify notes.
+- `docs/gfx-renderer.md`: graphical renderer notes.
+- `docs/tileset/realm_visual_asset_architecture.md`: art and tileset architecture.

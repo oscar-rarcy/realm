@@ -27,6 +27,12 @@ static void cmdAtTileSingle(Entity* sel, int x, int y) {
         orderAttack(*sel, tgt->id); setStatus("Attacking!"); return;
     }
     if (sel->type == E_PEASANT) {
+        Entity* carcass = corpseAt(x, y);
+        if (carcass && isHarvestableCarcass(*carcass)) {
+            orderGather(*sel, x, y);
+            setStatus("Harvesting carcass...");
+            return;
+        }
         Terrain ter = g.map[y][x].terrain;
         bool isW = (ter==T_FOREST||ter==T_PINE||ter==T_PALM||ter==T_DEAD_TREE);
         if ((ter==T_GOLD||isW||ter==T_BERRY) && g.map[y][x].resources > 0) {

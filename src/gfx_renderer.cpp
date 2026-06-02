@@ -1,8 +1,13 @@
 #include "realm.h"
 #include "gfx_renderer.h"
+#include "entity_animation.h"
+#include "tileset_assets.h"
 
 #include <SDL.h>
 #include <SDL_ttf.h>
+#if defined(REALM_WEB)
+#include <emscripten/emscripten.h>
+#endif
 
 #include <algorithm>
 #include <cctype>
@@ -10,6 +15,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <chrono>
 #include <ctime>
 #include <filesystem>
@@ -18,6 +24,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <unordered_set>
 #include <unordered_map>
 #include <vector>
 
@@ -29,6 +36,11 @@ struct MobileButton {
     SDL_Rect r;
     std::string id;
     std::string label;
+};
+
+struct KeyHit {
+    SDL_Rect r;
+    int ch = 0;
 };
 
 struct Gfx {
@@ -48,9 +60,11 @@ struct Gfx {
     int bottomH = 48;
     int panelW = 286;
 
-    // GUI-only projection mode. Terminal/ncurses build does not see this.
-    // false = classic top-down grid, true = isometric diamond tiles.
+    // Internal projection flag. Tileset mode forces this to true; ASCII desktop
+    // uses the terminal grid renderer instead.
     bool isometric = true;
+    bool asciiOnly = false;
+    bool fullscreen = false;
 
     bool leftDown = false;
     bool middleDown = false;
@@ -59,6 +73,8 @@ struct Gfx {
     int panStartMouseX = 0, panStartMouseY = 0;
     int panStartViewX = 0, panStartViewY = 0;
     int lastMouseMapX = -9999, lastMouseMapY = -9999;
+    int mouseX = -10000, mouseY = -10000;
+    std::vector<KeyHit> keyHits;
 
     int mobileOrientation = 0; // 0 auto, 1 portrait, 2 landscape.
     float mobileUiScale = 1.0f;
@@ -80,7 +96,48 @@ struct Gfx {
     int touchLastX = 0, touchLastY = 0;
 
     std::unordered_map<std::string, SDL_Texture*> textCache;
+    std::unordered_set<std::string> missingTileKeys;
+    bool missingTileLogStarted = false;
 } s;
+
+struct LabLightOverride {
+    bool enabled = false;
+    int x = 0;
+    int y = 0;
+    float strength = 0.0f;
+    float radius = 0.0f;
+};
+
+static bool labForcesImageTileset = false;
+static LabLightOverride labLightOverride;
+
+struct TerminalCell {
+    char ch;
+    Color fg;
+    Color bg;
+};
+
+struct TerminalFrame {
+    int cols = 0;
+    int rows = 0;
+    int cellW = 0;
+    int cellH = 0;
+    std::vector<TerminalCell> cells;
+
+    TerminalCell& at(int x, int y) {
+        return cells[(size_t)y * (size_t)cols + (size_t)x];
+    }
+
+    const TerminalCell& at(int x, int y) const {
+        return cells[(size_t)y * (size_t)cols + (size_t)x];
+    }
+};
+
+static TerminalFrame makeBlankTerminalFrame();
+static void clampTerminalView();
+static void terminalMapCellMetrics(int& cellW, int& cellH);
+static SDL_Rect terminalMapPixelRect(const TerminalFrame& frame);
+static void updateTerminalCamera(int cols, int rows, bool keepCursor = true);
 
 static Color rgb(int r, int g, int b, int a = 255) {
     return Color{(Uint8)std::max(0,std::min(255,r)),
@@ -96,6 +153,108 @@ static Color scale(Color c, float f) {
 static Color blend(Color a, Color b, float t) {
     return rgb((int)(a.r + (b.r-a.r)*t), (int)(a.g + (b.g-a.g)*t), (int)(a.b + (b.b-a.b)*t),
                (int)(a.a + (b.a-a.a)*t));
+}
+
+static std::string lowerSlug(const std::string& text) {
+    std::string out;
+    bool lastUnderscore = false;
+    for (unsigned char raw : text) {
+        char ch = (char)std::tolower(raw);
+        if ((ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9')) {
+            out.push_back(ch);
+            lastUnderscore = false;
+        } else if (!lastUnderscore && !out.empty()) {
+            out.push_back('_');
+            lastUnderscore = true;
+        }
+    }
+    while (!out.empty() && out.back() == '_') out.pop_back();
+    return out.empty() ? "unknown" : out;
+}
+
+static std::string quoteLogValue(const std::string& text) {
+    std::string out = "\"";
+    for (char ch : text) {
+        if (ch == '\\' || ch == '"') out.push_back('\\');
+        out.push_back(ch);
+    }
+    out.push_back('"');
+    return out;
+}
+
+static bool envFlagEnabled(const char* name, bool fallback) {
+    const char* raw = std::getenv(name);
+    if (!raw || !*raw) return fallback;
+    std::string value(raw);
+    std::transform(value.begin(), value.end(), value.begin(),
+                   [](unsigned char ch) { return (char)std::tolower(ch); });
+    return !(value == "0" || value == "false" || value == "off" || value == "no");
+}
+
+static bool localTilesetAuditEnabled() {
+    if (!envFlagEnabled("REALM_TILESET_AUDIT", true)) return false;
+#if defined(REALM_WEB)
+    return EM_ASM_INT({
+        if (typeof window === 'undefined' || !window.location) return 0;
+        var host = String(window.location.hostname || '').toLowerCase();
+        return (host === 'localhost' || host === '127.0.0.1' || host === '::1' || host === '') ? 1 : 0;
+    }) != 0;
+#else
+    return true;
+#endif
+}
+
+static void appendMissingTileLocalhostLog(const std::string& line) {
+#if defined(REALM_WEB)
+    EM_ASM({
+        if (typeof window === 'undefined' || !window.location) return;
+        var host = String(window.location.hostname || '').toLowerCase();
+        if (!(host === 'localhost' || host === '127.0.0.1' || host === '::1' || host === '')) return;
+        var line = UTF8ToString($0);
+        var storageKey = 'realm.missingTilesLog';
+        var header = '# Realm missing tiles\n'
+            + '# Local browser run only. Add real assets for these keys; current renderer used placeholders.\n';
+        var existing = '';
+        try { existing = window.localStorage.getItem(storageKey) || ''; } catch (error) {}
+        if (existing.indexOf('# Realm missing tiles') !== 0) existing = header;
+        if (existing.indexOf(line) === -1) {
+            existing += line + '\n';
+            try { window.localStorage.setItem(storageKey, existing); } catch (error) {}
+        }
+        if (!window.realmMissingTiles) window.realmMissingTiles = [];
+        if (window.realmMissingTiles.indexOf(line) === -1) window.realmMissingTiles.push(line);
+        console.info('[Realm missing tile]', line);
+    }, line.c_str());
+#else
+    namespace fs = std::filesystem;
+    std::error_code ec;
+    fs::create_directories("build", ec);
+    const fs::path path = fs::path("build") / "missing-tiles.log";
+    if (!s.missingTileLogStarted) {
+        std::ofstream reset(path, std::ios::trunc);
+        if (reset) {
+            reset << "# Realm missing tiles\n"
+                  << "# Local GUI run only. Add real assets for these keys; current renderer used placeholders.\n"
+                  << "# Format: kind | key | name | fallback | suggested_asset\n";
+        }
+        s.missingTileLogStarted = true;
+    }
+    std::ofstream out(path, std::ios::app);
+    if (out) out << line << '\n';
+#endif
+}
+
+static void logMissingTile(const std::string& kind, const std::string& key,
+                           const std::string& name, const std::string& fallback,
+                           const std::string& suggestedAsset) {
+    if (!localTilesetAuditEnabled()) return;
+    if (!s.missingTileKeys.insert(kind + ":" + key).second) return;
+    std::ostringstream line;
+    line << kind << " | " << key
+         << " | name=" << quoteLogValue(name)
+         << " | fallback=" << quoteLogValue(fallback)
+         << " | suggested_asset=" << suggestedAsset;
+    appendMissingTileLocalhostLog(line.str());
 }
 
 static float clamp01(float v) {
@@ -320,11 +479,65 @@ static void drawText(int x, int y, const std::string& text, Color col, TTF_Font*
     SDL_RenderCopy(s.ren, tex, nullptr, &dst);
 }
 
+static void drawTextFit(int x, int y, const std::string& text, Color col, int maxW, TTF_Font* font);
+
 static int textWidth(const std::string& text, TTF_Font* font = nullptr) {
     SDL_Texture* tex = cachedText(font ? font : s.mono, text, rgb(255,255,255));
     if (!tex) return 0;
     int w=0,h=0; SDL_QueryTexture(tex, nullptr, nullptr, &w, &h);
     return w;
+}
+
+static int textLineHeight(TTF_Font* font = nullptr) {
+    TTF_Font* f = font ? font : s.mono;
+    return std::max(16, f ? TTF_FontLineSkip(f) : 18);
+}
+
+static bool rectHovered(SDL_Rect r) {
+    return s.mouseX >= r.x && s.mouseY >= r.y && s.mouseX < r.x + r.w && s.mouseY < r.y + r.h;
+}
+
+static void registerKeyHit(SDL_Rect r, int ch) {
+    if (ch == 0 || r.w <= 0 || r.h <= 0) return;
+    s.keyHits.push_back({r, ch});
+}
+
+static void drawHoverMark(SDL_Rect r, Color color) {
+    if (!rectHovered(r)) return;
+    SDL_SetRenderDrawBlendMode(s.ren, SDL_BLENDMODE_BLEND);
+    setDraw(color);
+    SDL_RenderDrawLine(s.ren, r.x, r.y + r.h - 2, r.x + r.w, r.y + r.h - 2);
+    SDL_RenderDrawLine(s.ren, r.x, r.y + r.h - 1, r.x + r.w, r.y + r.h - 1);
+}
+
+static void drawKeyOptionText(int x, int y, const std::string& text, int ch,
+                              Color color, int maxW, TTF_Font* font = nullptr) {
+    TTF_Font* f = font ? font : s.mono;
+    drawTextFit(x, y, text, color, maxW, f);
+    SDL_Rect r{x, y, std::min(std::max(1, maxW), std::max(1, textWidth(text, f))), textLineHeight(f)};
+    registerKeyHit(r, ch);
+    drawHoverMark(r, color);
+}
+
+static void drawKeyTokensInText(int x, int y, const std::string& text,
+                                const std::vector<std::pair<std::string, int>>& tokens,
+                                Color color, int maxW, TTF_Font* font = nullptr) {
+    TTF_Font* f = font ? font : s.mono;
+    drawTextFit(x, y, text, color, maxW, f);
+    size_t searchFrom = 0;
+    for (const auto& token : tokens) {
+        size_t pos = text.find(token.first, searchFrom);
+        if (pos == std::string::npos) pos = text.find(token.first);
+        if (pos == std::string::npos) continue;
+        int tx = x + textWidth(text.substr(0, pos), f);
+        SDL_Rect r{tx, y, std::max(1, textWidth(token.first, f)), textLineHeight(f)};
+        if (r.x < x + maxW) {
+            if (r.x + r.w > x + maxW) r.w = std::max(1, x + maxW - r.x);
+            registerKeyHit(r, token.second);
+            drawHoverMark(r, color);
+        }
+        searchFrom = pos + token.first.size();
+    }
 }
 
 static void drawTextFit(int x, int y, const std::string& text, Color col, int maxW, TTF_Font* font = nullptr) {
@@ -459,7 +672,8 @@ static const char* peasantGlyph(const Entity& e) {
     return u8"🧍";
 }
 
-static const char* entityGlyph(const Entity& e) {
+static const char* tilesetEntityGlyph(const Entity& e, bool& hasTile) {
+    hasTile = true;
     switch (e.type) {
         case E_PEASANT: return peasantGlyph(e);
         case E_MILITIA: return u8"🤺";
@@ -490,8 +704,224 @@ static const char* entityGlyph(const Entity& e) {
         case E_WOLF: return u8"🐺";
         case E_SHEEP: return u8"🐑";
         case E_BOAR: return u8"🐗";
-        default: return "?";
+        default: break;
     }
+    hasTile = false;
+    return nullptr;
+}
+
+struct EntitySpriteSpec {
+    std::string key;
+    std::string displayName;
+    std::string suggestedAsset;
+    std::string description;
+    int frameMs = 250;
+    int frames = 2;
+    bool loop = true;
+    bool holdLast = false;
+};
+
+static int displayFrameMs(const EntityActionAnimationSpec& anim) {
+    if (anim.frameCount <= 0) return 250;
+    for (int i = 0; i < anim.frameCount; ++i) {
+        if (anim.frames[i].durationMs > 0) return anim.frames[i].durationMs;
+    }
+    return anim.transitionAfterMs > 0 ? anim.transitionAfterMs : 250;
+}
+
+static EntitySpriteSpec entitySpriteSpec(const Entity& e) {
+    EntitySpriteSpec spec;
+    std::string name = STATS[e.type].name ? STATS[e.type].name : "Unknown";
+    std::string slug = lowerSlug(name);
+    if (const EntityActionAnimationSpec* anim = entityActionAnimationSpecFor(e)) {
+        std::string action = anim->action;
+        std::string direction = entityAnimationDirectionBucket(e);
+        spec.frameMs = displayFrameMs(*anim);
+        spec.frames = anim->frameCount;
+        spec.loop = anim->loop;
+        spec.holdLast = anim->holdLast;
+        spec.description = anim->description;
+        spec.key = slug + "/" + action + "/" + direction;
+        spec.displayName = name + " " + action + " " + direction;
+        spec.suggestedAsset = "assets/tiles/entities/" + spec.key + "/frame_00_base.png";
+        return spec;
+    }
+    spec.key = slug;
+    spec.displayName = name;
+    spec.suggestedAsset = "assets/tiles/entities/" + slug + ".png";
+    return spec;
+}
+
+static bool hasEntityImageTile(EntityType type) {
+#if !defined(REALM_WEB)
+    return tilesetEntityFrameExists(type, "idle", "front", 0);
+#else
+    (void)type;
+    return false;
+#endif
+}
+
+static bool hasTerrainImageTile(Terrain) {
+    return false;
+}
+
+static void logMissingEntityImageTile(const Entity& e) {
+    if (hasEntityImageTile(e.type)) return;
+    EntitySpriteSpec spec = entitySpriteSpec(e);
+    logMissingTile("entity", "entity." + spec.key, spec.displayName,
+                   std::string(1, STATS[e.type].glyph),
+                   spec.suggestedAsset);
+}
+
+static void logMissingTerrainImageTile(Terrain t) {
+    if (hasTerrainImageTile(t)) return;
+    std::string name = terrainName(t);
+    std::string slug = lowerSlug(name);
+    logMissingTile("terrain", "terrain." + slug, name,
+                   std::string(1, terrainAscii(t)),
+                   "assets/tiles/terrain/" + slug + ".png");
+}
+
+static void logMissingVisualTileParts(const Tile& tile) {
+    VisualTileParts parts = visualPartsForTile(tile);
+    std::string ground = groundTypeName(parts.ground);
+    logMissingTile("ground", "ground." + ground, ground,
+                   std::string(1, terrainAscii(tile.terrain)),
+                   "assets/tiles/grounds/" + ground + ".png");
+    if (parts.feature != F_NONE) {
+        std::string feature = featureTypeName(parts.feature);
+        std::string fallback = featureConceals(parts.feature) ? "front/back symbolic occluder" : terrainGlyph(tile, 0, 0);
+        logMissingTile("feature", "feature." + feature, feature, fallback,
+                       "assets/tiles/features/" + feature + "/manifest.json");
+    }
+    for (VisualDecalType decal : parts.decals) {
+        std::string name = visualDecalName(decal);
+        logMissingTile("decal", "decal." + name, name, "procedural wear/decal fallback",
+                       "assets/tiles/decals/" + name + ".png");
+    }
+}
+
+static const char* featureOccluderGlyph(FeatureType feature) {
+    switch (feature) {
+        case F_FOREST: return u8"♣";
+        case F_PINE: return u8"♠";
+        case F_REEDS: return u8"╿";
+        default: return "";
+    }
+}
+
+static void drawFeatureOccluderIfNeeded(int mx, int my, SDL_Rect rect) {
+    if (!inBounds(mx, my) || !g.map[my][mx].visible[0]) return;
+    Entity* ent = entityAt(mx, my);
+    if (!ent || !ent->alive || isBuilding(ent->type)) return;
+    VisualTileParts parts = visualPartsForTile(g.map[my][mx]);
+    if (!featureConceals(parts.feature)) return;
+    const char* glyph = featureOccluderGlyph(parts.feature);
+    if (!glyph || !*glyph) return;
+    Color col = rgb(105, 180, 95, 185);
+    SDL_Rect top{rect.x + rect.w / 8, rect.y, rect.w * 3 / 4, rect.h * 3 / 4};
+    drawCentered(glyph, top, col, false, false);
+}
+
+static std::string tilesetEntityVisual(const Entity& e, bool& usesSymbolFont) {
+    if (!e.alive || e.state == S_DEAD) {
+        usesSymbolFont = true;
+        if (e.type == E_DEER || e.type == E_SHEEP || e.type == E_BOAR || e.type == E_WOLF) {
+            switch (animalCarcassVisualState(e)) {
+                case ACVS_DEAD_UNHARVESTED: return u8"◼";
+                case ACVS_PARTLY_HARVESTED: return u8"◧";
+                case ACVS_MOSTLY_HARVESTED: return u8"◌";
+                case ACVS_DEPLETED_SKELETON:
+                case ACVS_ALIVE: return u8"☠";
+            }
+        }
+        return e.deathTicks >= DEATH_DECAY_TICKS ? u8"☠" : u8"†";
+    }
+    logMissingEntityImageTile(e);
+    bool hasTile = false;
+    const char* glyph = tilesetEntityGlyph(e, hasTile);
+    if (hasTile && glyph) {
+        usesSymbolFont = true;
+        return glyph;
+    }
+    usesSymbolFont = false;
+    return std::string(1, STATS[e.type].glyph);
+}
+
+static bool imageTilesetEnabled() {
+#if defined(REALM_WEB)
+    return false;
+#else
+    return labForcesImageTileset || envFlagEnabled("REALM_IMAGE_TILESET", false);
+#endif
+}
+
+static SDL_Color toSdlColor(Color c) {
+    return SDL_Color{c.r, c.g, c.b, c.a};
+}
+
+static int animationFrameFor(const EntityActionAnimationSpec* anim, int explicitFrame = -1, int speedPercent = 100) {
+    if (!anim || anim->frameCount <= 0) return 0;
+    if (explicitFrame >= 0) return explicitFrame % std::max(1, anim->frameCount);
+    int frameMs = std::max(1, displayFrameMs(*anim));
+    int speed = std::max(10, speedPercent);
+    int elapsedMs = (g.tick * TICK_MS * speed) / 100;
+    if (!anim->loop && anim->holdLast) {
+        int total = 0;
+        for (int i = 0; i < anim->frameCount; ++i) total += std::max(1, anim->frames[i].durationMs);
+        if (elapsedMs >= total) return anim->frameCount - 1;
+    }
+    return (elapsedMs / frameMs) % std::max(1, anim->frameCount);
+}
+
+static int animationFrameForEntity(const Entity& e, const EntityActionAnimationSpec* anim, int explicitFrame = -1) {
+    if (explicitFrame >= 0) return animationFrameFor(anim, explicitFrame);
+    if (anim && e.state == S_DEAD && std::strcmp(anim->action, "death") == 0 && anim->frameCount > 1) {
+        return e.deathTicks >= DEATH_DECAY_TICKS ? 1 : 0;
+    }
+    return animationFrameFor(anim);
+}
+
+static bool drawEntityImageTile(const Entity& e, SDL_Rect dst, Color modulation,
+                                const char* forcedAction = nullptr,
+                                const char* forcedDirection = nullptr,
+                                int explicitFrame = -1,
+                                SDL_Color teamColor = SDL_Color{0,0,0,0},
+                                TilesetAssetFrame* outFrame = nullptr) {
+#if defined(REALM_WEB)
+    (void)e; (void)dst; (void)modulation; (void)forcedAction; (void)forcedDirection;
+    (void)explicitFrame; (void)teamColor; (void)outFrame;
+    return false;
+#else
+    if (!imageTilesetEnabled()) return false;
+    const char* action = forcedAction;
+    const EntityActionAnimationSpec* anim = nullptr;
+    if (action && *action) {
+        anim = findEntityActionAnimationSpec(e.type, action);
+    } else {
+        anim = entityActionAnimationSpecFor(e);
+        action = anim ? anim->action : "idle";
+    }
+    const char* direction = (forcedDirection && *forcedDirection) ? forcedDirection : entityAnimationDirectionBucket(e);
+    int frameIndex = animationFrameForEntity(e, anim, explicitFrame);
+    if (!tilesetEntityFrameExists(e.type, action ? action : "idle", direction ? direction : "front", frameIndex)) {
+        return false;
+    }
+    if (teamColor.a == 0) teamColor = toSdlColor(ownerBg(e.owner == OWNER_NATURE ? 0 : e.owner));
+    TilesetAssetRequest request{e.type, action ? action : "idle", direction ? direction : "front", frameIndex, teamColor};
+    TilesetAssetFrame frame = tilesetLoadEntityFrame(s.ren, request);
+    if (outFrame) *outFrame = frame;
+    if (!frame.texture) return false;
+    bool mirrorHorizontal = !forcedDirection && entityAnimationMirrorHorizontal(e);
+
+    SDL_SetTextureColorMod(frame.texture, modulation.r, modulation.g, modulation.b);
+    SDL_SetTextureAlphaMod(frame.texture, modulation.a);
+    SDL_RenderCopyEx(s.ren, frame.texture, nullptr, &dst, 0.0, nullptr,
+                     mirrorHorizontal ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE);
+    SDL_SetTextureColorMod(frame.texture, 255, 255, 255);
+    SDL_SetTextureAlphaMod(frame.texture, 255);
+    return true;
+#endif
 }
 
 static bool isResourceEmojiTerrain(Terrain t) {
@@ -609,6 +1039,16 @@ static float torchLightAt(int x, int y) {
         if (dx == 0 && dy == 0) local *= 0.40f;
         light = std::max(light, local);
     }
+    if (labLightOverride.enabled && labLightOverride.radius > 0.0f && labLightOverride.strength > 0.0f) {
+        float dx = (float)(x - labLightOverride.x);
+        float dy = (float)(y - labLightOverride.y);
+        float d = std::sqrt(dx * dx + dy * dy);
+        if (d <= labLightOverride.radius) {
+            float local = labLightOverride.strength
+                * std::pow(clamp01(1.0f - d / labLightOverride.radius), 1.85f);
+            light = std::max(light, local);
+        }
+    }
     return clamp01(light * nightNeed);
 }
 
@@ -695,6 +1135,18 @@ static bool mobilePortrait() {
     if (s.mobileOrientation == 1) return true;
     if (s.mobileOrientation == 2) return false;
     return s.winH >= s.winW;
+}
+
+static bool isAsciiMobileGui() {
+    return displayMode == DM_ASCII && isMobileGui();
+}
+
+static void asciiMobileCellMetrics(int& cellW, int& cellH) {
+    TTF_Font* font = s.monoSmall ? s.monoSmall : s.mono;
+    int w = 0, h = 0;
+    if (font) TTF_SizeText(font, "M", &w, &h);
+    cellW = std::max(8, w);
+    cellH = std::max(15, font ? TTF_FontLineSkip(font) : h);
 }
 
 static int mobileSafePad() {
@@ -1012,6 +1464,15 @@ static void centerViewOnTile(int mx, int my) {
     mx = std::max(0, std::min(mx, MAP_W - 1));
     my = std::max(0, std::min(my, MAP_H - 1));
 
+    if (displayMode == DM_ASCII && !isAsciiMobileGui()) {
+        TerminalFrame frame = makeBlankTerminalFrame();
+        updateTerminalCamera(frame.cols, frame.rows, false);
+        g.viewX = mx - g.viewW / 2;
+        g.viewY = my - g.viewH / 2;
+        clampTerminalView();
+        return;
+    }
+
     if (s.isometric) {
         SDL_Rect safe = mapSafeRect();
         float sx = 0.0f, sy = 0.0f;
@@ -1026,6 +1487,31 @@ static void centerViewOnTile(int mx, int my) {
 }
 
 static bool screenToMiniMapTile(int px, int py, int& mx, int& my, bool clampToMiniMap = false) {
+    if (displayMode == DM_ASCII && !isAsciiMobileGui()) {
+        SDL_GetWindowSize(s.win, &s.winW, &s.winH);
+        TerminalFrame frame = makeBlankTerminalFrame();
+        updateTerminalCamera(frame.cols, frame.rows, !s.middleDown);
+        int panelW = 24;
+        int panelX = frame.cols - panelW;
+        if (panelX < 1) return false;
+        int mmW = panelW - 2;
+        int mmH = std::max(1, std::min(g.viewH / 3, 14));
+        SDL_Rect r{(panelX + 1) * frame.cellW, frame.cellH,
+                   mmW * frame.cellW, mmH * frame.cellH};
+        if (clampToMiniMap) {
+            px = std::max(r.x, std::min(px, r.x + r.w - 1));
+            py = std::max(r.y, std::min(py, r.y + r.h - 1));
+        } else if (px < r.x || py < r.y || px >= r.x + r.w || py >= r.y + r.h) {
+            return false;
+        }
+
+        int lx = std::max(0, std::min(px - r.x, r.w - 1));
+        int ly = std::max(0, std::min(py - r.y, r.h - 1));
+        mx = std::max(0, std::min(lx * MAP_W / std::max(1, r.w), MAP_W - 1));
+        my = std::max(0, std::min(ly * MAP_H / std::max(1, r.h), MAP_H - 1));
+        return true;
+    }
+
     SDL_Rect r = miniMapRect();
     if (clampToMiniMap) {
         px = std::max(r.x, std::min(px, r.x + r.w - 1));
@@ -1051,8 +1537,36 @@ static bool moveViewFromMiniMap(int px, int py, bool clampToMiniMap = false) {
 }
 
 static bool screenToMap(int px, int py, int& mx, int& my) {
+    if (displayMode == DM_ASCII && !isAsciiMobileGui()) {
+        SDL_GetWindowSize(s.win, &s.winW, &s.winH);
+        TerminalFrame frame = makeBlankTerminalFrame();
+        updateTerminalCamera(frame.cols, frame.rows, !s.middleDown);
+        int mapCellW = 9, mapCellH = 18;
+        terminalMapCellMetrics(mapCellW, mapCellH);
+        SDL_Rect mr = terminalMapPixelRect(frame);
+        if (px < mr.x || py < mr.y || px >= mr.x + mr.w || py >= mr.y + mr.h) return false;
+        int sx = (px - mr.x) / std::max(1, mapCellW);
+        int sy = (py - mr.y) / std::max(1, mapCellH);
+        if (sx < 0 || sy < 0 || sx >= g.viewW || sy >= g.viewH) return false;
+        mx = g.viewX + sx;
+        my = g.viewY + sy;
+        return inBounds(mx, my);
+    }
+
     SDL_Rect mr = mapRect();
     if (px < mr.x || py < mr.y || px >= mr.x + mr.w || py >= mr.y + mr.h) return false;
+
+    if (isAsciiMobileGui()) {
+        int cellW = 8, cellH = 15;
+        asciiMobileCellMetrics(cellW, cellH);
+        int sx = (px - mr.x) / std::max(1, cellW);
+        int sy = (py - mr.y) / std::max(1, cellH);
+        mx = g.viewX + sx;
+        my = g.viewY + sy;
+        int cols = std::max(1, std::min(MAP_W, mr.w / std::max(1, cellW)));
+        int rows = std::max(1, std::min(MAP_H, mr.h / std::max(1, cellH)));
+        return inBounds(mx, my) && sx < cols && sy < rows;
+    }
 
     if (!s.isometric) {
         int sx = (px - mr.x) / s.tile;
@@ -1085,8 +1599,29 @@ static bool screenToMap(int px, int py, int& mx, int& my) {
 }
 
 static bool screenToMapOffset(int px, int py, int& sxOut, int& syOut) {
+    if (displayMode == DM_ASCII && !isAsciiMobileGui()) {
+        SDL_GetWindowSize(s.win, &s.winW, &s.winH);
+        TerminalFrame frame = makeBlankTerminalFrame();
+        updateTerminalCamera(frame.cols, frame.rows, !s.middleDown);
+        int mapCellW = 9, mapCellH = 18;
+        terminalMapCellMetrics(mapCellW, mapCellH);
+        SDL_Rect mr = terminalMapPixelRect(frame);
+        if (px < mr.x || py < mr.y || px >= mr.x + mr.w || py >= mr.y + mr.h) return false;
+        sxOut = (px - mr.x) / std::max(1, mapCellW);
+        syOut = (py - mr.y) / std::max(1, mapCellH);
+        return sxOut >= 0 && syOut >= 0 && sxOut < g.viewW && syOut < g.viewH;
+    }
+
     SDL_Rect mr = mapRect();
     if (px < mr.x || py < mr.y || px >= mr.x + mr.w || py >= mr.y + mr.h) return false;
+
+    if (isAsciiMobileGui()) {
+        int cellW = 8, cellH = 15;
+        asciiMobileCellMetrics(cellW, cellH);
+        sxOut = (px - mr.x) / std::max(1, cellW);
+        syOut = (py - mr.y) / std::max(1, cellH);
+        return true;
+    }
 
     if (!s.isometric) {
         sxOut = (px - mr.x) / std::max(1, s.tile);
@@ -1121,6 +1656,21 @@ static bool screenToMapOffset(int px, int py, int& sxOut, int& syOut) {
 
 static bool mapTileScreenCenter(int mx, int my, int& px, int& py) {
     if (!inBounds(mx, my)) return false;
+    if (displayMode == DM_ASCII && !isAsciiMobileGui()) {
+        SDL_GetWindowSize(s.win, &s.winW, &s.winH);
+        TerminalFrame frame = makeBlankTerminalFrame();
+        updateTerminalCamera(frame.cols, frame.rows, !s.middleDown);
+        int mapCellW = 9, mapCellH = 18;
+        terminalMapCellMetrics(mapCellW, mapCellH);
+        SDL_Rect mr = terminalMapPixelRect(frame);
+        int sx = mx - g.viewX;
+        int sy = my - g.viewY;
+        if (sx < 0 || sy < 0 || sx >= g.viewW || sy >= g.viewH) return false;
+        px = mr.x + sx * mapCellW + mapCellW / 2;
+        py = mr.y + sy * mapCellH + mapCellH / 2;
+        return px >= 0 && py >= 0 && px < s.winW && py < s.winH;
+    }
+
     SDL_Rect mr = mapRect();
     int sx = mx - g.viewX;
     int sy = my - g.viewY;
@@ -1139,6 +1689,16 @@ static bool mapTileScreenCenter(int mx, int my, int& px, int& py) {
 }
 
 static bool mapTileAtViewportCenter(int& mx, int& my, int& px, int& py) {
+    if (displayMode == DM_ASCII && !isAsciiMobileGui()) {
+        TerminalFrame frame = makeBlankTerminalFrame();
+        updateTerminalCamera(frame.cols, frame.rows, false);
+        mx = g.viewX + g.viewW / 2;
+        my = g.viewY + g.viewH / 2;
+        mx = std::max(0, std::min(mx, MAP_W - 1));
+        my = std::max(0, std::min(my, MAP_H - 1));
+        return mapTileScreenCenter(mx, my, px, py);
+    }
+
     SDL_Rect safe = mapSafeRect();
     px = safe.x + safe.w / 2;
     py = safe.y + safe.h / 2;
@@ -1210,7 +1770,14 @@ static void startMiddlePan(int px, int py) {
 static void updateMiddlePan(int px, int py) {
     int dx = px - s.panStartMouseX;
     int dy = py - s.panStartMouseY;
-    if (s.isometric) {
+    if (displayMode == DM_ASCII && !isAsciiMobileGui()) {
+        TerminalFrame frame = makeBlankTerminalFrame();
+        updateTerminalCamera(frame.cols, frame.rows, false);
+        int mapCellW = 9, mapCellH = 18;
+        terminalMapCellMetrics(mapCellW, mapCellH);
+        g.viewX = s.panStartViewX - (int)std::lround(dx / (float)std::max(1, mapCellW));
+        g.viewY = s.panStartViewY - (int)std::lround(dy / (float)std::max(1, mapCellH));
+    } else if (s.isometric) {
         int hw = std::max(1, isoHalfW());
         int hh = std::max(1, isoHalfH());
         float viewDx = -0.5f * (dx / (float)hw + dy / (float)hh);
@@ -1221,11 +1788,17 @@ static void updateMiddlePan(int px, int py) {
         g.viewX = s.panStartViewX - (int)std::lround(dx / (float)std::max(1, s.tile));
         g.viewY = s.panStartViewY - (int)std::lround(dy / (float)std::max(1, s.tile));
     }
-    clampView();
+    if (displayMode == DM_ASCII && !isAsciiMobileGui()) clampTerminalView();
+    else clampView();
 }
 
 static void moveCursorToViewCenter() {
-    if (s.isometric) {
+    if (displayMode == DM_ASCII && !isAsciiMobileGui()) {
+        TerminalFrame frame = makeBlankTerminalFrame();
+        updateTerminalCamera(frame.cols, frame.rows, false);
+        g.cursorX = g.viewX + g.viewW / 2;
+        g.cursorY = g.viewY + g.viewH / 2;
+    } else if (s.isometric) {
         SDL_Rect safe = mapSafeRect();
         float sx = 0.0f, sy = 0.0f;
         isoScreenToOffsetFloat(safe.x + safe.w / 2, safe.y + safe.h / 2, sx, sy);
@@ -1341,6 +1914,7 @@ static TileVisual makeTileVisual(int mx, int my) {
     if (!v.explored) { v.bg = rgb(8,9,12); return v; }
 
     v.ent = v.visible ? entityAt(mx,my) : nullptr;
+    if (!v.ent && v.visible) v.ent = corpseAt(mx, my);
     v.cursor = (mx == g.cursorX && my == g.cursorY);
     v.bg = terrainBg(tile, mx, my);
 
@@ -1355,16 +1929,29 @@ static TileVisual makeTileVisual(int mx, int my) {
         if (v.visible && v.ent && v.ent->alive) {
             v.glyph.assign(1, STATS[v.ent->type].glyph);
             v.fg = (v.ent->owner == OWNER_NATURE) ? rgb(230,230,210) : rgb(255,255,255);
+        } else if (v.visible && v.ent && v.ent->state == S_DEAD) {
+            v.glyph.assign(1, v.ent->deathTicks >= DEATH_DECAY_TICKS ? '*' : '%');
+            v.fg = rgb(180,180,170);
         } else if (v.visible) {
             v.glyph.assign(1, terrainAscii(tile.terrain));
         } else {
             v.glyph = "."; v.fg = rgb(95,95,105,150);
         }
     } else if (v.visible && v.ent && v.ent->alive) {
-        v.glyph = entityGlyph(*v.ent); v.emoji = true;
+        bool usesSymbolFont = false;
+        v.glyph = tilesetEntityVisual(*v.ent, usesSymbolFont);
+        v.emoji = usesSymbolFont;
         v.fg = (v.ent->owner == OWNER_NATURE) ? rgb(245,245,235) : rgb(255,255,255);
-        v.tint = true;
+        v.tint = usesSymbolFont;
+    } else if (v.visible && v.ent && v.ent->state == S_DEAD) {
+        bool usesSymbolFont = false;
+        v.glyph = tilesetEntityVisual(*v.ent, usesSymbolFont);
+        v.emoji = usesSymbolFont;
+        v.fg = rgb(190,190,180);
+        v.tint = false;
     } else if (v.visible) {
+        logMissingTerrainImageTile(tile.terrain);
+        logMissingVisualTileParts(tile);
         v.glyph = terrainGlyph(tile, mx, my);
         v.emoji = isResourceEmojiTerrain(tile.terrain);
         v.tint = v.emoji;
@@ -1403,6 +1990,7 @@ static void drawTile(int mx, int my, SDL_Rect r) {
     applyTerrainTexture(r, tile, mx, my);
 
     if (!v.glyph.empty()) drawCentered(v.glyph, r, v.fg, v.emoji, v.tint);
+    drawFeatureOccluderIfNeeded(mx, my, r);
 
     // HP sliver for damaged visible entities.
     if (v.visible && v.ent && v.ent->alive && v.ent->hp < v.ent->maxHp) {
@@ -1426,6 +2014,26 @@ static void drawTile(int mx, int my, SDL_Rect r) {
         setDraw(rgb(40,20,0,230));
         SDL_RenderDrawRect(s.ren, &r);
     }
+}
+
+static void toggleFullscreen() {
+#if defined(REALM_WEB)
+    EM_ASM({
+        if (typeof window !== 'undefined' && typeof window.realmToggleFullscreen === 'function') {
+            window.realmToggleFullscreen();
+        }
+    });
+#else
+    s.fullscreen = !s.fullscreen;
+    if (SDL_SetWindowFullscreen(s.win, s.fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0) != 0) {
+        std::cerr << "realm: fullscreen toggle failed: " << SDL_GetError() << "\n";
+        s.fullscreen = !s.fullscreen;
+        return;
+    }
+    SDL_GetWindowSize(s.win, &s.winW, &s.winH);
+    updateViewMetrics(true);
+    setStatus(s.fullscreen ? "Fullscreen." : "Windowed.");
+#endif
 }
 
 static void drawMobileBuildPreviewTopDown() {
@@ -1487,8 +2095,19 @@ static void drawIsoTileForeground(int mx, int my) {
         // Upright sprite/glyph over the flat isometric board.  The diamond is
         // isometric; the emoji/text itself is not skewed.
         int glyphSize = v.emoji ? std::max(16, (int)(s.tile * 0.96f)) : std::max(12, (int)(s.tile * 0.78f));
+        if (v.visible && v.ent && imageTilesetEnabled()) {
+            glyphSize = std::max(glyphSize, (int)(s.tile * 1.55f));
+        }
         SDL_Rect gr{cx - glyphSize/2, cy - glyphSize/2, glyphSize, glyphSize};
-        drawCentered(v.glyph, gr, v.visible ? v.fg : scale(v.fg, 0.55f), v.emoji, v.tint);
+        bool drewImage = false;
+        if (v.visible && v.ent) {
+            Color mod = applyVisionToGlyph(rgb(255,255,255), mx, my);
+            drewImage = drawEntityImageTile(*v.ent, gr, mod);
+        }
+        if (!drewImage) {
+            drawCentered(v.glyph, gr, v.visible ? v.fg : scale(v.fg, 0.55f), v.emoji, v.tint);
+        }
+        drawFeatureOccluderIfNeeded(mx, my, gr);
     }
 
     if (v.visible && v.ent && v.ent->alive && v.ent->hp < v.ent->maxHp) {
@@ -1611,14 +2230,23 @@ static void drawMiniMap(int x, int y, int w, int h) {
         vy0 = g.viewY + b.minSy;
         vy1 = g.viewY + b.maxSy + 1;
     }
-    vx0 = std::max(0, std::min(vx0, MAP_W));
-    vy0 = std::max(0, std::min(vy0, MAP_H));
-    vx1 = std::max(0, std::min(vx1, MAP_W));
-    vy1 = std::max(0, std::min(vy1, MAP_H));
     if (vx1 > vx0 && vy1 > vy0) {
-        SDL_Rect view{x + vx0*w/MAP_W, y + vy0*h/MAP_H,
-                      std::max(2,(vx1-vx0)*w/MAP_W), std::max(2,(vy1-vy0)*h/MAP_H)};
+        auto miniCoord = [](int origin, int value, int size, int mapSize) {
+            return origin + (int)std::floor((double)value * (double)size / (double)mapSize);
+        };
+        int x0 = miniCoord(x, vx0, w, MAP_W);
+        int y0 = miniCoord(y, vy0, h, MAP_H);
+        int x1 = miniCoord(x, vx1, w, MAP_W);
+        int y1 = miniCoord(y, vy1, h, MAP_H);
+        if (vx0 < 0) x0 = x - 1;
+        if (vy0 < 0) y0 = y - 1;
+        if (vx1 > MAP_W) x1 = x + w + 1;
+        if (vy1 > MAP_H) y1 = y + h + 1;
+        SDL_Rect view{x0, y0, std::max(2, x1 - x0), std::max(2, y1 - y0)};
+        SDL_Rect clip{x, y, w, h};
+        SDL_RenderSetClipRect(s.ren, &clip);
         setDraw(rgb(255,255,255,210)); SDL_RenderDrawRect(s.ren, &view);
+        SDL_RenderSetClipRect(s.ren, nullptr);
     }
 }
 
@@ -1659,6 +2287,42 @@ static std::vector<std::string> trainPanelHintsFor(EntityType t) {
     }
 }
 
+static std::vector<std::pair<std::string, int>> trainOptionTokensFor(EntityType t) {
+    switch (t) {
+        case E_TOWNHALL: return {{"P", 'p'}, {"Esc", 27}};
+        case E_BARRACKS: return {{"M", 'm'}, {"A", 'a'}, {"C", 'c'}, {"R", 'r'}, {"Esc", 27}};
+        case E_STABLE: return {{"K", 'k'}, {"Esc", 27}};
+        case E_DOCK: return {{"B", 'b'}, {"W", 'w'}, {"T", 't'}, {"Esc", 27}};
+        default: return {{"Esc", 27}};
+    }
+}
+
+static std::vector<std::pair<std::string, int>> desktopBuildTokensLine1() {
+    return {{"H", 'h'}, {"B", 'b'}, {"S", 's'}, {"T", 't'},
+            {"F", 'f'}, {"W", 'w'}, {"K", 'k'}};
+}
+
+static std::vector<std::pair<std::string, int>> desktopBuildTokensLine2() {
+    return {{"L", 'l'}, {"N", 'n'}, {"I", 'i'}, {"D", 'd'}, {"Esc", 27}};
+}
+
+static std::vector<std::pair<std::string, int>> terminalBuildTokens() {
+    return {{"[H]", 'h'}, {"[B]", 'b'}, {"[S]", 's'}, {"[T]", 't'}, {"[F]", 'f'},
+            {"[W]", 'w'}, {"[G]", 'g'}, {"[A]", 'a'}, {"[C]", 'c'}, {"[M]", 'm'},
+            {"[K]", 'k'}, {"[L]", 'l'}, {"[N]", 'n'}, {"[I]", 'i'}, {"[D]", 'd'},
+            {"[Esc]", 27}};
+}
+
+static std::vector<std::pair<std::string, int>> defaultBottomTokens() {
+#if defined(REALM_WEB)
+    return {{"B:Build", 'b'}, {"T:Train", 't'}, {"F5:Save", 'v'}, {"F8:Diag", 'd'},
+            {"F9:Load", 'l'}, {"Q:Resign", 'q'}};
+#else
+    return {{"B:Build", 'b'}, {"T:Train", 't'}, {"F5:Save", 'v'}, {"F8:Diag", 'd'},
+            {"F9:Load", 'l'}, {"Q:Resign", 'q'}, {"X:Exit", 'x'}};
+#endif
+}
+
 static bool devCaptureEnabled() {
 #ifndef REALM_DEV_CAPTURE_DEFAULT
 #define REALM_DEV_CAPTURE_DEFAULT 1
@@ -1679,12 +2343,33 @@ static int mobileButtonH() {
 
 static void drawButton(const MobileButton& b, bool active = false, bool danger = false) {
     SDL_SetRenderDrawBlendMode(s.ren, SDL_BLENDMODE_BLEND);
+    bool hovered = rectHovered(b.r);
     Color bg = active ? rgb(42,86,118) : danger ? rgb(86,42,42) : rgb(24,31,39);
-    Color bd = active ? rgb(120,195,235) : rgb(92,105,118);
+    Color bd = active ? rgb(120,195,235) : hovered ? rgb(220,230,210) : rgb(92,105,118);
     setDraw(bg); SDL_RenderFillRect(s.ren, &b.r);
     setDraw(bd); SDL_RenderDrawRect(s.ren, &b.r);
     drawTextFit(b.r.x + 8, b.r.y + std::max(4, (b.r.h - 18) / 2), b.label,
                 rgb(235,240,235), std::max(1, b.r.w - 16), s.monoSmall ? s.monoSmall : s.mono);
+    drawHoverMark(SDL_Rect{b.r.x + 8, b.r.y + b.r.h - 9, std::max(1, b.r.w - 16), 6}, bd);
+}
+
+static void drawConsoleButton(const MobileButton& b, bool active = false, bool danger = false) {
+    SDL_SetRenderDrawBlendMode(s.ren, SDL_BLENDMODE_BLEND);
+    bool hovered = rectHovered(b.r);
+    Color bg = active ? rgb(255, 226, 95, 230) : danger ? rgb(58, 18, 18, 230) : rgb(3, 5, 8, 235);
+    Color bd = active ? rgb(255, 245, 170) : danger ? rgb(220, 115, 115) : hovered ? rgb(255, 230, 120) : rgb(128, 143, 150);
+    Color fg = active ? rgb(20, 16, 0) : danger ? rgb(255, 185, 170) : rgb(218, 224, 218);
+    setDraw(bg); SDL_RenderFillRect(s.ren, &b.r);
+    setDraw(bd); SDL_RenderDrawRect(s.ren, &b.r);
+    if (b.r.w > 18 && b.r.h > 18) {
+        SDL_Rect inner{b.r.x + 2, b.r.y + 2, b.r.w - 4, b.r.h - 4};
+        setDraw(active ? rgb(20, 16, 0, 150) : rgb(60, 75, 82, 150));
+        SDL_RenderDrawRect(s.ren, &inner);
+    }
+    std::string label = "[" + b.label + "]";
+    drawTextFit(b.r.x + 8, b.r.y + std::max(4, (b.r.h - 18) / 2), label,
+                fg, std::max(1, b.r.w - 16), s.monoSmall ? s.monoSmall : s.mono);
+    drawHoverMark(SDL_Rect{b.r.x + 8, b.r.y + b.r.h - 9, std::max(1, b.r.w - 16), 6}, bd);
 }
 
 static void addGridButtons(std::vector<MobileButton>& out, int x, int y, int w,
@@ -1827,7 +2512,8 @@ static std::vector<MobileButton> mobileHudButtons() {
     int utilityY = pr.y + pr.h - bh - pad;
     int utilityW = std::max(1, pr.w - pad * 2);
     addGridButtons(buttons, pr.x + pad, utilityY, utilityW,
-                   {{"menu", "Menu"}, {"pause", g.mode == M_PAUSED ? "Resume" : "Pause"}, {"idle", "Idle"}}, 3);
+                   {{"menu", "Menu"}, {"pause", g.mode == M_PAUSED ? "Resume" : "Pause"},
+                    {"fullscreen", "Full"}, {"idle", "Idle"}}, 4);
     return buttons;
 }
 
@@ -1895,7 +2581,7 @@ static void drawPanel() {
     drawTextFit(x, y, c.str(), rgb(185,190,195), textW); y += 20;
     drawTextFit(x, y, cursorTileSummary(), rgb(180,190,185), textW); y += 20;
     drawTextFit(x, y, cursorStackSummary(), rgb(180,190,185), textW); y += 20;
-    drawTextFit(x, y, s.isometric ? "Projection: Isometric" : "Projection: Top-down", rgb(150,170,190), textW); y += 20;
+    drawTextFit(x, y, displayMode == DM_ASCII ? "Visual: ASCII" : "Visual: Tileset", rgb(150,170,190), textW); y += 20;
     drawTextFit(x, y, "Wheel zoom / middle pan", rgb(150,160,168), textW); y += 26;
 
     if (g.diagnostics) {
@@ -1922,19 +2608,20 @@ static void drawPanel() {
     } else if (sel) {
         Color badge = (sel->owner == OWNER_NATURE) ? rgb(95,95,80) : ownerBg(sel->owner);
         SDL_Rect b{x,y,22,22}; setDraw(badge); SDL_RenderFillRect(s.ren,&b);
-        drawCentered(entityGlyph(*sel), b, rgb(255,255,255), true);
+        bool usesSymbolFont = false;
+        drawCentered(tilesetEntityVisual(*sel, usesSymbolFont), b, rgb(255,255,255), usesSymbolFont);
         drawTextFit(x+30, y+2, STATS[sel->type].name, rgb(255,230,135), std::max(1, textW - 30)); y += 26;
         std::ostringstream hp; hp << "HP: " << sel->hp << "/" << sel->maxHp;
         drawTextFit(x, y, hp.str(), rgb(220,220,210), textW); y += 20;
         drawTextFit(x, y, stateName(sel->state), rgb(180,190,200), textW); y += 22;
         if (sel->owner == 0) {
             if (sel->type == E_PEASANT) {
-                drawTextFit(x,y,"B: build",rgb(150,210,230), textW); y+=20;
-                drawTextFit(x,y,"Enter/R-click: command",rgb(150,210,230), textW); y+=20;
+                drawKeyOptionText(x,y,"B: build",'b',rgb(150,210,230), textW); y+=20;
+                drawKeyOptionText(x,y,"Enter/R-click: command",'\n',rgb(150,210,230), textW); y+=20;
             }
             else if (isBuilding(sel->type) && !sel->underConstruction) {
                 if (isTrainProducer(sel->type)) {
-                    drawTextFit(x,y,"T: train",rgb(150,210,230), textW); y+=20;
+                    drawKeyOptionText(x,y,"T: train",'t',rgb(150,210,230), textW); y+=20;
                     for (const std::string& hint : trainPanelHintsFor(sel->type)) {
                         drawTextFit(x,y,hint,rgb(180,205,210), textW); y+=20;
                     }
@@ -1969,9 +2656,22 @@ static void drawBottom() {
     SDL_Rect bot{0,s.winH-s.bottomH,s.winW,s.bottomH};
     setDraw(rgb(12,32,58)); SDL_RenderFillRect(s.ren,&bot);
     std::string controls1 = "Arrows:Move  Space/Click:Select  Enter/R-click:Cmd  B:Build  T:Train";
-    std::string controls2 = "F5:Save  F8:Diag  F9:Load  F6/F7:View  +/-:Zoom  Q:Resign  X:Exit";
+    std::string controls2 =
+#if defined(REALM_WEB)
+        "F5:Save  F8:Diag  F9:Load  F11:Full  +/-:Zoom  Q:Resign";
+#else
+        "F5:Save  F8:Diag  F9:Load  F11:Full  +/-:Zoom  Q:Resign  X:Exit";
+#endif
+    ;
     if (g.mode == M_PAUSED) { controls1 = "PAUSED - Press P to resume"; controls2.clear(); }
-    else if (g.mode == M_GAME_OVER) { controls1 = (g.winner==0) ? "VICTORY - Enter/Q for menu, X to exit" : "DEFEAT - Enter/Q for menu, X to exit"; controls2.clear(); }
+    else if (g.mode == M_GAME_OVER) {
+#if defined(REALM_WEB)
+        controls1 = (g.winner==0) ? "VICTORY - Enter/Q for menu" : "DEFEAT - Enter/Q for menu";
+#else
+        controls1 = (g.winner==0) ? "VICTORY - Enter/Q for menu, X to exit" : "DEFEAT - Enter/Q for menu, X to exit";
+#endif
+        controls2.clear();
+    }
     else if (g.mode == M_BUILD_SELECT) { controls1 = "BUILD: H House, B Barracks, S Stable, T Tower, F Farm, W Wall, K Castle"; controls2 = "L Lumber camp  N Mining camp  I Mill  D Dock  Esc cancel"; }
     else if (g.mode == M_TRAIN_SELECT) { controls1 = trainPromptFor(findEntity(g.selectedId)); controls2.clear(); }
     int hintX = s.winW - 14;
@@ -1984,13 +2684,792 @@ static void drawBottom() {
 
     int maxW = std::max(1, s.winW - 20);
     int topLineW = std::max(1, hintX - 20);
-    drawTextFit(10, s.winH-s.bottomH+6, controls1, rgb(230,235,230), topLineW);
+    if (g.mode == M_BUILD_SELECT) {
+        drawKeyTokensInText(10, s.winH-s.bottomH+6, controls1, desktopBuildTokensLine1(),
+                            rgb(230,235,230), topLineW);
+    } else if (g.mode == M_TRAIN_SELECT) {
+        Entity* sel = findEntity(g.selectedId);
+        drawKeyTokensInText(10, s.winH-s.bottomH+6, controls1,
+                            sel ? trainOptionTokensFor(sel->type) : std::vector<std::pair<std::string, int>>{{"Esc", 27}},
+                            rgb(230,235,230), topLineW);
+    } else if (g.mode == M_PAUSED) {
+        drawKeyTokensInText(10, s.winH-s.bottomH+6, controls1, {{"P", 'p'}},
+                            rgb(230,235,230), topLineW);
+    } else if (g.mode == M_GAME_OVER) {
+        drawKeyTokensInText(10, s.winH-s.bottomH+6, controls1,
+#if defined(REALM_WEB)
+                            {{"Enter", '\n'}, {"Q", 'q'}},
+#else
+                            {{"Enter", '\n'}, {"Q", 'q'}, {"X", 'x'}},
+#endif
+                            rgb(230,235,230), topLineW);
+    } else {
+        drawKeyTokensInText(10, s.winH-s.bottomH+6, controls1, defaultBottomTokens(),
+                            rgb(230,235,230), topLineW);
+    }
     if (g.statusTimer > 0) {
         drawTextFit(10, s.winH-s.bottomH+26, ">> " + g.statusMsg, rgb(255,230,120), maxW);
         g.statusTimer--;
     } else if (!controls2.empty()) {
-        drawTextFit(10, s.winH-s.bottomH+26, controls2, rgb(200,213,220), maxW);
+        if (g.mode == M_BUILD_SELECT) {
+            drawKeyTokensInText(10, s.winH-s.bottomH+26, controls2, desktopBuildTokensLine2(),
+                                rgb(200,213,220), maxW);
+        } else {
+            drawKeyTokensInText(10, s.winH-s.bottomH+26, controls2, defaultBottomTokens(),
+                                rgb(200,213,220), maxW);
+        }
     }
+}
+
+static Color termBg() { return rgb(3, 5, 8); }
+static Color termFg() { return rgb(218, 224, 218); }
+static Color termDim() { return rgb(128, 143, 150); }
+static Color termBar() { return rgb(12, 32, 58); }
+static Color termHigh() { return rgb(255, 230, 120); }
+static Color termAccent() { return rgb(145, 220, 245); }
+
+static float terminalZoomScale() {
+    return std::max(0.58f, std::min(1.85f, s.tile / 24.0f));
+}
+
+static void terminalCellMetrics(int& cellW, int& cellH) {
+    int w = 0, h = 0;
+    if (s.mono) TTF_SizeText(s.mono, "M", &w, &h);
+    cellW = std::max(8, w);
+    cellH = std::max(16, s.mono ? TTF_FontLineSkip(s.mono) : h);
+}
+
+static void terminalMapCellMetrics(int& cellW, int& cellH) {
+    terminalCellMetrics(cellW, cellH);
+    float zoom = terminalZoomScale();
+    cellW = std::max(5, (int)std::lround(cellW * zoom));
+    cellH = std::max(9, (int)std::lround(cellH * zoom));
+}
+
+static SDL_Rect terminalMapPixelRect(const TerminalFrame& frame) {
+    int panelW = 24;
+    int panelX = frame.cols - panelW;
+    int mapCols = panelX >= 1 ? panelX - 1 : frame.cols;
+    int topRows = 2;
+    int bottomRows = 2;
+    return SDL_Rect{0, topRows * frame.cellH,
+                    std::max(1, mapCols * frame.cellW),
+                    std::max(1, (frame.rows - topRows - bottomRows) * frame.cellH)};
+}
+
+static TerminalFrame makeBlankTerminalFrame() {
+    int cellW = 9, cellH = 18;
+    terminalCellMetrics(cellW, cellH);
+    int cols = std::max(80, s.winW / std::max(1, cellW));
+    int rows = std::max(24, s.winH / std::max(1, cellH));
+    TerminalCell base{' ', termFg(), termBg()};
+    TerminalFrame frame;
+    frame.cols = cols;
+    frame.rows = rows;
+    frame.cellW = cellW;
+    frame.cellH = cellH;
+    frame.cells.assign((size_t)cols * (size_t)rows, base);
+    return frame;
+}
+
+static void termPut(TerminalFrame& frame, int x, int y, char ch, Color fg, Color bg) {
+    if (x < 0 || y < 0 || x >= frame.cols || y >= frame.rows) return;
+    frame.at(x, y) = TerminalCell{ch, fg, bg};
+}
+
+static void termPutString(TerminalFrame& frame, int x, int y, const std::string& text,
+                          Color fg, Color bg) {
+    if (y < 0 || y >= frame.rows) return;
+    for (size_t i = 0; i < text.size() && x + (int)i < frame.cols; ++i) {
+        unsigned char ch = (unsigned char)text[i];
+        if (ch < 32 || ch > 126) ch = '?';
+        termPut(frame, x + (int)i, y, (char)ch, fg, bg);
+    }
+}
+
+static void termFillH(TerminalFrame& frame, int y, int x, int count, char ch, Color fg, Color bg) {
+    for (int i = 0; i < count; ++i) termPut(frame, x + i, y, ch, fg, bg);
+}
+
+static void termFillV(TerminalFrame& frame, int x, int y, int count, char ch, Color fg, Color bg) {
+    for (int i = 0; i < count; ++i) termPut(frame, x, y + i, ch, fg, bg);
+}
+
+static std::string termTrunc(const std::string& value, int width) {
+    if (width <= 0) return "";
+    if ((int)value.size() <= width) return value;
+    if (width == 1) return value.substr(0, 1);
+    return value.substr(0, (size_t)width - 1) + "~";
+}
+
+static Color ownerTermFg(int owner) {
+    if (owner == 0) return rgb(160, 210, 255);
+    if (owner > 0 && owner < MAX_PLAYERS) return rgb(255, 150, 120);
+    return rgb(220, 220, 190);
+}
+
+static void clampTerminalView() {
+    g.viewX = std::max(0, std::min(g.viewX, MAP_W - g.viewW));
+    g.viewY = std::max(0, std::min(g.viewY, MAP_H - g.viewH));
+}
+
+static void updateTerminalCamera(int cols, int rows, bool keepCursor) {
+    int panelW = 24;
+    int uiCellW = 9, uiCellH = 18;
+    int mapCellW = 9, mapCellH = 18;
+    terminalCellMetrics(uiCellW, uiCellH);
+    terminalMapCellMetrics(mapCellW, mapCellH);
+    int mapCols = cols - panelW - 1;
+    if (mapCols < 30) mapCols = cols;
+    int mapRows = rows - 4;
+    if (mapRows < 10) mapRows = rows - 2;
+    int mapPixelW = std::max(1, mapCols * uiCellW);
+    int mapPixelH = std::max(1, mapRows * uiCellH);
+    g.viewW = std::max(1, mapPixelW / std::max(1, mapCellW));
+    g.viewH = std::max(1, mapPixelH / std::max(1, mapCellH));
+    g.viewW = std::min(g.viewW, MAP_W);
+    g.viewH = std::min(g.viewH, MAP_H);
+    if (keepCursor) {
+        if (g.cursorX < g.viewX + 3) g.viewX = g.cursorX - 3;
+        if (g.cursorX > g.viewX + g.viewW - 4) g.viewX = g.cursorX - g.viewW + 4;
+        if (g.cursorY < g.viewY + 3) g.viewY = g.cursorY - 3;
+        if (g.cursorY > g.viewY + g.viewH - 3) g.viewY = g.cursorY - g.viewH + 3;
+    }
+    clampTerminalView();
+}
+
+static TerminalCell terminalMapCell(int mx, int my) {
+    const Tile& tile = g.map[my][mx];
+    TerminalCell cell{' ', termDim(), termBg()};
+    if (!tile.explored[0]) return cell;
+
+    cell.ch = tile.visible[0] ? terrainAscii(tile.terrain) : '.';
+    cell.fg = tile.visible[0] ? glyphColorForTerrain(tile, mx, my) : rgb(95, 95, 105);
+    cell.bg = tile.visible[0] ? scale(terrainBg(tile, mx, my), 0.35f) : rgb(8, 9, 12);
+
+    Entity* ent = tile.visible[0] ? entityAt(mx, my) : nullptr;
+    if (ent && ent->alive) {
+        cell.ch = STATS[ent->type].glyph;
+        cell.fg = ownerTermFg(ent->owner);
+        if (ent->owner != OWNER_NATURE) cell.bg = scale(ownerBg(ent->owner), 0.55f);
+    }
+
+    for (const auto& m : g.actionMarkers) {
+        if (m.x == mx && m.y == my && m.ticks > 0 && (g.tick % 6) < 4) {
+            cell.ch = m.glyph;
+            cell.fg = termHigh();
+            break;
+        }
+    }
+
+    if (s.leftDown && g.dragging) {
+        int x0 = std::min(s.dragStartX, g.cursorX);
+        int x1 = std::max(s.dragStartX, g.cursorX);
+        int y0 = std::min(s.dragStartY, g.cursorY);
+        int y1 = std::max(s.dragStartY, g.cursorY);
+        if (mx >= x0 && mx <= x1 && my >= y0 && my <= y1) {
+            cell.bg = blend(cell.bg, rgb(255, 255, 255), 0.24f);
+            cell.fg = blend(cell.fg, rgb(255, 255, 255), 0.30f);
+        }
+    }
+
+    bool selected = ent && (ent->id == g.selectedId ||
+        std::find(g.selectedIds.begin(), g.selectedIds.end(), ent->id) != g.selectedIds.end());
+    if (selected) {
+        cell.fg = rgb(10, 10, 12);
+        cell.bg = rgb(240, 240, 230);
+    }
+    if (mx == g.cursorX && my == g.cursorY) {
+        cell.fg = rgb(20, 16, 0);
+        cell.bg = rgb(255, 226, 95);
+    }
+    return cell;
+}
+
+static void terminalDrawTop(TerminalFrame& frame) {
+    termFillH(frame, 0, 0, frame.cols, ' ', termFg(), termBar());
+    Player& p = g.players[0];
+    int idleCount = 0, idleBldg = 0, popForecast = 0;
+    for (auto& e : g.entities) {
+        if (!e.alive || e.owner != 0) continue;
+        if (e.type == E_PEASANT && e.state == S_IDLE) idleCount++;
+        if (isBuilding(e.type) && !e.underConstruction) {
+            bool producer = (e.type == E_TOWNHALL || e.type == E_BARRACKS || e.type == E_STABLE || e.type == E_DOCK);
+            if (producer && e.producing == E_NONE && e.queue.empty()) idleBldg++;
+            if (e.producing != E_NONE) popForecast += STATS[e.producing].supplyUsed;
+            for (int qt : e.queue) popForecast += STATS[(EntityType)qt].supplyUsed;
+        }
+    }
+    std::ostringstream ss;
+    ss << " REALM  Gold:" << p.gold << " Wood:" << p.wood << " Food:" << p.food
+       << " Pop:" << p.supply << "/" << p.supplyMax << "(+" << popForecast << ")"
+       << " Idle:" << idleCount << "/" << idleBldg;
+    termPutString(frame, 0, 0, termTrunc(ss.str(), frame.cols), termFg(), termBar());
+
+    std::string weather = (g.weather == W_STORM) ? "Storm" : (g.weather == W_RAIN) ? "Rain" :
+                          (g.weather == W_SNOW) ? "Snow" : "Clear";
+    std::ostringstream right;
+    right << (getBrightness() > 0.5f ? "*" : "o") << " " << timeNameSafe()
+          << " " << seasonNameSafe() << " " << weather;
+    int rx = std::max(0, frame.cols - (int)right.str().size() - 1);
+    termPutString(frame, rx, 0, right.str(), termFg(), termBar());
+}
+
+static void terminalDrawTerrainBar(TerminalFrame& frame) {
+    int w = std::max(0, std::min(g.viewW, frame.cols));
+    termFillH(frame, 1, 0, w, '-', termDim(), termBg());
+    if (!inBounds(g.cursorX, g.cursorY) || !g.map[g.cursorY][g.cursorX].explored[0]) return;
+    const Tile& ct = g.map[g.cursorY][g.cursorX];
+    std::ostringstream ss;
+    ss << terrainName(ct.terrain) << " [" << biomeName(ct.biome) << "]";
+    if (ct.resources > 0) ss << " Res:" << ct.resources;
+    termPutString(frame, 1, 1, termTrunc(ss.str(), std::max(0, w - 2)), termFg(), termBg());
+}
+
+static void terminalDrawMap(TerminalFrame& frame) {
+    for (int sy = 0; sy < g.viewH; ++sy) {
+        int my = g.viewY + sy;
+        int row = sy + 2;
+        if (row < 0 || row >= frame.rows - 2) continue;
+        for (int sx = 0; sx < g.viewW; ++sx) {
+            int mx = g.viewX + sx;
+            if (!inBounds(mx, my) || sx >= frame.cols) continue;
+            TerminalCell cell = terminalMapCell(mx, my);
+            termPut(frame, sx, row, cell.ch, cell.fg, cell.bg);
+        }
+    }
+}
+
+static void terminalDrawMinimap(TerminalFrame& frame, int panelX, int panelW) {
+    termPutString(frame, panelX + 1, 0, "Map", termAccent(), termBar());
+    int mmW = panelW - 2;
+    int mmH = std::min(g.viewH / 3, 14);
+    int mmY = 1;
+    for (int my = 0; my < mmH; ++my) {
+        for (int mx = 0; mx < mmW; ++mx) {
+            int mapX = mx * MAP_W / std::max(1, mmW);
+            int mapY = my * MAP_H / std::max(1, mmH);
+            char ch = ' ';
+            Color fg = termDim();
+            if (g.map[mapY][mapX].explored[0]) {
+                Terrain t = g.map[mapY][mapX].terrain;
+                if (t == T_WATER || t == T_SHALLOWS) { ch = '~'; fg = rgb(90, 150, 220); }
+                else if (t == T_MOUNTAIN || t == T_STONE) { ch = '^'; fg = rgb(150, 150, 150); }
+                else if (t == T_GOLD) { ch = '$'; fg = rgb(235, 210, 70); }
+                else if (t == T_CASTLE_WALL || t == T_CASTLE_GATE) { ch = '#'; fg = rgb(190, 190, 190); }
+                else { ch = '.'; fg = rgb(90, 135, 90); }
+            }
+            if (g.map[mapY][mapX].visible[0]) {
+                Entity* ent = entityAt(mapX, mapY);
+                if (ent && ent->alive) {
+                    ch = isBuilding(ent->type) ? '#' : '*';
+                    fg = ownerTermFg(ent->owner);
+                }
+            }
+            termPut(frame, panelX + 1 + mx, mmY + my, ch, fg, termBg());
+        }
+    }
+}
+
+static void terminalDrawSelection(TerminalFrame& frame, int panelX, int panelW, int startY) {
+    int y = startY;
+    auto line = [&](const std::string& text, Color fg = termFg()) {
+        if (y >= frame.rows - 2) return;
+        termPutString(frame, panelX + 1, y++, termTrunc(text, panelW - 2), fg, termBg());
+    };
+
+    if (inBounds(g.cursorX, g.cursorY)) {
+        const Tile& ct = g.map[g.cursorY][g.cursorX];
+        line(std::string("Tile: ") + terrainName(ct.terrain));
+        line(std::string("Biome: ") + biomeName(ct.biome));
+        if (ct.resources > 0) {
+            std::ostringstream res; res << "Resource: " << ct.resources;
+            line(res.str(), termHigh());
+        }
+        int stack = 0;
+        for (auto& e : g.entities) {
+            if (!e.alive || e.state == S_GARRISONED) continue;
+            auto& st = STATS[e.type];
+            bool covers = st.isBuilding
+                ? (g.cursorX >= e.x && g.cursorX < e.x + st.sizeW && g.cursorY >= e.y && g.cursorY < e.y + st.sizeH)
+                : (g.cursorX == e.x && g.cursorY == e.y);
+            if (!covers) continue;
+            if (stack == 0) line("Stack:");
+            if (stack < 3) line(std::string(" ") + st.name);
+            stack++;
+        }
+        if (stack == 0) line("Stack: empty", termDim());
+        else if (stack > 3) {
+            std::ostringstream more; more << "+" << (stack - 3) << " more";
+            line(more.str());
+        }
+        if (g.diagnostics) {
+            std::ostringstream ds; ds << "Diag T" << g.tick << " M:" << modeName(g.mode);
+            line(ds.str(), termHigh());
+            std::ostringstream ds2; ds2 << "Ent:" << g.entities.size() << " Proj:" << g.projectiles.size();
+            line(ds2.str(), termHigh());
+            std::ostringstream ds3; ds3 << "Seed:" << g.seed << " AI:" << g.startupAIs;
+            line(ds3.str(), termHigh());
+        }
+        y++;
+    }
+
+    if (g.selectedIds.size() > 1) {
+        std::ostringstream gs; gs << "Group: " << g.selectedIds.size() << " units";
+        line(gs.str(), termHigh());
+        line("[Enter] Move/Attack", termAccent());
+        line("[G] Assign to group", termAccent());
+        line("[A] Select all mil.", termAccent());
+        line("[1-9] Groups", termAccent());
+        return;
+    }
+
+    Entity* sel = findEntity(g.selectedId);
+    if (!sel) {
+        line("No selection", termDim());
+        y++;
+        line("-- Legend (ASCII) --", termDim());
+        line("$ Gold   T Oak");
+        line("^ Mtn    Y Pine");
+        line("~ Water  n Hills");
+        line(": Berry  % Wheat");
+        line("# Castle & Ruins");
+        y++;
+        line("p Peasant  m Militia", ownerTermFg(0));
+        line("a Archer   k Knight", ownerTermFg(0));
+        line("c Catapult", ownerTermFg(0));
+        y++;
+        line("d Deer  s Sheep", ownerTermFg(OWNER_NATURE));
+        line("w Wolf  o Boar", ownerTermFg(OWNER_NATURE));
+        return;
+    }
+
+    auto& st = STATS[sel->type];
+    line(st.name, ownerTermFg(sel->owner));
+    int barW = panelW - 4;
+    int filled = sel->hp * barW / std::max(1, sel->maxHp);
+    std::string hp = "HP";
+    hp.append((size_t)std::max(0, filled), '|');
+    hp.append((size_t)std::max(0, barW - filled), '-');
+    line(hp);
+    std::ostringstream hpNum; hpNum << sel->hp << " / " << sel->maxHp;
+    line(hpNum.str());
+    if (isUnit(sel->type)) {
+        std::ostringstream stats; stats << "ATK " << st.atk << "  RNG " << st.range;
+        line(stats.str());
+        line(stateName(sel->state), termAccent());
+        if (sel->cargo.amount > 0) {
+            std::ostringstream cargo; cargo << "Carrying: " << sel->cargo.amount << " " << cargoResourceName(sel->cargo.type);
+            line(cargo.str(), termHigh());
+        }
+    }
+    if (sel->producing != E_NONE) {
+        int pct = sel->trainProgress * 100 / std::max(1, sel->trainTime);
+        line(std::string("Training: ") + STATS[sel->producing].name, termHigh());
+        std::ostringstream pctLine; pctLine << pct << "%";
+        line(pctLine.str(), termHigh());
+    }
+    if (!sel->queue.empty()) {
+        std::ostringstream q; q << "Queue: " << sel->queue.size();
+        line(q.str(), termDim());
+    }
+    if (sel->underConstruction) {
+        std::ostringstream b; b << "Building: " << (sel->hp * 100 / std::max(1, sel->maxHp)) << "%";
+        line(b.str(), termHigh());
+    }
+    y++;
+    if (sel->owner == 0) {
+        if (sel->type == E_PEASANT) {
+            line("[B] Build", termAccent());
+            line("[Enter] Move/Gather", termAccent());
+        } else if (isUnit(sel->type)) {
+            line("[Enter] Move/Attack", termAccent());
+        } else if (isBuilding(sel->type) && !sel->underConstruction) {
+            if (isTrainProducer(sel->type)) line("[T] Train", termAccent());
+            if (sel->type == E_FARM) {
+                line("Generates food", termAccent());
+                std::ostringstream ripe; ripe << "Ripe: " << sel->storedFood << " / 20";
+                line(ripe.str(), termAccent());
+            }
+        }
+    }
+}
+
+static void terminalDrawPanel(TerminalFrame& frame) {
+    int panelW = 24;
+    int panelX = frame.cols - panelW;
+    if (panelX < 1) return;
+    termFillV(frame, panelX - 1, 0, frame.rows, '|', termDim(), termBg());
+    terminalDrawMinimap(frame, panelX, panelW);
+    int mmH = std::min(g.viewH / 3, 14);
+    int y = 1 + mmH + 1;
+    termFillH(frame, y - 1, panelX, panelW, '-', termDim(), termBg());
+    terminalDrawSelection(frame, panelX, panelW, y);
+}
+
+static void terminalDrawBottom(TerminalFrame& frame) {
+    int botY2 = frame.rows - 2;
+    int botY1 = frame.rows - 1;
+    termFillH(frame, botY2, 0, frame.cols, ' ', termFg(), termBar());
+    termFillH(frame, botY1, 0, frame.cols, ' ', termFg(), termBar());
+    std::string line;
+    if (g.mode == M_BUILD_SELECT)
+        line = " BUILD: [H]ouse [B]arracks [S]table [T]ower [F]arm [W]all [G]ate [A]rmory [C]hurch [M]arket [K]Castle [L]umber [N]mine [I]mill [D]ock [Esc] ";
+    else if (g.mode == M_TRAIN_SELECT)
+        line = trainPromptFor(findEntity(g.selectedId));
+    else if (g.mode == M_PAUSED)
+        line = " PAUSED - Press [P] to resume ";
+    else if (g.mode == M_GAME_OVER)
+        line = (g.winner == 0) ? " VICTORY! The realm is yours. [Enter/Q] Main menu  [X] Exit "
+                               : " DEFEAT! Your kingdom has fallen. [Enter/Q] Main menu  [X] Exit ";
+    else if (g.groupAssignPending)
+        line = " GROUP ASSIGN: Press [1]-[9] to assign selection to group, [Esc] to cancel ";
+    else
+        line = " Arrows:Move  Spc:Select  Enter:Cmd  B:Build T:Train ?:Help D:Diag V:Save L:Load Q:Resign X:Exit ";
+    termPutString(frame, 1, botY2, termTrunc(line, frame.cols - 2), termFg(), termBar());
+    if (g.statusTimer > 0) {
+        termPutString(frame, 1, botY1, termTrunc(">> " + g.statusMsg, frame.cols - 14), termHigh(), termBar());
+    }
+    std::ostringstream pos; pos << "(" << g.cursorX << "," << g.cursorY << ")";
+    termPutString(frame, std::max(0, frame.cols - (int)pos.str().size() - 1), botY1, pos.str(), termDim(), termBar());
+}
+
+static void registerTerminalKeyTokens(const TerminalFrame& frame) {
+    int y = frame.rows - 2;
+    std::string line;
+    std::vector<std::pair<std::string, int>> tokens;
+    if (g.mode == M_BUILD_SELECT) {
+        line = " BUILD: [H]ouse [B]arracks [S]table [T]ower [F]arm [W]all [G]ate [A]rmory [C]hurch [M]arket [K]Castle [L]umber [N]mine [I]mill [D]ock [Esc] ";
+        tokens = terminalBuildTokens();
+    } else if (g.mode == M_TRAIN_SELECT) {
+        Entity* sel = findEntity(g.selectedId);
+        line = trainPromptFor(sel);
+        tokens = sel ? trainOptionTokensFor(sel->type) : std::vector<std::pair<std::string, int>>{{"Esc", 27}};
+    } else if (g.mode == M_PAUSED) {
+        line = " PAUSED - Press [P] to resume ";
+        tokens = {{"[P]", 'p'}};
+    } else if (g.mode == M_GAME_OVER) {
+        line = (g.winner == 0) ? " VICTORY! The realm is yours. [Enter/Q] Main menu  [X] Exit "
+                               : " DEFEAT! Your kingdom has fallen. [Enter/Q] Main menu  [X] Exit ";
+        tokens = {{"Enter", '\n'}, {"Q", 'q'}, {"[X]", 'x'}};
+    } else {
+        line = " Arrows:Move  Spc:Select  Enter:Cmd  B:Build T:Train ?:Help D:Diag V:Save L:Load Q:Resign X:Exit ";
+        tokens = {{"B:Build", 'b'}, {"T:Train", 't'}, {"?:Help", '?'}, {"D:Diag", 'd'},
+                  {"V:Save", 'v'}, {"L:Load", 'l'}, {"Q:Resign", 'q'}, {"X:Exit", 'x'}};
+    }
+    size_t searchFrom = 0;
+    for (const auto& token : tokens) {
+        size_t pos = line.find(token.first, searchFrom);
+        if (pos == std::string::npos) pos = line.find(token.first);
+        if (pos == std::string::npos || (int)pos >= frame.cols - 1) continue;
+        int cells = std::min((int)token.first.size(), std::max(1, frame.cols - 1 - (int)pos));
+        SDL_Rect r{(int)pos * frame.cellW, y * frame.cellH, cells * frame.cellW, frame.cellH};
+        registerKeyHit(r, token.second);
+        drawHoverMark(r, termHigh());
+        searchFrom = pos + token.first.size();
+    }
+}
+
+static void terminalDrawHelpOverlay(TerminalFrame& frame) {
+    if (!g.helpOverlay) return;
+    int w = std::min(frame.cols - 4, 78);
+    int h = std::min(frame.rows - 4, 24);
+    if (w < 20 || h < 8) return;
+    int x = std::max(1, (frame.cols - w) / 2);
+    int y = std::max(1, (frame.rows - h) / 2);
+    Color fg = termFg();
+    Color bg = rgb(6, 8, 11);
+    for (int yy = 0; yy < h; ++yy) {
+        termFillH(frame, y + yy, x, w, ' ', fg, bg);
+    }
+    termFillH(frame, y, x, w, '-', termDim(), bg);
+    termFillH(frame, y + h - 1, x, w, '-', termDim(), bg);
+    termFillV(frame, x, y, h, '|', termDim(), bg);
+    termFillV(frame, x + w - 1, y, h, '|', termDim(), bg);
+    termPut(frame, x, y, '+', termDim(), bg);
+    termPut(frame, x + w - 1, y, '+', termDim(), bg);
+    termPut(frame, x, y + h - 1, '+', termDim(), bg);
+    termPut(frame, x + w - 1, y + h - 1, '+', termDim(), bg);
+
+    int row = y + 1;
+    termPutString(frame, x + 2, row++, "Help", termHigh(), bg);
+    int n = 0;
+    const CommandBinding* commands = gameplayCommands(n);
+    for (int i = 0; i < n && row < y + h - 5; ++i) {
+        std::ostringstream line;
+        line << commands[i].keys << "  " << commands[i].label << " - " << commands[i].help;
+        termPutString(frame, x + 2, row++, termTrunc(line.str(), w - 4), fg, bg);
+    }
+    if (row < y + h - 4) {
+        termPutString(frame, x + 2, row++, "Food: berries, hunting, farms, wheat, and fishing feed your stockpile.", termDim(), bg);
+    }
+    if (row < y + h - 3) {
+        termPutString(frame, x + 2, row++, "Winter drains food from living units; starvation damages units.", termDim(), bg);
+    }
+    termPutString(frame, x + 2, y + h - 2, "Press ? to close", termHigh(), bg);
+}
+
+static TerminalFrame buildAsciiTerminalFrame() {
+    TerminalFrame frame = makeBlankTerminalFrame();
+    updateTerminalCamera(frame.cols, frame.rows, !s.middleDown);
+    terminalDrawTop(frame);
+    terminalDrawTerrainBar(frame);
+    terminalDrawPanel(frame);
+    terminalDrawBottom(frame);
+    terminalDrawHelpOverlay(frame);
+    return frame;
+}
+
+static void drawTerminalCellAt(const SDL_Rect& r, const TerminalCell& cell, TTF_Font* font) {
+    setDraw(cell.bg);
+    SDL_RenderFillRect(s.ren, &r);
+    if (cell.ch == ' ') return;
+    std::string text(1, cell.ch);
+    SDL_Texture* tex = cachedText(font ? font : s.mono, text, cell.fg);
+    if (!tex) return;
+    int w = 0, h = 0;
+    SDL_QueryTexture(tex, nullptr, nullptr, &w, &h);
+    if (w <= 0 || h <= 0) return;
+    float scale = std::min(r.w / (float)w, r.h / (float)h);
+    int dw = std::max(1, (int)std::lround(w * scale));
+    int dh = std::max(1, (int)std::lround(h * scale));
+    SDL_Rect dst{r.x + (r.w - dw) / 2, r.y + (r.h - dh) / 2, dw, dh};
+    SDL_SetTextureColorMod(tex, 255, 255, 255);
+    SDL_SetTextureAlphaMod(tex, cell.fg.a);
+    SDL_RenderCopy(s.ren, tex, nullptr, &dst);
+}
+
+static void drawAsciiTerminalMap(const TerminalFrame& frame) {
+    int mapCellW = 9, mapCellH = 18;
+    terminalMapCellMetrics(mapCellW, mapCellH);
+    SDL_Rect mr = terminalMapPixelRect(frame);
+    setDraw(termBg());
+    SDL_RenderFillRect(s.ren, &mr);
+    SDL_RenderSetClipRect(s.ren, &mr);
+    for (int sy = 0; sy < g.viewH; ++sy) {
+        int my = g.viewY + sy;
+        for (int sx = 0; sx < g.viewW; ++sx) {
+            int mx = g.viewX + sx;
+            if (!inBounds(mx, my)) continue;
+            SDL_Rect r{mr.x + sx * mapCellW, mr.y + sy * mapCellH, mapCellW, mapCellH};
+            drawTerminalCellAt(r, terminalMapCell(mx, my), s.mono);
+        }
+    }
+    SDL_RenderSetClipRect(s.ren, nullptr);
+}
+
+static void drawAsciiTerminalFrame(bool present) {
+    SDL_GetWindowSize(s.win, &s.winW, &s.winH);
+    applyRendererOutputScale();
+    TerminalFrame frame = buildAsciiTerminalFrame();
+    setDraw(termBg());
+    SDL_RenderClear(s.ren);
+    SDL_SetRenderDrawBlendMode(s.ren, SDL_BLENDMODE_BLEND);
+    for (int y = 0; y < frame.rows; ++y) {
+        for (int x = 0; x < frame.cols; ++x) {
+            const TerminalCell& cell = frame.at(x, y);
+            SDL_Rect r{x * frame.cellW, y * frame.cellH, frame.cellW, frame.cellH};
+            drawTerminalCellAt(r, cell, s.mono);
+        }
+    }
+    drawAsciiTerminalMap(frame);
+    registerTerminalKeyTokens(frame);
+    if (present) SDL_RenderPresent(s.ren);
+}
+
+static void updateAsciiMobileCamera(int cols, int rows) {
+    g.viewW = std::max(1, std::min(cols, MAP_W));
+    g.viewH = std::max(1, std::min(rows, MAP_H));
+    g.viewX = g.cursorX - g.viewW / 2;
+    g.viewY = g.cursorY - g.viewH / 2;
+    g.viewX = std::max(0, std::min(g.viewX, MAP_W - g.viewW));
+    g.viewY = std::max(0, std::min(g.viewY, MAP_H - g.viewH));
+}
+
+static void drawAsciiMobileMap() {
+    SDL_Rect mr = mapRect();
+    int cellW = 8, cellH = 15;
+    asciiMobileCellMetrics(cellW, cellH);
+    int cols = std::max(1, std::min(MAP_W, mr.w / std::max(1, cellW)));
+    int rows = std::max(1, std::min(MAP_H, mr.h / std::max(1, cellH)));
+    updateAsciiMobileCamera(cols, rows);
+
+    setDraw(termBg());
+    SDL_RenderFillRect(s.ren, &mr);
+    SDL_RenderSetClipRect(s.ren, &mr);
+    TTF_Font* font = s.monoSmall ? s.monoSmall : s.mono;
+    for (int sy = 0; sy < g.viewH; ++sy) {
+        int my = g.viewY + sy;
+        for (int sx = 0; sx < g.viewW; ++sx) {
+            int mx = g.viewX + sx;
+            if (!inBounds(mx, my)) continue;
+            SDL_Rect r{mr.x + sx * cellW, mr.y + sy * cellH, cellW, cellH};
+            drawTerminalCellAt(r, terminalMapCell(mx, my), font);
+        }
+    }
+    SDL_RenderSetClipRect(s.ren, nullptr);
+    setDraw(termDim());
+    SDL_RenderDrawRect(s.ren, &mr);
+}
+
+static void drawAsciiMobileMiniMapText(SDL_Rect r) {
+    setDraw(termBg());
+    SDL_RenderFillRect(s.ren, &r);
+    setDraw(termDim());
+    SDL_RenderDrawRect(s.ren, &r);
+
+    TTF_Font* font = s.monoSmall ? s.monoSmall : s.mono;
+    int cellW = 8, cellH = 15;
+    if (font) {
+        int w = 0, h = 0;
+        TTF_SizeText(font, "M", &w, &h);
+        cellW = std::max(7, w);
+        cellH = std::max(13, TTF_FontLineSkip(font));
+    }
+    int cols = std::max(1, (r.w - 6) / cellW);
+    int rows = std::max(1, (r.h - 6) / cellH);
+    int x0 = r.x + 3;
+    int y0 = r.y + 3;
+    for (int yy = 0; yy < rows; ++yy) {
+        for (int xx = 0; xx < cols; ++xx) {
+            int mx = xx * MAP_W / std::max(1, cols);
+            int my = yy * MAP_H / std::max(1, rows);
+            char ch = ' ';
+            Color fg = termDim();
+            if (g.map[my][mx].explored[0]) {
+                Terrain t = g.map[my][mx].terrain;
+                if (t == T_WATER || t == T_SHALLOWS) { ch = '~'; fg = rgb(90, 150, 220); }
+                else if (t == T_MOUNTAIN || t == T_STONE) { ch = '^'; fg = rgb(150, 150, 150); }
+                else if (t == T_GOLD) { ch = '$'; fg = rgb(235, 210, 70); }
+                else if (t == T_CASTLE_WALL || t == T_CASTLE_GATE) { ch = '#'; fg = rgb(190, 190, 190); }
+                else { ch = '.'; fg = rgb(90, 135, 90); }
+            }
+            if (g.map[my][mx].visible[0]) {
+                Entity* ent = entityAt(mx, my);
+                if (ent && ent->alive) {
+                    ch = isBuilding(ent->type) ? '#' : '*';
+                    fg = ownerTermFg(ent->owner);
+                }
+            }
+            drawText(x0 + xx * cellW, y0 + yy * cellH, std::string(1, ch), fg, font);
+        }
+    }
+
+    SDL_Rect view{
+        x0 + g.viewX * std::max(1, cols * cellW) / MAP_W,
+        y0 + g.viewY * std::max(1, rows * cellH) / MAP_H,
+        std::max(3, g.viewW * std::max(1, cols * cellW) / MAP_W),
+        std::max(3, g.viewH * std::max(1, rows * cellH) / MAP_H)
+    };
+    setDraw(termHigh());
+    SDL_RenderDrawRect(s.ren, &view);
+}
+
+static void drawAsciiMobileHelpOverlay() {
+    if (!g.helpOverlay) return;
+    int pad = mobileSafePad();
+    SDL_Rect r{pad, pad, std::max(1, s.winW - pad * 2), std::max(1, s.winH - pad * 2)};
+    SDL_SetRenderDrawBlendMode(s.ren, SDL_BLENDMODE_BLEND);
+    setDraw(rgb(3, 5, 8, 245));
+    SDL_RenderFillRect(s.ren, &r);
+    setDraw(termDim());
+    SDL_RenderDrawRect(s.ren, &r);
+    int x = r.x + 14;
+    int y = r.y + 12;
+    int w = std::max(1, r.w - 28);
+    drawTextFit(x, y, "REALM HELP", termHigh(), w, s.mono); y += 28;
+    drawTextFit(x, y, "Tap map: select or command. Drag map: pan.", termFg(), w, s.monoSmall ? s.monoSmall : s.mono); y += 22;
+    drawTextFit(x, y, "Use terminal buttons for build, attack, rally, pause, and idle.", termFg(), w, s.monoSmall ? s.monoSmall : s.mono); y += 26;
+    int n = 0;
+    const CommandBinding* commands = gameplayCommands(n);
+    for (int i = 0; i < n && y < r.y + r.h - 42; ++i) {
+        std::ostringstream line;
+        line << commands[i].label << " - " << commands[i].help;
+        drawTextFit(x, y, trimPanelLine(line.str(), 62), termDim(), w, s.monoSmall ? s.monoSmall : s.mono);
+        y += 19;
+    }
+    drawTextFit(x, r.y + r.h - 28, "Tap [Help] to close", termHigh(), w, s.monoSmall ? s.monoSmall : s.mono);
+}
+
+static void drawAsciiMobileHud() {
+    SDL_Rect pr = panelRect();
+    int pad = mobileSafePad();
+    setDraw(termBg());
+    SDL_RenderFillRect(s.ren, &pr);
+    setDraw(termDim());
+    SDL_RenderDrawRect(s.ren, &pr);
+
+    Player& p = g.players[0];
+    std::ostringstream res;
+    res << "REALM  G:" << p.gold << " W:" << p.wood << " F:" << p.food
+        << " Pop:" << p.supply << "/" << p.supplyMax;
+    int y = pr.y + pad;
+    int textW = std::max(1, pr.w - pad * 2);
+    drawTextFit(pr.x + pad, y, res.str(), termFg(), textW, s.monoSmall ? s.monoSmall : s.mono);
+    y += 22;
+
+    std::ostringstream tile;
+    if (inBounds(g.cursorX, g.cursorY)) {
+        const Tile& ct = g.map[g.cursorY][g.cursorX];
+        tile << "Tile: " << terrainName(ct.terrain);
+        if (ct.resources > 0) tile << " Res:" << ct.resources;
+    } else {
+        tile << "Tile: unknown";
+    }
+    SDL_Rect mm = miniMapRect();
+    int summaryW = mobilePortrait() ? std::max(1, mm.x - (pr.x + pad) - 10) : textW;
+    drawTextFit(pr.x + pad, y, termTrunc(tile.str(), 54), termDim(), summaryW, s.monoSmall ? s.monoSmall : s.mono);
+    y += 20;
+    drawTextFit(pr.x + pad, y, mobileSelectionSummary(), termHigh(), summaryW, s.monoSmall ? s.monoSmall : s.mono);
+    y += 20;
+    if (s.mobileBuildType != E_NONE) {
+        drawTextFit(pr.x + pad, y, std::string("Placing ") + STATS[s.mobileBuildType].name,
+                    termAccent(), summaryW, s.monoSmall ? s.monoSmall : s.mono);
+    } else if (g.mode == M_RALLY_SET || g.mode == M_ATTACK_MOVE || g.mode == M_BUILD_SELECT) {
+        drawTextFit(pr.x + pad, y, modeName(g.mode), termAccent(), summaryW, s.monoSmall ? s.monoSmall : s.mono);
+    } else if (g.statusTimer > 0) {
+        drawTextFit(pr.x + pad, y, ">> " + g.statusMsg, termHigh(), summaryW, s.monoSmall ? s.monoSmall : s.mono);
+    }
+
+    drawAsciiMobileMiniMapText(mm);
+    for (const MobileButton& b : mobileHudButtons()) {
+        bool active = (b.id == "build" && g.mode == M_BUILD_SELECT)
+                   || (b.id == "attack" && g.mode == M_ATTACK_MOVE)
+                   || (b.id == "rally" && g.mode == M_RALLY_SET);
+        drawConsoleButton(b, active, b.id == "cancel");
+    }
+    if (g.statusTimer > 0) g.statusTimer--;
+}
+
+static void drawAsciiMobileFrame(bool present) {
+    SDL_GetWindowSize(s.win, &s.winW, &s.winH);
+    applyRendererOutputScale();
+    s.isometric = false;
+    setDraw(termBg());
+    SDL_RenderClear(s.ren);
+    drawAsciiMobileMap();
+    drawAsciiMobileHud();
+    drawAsciiMobileHelpOverlay();
+    if (present) SDL_RenderPresent(s.ren);
+}
+
+static bool saveRendererPixels(const std::string& path) {
+    SDL_Surface* surface = SDL_CreateRGBSurfaceWithFormat(0, s.winW, s.winH, 32, SDL_PIXELFORMAT_ARGB8888);
+    if (!surface) {
+        std::cerr << "realm: screenshot surface failed: " << SDL_GetError() << "\n";
+        return false;
+    }
+    bool ok = SDL_RenderReadPixels(s.ren, nullptr, SDL_PIXELFORMAT_ARGB8888,
+        surface->pixels, surface->pitch) == 0;
+    if (!ok) {
+        std::cerr << "realm: screenshot read failed: " << SDL_GetError() << "\n";
+    } else if (SDL_SaveBMP(surface, path.c_str()) != 0) {
+        std::cerr << "realm: screenshot save failed: " << SDL_GetError() << "\n";
+        ok = false;
+    }
+    SDL_FreeSurface(surface);
+    SDL_RenderPresent(s.ren);
+    return ok;
 }
 
 static void drawHelpOverlay() {
@@ -2049,12 +3528,74 @@ static std::vector<MobileButton> mobileSplashButtons() {
         addGridButtons(buttons, x, y + 230, bw, {{"helpback", "Back"}}, 1);
         return buttons;
     }
-    addGridButtons(buttons, x, y, bw,
-        {{"new", "New Game"}, {"load", "Load Game"}, {"settings", "Settings"}, {"help", "Help"}, {"quit", "Quit"}}, 1);
+    std::vector<std::pair<std::string, std::string>> mainItems{
+        {"new", "New Game"}, {"load", "Load Game"}
+    };
+    if (!s.asciiOnly) {
+        mainItems.push_back({"visual", displayMode == DM_ASCII ? "Visual ASCII" : "Visual Tileset"});
+    }
+#if defined(REALM_WEB)
+    mainItems.push_back({"fullscreen", "Full Screen"});
+    mainItems.push_back({"settings", "Settings"});
+    mainItems.push_back({"help", "Help"});
+#else
+    mainItems.push_back({"settings", "Settings"});
+    mainItems.push_back({"help", "Help"});
+    mainItems.push_back({"quit", "Quit"});
+#endif
+    addGridButtons(buttons, x, y, bw, mainItems, 1);
     return buttons;
 }
 
+static void drawAsciiMobileSplash(int numAIs, int biomeIdx) {
+    setDraw(termBg());
+    SDL_RenderClear(s.ren);
+    int pad = mobileSafePad();
+    int x = pad;
+    int y = pad + 8;
+    int w = std::max(1, s.winW - pad * 2);
+    setDraw(termDim());
+    SDL_Rect border{pad, pad, w, std::max(1, s.winH - pad * 2)};
+    SDL_RenderDrawRect(s.ren, &border);
+    drawTextFit(x + 10, y, "R E A L M", termHigh(), std::max(1, w - 20), s.mono); y += 28;
+    drawTextFit(x + 10, y, "-- Medieval Warlord --", termAccent(), std::max(1, w - 20),
+                s.monoSmall ? s.monoSmall : s.mono);
+    y += 32;
+
+    if (s.mobileSplashHelp) {
+        drawTextFit(x + 10, y, "TOUCH CONTROLS", termHigh(), std::max(1, w - 20),
+                    s.monoSmall ? s.monoSmall : s.mono); y += 26;
+        drawTextFit(x + 10, y, "Tap selects or commands. Drag the map to pan.", termFg(), std::max(1, w - 20),
+                    s.monoSmall ? s.monoSmall : s.mono); y += 22;
+        drawTextFit(x + 10, y, "Tap terminal buttons for build, attack, rally, pause, and idle.", termFg(),
+                    std::max(1, w - 20), s.monoSmall ? s.monoSmall : s.mono); y += 22;
+        drawTextFit(x + 10, y, "Long press inspects. Double tap selects nearby units of the same type.", termDim(),
+                    std::max(1, w - 20), s.monoSmall ? s.monoSmall : s.mono);
+    } else if (s.mobileSplashSettings) {
+        drawTextFit(x + 10, y, "SETTINGS", termHigh(), std::max(1, w - 20),
+                    s.monoSmall ? s.monoSmall : s.mono); y += 26;
+        drawTextFit(x + 10, y, "Tap an option to cycle it.", termDim(), std::max(1, w - 20),
+                    s.monoSmall ? s.monoSmall : s.mono);
+    } else {
+        static const char* biomeNames[] = {"Temperate","Desert","Snow","Swamp","Forest","Volcanic","Ocean","Random"};
+        std::ostringstream ss;
+        ss << "Opponents:" << numAIs << "  Biome:" << biomeNames[biomeIdx] << "  Display:ASCII";
+        drawTextFit(x + 10, y, ss.str(), termFg(), std::max(1, w - 20), s.monoSmall ? s.monoSmall : s.mono); y += 24;
+        drawTextFit(x + 10, y, "Tap [New Game] to start. Tap [Visual ASCII] for tileset.", termDim(),
+                    std::max(1, w - 20), s.monoSmall ? s.monoSmall : s.mono);
+    }
+
+    for (const MobileButton& b : mobileSplashButtons()) {
+        drawConsoleButton(b, b.id == "visual", b.id == "quit");
+    }
+    SDL_RenderPresent(s.ren);
+}
+
 static void drawMobileSplash(int numAIs, int biomeIdx) {
+    if (displayMode == DM_ASCII) {
+        drawAsciiMobileSplash(numAIs, biomeIdx);
+        return;
+    }
     setDraw(rgb(7,10,15)); SDL_RenderClear(s.ren);
     int pad = mobileSafePad();
     drawTextFit(pad, pad + 8, "R E A L M", rgb(255,235,145), s.winW - pad * 2);
@@ -2080,6 +3621,18 @@ static bool handleMobileSplashTap(int px, int py, int& numAIs, int& biomeIdx, bo
         if (!pointInRect(px, py, b.r)) continue;
         if (b.id == "new") { done = true; return true; }
         if (b.id == "load") { s.loadGameRequested = true; done = true; return true; }
+        if (b.id == "fullscreen") { toggleFullscreen(); return true; }
+        if (b.id == "visual" && !s.asciiOnly) {
+            if (displayMode == DM_ASCII) {
+                displayMode = DM_EMOJI;
+                s.isometric = true;
+            } else {
+                displayMode = DM_ASCII;
+                s.isometric = false;
+            }
+            updateViewMetrics(true);
+            return true;
+        }
         if (b.id == "quit") { gfxShutdown(); std::exit(0); }
         if (b.id == "settings") { s.mobileSplashSettings = !s.mobileSplashSettings; s.mobileSplashHelp = false; return true; }
         if (b.id == "help") { s.mobileSplashHelp = true; s.mobileSplashSettings = false; return true; }
@@ -2095,7 +3648,47 @@ static bool handleMobileSplashTap(int px, int py, int& numAIs, int& biomeIdx, bo
     return false;
 }
 
+static int applySplashChoice(int ch, int& numAIs, int& biomeIdx) {
+    if (ch == '\n' || ch == '\r') {
+        g.biomeChoice = (biomeIdx == 7) ? -1 : biomeIdx;
+        return 1;
+    }
+    if (ch == 'q' || ch == 'Q' || ch == 'x' || ch == 'X') {
+#if defined(REALM_WEB)
+        setStatus("Close the browser tab to exit.");
+        return 0;
+#else
+        return -1;
+#endif
+    }
+    if (ch == '1') numAIs = 1;
+    else if (ch == '2') numAIs = 2;
+    else if (ch == '3') numAIs = 3;
+    else if (ch == '0') biomeIdx = 7;
+    else if (ch == 't' || ch == 'T') biomeIdx = 0;
+    else if (ch == 'd' || ch == 'D') biomeIdx = 1;
+    else if (ch == 's' || ch == 'S') biomeIdx = 2;
+    else if (ch == 'w' || ch == 'W') biomeIdx = 3;
+    else if (ch == 'f' || ch == 'F') biomeIdx = 4;
+    else if (ch == 'v' || ch == 'V') biomeIdx = 5;
+    else if (ch == 'c' || ch == 'C') biomeIdx = 6;
+    else if (ch == '4') displayMode = DM_ASCII;
+    else if (ch == '5' && !s.asciiOnly) { displayMode = DM_EMOJI; s.isometric = true; }
+    return 0;
+}
+
+static bool handleSplashKeyHit(int px, int py, int& numAIs, int& biomeIdx, int& result) {
+    for (const KeyHit& hit : s.keyHits) {
+        if (!pointInRect(px, py, hit.r)) continue;
+        result = applySplashChoice(hit.ch, numAIs, biomeIdx);
+        return true;
+    }
+    return false;
+}
+
 static void drawSplash(int numAIs, int biomeIdx) {
+    s.keyHits.clear();
+    SDL_GetMouseState(&s.mouseX, &s.mouseY);
     if (isMobileGui()) {
         drawMobileSplash(numAIs, biomeIdx);
         return;
@@ -2116,28 +3709,38 @@ static void drawSplash(int numAIs, int biomeIdx) {
     line("  Enter/R-click  Command (move/attack/gather)");
     line("  Mouse wheel    Zoom in/out");
     line("  Middle-drag    Pan the map");
-    line("  [6]/[7] menu   Top-down / isometric projection");
     line("  B/T/A/H/P      Build / Train / Military / Town hall / Pause");
     y += 10;
     line("OPPONENTS", rgb(255,230,135));
-    line("  [1] Duel       [2] Three-way     [3] Four-way");
+    drawKeyTokensInText(col, y, "  [1] Duel       [2] Three-way     [3] Four-way",
+                        {{"[1]", '1'}, {"[2]", '2'}, {"[3]", '3'}},
+                        rgb(220,225,220), 720); y += 22;
     y += 4;
     line("BIOME", rgb(255,230,135));
-    line("  [0] Random    [T] Temperate  [D] Desert");
-    line("  [S] Snow      [W] Swamp      [F] Forest");
-    line("  [V] Volcanic  [C] Coastal");
-    y += 4;
-    line("DISPLAY", rgb(255,230,135));
-    line(std::string("  [4] ASCII     [5] Emoji       > ") + (displayMode==DM_EMOJI ? "Emoji" : "ASCII"));
-    y += 4;
-    line("PROJECTION", rgb(255,230,135));
-    line(std::string("  [6] Top-down  [7] Isometric   > ") + (s.isometric ? "Isometric" : "Top-down"));
+    drawKeyTokensInText(col, y, "  [0] Random    [T] Temperate  [D] Desert",
+                        {{"[0]", '0'}, {"[T]", 't'}, {"[D]", 'd'}},
+                        rgb(220,225,220), 720); y += 22;
+    drawKeyTokensInText(col, y, "  [S] Snow      [W] Swamp      [F] Forest",
+                        {{"[S]", 's'}, {"[W]", 'w'}, {"[F]", 'f'}},
+                        rgb(220,225,220), 720); y += 22;
+    drawKeyTokensInText(col, y, "  [V] Volcanic  [C] Coastal",
+                        {{"[V]", 'v'}, {"[C]", 'c'}},
+                        rgb(220,225,220), 720); y += 22;
+    if (!s.asciiOnly) {
+        y += 4;
+        line("DISPLAY", rgb(255,230,135));
+        std::string displayLine = std::string("  [4] ASCII     [5] Tileset     > ") + (displayMode==DM_EMOJI ? "Tileset" : "ASCII");
+        drawKeyTokensInText(col, y, displayLine, {{"[4]", '4'}, {"[5]", '5'}},
+                            rgb(220,225,220), 720); y += 22;
+    }
     y += 10;
     static const char* biomeNames[] = {"Temperate","Desert","Snow","Swamp","Forest","Volcanic","Ocean","Random"};
     std::ostringstream ss; ss << "  > Opponents: " << numAIs << "    Biome: " << biomeNames[biomeIdx];
     line(ss.str(), rgb(255,245,180));
     y += 4;
-    line("  [Enter] Start game            [Q/X] Quit", rgb(210,230,245));
+    drawKeyTokensInText(col, y, "  [Enter] Start game            [Q/X] Quit",
+                        {{"[Enter]", '\n'}, {"Q", 'q'}, {"X", 'x'}},
+                        rgb(210,230,245), 720);
     SDL_RenderPresent(s.ren);
 }
 
@@ -2202,17 +3805,20 @@ bool gfxInit() {
     if (!s.emoji) {
         s.emoji = s.mono;
         s.emojiFontLoaded = false;
-        std::cerr << "No emoji font found; using ASCII-style emoji fallbacks.\n";
+        std::cerr << "No tileset symbol font found; using ASCII glyph fallbacks.\n";
     } else {
         s.emojiFontLoaded = true;
     }
     std::cerr << "Text font: " << (s.monoPath.empty() ? "<unknown>" : s.monoPath) << "\n";
-    std::cerr << "Emoji font: " << (s.emojiFontLoaded ? s.emojiPath : std::string("<fallback>")) << "\n";
+    std::cerr << "Tileset symbol font: " << (s.emojiFontLoaded ? s.emojiPath : std::string("<fallback>")) << "\n";
     SDL_StartTextInput();
     return true;
 }
 
 void gfxShutdown() {
+#if !defined(REALM_WEB)
+    tilesetAssetsClear();
+#endif
     clearTextCache();
     if (s.mono) TTF_CloseFont(s.mono);
     if (s.monoSmall) TTF_CloseFont(s.monoSmall);
@@ -2223,66 +3829,92 @@ void gfxShutdown() {
     SDL_Quit();
 }
 
+int gfxSplashFrame(int& numAIs, int& biomeIdx) {
+    SDL_Event e;
+    while (SDL_PollEvent(&e)) {
+        if (e.type == SDL_QUIT) return -1;
+        if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
+            s.winW = e.window.data1; s.winH = e.window.data2;
+        }
+        if (!isMobileGui() && e.type == SDL_MOUSEMOTION) {
+            s.mouseX = e.motion.x;
+            s.mouseY = e.motion.y;
+        }
+        if (!isMobileGui() && e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
+            s.mouseX = e.button.x;
+            s.mouseY = e.button.y;
+            int result = 0;
+            if (handleSplashKeyHit(e.button.x, e.button.y, numAIs, biomeIdx, result)) return result;
+        }
+        if (isMobileGui() && (e.type == SDL_FINGERDOWN || e.type == SDL_MOUSEBUTTONDOWN)) {
+            int px = 0, py = 0;
+            if (e.type == SDL_FINGERDOWN) {
+                px = (int)std::lround(e.tfinger.x * s.winW);
+                py = (int)std::lround(e.tfinger.y * s.winH);
+                s.suppressNextMouse = true;
+            } else {
+                if (s.suppressNextMouse) { s.suppressNextMouse = false; continue; }
+                if (e.button.button != SDL_BUTTON_LEFT) continue;
+                px = e.button.x; py = e.button.y;
+            }
+            bool done = false;
+            if (handleMobileSplashTap(px, py, numAIs, biomeIdx, done) && done) {
+                g.biomeChoice = (biomeIdx == 7) ? -1 : biomeIdx;
+                return 1;
+            }
+            continue;
+        }
+        if (e.type != SDL_KEYDOWN) continue;
+        SDL_Keycode k = e.key.keysym.sym;
+        int ch = 0;
+        if (k == SDLK_RETURN || k == SDLK_KP_ENTER) ch = '\n';
+        else if (k == SDLK_q) ch = 'q';
+        else if (k == SDLK_x) ch = 'x';
+        else if (k == SDLK_1) ch = '1';
+        else if (k == SDLK_2) ch = '2';
+        else if (k == SDLK_3) ch = '3';
+        else if (k == SDLK_0) ch = '0';
+        else if (k == SDLK_t) ch = 't';
+        else if (k == SDLK_d) ch = 'd';
+        else if (k == SDLK_s) ch = 's';
+        else if (k == SDLK_w) ch = 'w';
+        else if (k == SDLK_f) ch = 'f';
+        else if (k == SDLK_v) ch = 'v';
+        else if (k == SDLK_c) ch = 'c';
+        else if (k == SDLK_4) ch = '4';
+        else if (k == SDLK_5) ch = '5';
+        if (ch) {
+            int result = applySplashChoice(ch, numAIs, biomeIdx);
+            if (result) return result;
+        }
+    }
+    SDL_GetWindowSize(s.win, &s.winW, &s.winH);
+    drawSplash(numAIs, biomeIdx);
+    return 0;
+}
+
+void gfxSetAsciiOnly(bool asciiOnly) {
+    s.asciiOnly = asciiOnly;
+    if (s.asciiOnly) {
+        displayMode = DM_ASCII;
+        s.isometric = false;
+    }
+}
+
 int gfxShowSplash() {
     int numAIs = 1;
     int biomeIdx = 7;
     bool loggedReady = false;
     while (true) {
-        SDL_Event e;
-        while (SDL_PollEvent(&e)) {
-            if (e.type == SDL_QUIT) { gfxShutdown(); std::exit(0); }
-            if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
-                s.winW = e.window.data1; s.winH = e.window.data2;
-            }
-            if (isMobileGui() && (e.type == SDL_FINGERDOWN || e.type == SDL_MOUSEBUTTONDOWN)) {
-                int px = 0, py = 0;
-                if (e.type == SDL_FINGERDOWN) {
-                    px = (int)std::lround(e.tfinger.x * s.winW);
-                    py = (int)std::lround(e.tfinger.y * s.winH);
-                    s.suppressNextMouse = true;
-                } else {
-                    if (s.suppressNextMouse) { s.suppressNextMouse = false; continue; }
-                    if (e.button.button != SDL_BUTTON_LEFT) continue;
-                    px = e.button.x; py = e.button.y;
-                }
-                bool done = false;
-                if (handleMobileSplashTap(px, py, numAIs, biomeIdx, done) && done) {
-                    g.biomeChoice = (biomeIdx == 7) ? -1 : biomeIdx;
-                    return numAIs;
-                }
-                continue;
-            }
-            if (e.type != SDL_KEYDOWN) continue;
-            SDL_Keycode k = e.key.keysym.sym;
-            if (k == SDLK_q || k == SDLK_x) { gfxShutdown(); std::exit(0); }
-            if (k == SDLK_RETURN || k == SDLK_KP_ENTER) {
-                g.biomeChoice = (biomeIdx == 7) ? -1 : biomeIdx;
-                return numAIs;
-            }
-            if (k == SDLK_1) numAIs = 1;
-            else if (k == SDLK_2) numAIs = 2;
-            else if (k == SDLK_3) numAIs = 3;
-            else if (k == SDLK_0) biomeIdx = 7;
-            else if (k == SDLK_t) biomeIdx = 0;
-            else if (k == SDLK_d) biomeIdx = 1;
-            else if (k == SDLK_s) biomeIdx = 2;
-            else if (k == SDLK_w) biomeIdx = 3;
-            else if (k == SDLK_f) biomeIdx = 4;
-            else if (k == SDLK_v) biomeIdx = 5;
-            else if (k == SDLK_c) biomeIdx = 6;
-            else if (k == SDLK_4) displayMode = DM_ASCII;
-            else if (k == SDLK_5) displayMode = DM_EMOJI;
-            else if (k == SDLK_6) s.isometric = false;
-            else if (k == SDLK_7) s.isometric = true;
-        }
-        SDL_GetWindowSize(s.win, &s.winW, &s.winH);
-        drawSplash(numAIs, biomeIdx);
+        int result = gfxSplashFrame(numAIs, biomeIdx);
         if (!loggedReady) {
             std::cerr << "realm: main screen ready\n";
             loggedReady = true;
             const char* smoke = std::getenv("REALM_SMOKE_TEST");
             if (smoke) return std::string(smoke) == "match" ? numAIs : -1;
         }
+        if (result < 0) { gfxShutdown(); std::exit(0); }
+        if (result > 0) return numAIs;
         SDL_Delay(16);
     }
 }
@@ -2341,8 +3973,8 @@ static void captureIssueBundle() {
              << "cursor: " << g.cursorX << "," << g.cursorY << "\n"
              << "view: " << g.viewX << "," << g.viewY << " "
              << g.viewW << "x" << g.viewH << "\n"
-             << "projection: " << (s.isometric ? "isometric" : "top-down") << "\n"
-             << "visuals: " << (displayMode == DM_EMOJI ? "emoji" : "ascii") << "\n"
+             << "projection: " << (displayMode == DM_EMOJI ? "isometric" : "grid") << "\n"
+             << "visuals: " << (displayMode == DM_EMOJI ? "tileset" : "ascii") << "\n"
              << "window: " << s.winW << "x" << s.winH << "\n";
     }
 
@@ -2443,6 +4075,7 @@ static void handleMobileHudButton(const std::string& id) {
     if (id == "buildback") { s.mobileBuildPage = 0; return; }
     if (id == "menu") { g.returnToMenu = true; return; }
     if (id == "pause") { handleInput('p'); return; }
+    if (id == "fullscreen") { toggleFullscreen(); return; }
     if (id == "idle") { mobileSelectIdlePeasant(); return; }
     if (id == "help") { g.helpOverlay = !g.helpOverlay; setStatus(g.helpOverlay ? "Help open." : "Help closed."); return; }
     if (id == "selectarmy") { handleInput('A'); return; }
@@ -2523,6 +4156,26 @@ static bool handleMobileHudHit(int px, int py) {
         }
     }
     return true;
+}
+
+static bool handleKeyHitAt(int px, int py) {
+    if (isMobileGui()) return false;
+    for (const KeyHit& hit : s.keyHits) {
+        if (!pointInRect(px, py, hit.r)) continue;
+        bool globalShortcut = g.mode == M_NORMAL || g.mode == M_GAME_OVER || g.mode == M_PAUSED;
+        if (globalShortcut && (hit.ch == 'v' || hit.ch == 'V')) {
+            saveGame("realm-save.txt");
+        } else if (globalShortcut && (hit.ch == 'd' || hit.ch == 'D')) {
+            g.diagnostics = !g.diagnostics;
+        } else if (globalShortcut && (hit.ch == 'l' || hit.ch == 'L')) {
+            loadGame("realm-save.txt");
+            updateViewMetrics(true);
+        } else {
+            handleInput(hit.ch);
+        }
+        return true;
+    }
+    return false;
 }
 
 static bool screenToMapWithTolerance(int px, int py, int& mx, int& my) {
@@ -2671,6 +4324,8 @@ void gfxPollInput(bool& quitRequested) {
                 if (e.type == SDL_MOUSEBUTTONUP) s.suppressNextMouse = false;
                 continue;
             }
+            if (e.type == SDL_MOUSEMOTION) { s.mouseX = e.motion.x; s.mouseY = e.motion.y; }
+            if (e.type == SDL_MOUSEBUTTONDOWN || e.type == SDL_MOUSEBUTTONUP) { s.mouseX = e.button.x; s.mouseY = e.button.y; }
             if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) { mobilePointerDown(e.button.x, e.button.y); continue; }
             if (e.type == SDL_MOUSEMOTION && (s.touchDown || s.miniMapDown)) { mobilePointerMotion(e.motion.x, e.motion.y); continue; }
             if (e.type == SDL_MOUSEBUTTONUP && e.button.button == SDL_BUTTON_LEFT) { mobilePointerUp(e.button.x, e.button.y); continue; }
@@ -2681,6 +4336,8 @@ void gfxPollInput(bool& quitRequested) {
             if (e.wheel.y < 0) setZoom(s.tile - 3, mx, my);
         }
         if (e.type == SDL_MOUSEMOTION) {
+            s.mouseX = e.motion.x;
+            s.mouseY = e.motion.y;
             if (s.miniMapDown) {
                 moveViewFromMiniMap(e.motion.x, e.motion.y, true);
                 continue;
@@ -2697,8 +4354,15 @@ void gfxPollInput(bool& quitRequested) {
         }
         if (e.type == SDL_MOUSEBUTTONDOWN) {
             int mx,my;
+            s.mouseX = e.button.x;
+            s.mouseY = e.button.y;
             if (e.button.button == SDL_BUTTON_MIDDLE) {
                 startMiddlePan(e.button.x, e.button.y);
+            } else if (e.button.button == SDL_BUTTON_LEFT && handleKeyHitAt(e.button.x, e.button.y)) {
+                s.leftDown = false;
+                s.middleDown = false;
+                g.dragging = false;
+                continue;
             } else if (e.button.button == SDL_BUTTON_LEFT &&
                        moveViewFromMiniMap(e.button.x, e.button.y)) {
                 s.miniMapDown = true;
@@ -2712,7 +4376,14 @@ void gfxPollInput(bool& quitRequested) {
                     handleInput('\n');
                 } else if (e.button.button == SDL_BUTTON_LEFT) {
                     if (e.button.clicks >= 2) rendererSelectAllOfTypeInView(mx,my);
-                    else { s.leftDown = true; s.dragStartX = mx; s.dragStartY = my; g.dragging = true; }
+                    else {
+                        s.leftDown = true;
+                        s.dragStartX = mx;
+                        s.dragStartY = my;
+                        s.lastMouseMapX = mx;
+                        s.lastMouseMapY = my;
+                        g.dragging = true;
+                    }
                 } else if (e.button.button == SDL_BUTTON_RIGHT) {
                     rendererCommandAtTile(mx,my);
                 }
@@ -2720,6 +4391,8 @@ void gfxPollInput(bool& quitRequested) {
         }
         if (e.type == SDL_MOUSEBUTTONUP) {
             int mx,my;
+            s.mouseX = e.button.x;
+            s.mouseY = e.button.y;
             if (e.button.button == SDL_BUTTON_LEFT && s.miniMapDown) {
                 moveViewFromMiniMap(e.button.x, e.button.y, true);
                 s.miniMapDown = false;
@@ -2733,7 +4406,18 @@ void gfxPollInput(bool& quitRequested) {
                 s.middleDown = false;
                 continue;
             }
-            if (e.button.button == SDL_BUTTON_LEFT && screenToMap(e.button.x, e.button.y, mx, my)) {
+            if (e.button.button == SDL_BUTTON_LEFT) {
+                bool hasMap = screenToMap(e.button.x, e.button.y, mx, my);
+                if (!hasMap && s.leftDown && inBounds(s.lastMouseMapX, s.lastMouseMapY)) {
+                    mx = s.lastMouseMapX;
+                    my = s.lastMouseMapY;
+                    hasMap = true;
+                }
+                if (!hasMap) {
+                    s.leftDown = false;
+                    g.dragging = false;
+                    continue;
+                }
                 g.cursorX = mx; g.cursorY = my;
                 if (g.mode == M_TRAIN_SELECT) g.mode = M_NORMAL;
                 if (s.leftDown) {
@@ -2746,9 +4430,19 @@ void gfxPollInput(bool& quitRequested) {
         }
         if (e.type == SDL_KEYDOWN) {
             SDL_Keycode k = e.key.keysym.sym;
-            if (k == SDLK_x) { quitRequested = true; return; }
-            if (k == SDLK_F6) { s.isometric = false; updateViewMetrics(true); continue; }
-            if (k == SDLK_F7) { s.isometric = true;  updateViewMetrics(true); continue; }
+            if (k == SDLK_F11 || (k == SDLK_RETURN && (e.key.keysym.mod & KMOD_ALT))) {
+                toggleFullscreen();
+                continue;
+            }
+            if (k == SDLK_x) {
+#if defined(REALM_WEB)
+                setStatus("Close the browser tab to exit.");
+                continue;
+#else
+                quitRequested = true;
+                return;
+#endif
+            }
             if (k == SDLK_F5) { saveGame("realm-save.txt"); continue; }
             if (k == SDLK_F8) { g.diagnostics = !g.diagnostics; continue; }
             if (k == SDLK_F9) { loadGame("realm-save.txt"); updateViewMetrics(true); continue; }
@@ -2764,6 +4458,17 @@ void gfxPollInput(bool& quitRequested) {
 static void drawFrame(bool present) {
     SDL_GetWindowSize(s.win, &s.winW, &s.winH);
     applyRendererOutputScale();
+    s.keyHits.clear();
+    SDL_GetMouseState(&s.mouseX, &s.mouseY);
+    if (displayMode == DM_ASCII && isMobileGui()) {
+        drawAsciiMobileFrame(present);
+        return;
+    }
+    if (displayMode == DM_ASCII && !isMobileGui()) {
+        drawAsciiTerminalFrame(present);
+        return;
+    }
+    if (displayMode == DM_EMOJI) s.isometric = true;
     setDraw(rgb(3,5,8)); SDL_RenderClear(s.ren);
     if (!isMobileGui()) drawTopBar();
     drawMap();
@@ -2782,7 +4487,7 @@ void gfxDelay(int ms) {
 }
 
 void gfxSetProjection(bool isometric) {
-    s.isometric = isometric;
+    s.isometric = (displayMode == DM_EMOJI) ? true : isometric;
     updateViewMetrics(true);
 }
 
@@ -2798,6 +4503,10 @@ bool gfxMapTileAtScreenForTest(int px, int py, int& mx, int& my) {
     return screenToMap(px, py, mx, my);
 }
 
+bool gfxScreenCenterForMapTileForTest(int mx, int my, int& px, int& py) {
+    return mapTileScreenCenter(mx, my, px, py);
+}
+
 void gfxSetWindowSizeForTest(int width, int height) {
     width = std::max(640, width);
     height = std::max(480, height);
@@ -2809,20 +4518,1047 @@ void gfxSetWindowSizeForTest(int width, int height) {
 
 bool gfxSaveScreenshot(const std::string& path) {
     drawFrame(false);
-    SDL_Surface* surface = SDL_CreateRGBSurfaceWithFormat(0, s.winW, s.winH, 32, SDL_PIXELFORMAT_ARGB8888);
-    if (!surface) {
-        std::cerr << "realm: screenshot surface failed: " << SDL_GetError() << "\n";
-        return false;
+    return saveRendererPixels(path);
+}
+
+bool gfxSaveAsciiTerminalReference(const std::string& path) {
+    drawAsciiTerminalFrame(false);
+    return saveRendererPixels(path);
+}
+
+bool gfxSaveAsciiTerminalText(const std::string& path) {
+    TerminalFrame frame = buildAsciiTerminalFrame();
+    std::ofstream out(path);
+    if (!out) return false;
+    for (int y = 0; y < frame.rows; ++y) {
+        for (int x = 0; x < frame.cols; ++x) out << frame.at(x, y).ch;
+        out << '\n';
     }
-    bool ok = SDL_RenderReadPixels(s.ren, nullptr, SDL_PIXELFORMAT_ARGB8888,
-        surface->pixels, surface->pitch) == 0;
-    if (!ok) {
-        std::cerr << "realm: screenshot read failed: " << SDL_GetError() << "\n";
-    } else if (SDL_SaveBMP(surface, path.c_str()) != 0) {
-        std::cerr << "realm: screenshot save failed: " << SDL_GetError() << "\n";
-        ok = false;
+    return true;
+}
+
+bool gfxSaveSplashScreenshot(const std::string& path, int numAIs, int biomeIdx) {
+    SDL_GetWindowSize(s.win, &s.winW, &s.winH);
+    applyRendererOutputScale();
+    drawSplash(numAIs, biomeIdx);
+    return saveRendererPixels(path);
+}
+
+namespace {
+
+constexpr int LAB_X = MAP_W / 2;
+constexpr int LAB_Y = MAP_H / 2;
+
+struct LabState {
+    int previewMode = 2; // 0 tile, 1 entity, 2 combined
+    int terrain = T_GRASS;
+    int biome = B_TEMPERATE;
+    int resources = 0;
+    int fog = 0; // 0 visible, 1 explored, 2 unexplored
+    int season = SPRING;
+    int seasonPercent = 0;
+    int timeStep = 3;
+    int weather = W_CLEAR;
+    int lightMode = 0; // 0 none, 1 town hall, 2 tower, 3 custom candle
+    int entityType = E_NONE;
+    int owner = 0;
+    int actionIndex = 0;
+    int direction = 0; // 0 front, 1 back
+    int frame = 0;
+    int hue = 197;
+    int speedPercent = 100;
+    bool playing = true;
+    bool damaged = false;
+    int activeDropdown = 0;
+    int dropdownScroll = 0;
+    bool hueDragging = false;
+};
+
+static void clampLabState(LabState& lab);
+static bool saveLabShot(const LabState& lab, const std::filesystem::path& path);
+
+enum LabDropdownKind {
+    LAB_DD_NONE = 0,
+    LAB_DD_PREVIEW,
+    LAB_DD_TERRAIN,
+    LAB_DD_BIOME,
+    LAB_DD_SEASON,
+    LAB_DD_SEASON_PERCENT,
+    LAB_DD_TIME,
+    LAB_DD_WEATHER,
+    LAB_DD_FOG,
+    LAB_DD_LIGHT,
+    LAB_DD_RESOURCE,
+    LAB_DD_ENTITY,
+    LAB_DD_ACTION,
+    LAB_DD_DIRECTION,
+    LAB_DD_FRAME,
+    LAB_DD_OWNER,
+    LAB_DD_SPEED
+};
+
+enum LabButtonKind {
+    LAB_BTN_PLAY = 1,
+    LAB_BTN_DAMAGED,
+    LAB_BTN_SCREENSHOT
+};
+
+struct LabDropdownOption {
+    std::string label;
+    int value = 0;
+};
+
+struct LabDropdownControl {
+    SDL_Rect r{};
+    int kind = LAB_DD_NONE;
+    std::string label;
+    std::string value;
+    bool disabled = false;
+};
+
+struct LabButtonControl {
+    SDL_Rect r{};
+    int kind = 0;
+    std::string label;
+    bool active = false;
+};
+
+struct LabControlLayout {
+    std::vector<LabDropdownControl> dropdowns;
+    std::vector<LabButtonControl> buttons;
+    SDL_Rect hueWheel{0,0,0,0};
+};
+
+static std::vector<EntityType> labEntityTypes() {
+    std::vector<EntityType> out;
+    out.push_back(E_NONE);
+    for (int t = E_PEASANT; t <= E_BOAR; ++t) out.push_back((EntityType)t);
+    return out;
+}
+
+static SDL_Color hueColor(int hue) {
+    float h = std::fmod((float)((hue % 360) + 360), 360.0f) / 60.0f;
+    float c = 1.0f;
+    float x = c * (1.0f - std::fabs(std::fmod(h, 2.0f) - 1.0f));
+    float r = 0.0f, g = 0.0f, b = 0.0f;
+    if (h < 1.0f) { r = c; g = x; }
+    else if (h < 2.0f) { r = x; g = c; }
+    else if (h < 3.0f) { g = c; b = x; }
+    else if (h < 4.0f) { g = x; b = c; }
+    else if (h < 5.0f) { r = x; b = c; }
+    else { r = c; b = x; }
+    return SDL_Color{(Uint8)std::lround(r * 235.0f), (Uint8)std::lround(g * 235.0f),
+                     (Uint8)std::lround(b * 235.0f), 255};
+}
+
+static Color colorFromSdl(SDL_Color c, int alpha = 255) {
+    return rgb(c.r, c.g, c.b, alpha);
+}
+
+static const char* directionId(int direction) {
+    return direction == 1 ? "back" : "front";
+}
+
+static const char* seasonNameValue(int season) {
+    static const char* names[] = {"Spring", "Summer", "Autumn", "Winter"};
+    return names[((season % 4) + 4) % 4];
+}
+
+static const char* timeStepName(int step) {
+    static const char* names[] = {"Night", "Dawn", "Morning", "Noon", "Dusk", "Late dusk"};
+    return names[std::max(0, std::min(step, 5))];
+}
+
+static std::string labEntityName(EntityType type) {
+    if (type == E_NONE) return "None";
+    return STATS[type].name;
+}
+
+static const EntityActionAnimationSpec* labActionSpec(const LabState& lab) {
+    EntityType type = (EntityType)lab.entityType;
+    int count = entityActionAnimationSpecCount(type);
+    if (count <= 0) return nullptr;
+    int index = std::max(0, std::min(lab.actionIndex, count - 1));
+    return entityActionAnimationSpecAt(type, index);
+}
+
+static const char* labActionId(const LabState& lab) {
+    if (const EntityActionAnimationSpec* spec = labActionSpec(lab)) return spec->action;
+    return "idle";
+}
+
+static int labFrameCount(const LabState& lab) {
+    if (const EntityActionAnimationSpec* spec = labActionSpec(lab)) return std::max(1, spec->frameCount);
+    return 1;
+}
+
+static std::filesystem::path labManualShotPath(const LabState& lab) {
+    namespace fs = std::filesystem;
+    fs::path outDir = fs::path("build") / "lab-screenshots";
+    fs::create_directories(outDir);
+    std::string entity = lowerSlug(labEntityName((EntityType)lab.entityType));
+    if (entity.empty()) entity = "none";
+    std::ostringstream name;
+    name << "manual-" << entity << "-" << labActionId(lab) << "-" << directionId(lab.direction)
+         << "-frame_" << std::setw(2) << std::setfill('0') << lab.frame << ".bmp";
+    return outDir / name.str();
+}
+
+static const char* terrainNameSafe(int terrain) {
+    return terrainName((Terrain)std::max(0, std::min(terrain, (int)T_CASTLE_GATE)));
+}
+
+static const char* biomeNameSafe(int biome) {
+    return biomeName((Biome)std::max(0, std::min(biome, (int)B_OCEAN)));
+}
+
+static const char* weatherNameSafe(int weather) {
+    switch ((Weather)weather) {
+        case W_RAIN: return "Rain";
+        case W_STORM: return "Storm";
+        case W_SNOW: return "Snow";
+        default: return "Clear";
     }
-    SDL_FreeSurface(surface);
-    SDL_RenderPresent(s.ren);
-    return ok;
+}
+
+static const char* previewModeName(int mode) {
+    switch (mode) {
+        case 0: return "Tile only";
+        case 1: return "Entity only";
+        default: return "Tile + Entity";
+    }
+}
+
+static const char* fogName(int fog) {
+    switch (fog) {
+        case 1: return "Explored";
+        case 2: return "Unexplored";
+        default: return "Visible";
+    }
+}
+
+static const char* lightName(int mode) {
+    switch (mode) {
+        case 1: return "Town Hall torch";
+        case 2: return "Tower torch";
+        case 3: return "Custom candle";
+        default: return "None";
+    }
+}
+
+static std::vector<LabDropdownOption> labDropdownOptions(int kind, const LabState& lab) {
+    std::vector<LabDropdownOption> out;
+    switch (kind) {
+        case LAB_DD_PREVIEW:
+            out.push_back({"Tile only", 0});
+            out.push_back({"Entity only", 1});
+            out.push_back({"Tile + Entity", 2});
+            break;
+        case LAB_DD_TERRAIN:
+            for (int t = 0; t <= (int)T_CASTLE_GATE; ++t) out.push_back({terrainNameSafe(t), t});
+            break;
+        case LAB_DD_BIOME:
+            for (int b = 0; b <= (int)B_OCEAN; ++b) out.push_back({biomeNameSafe(b), b});
+            break;
+        case LAB_DD_SEASON:
+            for (int sidx = 0; sidx < 4; ++sidx) out.push_back({seasonNameValue(sidx), sidx});
+            break;
+        case LAB_DD_SEASON_PERCENT:
+            for (int p = 0; p <= 90; p += 10) out.push_back({std::to_string(p) + "%", p});
+            out.push_back({"99%", 99});
+            break;
+        case LAB_DD_TIME:
+            for (int t = 0; t < 6; ++t) out.push_back({timeStepName(t), t});
+            break;
+        case LAB_DD_WEATHER:
+            for (int w = 0; w < 4; ++w) out.push_back({weatherNameSafe(w), w});
+            break;
+        case LAB_DD_FOG:
+            for (int f = 0; f < 3; ++f) out.push_back({fogName(f), f});
+            break;
+        case LAB_DD_LIGHT:
+            for (int l = 0; l < 4; ++l) out.push_back({lightName(l), l});
+            break;
+        case LAB_DD_RESOURCE:
+            for (int r : {0, 25, 50, 100, 150, 200, 500, 999}) out.push_back({std::to_string(r), r});
+            break;
+        case LAB_DD_ENTITY:
+            for (EntityType type : labEntityTypes()) out.push_back({labEntityName(type), (int)type});
+            break;
+        case LAB_DD_ACTION: {
+            int count = entityActionAnimationSpecCount((EntityType)lab.entityType);
+            for (int i = 0; i < count; ++i) {
+                if (const EntityActionAnimationSpec* spec = entityActionAnimationSpecAt((EntityType)lab.entityType, i)) {
+                    out.push_back({spec->action, i});
+                }
+            }
+            break;
+        }
+        case LAB_DD_DIRECTION:
+            out.push_back({"front", 0});
+            out.push_back({"back", 1});
+            break;
+        case LAB_DD_FRAME:
+            for (int f = 0; f < labFrameCount(lab); ++f) out.push_back({"frame " + std::to_string(f), f});
+            break;
+        case LAB_DD_OWNER:
+            for (int o = 0; o < MAX_PLAYERS; ++o) out.push_back({"player " + std::to_string(o), o});
+            break;
+        case LAB_DD_SPEED:
+            for (int sPct : {10, 25, 50, 75, 100, 150, 200, 300, 400}) {
+                out.push_back({std::to_string(sPct) + "%", sPct});
+            }
+            break;
+        default:
+            break;
+    }
+    return out;
+}
+
+static float labTimePhase(int step) {
+    static const float phases[] = {0.02f, 0.16f, 0.28f, 0.50f, 0.72f, 0.84f};
+    return phases[std::max(0, std::min(step, 5))];
+}
+
+static void labConfigureEntityForAction(Entity& e, const char* action) {
+    e.state = S_IDLE;
+    e.targetX = LAB_X;
+    e.targetY = LAB_Y + 1;
+    e.resourceX = LAB_X;
+    e.resourceY = LAB_Y + 1;
+    e.path.clear();
+    e.pathIdx = 0;
+    e.cargo = {CR_NONE, 0, -1, -1};
+    if (std::strcmp(action, "walk") == 0) {
+        e.state = S_MOVING;
+        e.path.push_back({LAB_X, LAB_Y + 1});
+    } else if (std::strncmp(action, "carry_", 6) == 0) {
+        e.state = S_RETURNING;
+        e.path.push_back({LAB_X, LAB_Y + 1});
+        e.cargo.amount = 10;
+        e.cargo.type = std::strstr(action, "gold") ? CR_GOLD
+            : std::strstr(action, "wood") ? CR_WOOD : CR_FOOD;
+        e.cargo.sourceX = LAB_X;
+        e.cargo.sourceY = LAB_Y + 1;
+    } else if (std::strcmp(action, "build") == 0 || std::strcmp(action, "hoe_soil") == 0) {
+        e.state = S_BUILDING;
+        e.targetY = LAB_Y - 1;
+    } else if (std::strncmp(action, "gather_", 7) == 0 || std::strcmp(action, "chop_wood") == 0
+               || std::strcmp(action, "mine_gold") == 0) {
+        e.state = S_GATHERING;
+        e.targetY = LAB_Y - 1;
+        e.resourceY = LAB_Y - 1;
+        if (std::strcmp(action, "mine_gold") == 0) g.map[LAB_Y - 1][LAB_X].terrain = T_GOLD;
+        else if (std::strcmp(action, "chop_wood") == 0) g.map[LAB_Y - 1][LAB_X].terrain = T_FOREST;
+        else if (std::strcmp(action, "gather_wheat") == 0) g.map[LAB_Y - 1][LAB_X].terrain = T_WHEAT;
+        else if (std::strcmp(action, "gather_berries") == 0) g.map[LAB_Y - 1][LAB_X].terrain = T_BERRY;
+    } else if (std::strcmp(action, "club_attack") == 0) {
+        e.state = S_ATTACKING;
+        e.targetY = LAB_Y - 1;
+    } else if (std::strcmp(action, "death") == 0) {
+        e.state = S_DEAD;
+    }
+}
+
+static void labApplyWorld(const LabState& lab) {
+    labForcesImageTileset = true;
+    displayMode = DM_EMOJI;
+    s.isometric = true;
+    g.tick = lab.playing ? g.tick : g.tick;
+    g.dayPhase = labTimePhase(lab.timeStep);
+    g.seasonPhase = (float)lab.season + lab.seasonPercent / 100.0f;
+    g.weather = lab.weather;
+    g.weatherTimer = 999;
+
+    for (int y = LAB_Y - 4; y <= LAB_Y + 4; ++y) {
+        for (int x = LAB_X - 4; x <= LAB_X + 4; ++x) {
+            if (!inBounds(x, y)) continue;
+            Tile& t = g.map[y][x];
+            t.terrain = (Terrain)lab.terrain;
+            t.biome = (Biome)lab.biome;
+            t.resources = (x == LAB_X && y == LAB_Y) ? lab.resources : 0;
+            t.preWinterTerrain = t.terrain;
+            t.wear = 0;
+            bool explored = lab.fog != 2;
+            bool visible = lab.fog == 0;
+            for (int p = 0; p < MAX_PLAYERS; ++p) {
+                t.explored[p] = explored;
+                t.visible[p] = visible;
+            }
+        }
+    }
+
+    g.entities.clear();
+    g.nextId = 1;
+    labLightOverride.enabled = false;
+    if (lab.lightMode == 1 || lab.lightMode == 2) {
+        Entity light{};
+        light.id = g.nextId++;
+        light.type = lab.lightMode == 1 ? E_TOWNHALL : E_TOWER;
+        light.owner = 0;
+        light.x = LAB_X - 3;
+        light.y = LAB_Y;
+        light.hp = light.maxHp = STATS[light.type].maxHp;
+        light.alive = true;
+        light.state = S_IDLE;
+        light.targetId = -1;
+        g.entities.push_back(light);
+    } else if (lab.lightMode == 3) {
+        labLightOverride.enabled = true;
+        labLightOverride.x = LAB_X - 1;
+        labLightOverride.y = LAB_Y;
+        labLightOverride.strength = 0.52f;
+        labLightOverride.radius = 4.0f;
+    }
+
+    if (lab.previewMode != 0 && lab.entityType != E_NONE) {
+        Entity e{};
+        e.id = g.nextId++;
+        e.type = (EntityType)lab.entityType;
+        e.owner = isWildAnimal(e.type) ? OWNER_NATURE : lab.owner;
+        e.x = LAB_X;
+        e.y = LAB_Y;
+        e.hp = e.maxHp = STATS[e.type].maxHp;
+        if (lab.damaged) e.hp = std::max(1, e.maxHp / 2);
+        e.alive = true;
+        e.targetId = -1;
+        e.producing = E_NONE;
+        e.rallyX = e.rallyY = -1;
+        labConfigureEntityForAction(e, labActionId(lab));
+        g.entities.push_back(e);
+    }
+}
+
+static void drawHueWheel(int cx, int cy, int radius, int hue) {
+    for (int y = -radius; y <= radius; ++y) {
+        for (int x = -radius; x <= radius; ++x) {
+            float d = std::sqrt((float)(x * x + y * y));
+            if (d > radius || d < radius * 0.58f) continue;
+            float angle = std::atan2((float)y, (float)x) * 180.0f / 3.14159265f;
+            SDL_Color c = hueColor((int)std::lround(angle + 360.0f));
+            setDraw(rgb(c.r, c.g, c.b, 255));
+            SDL_RenderDrawPoint(s.ren, cx + x, cy + y);
+        }
+    }
+    float a = hue * 3.14159265f / 180.0f;
+    int mx = cx + (int)std::lround(std::cos(a) * radius * 0.8f);
+    int my = cy + (int)std::lround(std::sin(a) * radius * 0.8f);
+    setDraw(rgb(255,255,255));
+    SDL_Rect mark{mx - 3, my - 3, 6, 6};
+    SDL_RenderDrawRect(s.ren, &mark);
+}
+
+static void drawLabLine(int x, int& y, const std::string& text, Color c = rgb(220,225,220)) {
+    drawTextFit(x, y, text, c, 330, s.monoSmall ? s.monoSmall : s.mono);
+    y += 19;
+}
+
+static LabControlLayout labBuildControls(const LabState& lab) {
+    LabControlLayout layout;
+    const int x = 18;
+    const int w = 324;
+    const int h = 30;
+    int y = 54;
+
+    auto addDropdown = [&](int kind, const std::string& label, const std::string& value, bool disabled = false) {
+        layout.dropdowns.push_back({SDL_Rect{x, y, w, h}, kind, label, value, disabled});
+        y += 36;
+    };
+    auto addButton = [&](int kind, const std::string& label, bool active = false) {
+        layout.buttons.push_back({SDL_Rect{x, y, w, h}, kind, label, active});
+        y += 36;
+    };
+
+    addDropdown(LAB_DD_PREVIEW, "Preview", previewModeName(lab.previewMode));
+    y += 10;
+    addDropdown(LAB_DD_TERRAIN, "Terrain/decor", terrainNameSafe(lab.terrain));
+    addDropdown(LAB_DD_BIOME, "Biome", biomeNameSafe(lab.biome));
+    addDropdown(LAB_DD_SEASON, "Season", seasonNameValue(lab.season));
+    addDropdown(LAB_DD_SEASON_PERCENT, "Season progress", std::to_string(lab.seasonPercent) + "%");
+    addDropdown(LAB_DD_TIME, "Time", timeStepName(lab.timeStep));
+    addDropdown(LAB_DD_WEATHER, "Weather", weatherNameSafe(lab.weather));
+    addDropdown(LAB_DD_FOG, "Fog", fogName(lab.fog));
+    addDropdown(LAB_DD_LIGHT, "Light", lightName(lab.lightMode));
+    addDropdown(LAB_DD_RESOURCE, "Resource amount", std::to_string(lab.resources));
+
+    y += 10;
+    addDropdown(LAB_DD_ENTITY, "Entity", labEntityName((EntityType)lab.entityType));
+    addDropdown(LAB_DD_ACTION, "Action", labActionSpec(lab) ? labActionId(lab) : "No authored action",
+                entityActionAnimationSpecCount((EntityType)lab.entityType) <= 0);
+    addDropdown(LAB_DD_DIRECTION, "Direction", directionId(lab.direction), lab.entityType == E_NONE);
+    addDropdown(LAB_DD_FRAME, "Frame", std::to_string(lab.frame), lab.entityType == E_NONE);
+    addDropdown(LAB_DD_OWNER, "Owner", "player " + std::to_string(lab.owner), lab.entityType == E_NONE);
+    addDropdown(LAB_DD_SPEED, "Animation speed", std::to_string(lab.speedPercent) + "%", lab.entityType == E_NONE);
+    addButton(LAB_BTN_PLAY, lab.playing ? "Pause animation" : "Play animation", lab.playing);
+    addButton(LAB_BTN_DAMAGED, lab.damaged ? "Damaged: yes" : "Damaged: no", lab.damaged);
+    addButton(LAB_BTN_SCREENSHOT, "Save screenshot");
+
+    layout.hueWheel = SDL_Rect{x + 226, y + 8, 84, 84};
+    return layout;
+}
+
+static const LabDropdownControl* labFindControl(const LabControlLayout& layout, int kind) {
+    for (const LabDropdownControl& control : layout.dropdowns) {
+        if (control.kind == kind) return &control;
+    }
+    return nullptr;
+}
+
+static int labDropdownSelectedValue(int kind, const LabState& lab) {
+    switch (kind) {
+        case LAB_DD_PREVIEW: return lab.previewMode;
+        case LAB_DD_TERRAIN: return lab.terrain;
+        case LAB_DD_BIOME: return lab.biome;
+        case LAB_DD_SEASON: return lab.season;
+        case LAB_DD_SEASON_PERCENT: return lab.seasonPercent;
+        case LAB_DD_TIME: return lab.timeStep;
+        case LAB_DD_WEATHER: return lab.weather;
+        case LAB_DD_FOG: return lab.fog;
+        case LAB_DD_LIGHT: return lab.lightMode;
+        case LAB_DD_RESOURCE: return lab.resources;
+        case LAB_DD_ENTITY: return lab.entityType;
+        case LAB_DD_ACTION: return lab.actionIndex;
+        case LAB_DD_DIRECTION: return lab.direction;
+        case LAB_DD_FRAME: return lab.frame;
+        case LAB_DD_OWNER: return lab.owner;
+        case LAB_DD_SPEED: return lab.speedPercent;
+        default: return 0;
+    }
+}
+
+static void labSetDropdownValue(LabState& lab, int kind, int value) {
+    switch (kind) {
+        case LAB_DD_PREVIEW: lab.previewMode = value; break;
+        case LAB_DD_TERRAIN: lab.terrain = value; break;
+        case LAB_DD_BIOME: lab.biome = value; break;
+        case LAB_DD_SEASON: lab.season = value; break;
+        case LAB_DD_SEASON_PERCENT: lab.seasonPercent = value; break;
+        case LAB_DD_TIME: lab.timeStep = value; break;
+        case LAB_DD_WEATHER: lab.weather = value; break;
+        case LAB_DD_FOG: lab.fog = value; break;
+        case LAB_DD_LIGHT: lab.lightMode = value; break;
+        case LAB_DD_RESOURCE: lab.resources = value; break;
+        case LAB_DD_ENTITY:
+            lab.entityType = value;
+            lab.actionIndex = 0;
+            lab.frame = 0;
+            break;
+        case LAB_DD_ACTION:
+            lab.actionIndex = value;
+            lab.frame = 0;
+            break;
+        case LAB_DD_DIRECTION: lab.direction = value; break;
+        case LAB_DD_FRAME: lab.frame = value; break;
+        case LAB_DD_OWNER: lab.owner = value; break;
+        case LAB_DD_SPEED: lab.speedPercent = value; break;
+        default: break;
+    }
+}
+
+static void labOpenDropdown(LabState& lab, int kind) {
+    lab.activeDropdown = kind;
+    std::vector<LabDropdownOption> options = labDropdownOptions(kind, lab);
+    int selected = labDropdownSelectedValue(kind, lab);
+    int selectedIndex = 0;
+    for (int i = 0; i < (int)options.size(); ++i) {
+        if (options[i].value == selected) {
+            selectedIndex = i;
+            break;
+        }
+    }
+    lab.dropdownScroll = std::max(0, selectedIndex - 4);
+}
+
+static void labSetHueFromPoint(LabState& lab, int mx, int my) {
+    SDL_Rect r = labBuildControls(lab).hueWheel;
+    int cx = r.x + r.w / 2;
+    int cy = r.y + r.h / 2;
+    float angle = std::atan2((float)(my - cy), (float)(mx - cx)) * 180.0f / 3.14159265f;
+    lab.hue = ((int)std::lround(angle) + 360) % 360;
+}
+
+static void clampLabState(LabState& lab);
+
+static SDL_Rect labDropdownPopupRect(const LabState& lab, const LabControlLayout& layout, int& optionH, int& visibleCount) {
+    optionH = 24;
+    visibleCount = 0;
+    const LabDropdownControl* control = labFindControl(layout, lab.activeDropdown);
+    if (!control) return SDL_Rect{0,0,0,0};
+    int count = (int)labDropdownOptions(lab.activeDropdown, lab).size();
+    visibleCount = std::min(count, std::max(3, std::min(12, (s.winH - control->r.y - control->r.h - 18) / optionH)));
+    int h = std::max(optionH, visibleCount * optionH + 2);
+    return SDL_Rect{control->r.x, control->r.y + control->r.h + 2, control->r.w, h};
+}
+
+static void drawLabDropdownControl(const LabDropdownControl& control, bool open) {
+    SDL_SetRenderDrawBlendMode(s.ren, SDL_BLENDMODE_BLEND);
+    Color bg = control.disabled ? rgb(18,20,24,210) : open ? rgb(42,72,94,240)
+        : rectHovered(control.r) ? rgb(28,38,48,240) : rgb(16,22,30,235);
+    Color bd = open ? rgb(155,220,245) : control.disabled ? rgb(70,76,84) : rgb(86,102,116);
+    setDraw(bg);
+    SDL_RenderFillRect(s.ren, &control.r);
+    setDraw(bd);
+    SDL_RenderDrawRect(s.ren, &control.r);
+    drawTextFit(control.r.x + 10, control.r.y + 6, control.label, control.disabled ? rgb(105,112,120) : rgb(166,178,186),
+                128, s.monoSmall ? s.monoSmall : s.mono);
+    drawTextFit(control.r.x + 145, control.r.y + 6, control.value, control.disabled ? rgb(105,112,120) : rgb(232,238,230),
+                control.r.w - 176, s.monoSmall ? s.monoSmall : s.mono);
+    drawTextFit(control.r.x + control.r.w - 22, control.r.y + 6, "v", control.disabled ? rgb(80,86,94) : rgb(255,230,135),
+                18, s.monoSmall ? s.monoSmall : s.mono);
+}
+
+static void drawLabButtonControl(const LabButtonControl& button) {
+    SDL_SetRenderDrawBlendMode(s.ren, SDL_BLENDMODE_BLEND);
+    Color bg = button.active ? rgb(60,83,56,235) : rectHovered(button.r) ? rgb(34,42,48,235) : rgb(18,24,30,235);
+    Color bd = button.active ? rgb(150,222,135) : rgb(86,102,116);
+    setDraw(bg);
+    SDL_RenderFillRect(s.ren, &button.r);
+    setDraw(bd);
+    SDL_RenderDrawRect(s.ren, &button.r);
+    drawTextFit(button.r.x + 10, button.r.y + 6, button.label, rgb(232,238,230), button.r.w - 20,
+                s.monoSmall ? s.monoSmall : s.mono);
+}
+
+static void drawLabDropdownPopup(const LabState& lab) {
+    if (lab.activeDropdown == LAB_DD_NONE) return;
+    LabControlLayout layout = labBuildControls(lab);
+    const LabDropdownControl* control = labFindControl(layout, lab.activeDropdown);
+    if (!control) return;
+    std::vector<LabDropdownOption> options = labDropdownOptions(lab.activeDropdown, lab);
+    if (options.empty()) return;
+    int optionH = 24;
+    int visibleCount = 0;
+    SDL_Rect popup = labDropdownPopupRect(lab, layout, optionH, visibleCount);
+    int maxScroll = std::max(0, (int)options.size() - visibleCount);
+    int scroll = std::max(0, std::min(lab.dropdownScroll, maxScroll));
+
+    SDL_SetRenderDrawBlendMode(s.ren, SDL_BLENDMODE_BLEND);
+    setDraw(rgb(4,7,10,255));
+    SDL_RenderFillRect(s.ren, &popup);
+    setDraw(rgb(155,220,245));
+    SDL_RenderDrawRect(s.ren, &popup);
+
+    int selected = labDropdownSelectedValue(lab.activeDropdown, lab);
+    for (int i = 0; i < visibleCount; ++i) {
+        int optionIndex = scroll + i;
+        if (optionIndex >= (int)options.size()) break;
+        SDL_Rect row{popup.x + 1, popup.y + 1 + i * optionH, popup.w - 2, optionH};
+        bool isSelected = options[optionIndex].value == selected;
+        bool hovered = rectHovered(row);
+        if (isSelected || hovered) {
+            setDraw(isSelected ? rgb(60,89,70,230) : rgb(26,38,48,230));
+            SDL_RenderFillRect(s.ren, &row);
+        }
+        drawTextFit(row.x + 8, row.y + 4, options[optionIndex].label,
+                    isSelected ? rgb(255,235,145) : rgb(226,232,226), row.w - 16,
+                    s.monoSmall ? s.monoSmall : s.mono);
+    }
+    if ((int)options.size() > visibleCount) {
+        std::string page = std::to_string(scroll + 1) + "-" + std::to_string(std::min((int)options.size(), scroll + visibleCount))
+            + "/" + std::to_string(options.size());
+        drawTextFit(popup.x + popup.w - 72, popup.y + popup.h - 18, page, rgb(150,165,174), 68,
+                    s.monoSmall ? s.monoSmall : s.mono);
+    }
+}
+
+static bool labHandleMouseDown(LabState& lab, int mx, int my) {
+    LabControlLayout layout = labBuildControls(lab);
+
+    if (lab.activeDropdown != LAB_DD_NONE) {
+        int optionH = 24;
+        int visibleCount = 0;
+        SDL_Rect popup = labDropdownPopupRect(lab, layout, optionH, visibleCount);
+        std::vector<LabDropdownOption> options = labDropdownOptions(lab.activeDropdown, lab);
+        int maxScroll = std::max(0, (int)options.size() - visibleCount);
+        lab.dropdownScroll = std::max(0, std::min(lab.dropdownScroll, maxScroll));
+        if (pointInRect(mx, my, popup)) {
+            int row = (my - popup.y - 1) / optionH;
+            int optionIndex = lab.dropdownScroll + row;
+            if (row >= 0 && row < visibleCount && optionIndex >= 0 && optionIndex < (int)options.size()) {
+                labSetDropdownValue(lab, lab.activeDropdown, options[optionIndex].value);
+                lab.activeDropdown = LAB_DD_NONE;
+                clampLabState(lab);
+            }
+            return true;
+        }
+        lab.activeDropdown = LAB_DD_NONE;
+    }
+
+    for (const LabDropdownControl& control : layout.dropdowns) {
+        if (!control.disabled && pointInRect(mx, my, control.r)) {
+            labOpenDropdown(lab, control.kind);
+            return true;
+        }
+    }
+    for (const LabButtonControl& button : layout.buttons) {
+        if (pointInRect(mx, my, button.r)) {
+            if (button.kind == LAB_BTN_PLAY) lab.playing = !lab.playing;
+            else if (button.kind == LAB_BTN_DAMAGED) lab.damaged = !lab.damaged;
+            else if (button.kind == LAB_BTN_SCREENSHOT) {
+                std::filesystem::path path = labManualShotPath(lab);
+                bool ok = saveLabShot(lab, path);
+                std::cerr << "realm: lab manual screenshot " << (ok ? "ok " : "failed ")
+                          << path.string() << "\n";
+            }
+            return true;
+        }
+    }
+    int cx = layout.hueWheel.x + layout.hueWheel.w / 2;
+    int cy = layout.hueWheel.y + layout.hueWheel.h / 2;
+    float dx = (float)(mx - cx);
+    float dy = (float)(my - cy);
+    float d = std::sqrt(dx * dx + dy * dy);
+    if (d <= layout.hueWheel.w / 2.0f && d >= layout.hueWheel.w * 0.20f) {
+        lab.hueDragging = true;
+        labSetHueFromPoint(lab, mx, my);
+        return true;
+    }
+    return false;
+}
+
+static void drawLabPreview(const LabState& lab, SDL_Rect area, TilesetAssetFrame& assetFrame) {
+    setDraw(rgb(7,9,12));
+    SDL_RenderFillRect(s.ren, &area);
+    SDL_SetRenderDrawBlendMode(s.ren, SDL_BLENDMODE_BLEND);
+    setDraw(rgb(70,82,94));
+    SDL_RenderDrawRect(s.ren, &area);
+
+    int cx = area.x + area.w / 2;
+    int cy = area.y + area.h / 2 + 18;
+    int hw = std::max(58, std::min(112, area.w / 6));
+    int hh = hw / 2;
+    const Tile& tile = g.map[LAB_Y][LAB_X];
+
+    if (lab.previewMode != 1) {
+        Color bg = applyVisionAndLight(terrainBg(tile, LAB_X, LAB_Y), LAB_X, LAB_Y);
+        fillDiamond(cx, cy, hw, hh, bg);
+        applyTerrainTextureIso(cx, cy, hw, hh, tile, LAB_X, LAB_Y);
+        drawDiamondOutline(cx, cy, hw, hh, rgb(245,235,150,210));
+    } else {
+        SDL_Rect empty{cx - 72, cy - 72, 144, 144};
+        setDraw(rgb(20,24,30,210));
+        SDL_RenderFillRect(s.ren, &empty);
+        setDraw(rgb(110,120,132,180));
+        SDL_RenderDrawRect(s.ren, &empty);
+    }
+
+    Entity* ent = entityAt(LAB_X, LAB_Y);
+    if (lab.previewMode != 0 && ent) {
+        int spriteSize = 128;
+        SDL_Rect dst{cx - spriteSize / 2, cy - spriteSize / 2 - 18, spriteSize, spriteSize};
+        SDL_Color team = hueColor(lab.hue);
+        Color mod = applyVisionToGlyph(rgb(255,255,255), LAB_X, LAB_Y);
+        if (!drawEntityImageTile(*ent, dst, mod, labActionId(lab), directionId(lab.direction),
+                                 lab.frame, team, &assetFrame)) {
+            bool usesSymbolFont = false;
+            drawCentered(tilesetEntityVisual(*ent, usesSymbolFont), dst, rgb(255,255,255),
+                         usesSymbolFont, usesSymbolFont);
+        }
+    } else if (lab.previewMode == 1) {
+        drawTextFit(cx - 82, cy - 8, "No entity selected", rgb(150,160,168), 164);
+    }
+}
+
+static void drawLabFrame(const LabState& lab, bool present) {
+    SDL_GetWindowSize(s.win, &s.winW, &s.winH);
+    setDraw(rgb(3,5,8));
+    SDL_RenderClear(s.ren);
+    labApplyWorld(lab);
+
+    int leftW = 360;
+    int rightW = 420;
+    SDL_Rect preview{leftW + 12, 56, std::max(260, s.winW - leftW - rightW - 24), std::max(300, s.winH - 112)};
+    TilesetAssetFrame assetFrame;
+    drawLabPreview(lab, preview, assetFrame);
+
+    drawText(18, 14, "Realm Tileset Lab", rgb(255,235,145));
+    drawTextFit(leftW + 18, 18, previewModeName(lab.previewMode), rgb(180,205,230), preview.w);
+    drawTextFit(preview.x, preview.y + preview.h + 14,
+                "Click dropdowns to edit; drag the hue wheel. Keys still work: Esc quit, Space play/pause, Q/E terrain, U/I entity.",
+                rgb(180,188,196), preview.w);
+
+    LabControlLayout layout = labBuildControls(lab);
+    drawText(18, 36, "Tile", rgb(255,230,135));
+    drawText(18, 418, "Entity", rgb(255,230,135));
+    for (const LabDropdownControl& control : layout.dropdowns) {
+        drawLabDropdownControl(control, lab.activeDropdown == control.kind);
+    }
+    for (const LabButtonControl& button : layout.buttons) {
+        drawLabButtonControl(button);
+    }
+
+    SDL_Color team = hueColor(lab.hue);
+    SDL_Rect swatch{layout.hueWheel.x - 118, layout.hueWheel.y + 20, 92, 28};
+    setDraw(colorFromSdl(team));
+    SDL_RenderFillRect(s.ren, &swatch);
+    setDraw(rgb(255,255,255,180));
+    SDL_RenderDrawRect(s.ren, &swatch);
+    drawTextFit(swatch.x, swatch.y - 20, "Team colour", rgb(166,178,186), 120, s.monoSmall ? s.monoSmall : s.mono);
+    drawTextFit(swatch.x, swatch.y + 34, "hue " + std::to_string(lab.hue), rgb(232,238,230), 120,
+                s.monoSmall ? s.monoSmall : s.mono);
+    drawHueWheel(layout.hueWheel.x + layout.hueWheel.w / 2, layout.hueWheel.y + layout.hueWheel.h / 2,
+                 layout.hueWheel.w / 2, lab.hue);
+
+    int rx = s.winW - rightW + 18;
+    int ry = 54;
+    drawLabLine(rx, ry, "Animation Info", rgb(255,230,135));
+    if (const EntityActionAnimationSpec* spec = labActionSpec(lab)) {
+        drawLabLine(rx, ry, "id: " + std::string(spec->action));
+        drawLabLine(rx, ry, "family: " + std::string(spec->family));
+        drawLabLine(rx, ry, "relation: " + std::string(actionTargetRelationId(spec->targetRelation)));
+        drawLabLine(rx, ry, "range: " + std::to_string(spec->rangeTiles)
+            + " loop: " + (spec->loop ? "true" : "false")
+            + " hold: " + (spec->holdLast ? "true" : "false"));
+        drawLabLine(rx, ry, "transition: " + std::to_string(spec->transitionAfterMs) + "ms");
+        drawLabLine(rx, ry, "fit: " + std::string(spec->fitProfile));
+        if (spec->tool && *spec->tool) drawLabLine(rx, ry, "tool: " + std::string(spec->tool));
+        if (spec->carriedObject && *spec->carriedObject) drawLabLine(rx, ry, "carry: " + std::string(spec->carriedObject));
+        drawTextFit(rx, ry, spec->description, rgb(205,214,220), rightW - 36, s.monoSmall ? s.monoSmall : s.mono);
+        ry += 44;
+        for (int i = 0; i < spec->frameCount; ++i) {
+            const AnimationFrameSpec& f = spec->frames[i];
+            drawLabLine(rx, ry, std::string(i == lab.frame ? "> " : "  ") + f.id
+                + "  " + std::to_string(f.durationMs) + "ms", i == lab.frame ? rgb(255,230,135) : rgb(210,218,220));
+            drawTextFit(rx + 18, ry, f.description, rgb(150,165,174), rightW - 54, s.monoSmall ? s.monoSmall : s.mono);
+            ry += 34;
+        }
+    } else {
+        drawLabLine(rx, ry, "No authored animation spec; showing idle placeholder.", rgb(210,165,135));
+    }
+
+    ry += 6;
+    drawLabLine(rx, ry, "Asset", rgb(255,230,135));
+    drawLabLine(rx, ry, std::string("status: ") + (assetFrame.status.empty() ? "not requested" : assetFrame.status));
+    drawLabLine(rx, ry, std::string("base: ") + (assetFrame.baseLoaded ? "loaded" : "missing"));
+    drawTextFit(rx, ry, assetFrame.basePath, rgb(150,165,174), rightW - 36, s.monoSmall ? s.monoSmall : s.mono);
+    ry += 38;
+    drawLabLine(rx, ry, std::string("mask: ") + (assetFrame.maskLoaded ? "loaded" : "missing"));
+    drawTextFit(rx, ry, assetFrame.maskPath, rgb(150,165,174), rightW - 36, s.monoSmall ? s.monoSmall : s.mono);
+    ry += 38;
+
+    drawLabLine(rx, ry, "ASCII Cell", rgb(255,230,135));
+    TerminalCell cell = terminalMapCell(LAB_X, LAB_Y);
+    std::string glyph(1, cell.ch);
+    drawLabLine(rx, ry, "glyph: " + glyph);
+    drawLabLine(rx, ry, "fg rgb: " + std::to_string(cell.fg.r) + "," + std::to_string(cell.fg.g) + "," + std::to_string(cell.fg.b));
+    drawLabLine(rx, ry, "bg rgb: " + std::to_string(cell.bg.r) + "," + std::to_string(cell.bg.g) + "," + std::to_string(cell.bg.b));
+
+    SDL_Rect asciiBox{rx, ry + 4, 92, 72};
+    setDraw(cell.bg);
+    SDL_RenderFillRect(s.ren, &asciiBox);
+    setDraw(rgb(255,255,255,120));
+    SDL_RenderDrawRect(s.ren, &asciiBox);
+    drawCentered(glyph, asciiBox, cell.fg, false);
+
+    drawLabDropdownPopup(lab);
+
+    if (present) SDL_RenderPresent(s.ren);
+}
+
+static void clampLabState(LabState& lab) {
+    lab.previewMode = (lab.previewMode + 3) % 3;
+    lab.terrain = (lab.terrain + (int)T_CASTLE_GATE + 1) % ((int)T_CASTLE_GATE + 1);
+    lab.biome = (lab.biome + (int)B_OCEAN + 1) % ((int)B_OCEAN + 1);
+    lab.season = (lab.season + 4) % 4;
+    lab.seasonPercent = std::max(0, std::min(99, lab.seasonPercent));
+    lab.timeStep = (lab.timeStep + 6) % 6;
+    lab.weather = (lab.weather + 4) % 4;
+    lab.fog = (lab.fog + 3) % 3;
+    lab.lightMode = (lab.lightMode + 4) % 4;
+    lab.resources = std::max(0, std::min(999, lab.resources));
+    std::vector<EntityType> types = labEntityTypes();
+    int idx = 0;
+    for (int i = 0; i < (int)types.size(); ++i) if (types[i] == lab.entityType) idx = i;
+    lab.entityType = types[std::max(0, std::min(idx, (int)types.size() - 1))];
+    int actionCount = entityActionAnimationSpecCount((EntityType)lab.entityType);
+    if (actionCount <= 0) lab.actionIndex = 0;
+    else lab.actionIndex = (lab.actionIndex + actionCount) % actionCount;
+    lab.direction = (lab.direction + 2) % 2;
+    lab.frame = (lab.frame + labFrameCount(lab)) % labFrameCount(lab);
+    lab.owner = (lab.owner + MAX_PLAYERS) % MAX_PLAYERS;
+    lab.hue = (lab.hue + 360) % 360;
+    lab.speedPercent = std::max(10, std::min(400, lab.speedPercent));
+    if (lab.activeDropdown != LAB_DD_NONE) {
+        std::vector<LabDropdownOption> options = labDropdownOptions(lab.activeDropdown, lab);
+        if (options.empty()) lab.activeDropdown = LAB_DD_NONE;
+        else lab.dropdownScroll = std::max(0, std::min(lab.dropdownScroll, std::max(0, (int)options.size() - 1)));
+    }
+}
+
+static void stepLabEntity(LabState& lab, int delta) {
+    std::vector<EntityType> types = labEntityTypes();
+    int idx = 0;
+    for (int i = 0; i < (int)types.size(); ++i) if (types[i] == lab.entityType) idx = i;
+    idx = (idx + delta + (int)types.size()) % (int)types.size();
+    lab.entityType = types[idx];
+    lab.actionIndex = 0;
+    lab.frame = 0;
+}
+
+static bool saveLabShot(const LabState& lab, const std::filesystem::path& path) {
+    drawLabFrame(lab, false);
+    return saveRendererPixels(path.string());
+}
+
+static int runLabSmoke() {
+    namespace fs = std::filesystem;
+    fs::path outDir = fs::path("build") / "lab-screenshots";
+    fs::create_directories(outDir);
+    gfxSetWindowSizeForTest(1280, 820);
+
+    bool ok = true;
+    LabState lab;
+    ok = saveLabShot(lab, outDir / "00-default-no-entity.bmp") && ok;
+
+    lab.activeDropdown = LAB_DD_ENTITY;
+    ok = saveLabShot(lab, outDir / "00b-entity-dropdown.bmp") && ok;
+    lab.activeDropdown = LAB_DD_NONE;
+
+    lab.entityType = E_PEASANT;
+    ok = saveLabShot(lab, outDir / "01-combined-peasant.bmp") && ok;
+
+    lab.previewMode = 1;
+    lab.actionIndex = 0;
+    lab.direction = 0;
+    lab.frame = 0;
+    ok = saveLabShot(lab, outDir / "01a-peasant-idle-front-frame0.bmp") && ok;
+    lab.frame = 1;
+    ok = saveLabShot(lab, outDir / "01b-peasant-idle-front-frame1-arms-crossed.bmp") && ok;
+    lab.direction = 1;
+    lab.frame = 0;
+    ok = saveLabShot(lab, outDir / "01c-peasant-idle-back-frame0.bmp") && ok;
+    lab.frame = 1;
+    ok = saveLabShot(lab, outDir / "01d-peasant-idle-back-frame1-arms-crossed.bmp") && ok;
+
+    lab.previewMode = 0;
+    lab.entityType = E_NONE;
+    lab.terrain = T_WATER;
+    lab.weather = W_RAIN;
+    ok = saveLabShot(lab, outDir / "02-tile-only-rain-water.bmp") && ok;
+
+    lab.previewMode = 1;
+    lab.entityType = E_PEASANT;
+    lab.terrain = T_GRASS;
+    lab.weather = W_CLEAR;
+    lab.hue = 0;
+    ok = saveLabShot(lab, outDir / "03-peasant-red-team.bmp") && ok;
+
+    lab.hue = 125;
+    lab.actionIndex = 1;
+    lab.frame = 1;
+    ok = saveLabShot(lab, outDir / "04-peasant-walk-green-team.bmp") && ok;
+
+    lab.entityType = E_MILITIA;
+    lab.actionIndex = 0;
+    lab.frame = 0;
+    ok = saveLabShot(lab, outDir / "05-missing-militia-placeholder.bmp") && ok;
+
+    lab.previewMode = 2;
+    lab.entityType = E_PEASANT;
+    lab.timeStep = 0;
+    lab.lightMode = 3;
+    ok = saveLabShot(lab, outDir / "06-night-candle.bmp") && ok;
+
+    std::cerr << "realm: lab smoke " << (ok ? "complete" : "failed")
+              << " dir=" << outDir.string() << "\n";
+    return ok ? 0 : 1;
+}
+
+} // namespace
+
+int gfxRunTilesetLab() {
+    std::cerr << "realm: lab started\n";
+    labForcesImageTileset = true;
+    displayMode = DM_EMOJI;
+    gfxSetProjection(true);
+    initGameWithSeed(0, 2468, 0);
+    g.viewX = LAB_X - 8;
+    g.viewY = LAB_Y - 8;
+    gfxSetZoomForTest(34);
+
+    if (std::getenv("REALM_LAB_SMOKE")) return runLabSmoke();
+
+    LabState lab;
+    bool quit = false;
+    Uint32 lastTick = SDL_GetTicks();
+    while (!quit) {
+        SDL_Event e;
+        while (SDL_PollEvent(&e)) {
+            if (e.type == SDL_QUIT) quit = true;
+            if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
+                s.winW = e.window.data1;
+                s.winH = e.window.data2;
+            }
+            if (e.type == SDL_MOUSEMOTION) {
+                s.mouseX = e.motion.x;
+                s.mouseY = e.motion.y;
+                if (lab.hueDragging) labSetHueFromPoint(lab, s.mouseX, s.mouseY);
+            }
+            if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
+                s.mouseX = e.button.x;
+                s.mouseY = e.button.y;
+                labHandleMouseDown(lab, s.mouseX, s.mouseY);
+            }
+            if (e.type == SDL_MOUSEBUTTONUP && e.button.button == SDL_BUTTON_LEFT) {
+                lab.hueDragging = false;
+            }
+            if (e.type == SDL_MOUSEWHEEL && lab.activeDropdown != LAB_DD_NONE) {
+                lab.dropdownScroll -= e.wheel.y;
+            }
+            if (e.type != SDL_KEYDOWN) continue;
+            SDL_Keycode k = e.key.keysym.sym;
+            if (k == SDLK_ESCAPE) quit = true;
+            else if (k == SDLK_1) lab.previewMode++;
+            else if (k == SDLK_q) lab.terrain--;
+            else if (k == SDLK_e) lab.terrain++;
+            else if (k == SDLK_a) lab.biome--;
+            else if (k == SDLK_d && (e.key.keysym.mod & KMOD_SHIFT)) lab.damaged = !lab.damaged;
+            else if (k == SDLK_d) lab.biome++;
+            else if (k == SDLK_z) lab.season--;
+            else if (k == SDLK_x) lab.season++;
+            else if (k == SDLK_c) lab.seasonPercent -= 10;
+            else if (k == SDLK_v) lab.seasonPercent += 10;
+            else if (k == SDLK_n) lab.timeStep--;
+            else if (k == SDLK_m) lab.timeStep++;
+            else if (k == SDLK_r) lab.weather++;
+            else if (k == SDLK_b) lab.fog++;
+            else if (k == SDLK_l) lab.lightMode++;
+            else if (k == SDLK_t) lab.resources = lab.resources >= 200 ? 0 : lab.resources + 50;
+            else if (k == SDLK_u) stepLabEntity(lab, -1);
+            else if (k == SDLK_i) stepLabEntity(lab, 1);
+            else if (k == SDLK_j) { lab.actionIndex--; lab.frame = 0; }
+            else if (k == SDLK_k) { lab.actionIndex++; lab.frame = 0; }
+            else if (k == SDLK_h) lab.direction--;
+            else if (k == SDLK_y) lab.direction++;
+            else if (k == SDLK_f) lab.frame--;
+            else if (k == SDLK_g) lab.frame++;
+            else if (k == SDLK_o) lab.owner--;
+            else if (k == SDLK_p) lab.owner++;
+            else if (k == SDLK_LEFTBRACKET) lab.hue -= 8;
+            else if (k == SDLK_RIGHTBRACKET) lab.hue += 8;
+            else if (k == SDLK_MINUS || k == SDLK_KP_MINUS) lab.speedPercent -= 10;
+            else if (k == SDLK_EQUALS || k == SDLK_PLUS || k == SDLK_KP_PLUS) lab.speedPercent += 10;
+            else if (k == SDLK_SPACE) lab.playing = !lab.playing;
+            else if (k == SDLK_s) {
+                std::filesystem::path path = labManualShotPath(lab);
+                bool ok = saveLabShot(lab, path);
+                std::cerr << "realm: lab manual screenshot " << (ok ? "ok " : "failed ")
+                          << path.string() << "\n";
+            }
+            clampLabState(lab);
+        }
+
+        Uint32 now = SDL_GetTicks();
+        if (lab.playing && now - lastTick >= (Uint32)std::max(12, (TICK_MS * 100) / std::max(10, lab.speedPercent))) {
+            g.tick++;
+            if (labFrameCount(lab) > 1) lab.frame = (lab.frame + 1) % labFrameCount(lab);
+            lastTick = now;
+        }
+        clampLabState(lab);
+        drawLabFrame(lab, true);
+        SDL_Delay(16);
+    }
+    labLightOverride.enabled = false;
+    labForcesImageTileset = false;
+    return 0;
 }

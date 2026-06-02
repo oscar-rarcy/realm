@@ -517,6 +517,7 @@ void renderMap() {
             if (wallPrev[my][mx]) drawCh = ACS_CKBOARD;
 
             Entity* ent = entityAt(mx, my);
+            if (!ent) ent = corpseAt(mx, my);
             // Cloaking: enemy units fade at night/storm unless a friendly eye is close.
             // Wheat fields also conceal enemies — units in crops need close detection.
             bool inCrop = ent && !isBuilding(ent->type) && tile.terrain == T_WHEAT;
@@ -662,6 +663,12 @@ void renderMap() {
                     ch = '!'; drawCh = (chtype)ch;
                     emojiStr = "!";
                 }
+            } else if (ent && ent->state == S_DEAD) {
+                bool decayed = ent->deathTicks >= DEATH_DECAY_TICKS;
+                ch = decayed ? '*' : '%';
+                drawCh = (chtype)ch;
+                cp = CP_RUINS;
+                emojiStr = decayed ? "\xe2\x98\xa0" : "\xe2\x80\xa0"; // ☠ : †
             }
             // Projectile overwrites terrain/entity glyph; keep ASCII char for colour lookup.
             for (auto& p : g.projectiles) {
@@ -753,7 +760,7 @@ void renderMap() {
         for (int sy = 0; sy < g.viewH; sy++) for (int sx = 0; sx < g.viewW; sx++) {
             int mx = g.viewX + sx, my = g.viewY + sy;
             if (!inBounds(mx,my) || !g.map[my][mx].visible[0]) continue;
-            if (entityAt(mx, my)) continue; // don't paint over units/buildings
+            if (entityAt(mx, my) || corpseAt(mx, my)) continue; // don't paint over units/buildings/corpses
             unsigned h = ((unsigned)(mx*73856093u) ^ (unsigned)(my*19349663u) ^ (unsigned)(frame*83492791u));
             if ((int)(h % 100) >= density) continue;
             if (snowWeather) {

@@ -1,5 +1,6 @@
 #include "realm.h"
 #include "gfx_renderer.h"
+#include "env_config.h"
 
 #include <emscripten/emscripten.h>
 #include <SDL.h>
@@ -13,6 +14,18 @@ namespace {
 
 double nextTickMs = 0.0;
 bool initialized = false;
+bool menuReadyLogged = false;
+bool asciiOnlySurface = false;
+int menuAIs = 1;
+int menuBiomeIdx = 7;
+
+enum WebScreen {
+    WEB_MENU,
+    WEB_MATCH,
+    WEB_EXITED
+};
+
+WebScreen webScreen = WEB_MENU;
 
 int envIntOnly(const char* name, int fallback) {
     const char* v = std::getenv(name);
@@ -83,6 +96,22 @@ static bool isEmbedRoute() {
     });
 }
 
+static bool isAsciiOnlySurface() {
+    return EM_ASM_INT({
+        if (typeof window === 'undefined' || !window.location) return 0;
+        var host = String(window.location.hostname || "").toLowerCase();
+        var path = String(window.location.pathname || "").toLowerCase();
+        var search = String(window.location.search || "").toLowerCase();
+        var hash = String(window.location.hash || "").toLowerCase();
+        if (host.indexOf('ascii.') === 0 || host.indexOf('ascii--') === 0) return 1;
+        var segments = path.split('/').filter(Boolean);
+        for (var i = 0; i < segments.length; i++) {
+            if (segments[i] === 'ascii' || segments[i] === 'realm-ascii') return 1;
+        }
+        return (search.indexOf('asciionly=1') !== -1 || hash.indexOf('asciionly=1') !== -1) ? 1 : 0;
+    });
+}
+
 void notifyReady() {
     EM_ASM({
         globalThis.realmReady = true;
@@ -92,11 +121,79 @@ void notifyReady() {
     });
 }
 
+void startMatch(int numAIs, bool deterministic) {
+    if (deterministic) {
+        g.biomeChoice = settingInt("REALM_WEB_BIOME", "biome", B_TEMPERATE);
+        if (g.biomeChoice < -1 || g.biomeChoice > B_OCEAN) g.biomeChoice = B_TEMPERATE;
+
+        unsigned seed = (unsigned)settingInt("REALM_WEB_SEED", "seed", 2468);
+        int humanCorner = settingInt("REALM_WEB_HUMAN_CORNER", "corner", 1);
+        if (humanCorner < 0 || humanCorner > 3) humanCorner = 1;
+
+        initGameWithSeed(numAIs, seed, humanCorner);
+    } else {
+        initGame(numAIs);
+    }
+
+    if (gfxConsumeLoadGameRequest()) {
+        if (loadGame("realm-save.txt")) {
+            std::cerr << "realm: loaded realm-save.txt from web menu\n";
+        } else {
+            std::cerr << "realm: web menu load failed; continuing new game\n";
+        }
+    }
+
+    gfxOnNewGame();
+    setStatus("Browser build ready. Select peasants with click/tap and command with right click or keyboard.");
+    webScreen = WEB_MATCH;
+    nextTickMs = emscripten_get_now() + TICK_MS;
+    std::cerr << "realm: web initialized tick=" << g.tick
+              << " entities=" << g.entities.size() << "\n";
+}
+
+void showMenu() {
+    webScreen = WEB_MENU;
+    g.returnToMenu = false;
+    menuReadyLogged = false;
+    menuAIs = std::max(1, std::min(3, settingInt("REALM_WEB_AIS", "ais", 1)));
+    menuBiomeIdx = 7;
+    int forcedBiome = settingInt("REALM_WEB_BIOME", "biome", -1);
+    if (forcedBiome >= B_TEMPERATE && forcedBiome <= B_OCEAN) menuBiomeIdx = forcedBiome;
+}
+
 void frame() {
     if (!initialized) return;
 
+    if (webScreen == WEB_EXITED) return;
+
+    if (webScreen == WEB_MENU) {
+        int result = gfxSplashFrame(menuAIs, menuBiomeIdx);
+        if (!menuReadyLogged) {
+            std::cerr << "realm: main screen ready\n";
+            menuReadyLogged = true;
+        }
+        if (result < 0) {
+            webScreen = WEB_EXITED;
+            setStatus("Realm exited.");
+            std::cerr << "realm: web exited from main menu\n";
+        } else if (result > 0) {
+            startMatch(menuAIs, false);
+        }
+        return;
+    }
+
     bool quit = false;
     gfxPollInput(quit);
+    if (quit) {
+        webScreen = WEB_EXITED;
+        setStatus("Realm exited.");
+        std::cerr << "realm: web exited from match\n";
+        return;
+    }
+    if (g.returnToMenu) {
+        showMenu();
+        return;
+    }
 
     double now = emscripten_get_now();
     int safety = 0;
@@ -109,6 +206,7 @@ void frame() {
     }
 
     gfxRender();
+    if (g.returnToMenu) showMenu();
 }
 
 } // namespace
@@ -130,13 +228,96 @@ int realm_web_selected_id() {
     return g.selectedId;
 }
 
+EMSCRIPTEN_KEEPALIVE
+int realm_web_selected_count() {
+    return g.selectedIds.empty() ? (g.selectedId >= 0 ? 1 : 0) : (int)g.selectedIds.size();
+}
+
+EMSCRIPTEN_KEEPALIVE
+int realm_web_view_x() {
+    return g.viewX;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int realm_web_view_y() {
+    return g.viewY;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int realm_web_view_w() {
+    return g.viewW;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int realm_web_view_h() {
+    return g.viewH;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int realm_web_cursor_x() {
+    return g.cursorX;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int realm_web_cursor_y() {
+    return g.cursorY;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int realm_web_first_owned_unit_x() {
+    for (const Entity& e : g.entities) {
+        if (e.alive && e.owner == 0 && isUnit(e.type)) return e.x;
+    }
+    return -1;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int realm_web_first_owned_unit_y() {
+    for (const Entity& e : g.entities) {
+        if (e.alive && e.owner == 0 && isUnit(e.type)) return e.y;
+    }
+    return -1;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int realm_web_screen_x_for_tile(int mx, int my) {
+    int px = 0, py = 0;
+    return gfxScreenCenterForMapTileForTest(mx, my, px, py) ? px : -1;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int realm_web_screen_y_for_tile(int mx, int my) {
+    int px = 0, py = 0;
+    return gfxScreenCenterForMapTileForTest(mx, my, px, py) ? py : -1;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int realm_web_screen() {
+    return webScreen == WEB_MATCH ? 1 : 0;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int realm_web_ascii_only() {
+    return asciiOnlySurface ? 1 : 0;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int realm_web_display_mode() {
+    return displayMode == DM_ASCII ? 0 : 1;
+}
+
 }
 
 int main() {
     forceUtf8Locale();
-    displayMode = DM_EMOJI;
-    if (urlSettingEquals("display", "ascii") || urlSettingEquals("visual", "ascii")) {
+    asciiOnlySurface = isAsciiOnlySurface() || realmVisualModeIsAsciiOnly();
+    displayMode = asciiOnlySurface ? DM_ASCII : DM_EMOJI;
+    if (!asciiOnlySurface && (urlSettingEquals("display", "ascii") || urlSettingEquals("visual", "ascii"))) {
         displayMode = DM_ASCII;
+    } else if (!asciiOnlySurface
+               && (urlSettingEquals("display", "tileset") || urlSettingEquals("visual", "tileset")
+                   || urlSettingEquals("display", "emoji") || urlSettingEquals("visual", "emoji"))) {
+        displayMode = DM_EMOJI;
     }
     const bool startedFromEmbed = isEmbedRoute();
 
@@ -145,45 +326,20 @@ int main() {
         return 1;
     }
 
-    if (urlSettingEquals("projection", "topdown") || urlSettingEquals("view", "topdown")) {
-        gfxSetProjection(false);
-    } else if (urlSettingEquals("projection", "isometric") || urlSettingEquals("view", "isometric")) {
-        gfxSetProjection(true);
-    }
+    gfxSetAsciiOnly(asciiOnlySurface);
+    gfxSetProjection(true);
 
     int numAIs = settingInt("REALM_WEB_AIS", "ais", 1);
     numAIs = std::max(1, std::min(3, numAIs));
 
     if (startedFromEmbed) {
-        g.biomeChoice = settingInt("REALM_WEB_BIOME", "biome", B_TEMPERATE);
-        if (g.biomeChoice < -1 || g.biomeChoice > B_OCEAN) g.biomeChoice = B_TEMPERATE;
-
-        unsigned seed = (unsigned)settingInt("REALM_WEB_SEED", "seed", 2468);
-        int humanCorner = settingInt("REALM_WEB_HUMAN_CORNER", "corner", 1);
-        if (humanCorner < 0 || humanCorner > 3) humanCorner = 1;
-
-        initGameWithSeed(numAIs, seed, humanCorner);
+        startMatch(numAIs, true);
     } else {
-        g.biomeChoice = settingInt("REALM_WEB_BIOME", "biome", -1);
-        if (g.biomeChoice < -1 || g.biomeChoice > B_OCEAN) g.biomeChoice = -1;
-        int seed = urlInt("seed", -1);
-        int humanCorner = urlInt("corner", -1);
-        if (seed >= 0 || (humanCorner >= 0 && humanCorner <= 3)) {
-            if (seed < 0) seed = 2468;
-            if (humanCorner < 0 || humanCorner > 3) humanCorner = 1;
-            initGameWithSeed(numAIs, (unsigned)seed, humanCorner);
-        } else {
-            initGame(numAIs);
-        }
+        showMenu();
     }
-    gfxOnNewGame();
-    setStatus("Browser build ready. Select peasants with click/tap and command with right click or keyboard.");
 
     initialized = true;
-    nextTickMs = emscripten_get_now() + TICK_MS;
     notifyReady();
-    std::cerr << "realm: web initialized tick=" << g.tick
-              << " entities=" << g.entities.size() << "\n";
 
     emscripten_set_main_loop(frame, 0, 1);
     return 0;

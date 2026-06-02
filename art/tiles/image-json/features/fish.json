@@ -1,0 +1,30 @@
+{
+  "schema": "realm.terrain_sprite_spec.v1",
+  "asset_type": "feature",
+  "enum": "T_FISH",
+  "slug": "fish",
+  "name": "Fish",
+  "ui_name": "Fish Shoal",
+  "runtime": {
+    "glyph": "~"
+  },
+  "art": {
+    "projection": "transparent feature sprite anchored over a projected isometric map tile",
+    "layer_category": "features",
+    "terrain_type": "water resource",
+    "visual_design": "Fish splash/ripple on water/shallows",
+    "required_variants": "2 fish/shoal frames plus water ripple",
+    "runtime_notes": "Gatherable by fishing boat; depleted to water; blocks land",
+    "team_color_required": false
+  },
+  "paths": {
+    "runtime_root": "assets/tiles/terrain/fish",
+    "base": "assets/tiles/terrain/fish.png"
+  },
+  "sources": [
+    "include/realm.h",
+    "src/entity.cpp",
+    "src/gfx_renderer.cpp",
+    "docs/tileset/realm_tileset_visual_audit.md"
+  ]
+}

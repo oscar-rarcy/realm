@@ -1,0 +1,579 @@
+{
+  "schema": "realm.entity_tileset.v1",
+  "entity": "peasant",
+  "sprite_size": 48,
+  "team_color_source": "#0088cc",
+  "source_key_color": "#ff00ff",
+  "directions": [
+    "front",
+    "back"
+  ],
+  "actions": {
+    "idle": {
+      "frame_ms": 20000,
+      "loop": false,
+      "hold_last": true,
+      "description": "Worker is standing idle, then settles into a long-idle arms-crossed pose.",
+      "family": "idle",
+      "target_relation": "self_tile",
+      "range_tiles": 0,
+      "fit_profile": "standing",
+      "anchor": [
+        24,
+        39
+      ],
+      "directions": {
+        "front": [
+          {
+            "base": "idle/front/frame_00_base.png",
+            "team_mask": "idle/front/frame_00_teammask.png",
+            "phase": "Relaxed idle, arms at sides, both feet planted.",
+            "duration_ms": 20000,
+            "source": "assets\\tiles\\workbench\\peasant\\idle\\front\\frame_00\\source.png",
+            "source_bbox": {
+              "x": 220,
+              "y": 94,
+              "w": 258,
+              "h": 477
+            },
+            "final_bbox": {
+              "x": 13,
+              "y": 4,
+              "w": 23,
+              "h": 42
+            },
+            "anchor": [
+              24,
+              39
+            ],
+            "anchor_offset": [
+              0,
+              7
+            ],
+            "scale": 0.0880503144654088,
+            "manual_review": "pending",
+            "residual_key_pixels": 0,
+            "team_mask_pixels": 262,
+            "transparent_key_pixels": 307930,
+            "edge_fringe_key_pixels": 0
+          },
+          {
+            "base": "idle/front/frame_01_base.png",
+            "team_mask": "idle/front/frame_01_teammask.png",
+            "phase": "Long-idle hold pose, arms crossed, both feet planted.",
+            "duration_ms": 20000,
+            "source": "assets\\tiles\\workbench\\peasant\\idle\\front\\frame_01\\source.png",
+            "source_bbox": {
+              "x": 247,
+              "y": 47,
+              "w": 223,
+              "h": 466
+            },
+            "final_bbox": {
+              "x": 14,
+              "y": 4,
+              "w": 20,
+              "h": 42
+            },
+            "anchor": [
+              24,
+              39
+            ],
+            "anchor_offset": [
+              0,
+              7
+            ],
+            "scale": 0.09012875536480687,
+            "manual_review": "pending",
+            "residual_key_pixels": 0,
+            "team_mask_pixels": 200,
+            "transparent_key_pixels": 316702,
+            "edge_fringe_key_pixels": 0
+          }
+        ],
+        "back": [
+          {
+            "base": "idle/back/frame_00_base.png",
+            "team_mask": "idle/back/frame_00_teammask.png",
+            "phase": "Relaxed idle, arms at sides, both feet planted.",
+            "duration_ms": 20000,
+            "source": "assets\\tiles\\workbench\\peasant\\idle\\back\\frame_00\\source.png",
+            "source_bbox": {
+              "x": 133,
+              "y": 102,
+              "w": 242,
+              "h": 468
+            },
+            "final_bbox": {
+              "x": 13,
+              "y": 4,
+              "w": 22,
+              "h": 42
+            },
+            "anchor": [
+              24,
+              39
+            ],
+            "anchor_offset": [
+              0,
+              7
+            ],
+            "scale": 0.08974358974358974,
+            "manual_review": "pending",
+            "residual_key_pixels": 0,
+            "team_mask_pixels": 327,
+            "transparent_key_pixels": 312466,
+            "edge_fringe_key_pixels": 0
+          },
+          {
+            "base": "idle/back/frame_01_base.png",
+            "team_mask": "idle/back/frame_01_teammask.png",
+            "phase": "Long-idle hold pose, arms crossed, both feet planted.",
+            "duration_ms": 20000,
+            "source": "assets\\tiles\\workbench\\peasant\\idle\\back\\frame_01\\source.png",
+            "source_bbox": {
+              "x": 161,
+              "y": 54,
+              "w": 218,
+              "h": 460
+            },
+            "final_bbox": {
+              "x": 14,
+              "y": 4,
+              "w": 20,
+              "h": 42
+            },
+            "anchor": [
+              24,
+              39
+            ],
+            "anchor_offset": [
+              0,
+              7
+            ],
+            "scale": 0.09130434782608696,
+            "manual_review": "pending",
+            "residual_key_pixels": 0,
+            "team_mask_pixels": 339,
+            "transparent_key_pixels": 319569,
+            "edge_fringe_key_pixels": 0
+          }
+        ]
+      },
+      "frame_durations_ms": [
+        20000,
+        0
+      ],
+      "transition_after_ms": 20000
+    },
+    "walk": {
+      "frame_ms": 90,
+      "loop": true,
+      "hold_last": false,
+      "description": "Worker walks across the map with an alternating two-step gait.",
+      "family": "gait",
+      "target_relation": "self_tile",
+      "range_tiles": 0,
+      "fit_profile": "standing",
+      "anchor": [
+        24,
+        39
+      ],
+      "directions": {
+        "front": [],
+        "back": []
+      },
+      "frame_durations_ms": [
+        90,
+        90
+      ],
+      "transition_after_ms": 0
+    },
+    "chop_wood": {
+      "frame_ms": 160,
+      "loop": true,
+      "hold_last": false,
+      "description": "Worker chops an adjacent tree or wood resource with an axe.",
+      "family": "swing",
+      "target_relation": "adjacent_target_tile_or_entity",
+      "range_tiles": 1,
+      "fit_profile": "wide_tool",
+      "anchor": [
+        24,
+        39
+      ],
+      "directions": {
+        "front": [],
+        "back": []
+      },
+      "frame_durations_ms": [
+        160,
+        160
+      ],
+      "transition_after_ms": 0
+    },
+    "mine_gold": {
+      "frame_ms": 160,
+      "loop": true,
+      "hold_last": false,
+      "description": "Worker mines an adjacent gold deposit with a pickaxe.",
+      "family": "swing",
+      "target_relation": "adjacent_target_tile_or_entity",
+      "range_tiles": 1,
+      "fit_profile": "wide_tool",
+      "anchor": [
+        24,
+        39
+      ],
+      "directions": {
+        "front": [],
+        "back": []
+      },
+      "frame_durations_ms": [
+        160,
+        160
+      ],
+      "transition_after_ms": 0
+    },
+    "gather_berries": {
+      "frame_ms": 350,
+      "loop": true,
+      "hold_last": false,
+      "description": "Worker gathers berries from an adjacent berry resource.",
+      "family": "gather",
+      "target_relation": "adjacent_target_tile_or_entity",
+      "range_tiles": 1,
+      "fit_profile": "kneeling",
+      "anchor": [
+        24,
+        40
+      ],
+      "directions": {
+        "front": [],
+        "back": []
+      },
+      "frame_durations_ms": [
+        350,
+        350
+      ],
+      "transition_after_ms": 0
+    },
+    "hoe_soil": {
+      "frame_ms": 260,
+      "loop": true,
+      "hold_last": false,
+      "description": "Worker tends a farm on an adjacent tile with a farming hoe.",
+      "family": "work_stroke",
+      "target_relation": "adjacent_target_tile_or_entity",
+      "range_tiles": 1,
+      "fit_profile": "wide_tool",
+      "anchor": [
+        24,
+        39
+      ],
+      "directions": {
+        "front": [],
+        "back": []
+      },
+      "frame_durations_ms": [
+        260,
+        260
+      ],
+      "transition_after_ms": 0
+    },
+    "gather_wheat": {
+      "frame_ms": 260,
+      "loop": true,
+      "hold_last": false,
+      "description": "Worker gathers wheat with a sickle.",
+      "family": "gather",
+      "target_relation": "adjacent_target_tile_or_entity",
+      "range_tiles": 1,
+      "fit_profile": "wide_tool",
+      "anchor": [
+        24,
+        39
+      ],
+      "directions": {
+        "front": [],
+        "back": []
+      },
+      "frame_durations_ms": [
+        260,
+        260
+      ],
+      "transition_after_ms": 0
+    },
+    "build": {
+      "frame_ms": 150,
+      "loop": true,
+      "hold_last": false,
+      "description": "Worker kneels and hammers an adjacent construction site.",
+      "family": "hammer",
+      "target_relation": "adjacent_target_tile_or_entity",
+      "range_tiles": 1,
+      "fit_profile": "kneeling",
+      "anchor": [
+        24,
+        40
+      ],
+      "directions": {
+        "front": [],
+        "back": []
+      },
+      "frame_durations_ms": [
+        150,
+        150
+      ],
+      "transition_after_ms": 0
+    },
+    "carry_wood": {
+      "frame_ms": 90,
+      "loop": true,
+      "hold_last": false,
+      "description": "Worker carries wood back to a drop-off while walking.",
+      "family": "carry_gait",
+      "target_relation": "self_tile",
+      "range_tiles": 0,
+      "fit_profile": "standing",
+      "anchor": [
+        24,
+        39
+      ],
+      "directions": {
+        "front": [],
+        "back": []
+      },
+      "frame_durations_ms": [
+        90,
+        90
+      ],
+      "transition_after_ms": 0
+    },
+    "carry_gold": {
+      "frame_ms": 90,
+      "loop": true,
+      "hold_last": false,
+      "description": "Worker carries gold ore back to a drop-off while walking.",
+      "family": "carry_gait",
+      "target_relation": "self_tile",
+      "range_tiles": 0,
+      "fit_profile": "standing",
+      "anchor": [
+        24,
+        39
+      ],
+      "directions": {
+        "front": [],
+        "back": []
+      },
+      "frame_durations_ms": [
+        90,
+        90
+      ],
+      "transition_after_ms": 0
+    },
+    "carry_berries": {
+      "frame_ms": 90,
+      "loop": true,
+      "hold_last": false,
+      "description": "Worker carries a basket of berries back to a drop-off while walking.",
+      "family": "carry_gait",
+      "target_relation": "self_tile",
+      "range_tiles": 0,
+      "fit_profile": "standing",
+      "anchor": [
+        24,
+        39
+      ],
+      "directions": {
+        "front": [],
+        "back": []
+      },
+      "frame_durations_ms": [
+        90,
+        90
+      ],
+      "transition_after_ms": 0
+    },
+    "carry_wheat": {
+      "frame_ms": 90,
+      "loop": true,
+      "hold_last": false,
+      "description": "Worker carries wheat back to a drop-off while walking.",
+      "family": "carry_gait",
+      "target_relation": "self_tile",
+      "range_tiles": 0,
+      "fit_profile": "standing",
+      "anchor": [
+        24,
+        39
+      ],
+      "directions": {
+        "front": [],
+        "back": []
+      },
+      "frame_durations_ms": [
+        90,
+        90
+      ],
+      "transition_after_ms": 0
+    },
+    "gather_meat": {
+      "frame_ms": 260,
+      "loop": true,
+      "hold_last": false,
+      "description": "Worker gathers meat from an adjacent animal carcass with a knife.",
+      "family": "gather",
+      "target_relation": "adjacent_target_tile_or_entity",
+      "range_tiles": 1,
+      "fit_profile": "kneeling",
+      "anchor": [
+        24,
+        40
+      ],
+      "directions": {
+        "front": [],
+        "back": []
+      },
+      "frame_durations_ms": [
+        260,
+        260
+      ],
+      "transition_after_ms": 0
+    },
+    "carry_meat": {
+      "frame_ms": 90,
+      "loop": true,
+      "hold_last": false,
+      "description": "Worker carries meat back to a drop-off while walking.",
+      "family": "carry_gait",
+      "target_relation": "self_tile",
+      "range_tiles": 0,
+      "fit_profile": "standing",
+      "anchor": [
+        24,
+        39
+      ],
+      "directions": {
+        "front": [],
+        "back": []
+      },
+      "frame_durations_ms": [
+        90,
+        90
+      ],
+      "transition_after_ms": 0
+    },
+    "club_attack": {
+      "frame_ms": 130,
+      "loop": true,
+      "hold_last": false,
+      "description": "Worker attacks an adjacent target with a wooden club.",
+      "family": "swing",
+      "target_relation": "adjacent_target_tile_or_entity",
+      "range_tiles": 1,
+      "fit_profile": "wide_tool",
+      "anchor": [
+        24,
+        39
+      ],
+      "directions": {
+        "front": [],
+        "back": []
+      },
+      "frame_durations_ms": [
+        130,
+        130
+      ],
+      "transition_after_ms": 0
+    },
+    "death": {
+      "frame_ms": 30000,
+      "loop": false,
+      "hold_last": true,
+      "description": "Worker dies, then the body decays into skeleton remains.",
+      "family": "one_shot",
+      "target_relation": "self_tile",
+      "range_tiles": 0,
+      "fit_profile": "lying",
+      "anchor": [
+        24,
+        42
+      ],
+      "directions": {
+        "front": [],
+        "back": []
+      },
+      "frame_durations_ms": [
+        30000,
+        0
+      ],
+      "transition_after_ms": 30000
+    }
+  },
+  "assumptions": [
+    "walk/front/frame_00 missing from single-frame source set",
+    "walk/front/frame_01 missing from single-frame source set",
+    "walk/back/frame_00 missing from single-frame source set",
+    "walk/back/frame_01 missing from single-frame source set",
+    "chop_wood/front/frame_00 missing from single-frame source set",
+    "chop_wood/front/frame_01 missing from single-frame source set",
+    "chop_wood/back/frame_00 missing from single-frame source set",
+    "chop_wood/back/frame_01 missing from single-frame source set",
+    "mine_gold/front/frame_00 missing from single-frame source set",
+    "mine_gold/front/frame_01 missing from single-frame source set",
+    "mine_gold/back/frame_00 missing from single-frame source set",
+    "mine_gold/back/frame_01 missing from single-frame source set",
+    "gather_berries/front/frame_00 missing from single-frame source set",
+    "gather_berries/front/frame_01 missing from single-frame source set",
+    "gather_berries/back/frame_00 missing from single-frame source set",
+    "gather_berries/back/frame_01 missing from single-frame source set",
+    "hoe_soil/front/frame_00 missing from single-frame source set",
+    "hoe_soil/front/frame_01 missing from single-frame source set",
+    "hoe_soil/back/frame_00 missing from single-frame source set",
+    "hoe_soil/back/frame_01 missing from single-frame source set",
+    "gather_wheat/front/frame_00 missing from single-frame source set",
+    "gather_wheat/front/frame_01 missing from single-frame source set",
+    "gather_wheat/back/frame_00 missing from single-frame source set",
+    "gather_wheat/back/frame_01 missing from single-frame source set",
+    "build/front/frame_00 missing from single-frame source set",
+    "build/front/frame_01 missing from single-frame source set",
+    "build/back/frame_00 missing from single-frame source set",
+    "build/back/frame_01 missing from single-frame source set",
+    "carry_wood/front/frame_00 missing from single-frame source set",
+    "carry_wood/front/frame_01 missing from single-frame source set",
+    "carry_wood/back/frame_00 missing from single-frame source set",
+    "carry_wood/back/frame_01 missing from single-frame source set",
+    "carry_gold/front/frame_00 missing from single-frame source set",
+    "carry_gold/front/frame_01 missing from single-frame source set",
+    "carry_gold/back/frame_00 missing from single-frame source set",
+    "carry_gold/back/frame_01 missing from single-frame source set",
+    "carry_berries/front/frame_00 missing from single-frame source set",
+    "carry_berries/front/frame_01 missing from single-frame source set",
+    "carry_berries/back/frame_00 missing from single-frame source set",
+    "carry_berries/back/frame_01 missing from single-frame source set",
+    "carry_wheat/front/frame_00 missing from single-frame source set",
+    "carry_wheat/front/frame_01 missing from single-frame source set",
+    "carry_wheat/back/frame_00 missing from single-frame source set",
+    "carry_wheat/back/frame_01 missing from single-frame source set",
+    "gather_meat/front/frame_00 missing from single-frame source set",
+    "gather_meat/front/frame_01 missing from single-frame source set",
+    "gather_meat/back/frame_00 missing from single-frame source set",
+    "gather_meat/back/frame_01 missing from single-frame source set",
+    "carry_meat/front/frame_00 missing from single-frame source set",
+    "carry_meat/front/frame_01 missing from single-frame source set",
+    "carry_meat/back/frame_00 missing from single-frame source set",
+    "carry_meat/back/frame_01 missing from single-frame source set",
+    "club_attack/front/frame_00 missing from single-frame source set",
+    "club_attack/front/frame_01 missing from single-frame source set",
+    "club_attack/back/frame_00 missing from single-frame source set",
+    "club_attack/back/frame_01 missing from single-frame source set",
+    "death/front/frame_00 missing from single-frame source set",
+    "death/front/frame_01 missing from single-frame source set",
+    "death/back/frame_00 missing from single-frame source set",
+    "death/back/frame_01 missing from single-frame source set"
+  ],
+  "source_workflow": "single-frame",
+  "animation_spec_source": "code:bin\\realm.exe"
+}

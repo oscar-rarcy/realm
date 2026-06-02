@@ -1,0 +1,30 @@
+{
+  "schema": "realm.terrain_sprite_spec.v1",
+  "asset_type": "ground",
+  "enum": "T_MUD",
+  "slug": "mud",
+  "name": "Mud",
+  "ui_name": "Mud",
+  "runtime": {
+    "glyph": ","
+  },
+  "art": {
+    "projection": "top-down square source tile, projected into an isometric diamond in-app",
+    "layer_category": "grounds",
+    "terrain_type": "weather terrain",
+    "visual_design": "Wet dark brown/green mud, puddles, boot marks",
+    "required_variants": "8 variants; wet sheen overlay",
+    "runtime_notes": "Created by rain/storm; dries to dirt",
+    "team_color_required": false
+  },
+  "paths": {
+    "runtime_root": "assets/tiles/terrain/mud",
+    "base": "assets/tiles/terrain/mud.png"
+  },
+  "sources": [
+    "include/realm.h",
+    "src/entity.cpp",
+    "src/gfx_renderer.cpp",
+    "docs/tileset/realm_tileset_visual_audit.md"
+  ]
+}

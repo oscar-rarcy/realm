@@ -1,0 +1,81 @@
+{
+  "schema": "realm.sprite_spec.v1",
+  "asset_type": "building",
+  "enum": "E_CHURCH",
+  "slug": "church",
+  "name": "Church",
+  "runtime": {
+    "glyph": "+",
+    "stats": {
+      "max_hp": 120,
+      "attack": 0,
+      "range": 0,
+      "speed": 0,
+      "attack_speed_ticks": 0,
+      "cost_gold": 80,
+      "cost_wood": 100,
+      "train_time_ticks": 90,
+      "supply_provided": 0,
+      "supply_used": 0,
+      "traits": []
+    },
+    "footprint": {
+      "w": 2,
+      "h": 2
+    },
+    "team_color_required": true
+  },
+  "art": {
+    "projection": "upright sprite anchored over projected isometric map tiles",
+    "directions": [
+      "south"
+    ],
+    "runtime_mirrors_horizontal": false,
+    "team_color_slots": [
+      "banner/door cloth only"
+    ],
+    "visual_design": "Small stone chapel, cross, stained glass, grave/path",
+    "source_role": "heals nearby, vision"
+  },
+  "states": [
+    "complete",
+    "healing aura",
+    "construction",
+    "ruin footprint"
+  ],
+  "actions": [
+    {
+      "id": "complete",
+      "description": "complete",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 1
+    },
+    {
+      "id": "healing_aura",
+      "description": "healing aura",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 1
+    },
+    {
+      "id": "construction",
+      "description": "construction",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 1
+    },
+    {
+      "id": "ruin_footprint",
+      "description": "ruin footprint",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 1
+    }
+  ],
+  "paths": {
+    "runtime_root": "assets/tiles/entities/church",
+    "manifest": "assets/tiles/entities/church/manifest.json"
+  },
+  "sources": [
+    "include/realm.h",
+    "src/globals.cpp",
+    "docs/tileset/realm_tileset_visual_audit.md"
+  ]
+}

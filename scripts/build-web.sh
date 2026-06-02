@@ -4,6 +4,39 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
+read_env_value() {
+  local file="$1"
+  local key="$2"
+  local line value
+  [[ -f "$file" ]] || return 1
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line="${line#"${line%%[![:space:]]*}"}"
+    [[ "$line" == "$key="* || "$line" == "export $key="* ]] || continue
+    value="${line#*=}"
+    if [[ "$value" != \"* && "$value" != \'* ]]; then
+      value="${value%%#*}"
+    fi
+    value="${value%"${value##*[![:space:]]}"}"
+    value="${value%\"}"
+    value="${value#\"}"
+    value="${value%\'}"
+    value="${value#\'}"
+    printf '%s' "$value"
+    return 0
+  done < "$file"
+  return 1
+}
+
+if [[ -z "${REALM_VISUAL_MODE+x}" ]]; then
+  if value="$(read_env_value .env REALM_VISUAL_MODE)"; then
+    export REALM_VISUAL_MODE="$value"
+  fi
+  if value="$(read_env_value .env.local REALM_VISUAL_MODE)"; then
+    export REALM_VISUAL_MODE="$value"
+  fi
+fi
+REALM_VISUAL_MODE="${REALM_VISUAL_MODE:-ascii-only}"
+
 EMSDK_VERSION="${REALM_EMSDK_VERSION:-3.1.74}"
 BUILD_DIR="$ROOT_DIR/build/web"
 DIST_DIR="$ROOT_DIR/dist/netlify"
@@ -69,6 +102,8 @@ fi
 COMMON_SOURCES=(
   src/main_web.cpp
   src/main.cpp
+  src/env_config.cpp
+  src/entity_animation.cpp
   src/globals.cpp
   src/mapgen.cpp
   src/entity.cpp
@@ -83,13 +118,14 @@ COMMON_SOURCES=(
 em++ "${COMMON_SOURCES[@]}" \
   -std=c++17 -O2 -Wall -Wextra \
   -DREALM_WEB -DUSE_SDL_RENDERER \
+  "-DREALM_VISUAL_MODE_DEFAULT=\"$REALM_VISUAL_MODE\"" \
   -Iinclude \
   -sUSE_SDL=2 \
   -sUSE_SDL_TTF=2 \
   -sALLOW_MEMORY_GROWTH=1 \
   -sEXIT_RUNTIME=0 \
   -sASSERTIONS=1 \
-  -sEXPORTED_FUNCTIONS='["_main","_realm_web_tick","_realm_web_entity_count","_realm_web_selected_id"]' \
+  -sEXPORTED_FUNCTIONS='["_main","_realm_web_tick","_realm_web_entity_count","_realm_web_selected_id","_realm_web_selected_count","_realm_web_view_x","_realm_web_view_y","_realm_web_view_w","_realm_web_view_h","_realm_web_cursor_x","_realm_web_cursor_y","_realm_web_first_owned_unit_x","_realm_web_first_owned_unit_y","_realm_web_screen_x_for_tile","_realm_web_screen_y_for_tile","_realm_web_screen","_realm_web_ascii_only","_realm_web_display_mode"]' \
   -sEXPORTED_RUNTIME_METHODS='["ccall","cwrap"]' \
   --preload-file "$ASSET_DIR@/assets" \
   --preload-file "$FONT_DIR/DejaVuSansMono.ttf@/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf" \
@@ -97,7 +133,12 @@ em++ "${COMMON_SOURCES[@]}" \
   --shell-file web/shell.html \
   -o "$DIST_DIR/index.html"
 
-perl -0pi -e 's#<script async src=index\.js></script>#<script>(function(){var base=location.pathname.indexOf("/apps/realm")===0?"/apps/realm/":"/";var script=document.createElement("script");script.async=true;script.src=base+"index.js";document.currentScript.after(script);}());</script>#' "$DIST_DIR/index.html"
+perl -0pi -e 's#<script async src=index\.js></script>#<script>(function(){var base=window.realmAssetBase||"/";var script=document.createElement("script");script.async=true;script.src=base+"index.js";document.currentScript.after(script);}());</script>#' "$DIST_DIR/index.html"
+
+mkdir -p "$DIST_DIR/embed" "$DIST_DIR/ascii" "$DIST_DIR/ascii/embed"
+cp "$DIST_DIR/index.html" "$DIST_DIR/embed/index.html"
+cp "$DIST_DIR/index.html" "$DIST_DIR/ascii/index.html"
+cp "$DIST_DIR/index.html" "$DIST_DIR/ascii/embed/index.html"
 
 cat > "$DIST_DIR/_headers" <<'HEADERS'
 /*.wasm
@@ -108,6 +149,8 @@ cat > "$DIST_DIR/_headers" <<'HEADERS'
 HEADERS
 
 cat > "$DIST_DIR/_redirects" <<'REDIRECTS'
+/ascii /index.html 200
+/ascii/* /index.html 200
 /* /index.html 200
 REDIRECTS
 

@@ -1,0 +1,99 @@
+{
+  "schema": "realm.sprite_spec.v1",
+  "asset_type": "unit",
+  "enum": "E_FISHING_BOAT",
+  "slug": "fishing_boat",
+  "name": "Fishing Boat",
+  "runtime": {
+    "glyph": "b",
+    "stats": {
+      "max_hp": 40,
+      "attack": 0,
+      "range": 0,
+      "speed": 5,
+      "attack_speed_ticks": 0,
+      "cost_gold": 80,
+      "cost_wood": 50,
+      "train_time_ticks": 60,
+      "supply_provided": 0,
+      "supply_used": 1,
+      "traits": [
+        "TR_GATHERER",
+        "TR_NAVAL"
+      ]
+    },
+    "footprint": {
+      "w": 1,
+      "h": 1
+    },
+    "team_color_required": true
+  },
+  "art": {
+    "projection": "upright sprite anchored over projected isometric map tiles",
+    "directions": [
+      "front",
+      "back"
+    ],
+    "runtime_mirrors_horizontal": true,
+    "team_color_slots": [
+      "tiny flag or sail patch"
+    ],
+    "visual_design": "Small brown skiff/canoe with net or fish line",
+    "source_role": "gathers fish, returns to dock"
+  },
+  "states": [
+    "idle",
+    "row/sail",
+    "fish/net cast",
+    "carrying fish",
+    "destroyed wreck",
+    "decayed wreckage"
+  ],
+  "actions": [
+    {
+      "id": "idle",
+      "description": "idle",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2
+    },
+    {
+      "id": "row_sail",
+      "description": "row/sail",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2
+    },
+    {
+      "id": "fish_net_cast",
+      "description": "fish/net cast",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2
+    },
+    {
+      "id": "carrying_fish",
+      "description": "carrying fish",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2
+    },
+    {
+      "id": "destroyed_wreck",
+      "description": "destroyed wreck",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2
+    },
+    {
+      "id": "decayed_wreckage",
+      "description": "decayed wreckage",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2
+    }
+  ],
+  "paths": {
+    "runtime_root": "assets/tiles/entities/fishing_boat",
+    "manifest": "assets/tiles/entities/fishing_boat/manifest.json"
+  },
+  "sources": [
+    "include/realm.h",
+    "src/globals.cpp",
+    "docs/tileset/realm_tileset_visual_audit.md"
+  ]
+}

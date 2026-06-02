@@ -1,0 +1,84 @@
+{
+  "schema": "realm.sprite_spec.v1",
+  "asset_type": "building",
+  "enum": "E_STABLE",
+  "slug": "stable",
+  "name": "Stable",
+  "runtime": {
+    "glyph": "S",
+    "stats": {
+      "max_hp": 140,
+      "attack": 0,
+      "range": 0,
+      "speed": 0,
+      "attack_speed_ticks": 0,
+      "cost_gold": 0,
+      "cost_wood": 200,
+      "train_time_ticks": 100,
+      "supply_provided": 0,
+      "supply_used": 0,
+      "traits": [
+        "TR_TRAINS_UNITS"
+      ]
+    },
+    "footprint": {
+      "w": 3,
+      "h": 2
+    },
+    "team_color_required": true
+  },
+  "art": {
+    "projection": "upright sprite anchored over projected isometric map tiles",
+    "directions": [
+      "south"
+    ],
+    "runtime_mirrors_horizontal": false,
+    "team_color_slots": [
+      "stable banner",
+      "saddle blankets"
+    ],
+    "visual_design": "Long stable block, hay, paddock fence, horse posts",
+    "source_role": "trains knight"
+  },
+  "states": [
+    "complete",
+    "training",
+    "construction",
+    "ruin footprint"
+  ],
+  "actions": [
+    {
+      "id": "complete",
+      "description": "complete",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 1
+    },
+    {
+      "id": "training",
+      "description": "training",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 1
+    },
+    {
+      "id": "construction",
+      "description": "construction",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 1
+    },
+    {
+      "id": "ruin_footprint",
+      "description": "ruin footprint",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 1
+    }
+  ],
+  "paths": {
+    "runtime_root": "assets/tiles/entities/stable",
+    "manifest": "assets/tiles/entities/stable/manifest.json"
+  },
+  "sources": [
+    "include/realm.h",
+    "src/globals.cpp",
+    "docs/tileset/realm_tileset_visual_audit.md"
+  ]
+}

@@ -6,7 +6,8 @@
   "scripts": {
     "build:web": "bash scripts/build-web.sh",
     "test:web": "node tests/web-smoke.mjs",
-    "test:web:render": "node tests/web-render-modes.mjs"
+    "test:web:render": "node tests/web-render-modes.mjs",
+    "test:web:controls": "node tests/web-controls.mjs"
   },
   "devDependencies": {
     "playwright": "^1.58.1"

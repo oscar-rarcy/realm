@@ -1,11 +1,15 @@
 #include "realm.h"
+#include "entity_animation.h"
 
 #include <algorithm>
 #include <cassert>
 #include <cmath>
+#include <cctype>
 #include <cstdint>
+#include <filesystem>
 #include <fstream>
 #include <iomanip>
+#include <iostream>
 #include <limits>
 #include <sstream>
 #include <utility>
@@ -57,6 +61,23 @@ static Cargo emptyCargo() {
     return {CR_NONE, 0, -1, -1};
 }
 
+static int carcassFoodForAnimal(EntityType type) {
+    switch (type) {
+        case E_SHEEP: return 80;
+        case E_DEER: return 120;
+        case E_BOAR: return 100;
+        case E_WOLF: return 0;
+        default: return 0;
+    }
+}
+
+bool isHarvestableCarcass(const Entity& e) {
+    return !e.alive && e.state == S_DEAD
+        && (e.type == E_DEER || e.type == E_SHEEP || e.type == E_BOAR)
+        && e.deathTicks < DEATH_DECAY_TICKS
+        && e.carcassFoodRemaining > 0;
+}
+
 const char* cargoResourceName(CargoResource r) {
     switch (r) {
         case CR_GOLD: return "gold";
@@ -78,6 +99,355 @@ CargoResource resourceForTerrain(Terrain t) {
 
 bool terrainMatchesResource(Terrain t, CargoResource r) {
     return resourceForTerrain(t) == r;
+}
+
+static GroundType defaultGroundForBiome(Biome biome) {
+    switch (biome) {
+        case B_DESERT: return G_SAND;
+        case B_SNOW: return G_TUNDRA;
+        case B_SWAMP: return G_MARSH;
+        case B_VOLCANIC: return G_ASH;
+        case B_OCEAN: return G_SHALLOWS;
+        case B_FOREST:
+        case B_TEMPERATE:
+        default: return G_GRASS;
+    }
+}
+
+static int defaultFeatureResourceMax(Terrain t) {
+    switch (t) {
+        case T_FOREST:
+        case T_PINE:
+        case T_PALM:
+        case T_DEAD_TREE: return 120;
+        case T_BERRY: return 70;
+        case T_WHEAT: return 80;
+        case T_FISH: return 90;
+        case T_GOLD: return 300;
+        default: return 0;
+    }
+}
+
+static FeatureState featureStateFromResources(Terrain terrain, int resources) {
+    int maxResources = defaultFeatureResourceMax(terrain);
+    if (maxResources <= 0) return FS_DEFAULT;
+    if (resources <= 0) return FS_DEPLETED;
+    int pct = (resources * 100) / maxResources;
+    if (pct >= 76) return FS_FULL;
+    if (pct >= 36) return FS_MOSTLY_FULL;
+    return FS_MOSTLY_EMPTY;
+}
+
+const char* groundTypeName(GroundType ground) {
+    switch (ground) {
+        case G_GRASS: return "grass";
+        case G_MEADOW: return "meadow";
+        case G_DIRT: return "dirt";
+        case G_ROAD: return "road";
+        case G_MUD: return "mud";
+        case G_SAND: return "sand";
+        case G_DUNES: return "dunes";
+        case G_SNOW: return "snow";
+        case G_TUNDRA: return "tundra";
+        case G_ICE: return "ice";
+        case G_WATER: return "water";
+        case G_SHALLOWS: return "shallows";
+        case G_MARSH: return "marsh";
+        case G_GRAVEL: return "gravel";
+        case G_ASH: return "ash";
+        case G_LAVA: return "lava";
+        case G_HILLS: return "hills";
+        case G_ROCKY: return "rocky";
+        case G_CASTLE_FLOOR: return "castle_floor";
+    }
+    return "unknown";
+}
+
+const char* featureTypeName(FeatureType feature) {
+    switch (feature) {
+        case F_NONE: return "none";
+        case F_FOREST: return "forest";
+        case F_PINE: return "pine";
+        case F_PALM: return "palm";
+        case F_DEAD_TREE: return "dead_tree";
+        case F_BERRY_BUSH: return "berry_bush";
+        case F_WHEAT_CROP: return "wheat_crop";
+        case F_FISH_SHOAL: return "fish_shoal";
+        case F_GOLD_DEPOSIT: return "gold_deposit";
+        case F_STONE_BOULDERS: return "stone_boulders";
+        case F_MOUNTAIN_PEAK: return "mountain_peak";
+        case F_REEDS: return "reeds";
+        case F_RUINS: return "ruins";
+        case F_CASTLE_WALL: return "castle_wall";
+        case F_CASTLE_GATE: return "castle_gate";
+    }
+    return "unknown";
+}
+
+const char* featureStateName(FeatureState state) {
+    switch (state) {
+        case FS_DEFAULT: return "default";
+        case FS_FULL: return "full";
+        case FS_MOSTLY_FULL: return "mostly_full";
+        case FS_MOSTLY_EMPTY: return "mostly_empty";
+        case FS_DEPLETED: return "depleted";
+        case FS_OPEN: return "open";
+        case FS_CLOSED: return "closed";
+        case FS_LOCKED: return "locked";
+        case FS_DAMAGED: return "damaged";
+        case FS_BROKEN: return "broken";
+    }
+    return "unknown";
+}
+
+const char* visualDecalName(VisualDecalType decal) {
+    switch (decal) {
+        case VD_FLOWERS: return "flowers";
+        case VD_TALL_GRASS: return "tall_grass";
+        case VD_SCUFFS: return "scuffs";
+        case VD_PACKED_PATH: return "packed_path";
+        case VD_COBBLE_PATCH: return "cobble_patch";
+        case VD_WHEEL_RUTS: return "wheel_ruts";
+        case VD_YARD_CLUTTER: return "yard_clutter";
+        case VD_CRATES_BARRELS: return "crates_barrels";
+        case VD_LOG_PILES: return "log_piles";
+        case VD_FARM_TRACKS: return "farm_tracks";
+        case VD_MUDDY_FOOTPRINTS: return "muddy_footprints";
+        case VD_SNOW_TRAMPLED_PATH: return "snow_trampled_path";
+    }
+    return "unknown";
+}
+
+uint32_t featureTraits(FeatureType feature) {
+    switch (feature) {
+        case F_FOREST:
+        case F_PINE:
+            return FT_SLOWS_MOVEMENT | FT_CONCEALS_UNITS | FT_REDUCES_LINE_OF_SIGHT
+                | FT_CAN_HIDE_WILDLIFE | FT_HARVESTABLE;
+        case F_REEDS:
+            return FT_SLOWS_MOVEMENT | FT_CONCEALS_UNITS | FT_REDUCES_LINE_OF_SIGHT
+                | FT_CAN_HIDE_WILDLIFE;
+        case F_PALM:
+        case F_DEAD_TREE:
+        case F_BERRY_BUSH:
+        case F_WHEAT_CROP:
+        case F_FISH_SHOAL:
+        case F_GOLD_DEPOSIT:
+            return FT_HARVESTABLE;
+        case F_STONE_BOULDERS:
+        case F_MOUNTAIN_PEAK:
+        case F_CASTLE_WALL:
+            return FT_BLOCKS_MOVEMENT;
+        case F_CASTLE_GATE:
+            return FT_BLOCKS_MOVEMENT;
+        case F_RUINS:
+        case F_NONE:
+        default:
+            return 0;
+    }
+}
+
+bool featureConceals(FeatureType feature) {
+    return (featureTraits(feature) & FT_CONCEALS_UNITS) != 0;
+}
+
+VisualTileParts visualPartsForTerrain(Terrain terrain, Biome biome, int resources, int wear,
+                                       bool gateOpen, bool gateLocked) {
+    VisualTileParts parts;
+    parts.ground = defaultGroundForBiome(biome);
+    parts.featureResources = resources;
+
+    switch (terrain) {
+        case T_GRASS: parts.ground = G_GRASS; break;
+        case T_TALL_GRASS:
+            parts.ground = G_GRASS;
+            parts.decals.push_back(VD_TALL_GRASS);
+            break;
+        case T_FLOWERS:
+            parts.ground = G_GRASS;
+            parts.decals.push_back(VD_FLOWERS);
+            break;
+        case T_MEADOW: parts.ground = G_MEADOW; break;
+        case T_FOREST: parts.feature = F_FOREST; break;
+        case T_PINE:
+            parts.ground = biome == B_SNOW ? G_TUNDRA : defaultGroundForBiome(biome);
+            parts.feature = F_PINE;
+            break;
+        case T_PALM:
+            parts.ground = G_SAND;
+            parts.feature = F_PALM;
+            break;
+        case T_DEAD_TREE:
+            parts.ground = biome == B_VOLCANIC ? G_ASH : defaultGroundForBiome(biome);
+            parts.feature = F_DEAD_TREE;
+            break;
+        case T_MOUNTAIN:
+            parts.ground = G_ROCKY;
+            parts.feature = F_MOUNTAIN_PEAK;
+            break;
+        case T_HILLS: parts.ground = G_HILLS; break;
+        case T_STONE:
+            parts.ground = G_ROCKY;
+            parts.feature = F_STONE_BOULDERS;
+            break;
+        case T_WATER: parts.ground = G_WATER; break;
+        case T_SHALLOWS: parts.ground = G_SHALLOWS; break;
+        case T_MARSH: parts.ground = G_MARSH; break;
+        case T_REEDS:
+            parts.ground = (biome == B_OCEAN) ? G_SHALLOWS : G_MARSH;
+            parts.feature = F_REEDS;
+            break;
+        case T_GOLD:
+            parts.ground = (biome == B_DESERT) ? G_DIRT : G_ROCKY;
+            parts.feature = F_GOLD_DEPOSIT;
+            break;
+        case T_SAND: parts.ground = G_SAND; break;
+        case T_DUNES: parts.ground = G_DUNES; break;
+        case T_SNOW: parts.ground = biome == B_SNOW ? G_TUNDRA : G_SNOW; break;
+        case T_ICE: parts.ground = G_ICE; break;
+        case T_DIRT: parts.ground = G_DIRT; break;
+        case T_ROAD: parts.ground = G_ROAD; break;
+        case T_MUD: parts.ground = G_MUD; break;
+        case T_WHEAT:
+            parts.ground = G_DIRT;
+            parts.feature = F_WHEAT_CROP;
+            break;
+        case T_BERRY:
+            parts.ground = defaultGroundForBiome(biome);
+            parts.feature = F_BERRY_BUSH;
+            break;
+        case T_FISH:
+            parts.ground = biome == B_OCEAN ? G_WATER : G_SHALLOWS;
+            parts.feature = F_FISH_SHOAL;
+            break;
+        case T_RUINS:
+            parts.ground = G_GRAVEL;
+            parts.feature = F_RUINS;
+            break;
+        case T_GRAVEL: parts.ground = G_GRAVEL; break;
+        case T_LAVA: parts.ground = G_LAVA; break;
+        case T_ASH: parts.ground = G_ASH; break;
+        case T_CASTLE_WALL:
+            parts.ground = G_CASTLE_FLOOR;
+            parts.feature = F_CASTLE_WALL;
+            break;
+        case T_CASTLE_FLOOR: parts.ground = G_CASTLE_FLOOR; break;
+        case T_CASTLE_GATE:
+            parts.ground = G_CASTLE_FLOOR;
+            parts.feature = F_CASTLE_GATE;
+            parts.featureState = gateLocked ? FS_LOCKED : gateOpen ? FS_OPEN : FS_CLOSED;
+            break;
+    }
+
+    if (parts.feature != F_NONE && parts.featureState == FS_DEFAULT)
+        parts.featureState = featureStateFromResources(terrain, resources);
+    parts.featureTraits = featureTraits(parts.feature);
+
+    if (wear >= 80) parts.decals.push_back(VD_COBBLE_PATCH);
+    else if (wear >= 55) parts.decals.push_back(VD_PACKED_PATH);
+    else if (wear >= 25) parts.decals.push_back(VD_SCUFFS);
+    if (wear >= 45) {
+        parts.decals.push_back(terrain == T_SNOW ? VD_SNOW_TRAMPLED_PATH
+                              : terrain == T_MUD ? VD_MUDDY_FOOTPRINTS
+                              : VD_WHEEL_RUTS);
+    }
+    return parts;
+}
+
+VisualTileParts visualPartsForTile(const Tile& tile) {
+    return visualPartsForTerrain(tile.terrain, tile.biome, tile.resources, tile.wear);
+}
+
+bool isConcealingTile(int x, int y) {
+    if (!inBounds(x, y)) return false;
+    return featureConceals(visualPartsForTile(g.map[y][x]).feature);
+}
+
+int movementPenaltyForTile(const Tile& tile) {
+    VisualTileParts parts = visualPartsForTile(tile);
+    return (parts.featureTraits & FT_SLOWS_MOVEMENT) ? 1 : 0;
+}
+
+BuildingVisualState buildingVisualState(const Entity& e) {
+    if (e.underConstruction) {
+        int pct = e.hp * 100 / std::max(1, e.maxHp);
+        if (pct <= 33) return BVS_CONSTRUCTION_0_FOUNDATION;
+        if (pct <= 66) return BVS_CONSTRUCTION_1_FRAME;
+        return BVS_CONSTRUCTION_2_NEARLY_COMPLETE;
+    }
+    if (e.researching == R_IRON_WEAPONS) return BVS_RESEARCHING_IRON_WEAPONS;
+    if (e.researching == R_CROSSBOWS) return BVS_RESEARCHING_CROSSBOWS;
+    if (e.producing != E_NONE) {
+        if (e.producing == E_PEASANT) return BVS_TRAINING_PEASANT;
+        if (e.producing == E_MILITIA || e.producing == E_ARCHER) return BVS_TRAINING_INFANTRY;
+        if (e.producing == E_KNIGHT) return BVS_TRAINING_CAVALRY;
+        if (isNaval(e.producing)) return BVS_TRAINING_SHIP;
+    }
+    if (!e.garrison.empty()) return e.atkCd > 0 ? BVS_GARRISON_FIRING : BVS_GARRISONED;
+    if (e.hp > 0 && e.hp * 2 <= std::max(1, e.maxHp)) return BVS_DAMAGED;
+    return BVS_COMPLETE;
+}
+
+AnimalCarcassVisualState animalCarcassVisualState(const Entity& e) {
+    if (e.alive && e.state != S_DEAD) return ACVS_ALIVE;
+    if (e.carcassFoodMax <= 0 || e.carcassFoodRemaining <= 0 || e.deathTicks >= DEATH_DECAY_TICKS)
+        return ACVS_DEPLETED_SKELETON;
+    int pct = e.carcassFoodRemaining * 100 / std::max(1, e.carcassFoodMax);
+    if (pct >= 76) return ACVS_DEAD_UNHARVESTED;
+    if (pct >= 36) return ACVS_PARTLY_HARVESTED;
+    return ACVS_MOSTLY_HARVESTED;
+}
+
+TransportVisualState transportVisualState(const Entity& e) {
+    if (!e.alive || e.state == S_DEAD)
+        return e.deathTicks >= DEATH_DECAY_TICKS ? TVS_DECAYED_WRECK : TVS_WRECK;
+    if (e.state == S_ENTERING) return TVS_LOAD_UNLOAD;
+    int cap = garrisonCap(E_TRANSPORT);
+    if (e.garrison.empty()) return TVS_EMPTY;
+    if ((int)e.garrison.size() >= cap) return TVS_LOADED_FULL;
+    return TVS_LOADED_PARTIAL;
+}
+
+const char* buildingVisualStateName(BuildingVisualState state) {
+    switch (state) {
+        case BVS_CONSTRUCTION_0_FOUNDATION: return "construction_0_foundation";
+        case BVS_CONSTRUCTION_1_FRAME: return "construction_1_frame";
+        case BVS_CONSTRUCTION_2_NEARLY_COMPLETE: return "construction_2_nearly_complete";
+        case BVS_COMPLETE: return "complete";
+        case BVS_DAMAGED: return "damaged";
+        case BVS_GARRISONED: return "garrisoned";
+        case BVS_GARRISON_FIRING: return "garrison_firing";
+        case BVS_TRAINING_PEASANT: return "training_peasant";
+        case BVS_TRAINING_INFANTRY: return "training_infantry";
+        case BVS_TRAINING_CAVALRY: return "training_cavalry";
+        case BVS_TRAINING_SHIP: return "training_ship";
+        case BVS_RESEARCHING_IRON_WEAPONS: return "researching_iron_weapons";
+        case BVS_RESEARCHING_CROSSBOWS: return "researching_crossbows";
+    }
+    return "unknown";
+}
+
+const char* animalCarcassVisualStateName(AnimalCarcassVisualState state) {
+    switch (state) {
+        case ACVS_ALIVE: return "alive";
+        case ACVS_DEAD_UNHARVESTED: return "dead_unharvested";
+        case ACVS_PARTLY_HARVESTED: return "partly_harvested";
+        case ACVS_MOSTLY_HARVESTED: return "mostly_harvested";
+        case ACVS_DEPLETED_SKELETON: return "depleted_skeleton";
+    }
+    return "unknown";
+}
+
+const char* transportVisualStateName(TransportVisualState state) {
+    switch (state) {
+        case TVS_EMPTY: return "empty";
+        case TVS_LOADED_PARTIAL: return "loaded_partial";
+        case TVS_LOADED_FULL: return "loaded_full";
+        case TVS_LOAD_UNLOAD: return "load_unload";
+        case TVS_WRECK: return "wreck";
+        case TVS_DECAYED_WRECK: return "decayed_wreck";
+    }
+    return "unknown";
 }
 
 const char* stateName(EntityState s) {
@@ -159,8 +529,7 @@ const CommandBinding* gameplayCommands(int& count) {
         {"exit", "Exit", "X", "Any", "Exit the application"},
         {"cancel", "Cancel", "Esc", "Command modes", "Cancel build, train, wall, rally, attack-move, or research"},
         {"zoom", "Zoom", "+/-/wheel", "SDL", "Zoom map"},
-        {"pan", "Pan", "Middle-drag", "SDL", "Pan map"},
-        {"projection", "Projection", "F6/F7", "SDL", "Switch top-down/isometric projection"}
+        {"pan", "Pan", "Middle-drag", "SDL", "Pan map"}
     };
     count = (int)(sizeof(commands) / sizeof(commands[0]));
     return commands;
@@ -208,6 +577,12 @@ bool validateGameState(std::string* error) {
         if (e.cargo.amount > 0 && e.cargo.type == CR_NONE) return fail("cargo amount without resource type");
         if (e.cargo.sourceX != -1 && e.cargo.sourceY != -1 && !inBounds(e.cargo.sourceX, e.cargo.sourceY)) return fail("cargo source out of bounds");
         if (e.storedFood < 0) return fail("stored food below zero");
+        if (e.deathTicks < 0) return fail("death ticks below zero");
+        if (e.carcassFoodRemaining < 0 || e.carcassFoodMax < 0) return fail("carcass food below zero");
+        if (e.carcassFoodRemaining > e.carcassFoodMax) return fail("carcass food exceeds max");
+        if (e.type == E_WOLF && (e.carcassFoodRemaining != 0 || e.carcassFoodMax != 0))
+            return fail("wolf carcass food must stay zero");
+        if (e.facingDx < -1 || e.facingDx > 1 || e.facingDy < -1 || e.facingDy > 1) return fail("entity facing delta outside valid range");
         if (e.producing < E_NONE || e.producing > E_BOAR) return fail("producing type outside valid range");
         if (e.trainProgress < 0 || e.trainTime < 0 || e.researchProgress < 0 || e.researchTime < 0)
             return fail("progress counters below zero");
@@ -360,6 +735,15 @@ Entity* entityAtOwner(int x, int y, int owner) {
         else if (e.x == x && e.y == y) return &e;
     }
     return nullptr;
+}
+
+Entity* corpseAt(int x, int y) {
+    Entity* found = nullptr;
+    for (auto& e : g.entities) {
+        if (e.alive || e.state != S_DEAD || !isUnit(e.type) || isBuilding(e.type)) continue;
+        if (e.x == x && e.y == y) found = &e;
+    }
+    return found;
 }
 
 void buildOccupancyGrid(OccupancyGrid& grid, bool includeUnits, bool includeBuildings, int ignoreEntityId) {
@@ -585,6 +969,10 @@ int spawnEntity(EntityType type, int owner, int x, int y, bool built) {
     e.producing = E_NONE; e.underConstruction = !built; e.alive = true;
     e.rallyX = x + STATS[type].sizeW; e.rallyY = y + STATS[type].sizeH;
     e.resourceX = -1; e.resourceY = -1;
+    e.deathTicks = 0;
+    e.carcassFoodMax = carcassFoodForAnimal(type);
+    e.carcassFoodRemaining = e.carcassFoodMax;
+    e.facingDx = 1; e.facingDy = 0;
     e.cargo = emptyCargo();
     if (type == E_FISHING_BOAT) e.cargo.type = CR_FISH;
     g.entities.push_back(e);
@@ -645,11 +1033,103 @@ static bool readIntVec(std::istream& is, std::vector<int>& v) {
     return true;
 }
 
+static std::string lowerAssetSlug(const std::string& text) {
+    std::string out;
+    bool underscore = false;
+    for (unsigned char raw : text) {
+        char ch = (char)std::tolower(raw);
+        if ((ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9')) {
+            out.push_back(ch);
+            underscore = false;
+        } else if (!underscore && !out.empty()) {
+            out.push_back('_');
+            underscore = true;
+        }
+    }
+    while (!out.empty() && out.back() == '_') out.pop_back();
+    return out.empty() ? "unknown" : out;
+}
+
+int dumpMissingTilesetAssets() {
+    namespace fs = std::filesystem;
+    int missing = 0;
+    auto report = [&](const std::string& kind, const std::string& key, const fs::path& path) {
+        if (fs::exists(path)) return;
+        std::cout << kind << " | " << key << " | missing=" << path.generic_string() << "\n";
+        missing++;
+    };
+
+    bool sawGround[32] = {};
+    bool sawFeature[32] = {};
+    bool sawDecal[32] = {};
+    for (int t = T_GRASS; t <= T_CASTLE_GATE; ++t) {
+        Tile tile{};
+        tile.terrain = (Terrain)t;
+        tile.biome = (t == T_SNOW || t == T_PINE) ? B_SNOW : B_TEMPERATE;
+        tile.resources = 100;
+        VisualTileParts parts = visualPartsForTile(tile);
+        if (!sawGround[(int)parts.ground]) {
+            sawGround[(int)parts.ground] = true;
+            std::string name = groundTypeName(parts.ground);
+            report("ground", name, fs::path("assets") / "tiles" / "grounds" / (name + ".png"));
+        }
+        if (parts.feature != F_NONE && !sawFeature[(int)parts.feature]) {
+            sawFeature[(int)parts.feature] = true;
+            std::string name = featureTypeName(parts.feature);
+            report("feature", name, fs::path("assets") / "tiles" / "features" / name / "manifest.json");
+        }
+        for (VisualDecalType decal : parts.decals) {
+            if (sawDecal[(int)decal]) continue;
+            sawDecal[(int)decal] = true;
+            std::string name = visualDecalName(decal);
+            report("decal", name, fs::path("assets") / "tiles" / "decals" / (name + ".png"));
+        }
+    }
+
+    const char* effects[] = {
+        "arrow_projectile", "tower_bolt_projectile", "warship_shot_projectile",
+        "catapult_boulder_projectile", "melee_hit_spark", "arrow_hit",
+        "boulder_impact", "boulder_water_splash", "building_hit_dust",
+        "rain_frame_1", "rain_frame_2", "storm_rain_frame_1", "storm_rain_frame_2",
+        "snowfall_frame_1", "snowfall_frame_2", "move_marker", "attack_marker",
+        "gather_marker", "build_marker", "rally_marker", "attack_move_marker",
+        "hold_position_marker", "selection_ring", "group_selection_ring",
+        "range_ring_dot", "build_preview_valid", "build_preview_invalid",
+        "wall_preview", "garrison_indicator", "queued_unit_marker",
+        "research_active_marker", "completed_research_icon_treatment"
+    };
+    for (const char* effect : effects)
+        report("effect-ui", effect, fs::path("assets") / "tiles" / "effects-ui" / (std::string(effect) + ".png"));
+
+    for (int type = E_PEASANT; type <= E_BOAR; ++type) {
+        EntityType entityType = (EntityType)type;
+        std::string slug = lowerAssetSlug(STATS[entityType].name ? STATS[entityType].name : "unknown");
+        int count = entityActionAnimationSpecCount(entityType);
+        for (int i = 0; i < count; ++i) {
+            const EntityActionAnimationSpec* spec = entityActionAnimationSpecAt(entityType, i);
+            if (!spec || !spec->action) continue;
+            const char* dirs[] = {"front", "back"};
+            for (const char* dir : dirs) {
+                for (int f = 0; f < std::max(1, spec->frameCount); ++f) {
+                    std::ostringstream frame;
+                    frame << "frame_" << (f < 10 ? "0" : "") << f << "_base.png";
+                    fs::path path = fs::path("assets") / "tiles" / "entities" / slug
+                        / spec->action / dir / frame.str();
+                    report("entity", slug + "/" + spec->action + "/" + dir, path);
+                }
+            }
+        }
+    }
+
+    std::cout << "missing_tileset_assets=" << missing << "\n";
+    return 0;
+}
+
 bool saveGame(const std::string& path) {
     std::ofstream os(path);
     if (!os) return false;
     os << std::setprecision(std::numeric_limits<float>::max_digits10);
-    os << "REALM_SAVE 3\n";
+    os << "REALM_SAVE 6\n";
     os << "META " << g.seed << ' ' << g.startupAIs << ' ' << g.humanCorner << ' '
        << g.matchNumber << ' ' << g.biomeChoice << ' ' << g.tick << ' '
        << (int)g.mode << ' ' << g.cursorX << ' ' << g.cursorY << ' '
@@ -695,8 +1175,11 @@ bool saveGame(const std::string& path) {
            << (e.underConstruction ? 1 : 0) << ' ' << (e.alive ? 1 : 0) << ' '
            << e.rallyX << ' ' << e.rallyY << ' ' << e.resourceX << ' ' << e.resourceY << ' '
            << e.storedFood << ' ' << e.stuckTicks << ' '
-           << e.alertTicks << ' ' << e.rallySet << ' ' << e.researching << ' '
-           << e.attackMove << ' ' << e.holdPosition << ' ' << (e.gateOpen ? 1 : 0) << ' '
+           << e.alertTicks << ' ' << e.deathTicks << ' '
+           << e.carcassFoodRemaining << ' ' << e.carcassFoodMax << ' '
+           << e.rallySet << ' ' << e.researching << ' '
+           << e.attackMove << ' ' << e.holdPosition << ' ' << e.facingDx << ' ' << e.facingDy << ' '
+           << (e.gateOpen ? 1 : 0) << ' '
            << (e.gateLocked ? 1 : 0);
         os << " PATH " << e.path.size();
         for (auto pt : e.path) os << ' ' << pt.first << ' ' << pt.second;
@@ -722,7 +1205,7 @@ bool loadGame(const std::string& path) {
     if (!is) return false;
     std::string tag;
     int version = 0;
-    if (!(is >> tag >> version) || tag != "REALM_SAVE" || version != 3) return false;
+    if (!(is >> tag >> version) || tag != "REALM_SAVE" || (version < 3 || version > 6)) return false;
     Game ng{};
     if (!(is >> tag) || tag != "META") return false;
     int mode = 0, ret = 0, diag = 0, help = 0;
@@ -783,8 +1266,26 @@ bool loadGame(const std::string& path) {
               >> e.gatherCd >> cargoType >> e.cargo.amount >> e.cargo.sourceX >> e.cargo.sourceY
               >> producing >> e.trainProgress >> e.trainTime >> e.researchProgress >> e.researchTime
               >> under >> alive >> e.rallyX >> e.rallyY >> e.resourceX >> e.resourceY >> e.storedFood >> e.stuckTicks
-              >> e.alertTicks >> e.rallySet >> e.researching >> e.attackMove >> e.holdPosition
-              >> gateOpen >> gateLocked)) return false;
+              >> e.alertTicks)) return false;
+        if (version >= 5) {
+            if (!(is >> e.deathTicks)) return false;
+        } else {
+            e.deathTicks = e.alive ? 0 : CORPSE_REMOVE_TICKS;
+        }
+        if (version >= 6) {
+            if (!(is >> e.carcassFoodRemaining >> e.carcassFoodMax)) return false;
+        } else {
+            e.carcassFoodMax = carcassFoodForAnimal((EntityType)type);
+            e.carcassFoodRemaining = e.alive ? e.carcassFoodMax : 0;
+        }
+        if (!(is >> e.rallySet >> e.researching >> e.attackMove >> e.holdPosition)) return false;
+        if (version >= 4) {
+            if (!(is >> e.facingDx >> e.facingDy)) return false;
+        } else {
+            e.facingDx = 1;
+            e.facingDy = 0;
+        }
+        if (!(is >> gateOpen >> gateLocked)) return false;
         e.type = (EntityType)type;
         e.state = (EntityState)state;
         e.cargo.type = (CargoResource)cargoType;
@@ -872,6 +1373,7 @@ Entity* findNearestEnemy(Entity& e, int range) {
         if (concealing && o.owner != OWNER_NATURE && e.owner < MAX_PLAYERS
             && !isDetectedBy(o.x, o.y, e.owner)) continue;
         int d = dist(e.x, e.y, o.x, o.y);
+        if (isConcealingTile(o.x, o.y) && d > 2) continue;
         if (d < bestD) { bestD = d; best = &o; }
     }
     return best;
@@ -938,7 +1440,7 @@ void ejectGarrison(Entity& bld) {
             u->stuckTicks = 0; u->targetId = -1;
             si++;
         } else {
-            u->alive = false; u->state = S_DEAD;
+            u->alive = false; u->state = S_DEAD; u->hp = 0; u->deathTicks = 0;
             u->targetId = -1; u->targetX = -1; u->targetY = -1;
             u->path.clear(); u->pathIdx = 0;
             clearReferencesToEntity(u->id);
@@ -952,7 +1454,7 @@ void ejectGarrison(Entity& bld) {
 static void killEntity(Entity& t) {
     if (!t.alive) return;
     int id = t.id;
-    t.alive = false; t.state = S_DEAD;
+    t.alive = false; t.state = S_DEAD; t.hp = 0; t.deathTicks = 0;
     t.targetId = -1; t.targetX = -1; t.targetY = -1;
     t.path.clear(); t.pathIdx = 0;
     clearReferencesToEntity(id);
@@ -1075,6 +1577,8 @@ void moveAlongPath(Entity& e) {
             return;
         }
     }
+    e.facingDx = (nx > e.x) - (nx < e.x);
+    e.facingDy = (ny > e.y) - (ny < e.y);
     e.x = nx; e.y = ny; e.pathIdx++;
     e.stuckTicks = 0;
     Terrain ter = g.map[ny][nx].terrain;
@@ -1082,6 +1586,7 @@ void moveAlongPath(Entity& e) {
     if (ter==T_ROAD||ter==T_DIRT||ter==T_CASTLE_FLOOR) spd = std::max(1, spd-1);
     else if (ter==T_MARSH||ter==T_SHALLOWS||ter==T_SAND||ter==T_SNOW||ter==T_ICE||ter==T_ASH) spd += 1;
     else if (ter==T_MUD) spd += 2; // bogged down
+    spd += movementPenaltyForTile(g.map[ny][nx]);
     if (getSeason() == WINTER) spd = std::max(spd, STATS[e.type].speed+1);
     // Weather: rain and storm bog down movement on natural ground.
     if (g.weather != W_CLEAR && (ter==T_GRASS||ter==T_TALL_GRASS||ter==T_FLOWERS
@@ -1301,27 +1806,17 @@ void tickEntity(Entity& e) {
                     }
                 }
                 if (t->hp <= 0) {
-                    if (t->owner == OWNER_NATURE && e.owner < OWNER_NATURE && e.type == E_PEASANT) {
-                        int food = (t->type==E_SHEEP)?80:(t->type==E_DEER)?120:(t->type==E_BOAR)?100:30;
-                        e.cargo = {CR_FOOD, food, -1, -1};
-                        e.resourceX = -1;
-                        e.resourceY = -1;
-                        Entity* dep = findDepot(e);
-                        if (dep) {
-                            e.state = S_RETURNING;
-                            e.targetId = dep->id;
-                            e.targetX = dep->x;
-                            e.targetY = dep->y;
-                            e.path = findPathFor(e, dep->x, dep->y);
-                            e.pathIdx = 0;
-                            if (e.owner==0) setStatus(std::string("Hauling ") + std::to_string(food) + " food.");
-                        } else {
-                            e.cargo = emptyCargo();
-                            if (e.owner==0) setStatus("No food drop-off available.");
-                        }
-                    }
+                    bool startCarcassHarvest = t->owner == OWNER_NATURE && e.owner < OWNER_NATURE
+                        && e.type == E_PEASANT
+                        && (t->type == E_DEER || t->type == E_SHEEP || t->type == E_BOAR);
+                    int cx = t->x, cy = t->y;
                     killEntity(*t);
-                    if (e.cargo.amount <= 0) e.state = S_IDLE;
+                    if (startCarcassHarvest && corpseAt(cx, cy) && isHarvestableCarcass(*corpseAt(cx, cy))) {
+                        orderGather(e, cx, cy);
+                        if (e.owner==0) setStatus("Harvesting carcass.");
+                    } else if (e.cargo.amount <= 0) {
+                        e.state = S_IDLE;
+                    }
                 }
             } else e.atkCd--;
         } else {
@@ -1339,6 +1834,42 @@ void tickEntity(Entity& e) {
     case S_GATHERING: {
         int d = dist(e.x, e.y, e.targetX, e.targetY);
         if (d <= 1) {
+            Entity* carcass = corpseAt(e.targetX, e.targetY);
+            if (carcass && e.type == E_PEASANT && e.cargo.type == CR_FOOD) {
+                if (isHarvestableCarcass(*carcass)) {
+                    e.gatherCd++;
+                    if (e.gatherCd >= GATHER_TICKS) {
+                        e.gatherCd = 0;
+                        int carryLeft = std::max(0, CARRY_MAX - e.cargo.amount);
+                        int amt = std::min(GATHER_RATE, std::min(carcass->carcassFoodRemaining, carryLeft));
+                        carcass->carcassFoodRemaining -= amt;
+                        e.cargo.amount += amt;
+                        if (e.cargo.amount >= CARRY_MAX || carcass->carcassFoodRemaining <= 0) {
+                            Entity* dep = findDepot(e);
+                            if (dep && e.cargo.amount > 0) {
+                                e.state = S_RETURNING; e.targetId = dep->id;
+                                e.targetX = dep->x; e.targetY = dep->y;
+                                e.path = findPathFor(e, dep->x, dep->y); e.pathIdx = 0;
+                            } else {
+                                if (e.owner==0 && e.cargo.amount > 0) setStatus("No food drop-off available.");
+                                e.cargo = emptyCargo();
+                                e.state = S_IDLE;
+                            }
+                        }
+                    }
+                } else {
+                    Entity* dep = e.cargo.amount > 0 ? findDepot(e) : nullptr;
+                    if (dep) {
+                        e.state = S_RETURNING; e.targetId = dep->id;
+                        e.targetX = dep->x; e.targetY = dep->y;
+                        e.path = findPathFor(e, dep->x, dep->y); e.pathIdx = 0;
+                    } else {
+                        e.cargo = emptyCargo();
+                        e.state = S_IDLE;
+                    }
+                }
+                break;
+            }
             Tile& tile = g.map[e.targetY][e.targetX];
             bool isW     = (tile.terrain==T_FOREST||tile.terrain==T_PINE||tile.terrain==T_PALM||tile.terrain==T_DEAD_TREE);
             bool isBerry = (tile.terrain == T_BERRY);
@@ -1399,6 +1930,11 @@ void tickEntity(Entity& e) {
                 }
             }
             if (!inBounds(e.resourceX, e.resourceY)) { e.state = S_IDLE; break; }
+            Entity* carcass = corpseAt(e.resourceX, e.resourceY);
+            if (carcass && isHarvestableCarcass(*carcass)) {
+                orderGather(e, e.resourceX, e.resourceY);
+                break;
+            }
             Tile& rt = g.map[e.resourceY][e.resourceX];
             bool isW = (rt.terrain==T_FOREST||rt.terrain==T_PINE||rt.terrain==T_PALM||rt.terrain==T_DEAD_TREE);
             bool isBerry = (rt.terrain == T_BERRY);

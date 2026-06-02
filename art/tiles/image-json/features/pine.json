@@ -1,0 +1,30 @@
+{
+  "schema": "realm.terrain_sprite_spec.v1",
+  "asset_type": "feature",
+  "enum": "T_PINE",
+  "slug": "pine",
+  "name": "Pine",
+  "ui_name": "Pine Forest",
+  "runtime": {
+    "glyph": "Y"
+  },
+  "art": {
+    "projection": "transparent feature sprite anchored over a projected isometric map tile",
+    "layer_category": "features",
+    "terrain_type": "resource object",
+    "visual_design": "Dark conifer silhouettes, triangular clusters",
+    "required_variants": "12 pine variants; snow-cap overlay; autumn slight yellowing",
+    "runtime_notes": "Gatherable wood; depleted to dirt",
+    "team_color_required": false
+  },
+  "paths": {
+    "runtime_root": "assets/tiles/terrain/pine",
+    "base": "assets/tiles/terrain/pine.png"
+  },
+  "sources": [
+    "include/realm.h",
+    "src/entity.cpp",
+    "src/gfx_renderer.cpp",
+    "docs/tileset/realm_tileset_visual_audit.md"
+  ]
+}

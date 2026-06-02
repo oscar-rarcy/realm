@@ -1,0 +1,21 @@
+{
+  "schema": "realm.generated_candidate.v1",
+  "entity": "peasant",
+  "action": "idle",
+  "version": "v001-back-angle-clean",
+  "kind": "batch-source",
+  "status": "candidate",
+  "original_input": "assets\\tiles\\candidates\\peasant\\idle\\v001-back-angle-clean\\batch_source.png",
+  "stored_image": "assets\\tiles\\candidates\\peasant\\idle\\v001-back-angle-clean\\batch_source.png",
+  "image_size": {
+    "w": 1254,
+    "h": 1254
+  },
+  "notes": [
+    "Clean positive-reference-only 2x2 Peasant idle candidate with rear-right back angle."
+  ],
+  "prompt_file": "assets\\tiles\\candidates\\peasant\\idle\\v001-back-angle-clean\\prompt.txt",
+  "positive_references": [
+    "C:\\Users\\Edward\\Desktop\\peasant 3.png"
+  ]
+}

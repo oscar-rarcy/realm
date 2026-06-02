@@ -1,0 +1,30 @@
+{
+  "schema": "realm.terrain_sprite_spec.v1",
+  "asset_type": "ground",
+  "enum": "T_SAND",
+  "slug": "sand",
+  "name": "Sand",
+  "ui_name": "Sandy Ground",
+  "runtime": {
+    "glyph": "."
+  },
+  "art": {
+    "projection": "top-down square source tile, projected into an isometric diamond in-app",
+    "layer_category": "grounds",
+    "terrain_type": "continuous ground",
+    "visual_design": "Soft tan desert/coast sand, wind grain",
+    "required_variants": "12 variants; dune transition masks; wet edge for shoreline",
+    "runtime_notes": "Slow movement; weather can slow further",
+    "team_color_required": false
+  },
+  "paths": {
+    "runtime_root": "assets/tiles/terrain/sand",
+    "base": "assets/tiles/terrain/sand.png"
+  },
+  "sources": [
+    "include/realm.h",
+    "src/entity.cpp",
+    "src/gfx_renderer.cpp",
+    "docs/tileset/realm_tileset_visual_audit.md"
+  ]
+}

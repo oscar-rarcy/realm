@@ -1,0 +1,30 @@
+{
+  "schema": "realm.terrain_sprite_spec.v1",
+  "asset_type": "feature",
+  "enum": "T_STONE",
+  "slug": "stone",
+  "name": "Stone",
+  "ui_name": "Stone",
+  "runtime": {
+    "glyph": "o"
+  },
+  "art": {
+    "projection": "transparent feature sprite anchored over a projected isometric map tile",
+    "layer_category": "features",
+    "terrain_type": "blocker/resource-looking terrain",
+    "visual_design": "Rock piles/boulders, grey with hard silhouette",
+    "required_variants": "8 boulder variants",
+    "runtime_notes": "Blocks land; currently not gathered as a resource",
+    "team_color_required": false
+  },
+  "paths": {
+    "runtime_root": "assets/tiles/terrain/stone",
+    "base": "assets/tiles/terrain/stone.png"
+  },
+  "sources": [
+    "include/realm.h",
+    "src/entity.cpp",
+    "src/gfx_renderer.cpp",
+    "docs/tileset/realm_tileset_visual_audit.md"
+  ]
+}

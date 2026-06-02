@@ -1,9 +1,9 @@
 # Realm Web Build
 
 Realm's web build compiles the shared C++ simulation and SDL renderer to
-WebAssembly with Emscripten. The browser uses `src/main_web.cpp`, which starts a
-deterministic playable match and advances the existing game one frame at a time
-through Emscripten's main loop.
+WebAssembly with Emscripten. The browser uses `src/main_web.cpp`, which opens on
+the main menu for normal routes and advances either the menu or the active match
+one frame at a time through Emscripten's main loop.
 
 ## Local build
 
@@ -21,6 +21,12 @@ REALM_INSTALL_EMSDK=1 bash scripts/build-web.sh
 
 The output is written to `dist/netlify/` and includes `index.html`, JavaScript,
 WebAssembly, Emscripten data assets, `_headers`, and `_redirects`.
+
+The web build reads `REALM_VISUAL_MODE` from the shell, then `.env.local`, then
+`.env`. The committed default is `ascii-only`, which makes the normal web build
+ASCII-only and hides the visual-mode selector. Use `.env.local` with
+`REALM_VISUAL_MODE=tileset-menu` for a personal tileset-first build that still
+keeps ASCII available in the menu.
 
 ## Local run
 
@@ -68,8 +74,14 @@ Current pass:
 
 ```text
 edward branch Netlify site -> playable Realm web build
+edward branch Netlify site /ascii -> ASCII-only Realm web build
 edwardcoventry.com/apps/realm -> proxy to the Realm Netlify site
+edwardcoventry.com/apps/realm-ascii -> proxy to the Realm Netlify site /ascii surface
 ```
+
+The web entrypoint also treats an `ascii.*` host as the ASCII-only surface, so a
+custom domain assigned to the same Netlify deploy can serve the same build
+without exposing the visual-mode selector.
 
 Future TODO:
 
@@ -86,10 +98,16 @@ packs it into Emscripten's virtual filesystem at `/assets/fonts`. Save/load uses
 Emscripten's in-memory filesystem for now, so browser saves are not yet
 persistent after refresh.
 
+## Web controls
+
+- `Q` resigns the active match and returns to the web main menu.
+- `X` is ignored on web; the browser tab/window owns exit.
+- `F11`, `Alt+Enter`, and the mobile HUD Full button request browser fullscreen.
+
 ## Known limitations
 
 - The browser entrypoint uses route-based startup:
-  non-`/embed` pages show the main menu, while `/embed` starts a deterministic
-  mid-game immediately.
+  non-`/embed` pages show the main menu, while `/embed` and `?embed` start a
+  deterministic playable match immediately for site embeds.
 - Browser save persistence is deferred.
 - Only the `edward` branch is configured for Netlify in this pass.

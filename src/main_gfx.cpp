@@ -1,5 +1,7 @@
 #include "realm.h"
 #include "gfx_renderer.h"
+#include "env_config.h"
+#include "entity_animation.h"
 
 #include <SDL.h>
 
@@ -30,6 +32,64 @@ static bool captureUiFrame(const std::string& path) {
     gfxDelay(40);
     std::cerr << "realm: ui screenshot " << (ok ? "ok " : "failed ") << path << "\n";
     return ok;
+}
+
+static bool captureAsciiComparePair(const std::filesystem::path& outDir, const std::string& name) {
+    bool ok = true;
+    std::filesystem::path terminalShot = outDir / (name + "-terminal-reference.bmp");
+    std::filesystem::path terminalText = outDir / (name + "-terminal-reference.txt");
+    std::filesystem::path guiShot = outDir / (name + "-gui-ascii.bmp");
+    ok = gfxSaveAsciiTerminalReference(terminalShot.string()) && ok;
+    ok = gfxSaveAsciiTerminalText(terminalText.string()) && ok;
+    ok = gfxSaveScreenshot(guiShot.string()) && ok;
+    std::cerr << "realm: ascii compare " << (ok ? "ok " : "failed ") << name << "\n";
+    return ok;
+}
+
+static int runAsciiCompareMode() {
+    std::filesystem::path outDir = "build/ascii-compare";
+    if (const char* env = std::getenv("REALM_ASCII_COMPARE_DIR")) {
+        if (*env) outDir = env;
+    }
+    std::filesystem::create_directories(outDir);
+
+    int width = envIntLocal("REALM_ASCII_COMPARE_WIDTH", 1074);
+    int height = envIntLocal("REALM_ASCII_COMPARE_HEIGHT", 827);
+    gfxSetWindowSizeForTest(width, height);
+
+    displayMode = DM_ASCII;
+    gfxSetProjection(false);
+    g.biomeChoice = envIntLocal("REALM_BIOME", B_TEMPERATE);
+    initGameWithSeed(1, (unsigned)envIntLocal("REALM_SEED", 2468), envIntLocal("REALM_HUMAN_CORNER", 1));
+    gfxOnNewGame();
+    g.statusTimer = 0;
+
+    bool ok = true;
+    ok = captureAsciiComparePair(outDir, "01-overview") && ok;
+
+    if (Entity* peasant = firstOwned(E_PEASANT, 0)) {
+        g.selectedId = peasant->id;
+        g.selectedIds.clear();
+        g.cursorX = peasant->x;
+        g.cursorY = peasant->y;
+        g.statusTimer = 0;
+        ok = captureAsciiComparePair(outDir, "02-selected-peasant") && ok;
+    }
+
+    if (Entity* townHall = firstOwned(E_TOWNHALL, 0)) {
+        g.selectedId = townHall->id;
+        g.selectedIds.clear();
+        g.cursorX = townHall->x;
+        g.cursorY = townHall->y;
+        g.diagnostics = true;
+        g.statusTimer = 0;
+        ok = captureAsciiComparePair(outDir, "03-selected-townhall-diagnostics") && ok;
+        g.diagnostics = false;
+    }
+
+    std::cerr << "realm: ascii compare " << (ok ? "complete" : "failed")
+              << " dir=" << outDir.string() << "\n";
+    return ok ? 0 : 1;
 }
 
 static int runUiTestMode() {
@@ -65,6 +125,31 @@ static int runUiTestMode() {
         g.cursorY = peasant->y;
         setStatus("UI test: peasant selected");
         ok = captureUiFrame((outDir / "03-selected-peasant.bmp").string()) && ok;
+
+        peasant->state = S_IDLE;
+        peasant->targetId = -1;
+        peasant->targetX = -1;
+        peasant->targetY = -1;
+        peasant->path.clear();
+        peasant->pathIdx = 0;
+        peasant->facingDx = 1;
+        peasant->facingDy = 0;
+        g.tick = 0;
+        ok = captureUiFrame((outDir / "03a-ingame-peasant-idle-down-right-front-frame0.bmp").string()) && ok;
+        g.tick = 260;
+        ok = captureUiFrame((outDir / "03b-ingame-peasant-idle-down-right-front-frame1-arms-crossed.bmp").string()) && ok;
+        peasant->facingDx = 0;
+        peasant->facingDy = 1;
+        ok = captureUiFrame((outDir / "03c-ingame-peasant-idle-down-left-front-mirrored.bmp").string()) && ok;
+        peasant->facingDx = 0;
+        peasant->facingDy = -1;
+        ok = captureUiFrame((outDir / "03d-ingame-peasant-idle-up-right-back.bmp").string()) && ok;
+        peasant->facingDx = -1;
+        peasant->facingDy = 0;
+        ok = captureUiFrame((outDir / "03e-ingame-peasant-idle-up-left-back-mirrored.bmp").string()) && ok;
+        peasant->facingDx = 1;
+        peasant->facingDy = 0;
+        g.tick = 0;
 
         g.mode = M_BUILD_SELECT;
         g.statusTimer = 0;
@@ -229,6 +314,25 @@ static int runUiTestMode() {
         gfxOnNewGame();
         ok = captureUiFrame((outDir / "18-mobile-landscape-hud.bmp").string()) && ok;
 
+        DisplayMode previousMode = displayMode;
+        displayMode = DM_ASCII;
+        gfxSetProjection(false);
+
+        gfxSetWindowSizeForTest(430, 820);
+        ok = gfxSaveSplashScreenshot((outDir / "19-mobile-ascii-menu.bmp").string(), 1, 7) && ok;
+        gfxOnNewGame();
+        ok = captureUiFrame((outDir / "20-mobile-ascii-portrait-hud.bmp").string()) && ok;
+
+        g.mode = M_BUILD_SELECT;
+        ok = captureUiFrame((outDir / "21-mobile-ascii-portrait-build-menu.bmp").string()) && ok;
+
+        gfxSetWindowSizeForTest(900, 430);
+        g.mode = M_NORMAL;
+        gfxOnNewGame();
+        ok = captureUiFrame((outDir / "22-mobile-ascii-landscape-hud.bmp").string()) && ok;
+
+        displayMode = previousMode;
+        gfxSetProjection(true);
         gfxSetWindowSizeForTest(width, height);
         gfxSetZoomForTest(envIntLocal("REALM_UI_TEST_ZOOM", 20));
         gfxOnNewGame();
@@ -324,18 +428,40 @@ static int runUiTestMode() {
     return ok ? 0 : 1;
 }
 
-int main(int, char**) {
+int main(int argc, char** argv) {
+    if (argc >= 2 && std::string(argv[1]) == "--dump-missing-tileset-assets") {
+        return dumpMissingTilesetAssets();
+    }
+    if (argc >= 2 && std::string(argv[1]) == "--dump-animation-spec") {
+        const char* entityArg = argc >= 3 ? argv[2] : "peasant";
+        EntityType type = entityTypeForAnimationSlug(entityArg);
+        if (!writeEntityAnimationSpecJson(std::cout, type)) {
+            std::cerr << "unknown entity animation spec: " << entityArg << "\n";
+            return 2;
+        }
+        return 0;
+    }
     std::freopen("realm-run.log", "w", stderr);
     std::cerr << "realm: process started\n";
 
     forceUtf8Locale();
-    displayMode = DM_EMOJI; // graphical renderer defaults to the enhanced view
+    loadRealmEnvironmentFiles();
+    const bool asciiOnly = realmVisualModeIsAsciiOnly();
+    displayMode = asciiOnly ? DM_ASCII : DM_EMOJI;
 
     if (!gfxInit()) return 1;
+    gfxSetAsciiOnly(asciiOnly);
+    gfxSetProjection(true);
     std::cerr << "realm: gfxInit ok\n";
 
     if (std::getenv("REALM_UI_TEST")) {
         int code = runUiTestMode();
+        gfxShutdown();
+        return code;
+    }
+
+    if (std::getenv("REALM_ASCII_COMPARE")) {
+        int code = runAsciiCompareMode();
         gfxShutdown();
         return code;
     }

@@ -1,0 +1,95 @@
+{
+  "schema": "realm.sprite_spec.v1",
+  "asset_type": "building",
+  "enum": "E_CASTLE",
+  "slug": "castle",
+  "name": "Castle",
+  "runtime": {
+    "glyph": "W",
+    "stats": {
+      "max_hp": 350,
+      "attack": 0,
+      "range": 0,
+      "speed": 0,
+      "attack_speed_ticks": 0,
+      "cost_gold": 100,
+      "cost_wood": 250,
+      "train_time_ticks": 150,
+      "supply_provided": 15,
+      "supply_used": 0,
+      "traits": [
+        "TR_TRAINS_UNITS",
+        "TR_DEFENSE",
+        "TR_GARRISON",
+        "TR_DROPOFF"
+      ]
+    },
+    "footprint": {
+      "w": 4,
+      "h": 4
+    },
+    "team_color_required": true
+  },
+  "art": {
+    "projection": "upright sprite anchored over projected isometric map tiles",
+    "directions": [
+      "south"
+    ],
+    "runtime_mirrors_horizontal": false,
+    "team_color_slots": [
+      "flags on towers",
+      "banners",
+      "shield plaques"
+    ],
+    "visual_design": "Multi-tower stone fortress with inner keep and courtyard",
+    "source_role": "major base, supply +15, garrison 10, vision, defensive base"
+  },
+  "states": [
+    "complete",
+    "garrisoned",
+    "damaged",
+    "construction",
+    "ruin footprint"
+  ],
+  "actions": [
+    {
+      "id": "complete",
+      "description": "complete",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 1
+    },
+    {
+      "id": "garrisoned",
+      "description": "garrisoned",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 1
+    },
+    {
+      "id": "damaged",
+      "description": "damaged",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 1
+    },
+    {
+      "id": "construction",
+      "description": "construction",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 1
+    },
+    {
+      "id": "ruin_footprint",
+      "description": "ruin footprint",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 1
+    }
+  ],
+  "paths": {
+    "runtime_root": "assets/tiles/entities/castle",
+    "manifest": "assets/tiles/entities/castle/manifest.json"
+  },
+  "sources": [
+    "include/realm.h",
+    "src/globals.cpp",
+    "docs/tileset/realm_tileset_visual_audit.md"
+  ]
+}

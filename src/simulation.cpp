@@ -93,6 +93,10 @@ void tickSimulationOnce() {
     tickWeather(); tickPaving();
     tickTowers(); tickGates(); tickProjectiles(); tickFarms(); tickMarkets();
     tickChurches(); tickAnimals(); tickAI(); tickActionMarkers(); updateFog();
+    for (auto& e : g.entities) {
+        if (!e.alive && e.state == S_DEAD && e.deathTicks < CORPSE_REMOVE_TICKS)
+            e.deathTicks++;
+    }
     auto pruneDead = [](std::vector<int>& v) {
         v.erase(std::remove_if(v.begin(), v.end(),
             [](int id){ return findEntity(id) == nullptr; }), v.end());
@@ -102,7 +106,11 @@ void tickSimulationOnce() {
     if (g.selectedId >= 0 && !findEntity(g.selectedId)) g.selectedId = -1;
     if (g.tick % 100 == 0) {
         g.entities.erase(std::remove_if(g.entities.begin(), g.entities.end(),
-            [](const Entity& e){ return !e.alive && e.state==S_DEAD; }), g.entities.end());
+            [](const Entity& e){
+                if (e.alive || e.state != S_DEAD) return false;
+                if (!isUnit(e.type) || isBuilding(e.type)) return true;
+                return e.deathTicks >= CORPSE_REMOVE_TICKS;
+            }), g.entities.end());
         for (int p = 0; p < MAX_PLAYERS; p++) updateSupply(p);
         checkWin();
     }

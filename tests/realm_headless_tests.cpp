@@ -1,4 +1,5 @@
 #include "realm.h"
+#include "entity_animation.h"
 
 #include <cassert>
 #include <cstdlib>
@@ -52,8 +53,10 @@ static std::string fullStateSummary() {
           << ':' << e.researchProgress << ':' << e.researchTime << ':' << e.underConstruction
           << ':' << e.alive << ':' << e.rallyX << ':' << e.rallyY << ':' << e.resourceX
           << ':' << e.resourceY << ':' << e.storedFood
-          << ':' << e.stuckTicks << ':' << e.alertTicks << ':' << e.rallySet
+          << ':' << e.stuckTicks << ':' << e.alertTicks << ':' << e.deathTicks
+          << ':' << e.carcassFoodRemaining << ':' << e.carcassFoodMax << ':' << e.rallySet
           << ':' << e.researching << ':' << e.attackMove << ':' << e.holdPosition
+          << ':' << e.facingDx << ':' << e.facingDy
           << ':' << e.gateOpen << ':' << e.gateLocked << ":q";
         for (int q : e.queue) s << ',' << q;
         s << ":g";
@@ -198,12 +201,161 @@ static void testTraits() {
     assert(trainsUnits(E_BARRACKS));
 }
 
+static void testVisualTileBridgeMappings() {
+    Tile tile{};
+    tile.biome = B_TEMPERATE;
+    tile.resources = 70;
+
+    tile.terrain = T_BERRY;
+    VisualTileParts berry = visualPartsForTile(tile);
+    assert(berry.ground == G_GRASS);
+    assert(berry.feature == F_BERRY_BUSH);
+    assert(berry.featureState == FS_FULL);
+    assert((berry.featureTraits & FT_HARVESTABLE) != 0);
+
+    tile.terrain = T_FOREST;
+    tile.resources = 120;
+    VisualTileParts forest = visualPartsForTile(tile);
+    assert(forest.ground == G_GRASS);
+    assert(forest.feature == F_FOREST);
+    assert((forest.featureTraits & FT_CONCEALS_UNITS) != 0);
+    assert((forest.featureTraits & FT_BLOCKS_MOVEMENT) == 0);
+    assert(movementPenaltyForTile(tile) == 1);
+
+    tile.terrain = T_HILLS;
+    VisualTileParts hills = visualPartsForTile(tile);
+    assert(hills.ground == G_HILLS);
+    assert(hills.feature == F_NONE);
+
+    tile.terrain = T_MOUNTAIN;
+    VisualTileParts mountain = visualPartsForTile(tile);
+    assert(mountain.ground == G_ROCKY);
+    assert(mountain.feature == F_MOUNTAIN_PEAK);
+    assert((mountain.featureTraits & FT_BLOCKS_MOVEMENT) != 0);
+
+    tile.terrain = T_STONE;
+    assert(visualPartsForTile(tile).feature == F_STONE_BOULDERS);
+
+    tile.terrain = T_FISH;
+    tile.biome = B_OCEAN;
+    VisualTileParts fish = visualPartsForTile(tile);
+    assert(fish.ground == G_WATER);
+    assert(fish.feature == F_FISH_SHOAL);
+
+    tile.biome = B_TEMPERATE;
+    tile.terrain = T_RUINS;
+    VisualTileParts ruins = visualPartsForTile(tile);
+    assert(ruins.ground == G_GRAVEL);
+    assert(ruins.feature == F_RUINS);
+
+    tile.biome = B_SNOW;
+    tile.terrain = T_SNOW;
+    assert(visualPartsForTile(tile).ground == G_TUNDRA);
+
+    tile.biome = B_TEMPERATE;
+    tile.terrain = T_CASTLE_WALL;
+    assert(visualPartsForTile(tile).feature == F_CASTLE_WALL);
+    VisualTileParts gate = visualPartsForTerrain(T_CASTLE_GATE, B_TEMPERATE, 0, 0, true, false);
+    assert(gate.ground == G_CASTLE_FLOOR);
+    assert(gate.feature == F_CASTLE_GATE);
+    assert(gate.featureState == FS_OPEN);
+
+    tile.terrain = T_TALL_GRASS;
+    VisualTileParts tallGrass = visualPartsForTile(tile);
+    assert(tallGrass.feature == F_NONE);
+    assert(!tallGrass.decals.empty());
+
+    tile.terrain = T_DIRT;
+    tile.wear = 90;
+    VisualTileParts worn = visualPartsForTile(tile);
+    bool sawCobble = false;
+    for (VisualDecalType decal : worn.decals) sawCobble = sawCobble || decal == VD_COBBLE_PATCH;
+    assert(sawCobble);
+}
+
+static void testVisualEntityStateSelectors() {
+    initGameWithSeed(0, 2603u, 0);
+    Entity b{};
+    b.type = E_TOWNHALL;
+    b.hp = 1;
+    b.maxHp = 100;
+    b.underConstruction = true;
+    assert(buildingVisualState(b) == BVS_CONSTRUCTION_0_FOUNDATION);
+    b.hp = 50;
+    assert(buildingVisualState(b) == BVS_CONSTRUCTION_1_FRAME);
+    b.hp = 90;
+    assert(buildingVisualState(b) == BVS_CONSTRUCTION_2_NEARLY_COMPLETE);
+    b.underConstruction = false;
+    b.hp = 40;
+    assert(buildingVisualState(b) == BVS_DAMAGED);
+    b.hp = 100;
+    b.producing = E_PEASANT;
+    assert(buildingVisualState(b) == BVS_TRAINING_PEASANT);
+
+    Entity smith{};
+    smith.type = E_BLACKSMITH;
+    smith.hp = smith.maxHp = 100;
+    smith.researching = R_IRON_WEAPONS;
+    assert(buildingVisualState(smith) == BVS_RESEARCHING_IRON_WEAPONS);
+    smith.researching = R_CROSSBOWS;
+    assert(buildingVisualState(smith) == BVS_RESEARCHING_CROSSBOWS);
+
+    Entity transport{};
+    transport.type = E_TRANSPORT;
+    transport.alive = true;
+    assert(transportVisualState(transport) == TVS_EMPTY);
+    transport.garrison.push_back(1);
+    assert(transportVisualState(transport) == TVS_LOADED_PARTIAL);
+    transport.garrison = {1, 2, 3, 4};
+    assert(transportVisualState(transport) == TVS_LOADED_FULL);
+}
+
+static void testAnimalCarcassHarvesting() {
+    initGameWithSeed(0, 2703u, 0);
+    int pid = spawnEntity(E_PEASANT, 0, 20, 20);
+    int did = spawnEntity(E_DEER, OWNER_NATURE, 21, 20);
+    Entity* peasant = findEntity(pid);
+    Entity* deer = findEntity(did);
+    assert(peasant && deer);
+    deer->alive = false;
+    deer->state = S_DEAD;
+    deer->hp = 0;
+    deer->deathTicks = 0;
+    deer->carcassFoodMax = 120;
+    deer->carcassFoodRemaining = 120;
+    assert(isHarvestableCarcass(*deer));
+    assert(animalCarcassVisualState(*deer) == ACVS_DEAD_UNHARVESTED);
+
+    orderGather(*peasant, deer->x, deer->y);
+    for (int i = 0; i < GATHER_TICKS; i++) tickEntity(*peasant);
+    assert(peasant->cargo.type == CR_FOOD);
+    assert(peasant->cargo.amount > 0);
+    assert(deer->carcassFoodRemaining < deer->carcassFoodMax);
+    deer->carcassFoodRemaining = 60;
+    assert(animalCarcassVisualState(*deer) == ACVS_PARTLY_HARVESTED);
+    deer->carcassFoodRemaining = 20;
+    assert(animalCarcassVisualState(*deer) == ACVS_MOSTLY_HARVESTED);
+    deer->carcassFoodRemaining = 0;
+    assert(animalCarcassVisualState(*deer) == ACVS_DEPLETED_SKELETON);
+
+    int wid = spawnEntity(E_WOLF, OWNER_NATURE, 24, 20);
+    Entity* wolf = findEntity(wid);
+    assert(wolf);
+    wolf->alive = false;
+    wolf->state = S_DEAD;
+    wolf->hp = 0;
+    wolf->carcassFoodMax = 0;
+    wolf->carcassFoodRemaining = 0;
+    assert(!isHarvestableCarcass(*wolf));
+    assert(animalCarcassVisualState(*wolf) == ACVS_DEPLETED_SKELETON);
+}
+
 static void testCommandBindings() {
     int n = 0;
     const CommandBinding* commands = gameplayCommands(n);
     assert(n >= 10);
     bool sawTrain = false, sawResign = false, sawExit = false, sawSave = false;
-    bool sawHelp = false, sawZoom = false, sawProjection = false;
+    bool sawHelp = false, sawZoom = false;
     for (int i = 0; i < n; i++) {
         assert(commands[i].id && *commands[i].id);
         assert(commands[i].keys && *commands[i].keys);
@@ -214,10 +366,9 @@ static void testCommandBindings() {
         sawSave = sawSave || id == "save";
         sawHelp = sawHelp || id == "help";
         sawZoom = sawZoom || id == "zoom";
-        sawProjection = sawProjection || id == "projection";
     }
     assert(sawTrain && sawResign && sawExit && sawSave);
-    assert(sawHelp && sawZoom && sawProjection);
+    assert(sawHelp && sawZoom);
     std::string help = commandHelpLine();
     assert(help.find("T:Train") != std::string::npos);
     assert(help.find("Q:Resign") != std::string::npos);
@@ -336,6 +487,100 @@ static void testBerryGatherAndDepletion() {
     assert(delivered);
     peasant = findEntity(peasantId);
     assert(peasant && peasant->cargo.amount == 0);
+}
+
+static void testEntityAnimationSpecs() {
+    assert(entityActionAnimationSpecCount(E_PEASANT) == 16);
+    const EntityActionAnimationSpec* mine = findEntityActionAnimationSpec(E_PEASANT, "mine_gold");
+    assert(mine);
+    assert(std::string(mine->description).find("gold") != std::string::npos);
+    assert(mine->targetRelation == ActionTargetRelation::AdjacentTarget);
+    assert(mine->rangeTiles == 1);
+    assert(mine->frameCount == 2);
+    assert(std::string(mine->frames[0].description).find("low") != std::string::npos);
+    assert(std::string(mine->frames[1].description).find("raised") != std::string::npos);
+
+    Entity e{};
+    e.type = E_PEASANT;
+    e.alive = true;
+    e.state = S_IDLE;
+    e.targetId = -1;
+    e.targetX = -1;
+    e.targetY = -1;
+    assert(std::string(entityAnimationActionId(e)) == "idle");
+    assert(entityActionAnimationSpecFor(e)->holdLast);
+    assert(entityActionAnimationSpecCount(E_MILITIA) == 1);
+    const EntityActionAnimationSpec* militiaDeath = findEntityActionAnimationSpec(E_MILITIA, "death");
+    assert(militiaDeath);
+    assert(militiaDeath->frameCount == 2);
+    assert(std::string(militiaDeath->frames[0].id) == "dead");
+    assert(std::string(militiaDeath->frames[1].id) == "decayed");
+    assert(std::string(militiaDeath->frames[1].description).find("armour") != std::string::npos);
+    assert(std::string(militiaDeath->frames[1].description).find("weapons") != std::string::npos);
+    assert(entityTypeForAnimationSlug("militia") == E_MILITIA);
+    assert(entityTypeForAnimationSlug("boar") == E_BOAR);
+    e.x = 10;
+    e.y = 10;
+    e.facingDx = 1;
+    e.facingDy = 0;
+    assert(std::string(entityAnimationDirectionBucket(e)) == "front");
+    assert(!entityAnimationMirrorHorizontal(e));
+    e.facingDx = 0;
+    e.facingDy = 1;
+    assert(std::string(entityAnimationDirectionBucket(e)) == "front");
+    assert(entityAnimationMirrorHorizontal(e));
+    e.facingDx = 0;
+    e.facingDy = -1;
+    assert(std::string(entityAnimationDirectionBucket(e)) == "back");
+    assert(!entityAnimationMirrorHorizontal(e));
+    e.facingDx = -1;
+    e.facingDy = 0;
+    assert(std::string(entityAnimationDirectionBucket(e)) == "back");
+    assert(entityAnimationMirrorHorizontal(e));
+
+    e.state = S_MOVING;
+    e.path = {{11, 10}};
+    e.pathIdx = 0;
+    assert(std::string(entityAnimationActionId(e)) == "walk");
+    assert(std::string(entityAnimationDirectionBucket(e)) == "front");
+    assert(!entityAnimationMirrorHorizontal(e));
+
+    e.state = S_RETURNING;
+    e.path.clear();
+    e.cargo = {CR_WOOD, 10, 3, 4};
+    assert(std::string(entityAnimationActionId(e)) == "carry_wood");
+
+    e.alive = false;
+    assert(std::string(entityAnimationActionId(e)) == "death");
+
+    Entity m{};
+    m.type = E_MILITIA;
+    m.alive = false;
+    m.state = S_DEAD;
+    assert(std::string(entityAnimationActionId(m)) == "death");
+    assert(entityActionAnimationSpecFor(m) == militiaDeath);
+}
+
+static void testCorpseDecayLifecycle() {
+    initGameWithSeed(0, 3903u, 0);
+    int id = spawnEntity(E_MILITIA, 0, 20, 20);
+    Entity* militia = findEntity(id);
+    assert(militia);
+    militia->alive = false;
+    militia->state = S_DEAD;
+    militia->hp = 0;
+    militia->deathTicks = 0;
+
+    assert(findEntity(id) == nullptr);
+    assert(entityAt(20, 20) == nullptr);
+    assert(corpseAt(20, 20) == militia);
+
+    for (int i = 0; i < DEATH_DECAY_TICKS; i++) tickSimulationOnce();
+    Entity* decayed = corpseAt(20, 20);
+    assert(decayed && decayed->deathTicks >= DEATH_DECAY_TICKS);
+
+    for (int i = DEATH_DECAY_TICKS; i < CORPSE_REMOVE_TICKS; i++) tickSimulationOnce();
+    assert(corpseAt(20, 20) == nullptr);
 }
 
 static void testMillFoodStockpile() {
@@ -477,6 +722,11 @@ static void testLongSimulationAndAIProgression() {
 }
 
 int main() {
+    testEntityAnimationSpecs();
+    testCorpseDecayLifecycle();
+    testVisualTileBridgeMappings();
+    testVisualEntityStateSelectors();
+    testAnimalCarcassHarvesting();
     testPlacementBoundsAndStateNames();
     testTraits();
     testCommandBindings();

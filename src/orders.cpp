@@ -28,6 +28,29 @@ void orderAttack(Entity& e, int tid) {
 }
 
 void orderGather(Entity& e, int tx, int ty) {
+    Entity* carcass = corpseAt(tx, ty);
+    if (carcass && isHarvestableCarcass(*carcass) && e.type == E_PEASANT && canGather(e.type)) {
+        e.cargo.type = CR_FOOD;
+        e.cargo.sourceX = tx;
+        e.cargo.sourceY = ty;
+        e.resourceX = tx;
+        e.resourceY = ty;
+        e.state = S_GATHERING; e.targetX = tx; e.targetY = ty;
+        e.targetId = -1;
+        if (e.owner == 0) addActionMarker(tx, ty, '+');
+        int bestAX = tx, bestAY = ty, bestAD = 99999;
+        for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
+            if (dx==0 && dy==0) continue;
+            int nx = tx+dx, ny = ty+dy;
+            if (!inBounds(nx,ny) || !isPassable(nx,ny)) continue;
+            int d = mdist(e.x, e.y, nx, ny);
+            if (d < bestAD) { bestAD = d; bestAX = nx; bestAY = ny; }
+        }
+        e.path = findPath(e.x, e.y, bestAX, bestAY, 300, false); e.pathIdx = 0;
+        e.gatherCd = 0; e.cargo.amount = 0;
+        return;
+    }
+
     Terrain ter = g.map[ty][tx].terrain;
     CargoResource resource = resourceForTerrain(ter);
     // Workers gather land resources; naval gatherers fish.

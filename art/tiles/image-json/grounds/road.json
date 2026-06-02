@@ -1,0 +1,30 @@
+{
+  "schema": "realm.terrain_sprite_spec.v1",
+  "asset_type": "ground",
+  "enum": "T_ROAD",
+  "slug": "road",
+  "name": "Road",
+  "ui_name": "Stone Road",
+  "runtime": {
+    "glyph": "#"
+  },
+  "art": {
+    "projection": "top-down square source tile, projected into an isometric diamond in-app",
+    "layer_category": "grounds",
+    "terrain_type": "path terrain",
+    "visual_design": "Packed road/cobble line, readable as movement route",
+    "required_variants": "47 path autotiles; straight, corner, T, cross, ends; 6 worn variants",
+    "runtime_notes": "Created by heavy traffic; decays to dirt",
+    "team_color_required": false
+  },
+  "paths": {
+    "runtime_root": "assets/tiles/terrain/road",
+    "base": "assets/tiles/terrain/road.png"
+  },
+  "sources": [
+    "include/realm.h",
+    "src/entity.cpp",
+    "src/gfx_renderer.cpp",
+    "docs/tileset/realm_tileset_visual_audit.md"
+  ]
+}

@@ -1,0 +1,108 @@
+{
+  "schema": "realm.sprite_spec.v1",
+  "asset_type": "unit",
+  "enum": "E_MILITIA",
+  "slug": "militia",
+  "name": "Militia",
+  "runtime": {
+    "glyph": "m",
+    "stats": {
+      "max_hp": 70,
+      "attack": 8,
+      "range": 1,
+      "speed": 3,
+      "attack_speed_ticks": 6,
+      "cost_gold": 60,
+      "cost_wood": 0,
+      "train_time_ticks": 50,
+      "supply_provided": 0,
+      "supply_used": 1,
+      "traits": [
+        "TR_MILITARY",
+        "TR_INFANTRY"
+      ]
+    },
+    "footprint": {
+      "w": 1,
+      "h": 1
+    },
+    "team_color_required": true
+  },
+  "art": {
+    "projection": "upright sprite anchored over projected isometric map tiles",
+    "directions": [
+      "front",
+      "back"
+    ],
+    "runtime_mirrors_horizontal": true,
+    "team_color_slots": [
+      "shield face",
+      "tabard stripe",
+      "plume"
+    ],
+    "visual_design": "Spearman/swordsman with round shield, simple helmet, rough gambeson",
+    "source_role": "melee infantry"
+  },
+  "states": [
+    "idle",
+    "walk",
+    "attack swing/thrust",
+    "hold-position",
+    "hit/alert",
+    "dead",
+    "decayed skeleton with armour and weapons"
+  ],
+  "actions": [
+    {
+      "id": "idle",
+      "description": "idle",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2
+    },
+    {
+      "id": "walk",
+      "description": "walk",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2
+    },
+    {
+      "id": "attack_swing_thrust",
+      "description": "attack swing/thrust",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2
+    },
+    {
+      "id": "hold_position",
+      "description": "hold-position",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2
+    },
+    {
+      "id": "hit_alert",
+      "description": "hit/alert",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2
+    },
+    {
+      "id": "dead",
+      "description": "dead",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2
+    },
+    {
+      "id": "decayed_skeleton_with_armour_and_weapons",
+      "description": "decayed skeleton with armour and weapons",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2
+    }
+  ],
+  "paths": {
+    "runtime_root": "assets/tiles/entities/militia",
+    "manifest": "assets/tiles/entities/militia/manifest.json"
+  },
+  "sources": [
+    "include/realm.h",
+    "src/globals.cpp",
+    "docs/tileset/realm_tileset_visual_audit.md"
+  ]
+}

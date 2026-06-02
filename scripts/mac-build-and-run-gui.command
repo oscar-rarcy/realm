@@ -7,7 +7,8 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # Keep the log outside build/, because `make clean` deletes build/.
-LOG="$REPO/mac-gui-build-log.txt"
+mkdir -p "$REPO/logs"
+LOG="$REPO/logs/mac-gui-build.log"
 
 echo "Realm macOS GUI build"
 echo "Repo: $REPO"

@@ -1,0 +1,96 @@
+{
+  "schema": "realm.sprite_spec.v1",
+  "asset_type": "building",
+  "enum": "E_FARM",
+  "slug": "farm",
+  "name": "Farm",
+  "runtime": {
+    "glyph": "%",
+    "stats": {
+      "max_hp": 20,
+      "attack": 0,
+      "range": 0,
+      "speed": 0,
+      "attack_speed_ticks": 0,
+      "cost_gold": 0,
+      "cost_wood": 0,
+      "train_time_ticks": 15,
+      "supply_provided": 0,
+      "supply_used": 0,
+      "traits": []
+    },
+    "footprint": {
+      "w": 1,
+      "h": 1
+    },
+    "team_color_required": true
+  },
+  "art": {
+    "projection": "upright sprite anchored over projected isometric map tiles",
+    "directions": [
+      "south"
+    ],
+    "runtime_mirrors_horizontal": false,
+    "team_color_slots": [
+      "tiny post flag optional",
+      "very subtle"
+    ],
+    "visual_design": "Cultivated wheat plot, furrows, scarecrow/sickle marker",
+    "source_role": "food generator when tended; dies in winter"
+  },
+  "states": [
+    "sowing",
+    "growing",
+    "ripe",
+    "tended",
+    "winter-dead/snowed",
+    "depleted/dead"
+  ],
+  "actions": [
+    {
+      "id": "sowing",
+      "description": "sowing",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 1
+    },
+    {
+      "id": "growing",
+      "description": "growing",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 1
+    },
+    {
+      "id": "ripe",
+      "description": "ripe",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 1
+    },
+    {
+      "id": "tended",
+      "description": "tended",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 1
+    },
+    {
+      "id": "winter_dead_snowed",
+      "description": "winter-dead/snowed",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 1
+    },
+    {
+      "id": "depleted_dead",
+      "description": "depleted/dead",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 1
+    }
+  ],
+  "paths": {
+    "runtime_root": "assets/tiles/entities/farm",
+    "manifest": "assets/tiles/entities/farm/manifest.json"
+  },
+  "sources": [
+    "include/realm.h",
+    "src/globals.cpp",
+    "docs/tileset/realm_tileset_visual_audit.md"
+  ]
+}

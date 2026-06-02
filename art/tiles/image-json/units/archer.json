@@ -1,0 +1,116 @@
+{
+  "schema": "realm.sprite_spec.v1",
+  "asset_type": "unit",
+  "enum": "E_ARCHER",
+  "slug": "archer",
+  "name": "Archer",
+  "runtime": {
+    "glyph": "a",
+    "stats": {
+      "max_hp": 45,
+      "attack": 6,
+      "range": 5,
+      "speed": 3,
+      "attack_speed_ticks": 7,
+      "cost_gold": 70,
+      "cost_wood": 0,
+      "train_time_ticks": 60,
+      "supply_provided": 0,
+      "supply_used": 1,
+      "traits": [
+        "TR_MILITARY",
+        "TR_INFANTRY",
+        "TR_RANGED"
+      ]
+    },
+    "footprint": {
+      "w": 1,
+      "h": 1
+    },
+    "team_color_required": true
+  },
+  "art": {
+    "projection": "upright sprite anchored over projected isometric map tiles",
+    "directions": [
+      "front",
+      "back"
+    ],
+    "runtime_mirrors_horizontal": true,
+    "team_color_slots": [
+      "hood trim",
+      "quiver wrap",
+      "shoulder sash"
+    ],
+    "visual_design": "Bow/crossbow-ready archer with hood and quiver",
+    "source_role": "ranged infantry; Crossbows research changes range"
+  },
+  "states": [
+    "idle",
+    "walk",
+    "aim",
+    "release",
+    "reload",
+    "optional upgraded crossbow variant",
+    "dead",
+    "decayed skeleton with bow and quiver"
+  ],
+  "actions": [
+    {
+      "id": "idle",
+      "description": "idle",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2
+    },
+    {
+      "id": "walk",
+      "description": "walk",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2
+    },
+    {
+      "id": "aim",
+      "description": "aim",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2
+    },
+    {
+      "id": "release",
+      "description": "release",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2
+    },
+    {
+      "id": "reload",
+      "description": "reload",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2
+    },
+    {
+      "id": "optional_upgraded_crossbow_variant",
+      "description": "optional upgraded crossbow variant",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2
+    },
+    {
+      "id": "dead",
+      "description": "dead",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2
+    },
+    {
+      "id": "decayed_skeleton_with_bow_and_quiver",
+      "description": "decayed skeleton with bow and quiver",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2
+    }
+  ],
+  "paths": {
+    "runtime_root": "assets/tiles/entities/archer",
+    "manifest": "assets/tiles/entities/archer/manifest.json"
+  },
+  "sources": [
+    "include/realm.h",
+    "src/globals.cpp",
+    "docs/tileset/realm_tileset_visual_audit.md"
+  ]
+}

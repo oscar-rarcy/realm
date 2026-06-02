@@ -9,7 +9,9 @@ set "SCRIPT_DIR=%~dp0"
 for %%I in ("%SCRIPT_DIR%..") do set "REPO=%%~fI"
 
 REM Keep the log outside build/, because `make clean` deletes build/.
-set "LOG=%REPO%\windows-terminal-build-log.txt"
+set "LOG_DIR=%REPO%\logs"
+if not exist "%LOG_DIR%" mkdir "%LOG_DIR%"
+set "LOG=%LOG_DIR%\windows-terminal-build.log"
 
 echo Realm Windows terminal build
 echo Repo: %REPO%

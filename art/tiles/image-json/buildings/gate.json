@@ -1,0 +1,88 @@
+{
+  "schema": "realm.sprite_spec.v1",
+  "asset_type": "building",
+  "enum": "E_GATE",
+  "slug": "gate",
+  "name": "Gate",
+  "runtime": {
+    "glyph": "G",
+    "stats": {
+      "max_hp": 90,
+      "attack": 0,
+      "range": 0,
+      "speed": 0,
+      "attack_speed_ticks": 0,
+      "cost_gold": 0,
+      "cost_wood": 30,
+      "train_time_ticks": 20,
+      "supply_provided": 0,
+      "supply_used": 0,
+      "traits": []
+    },
+    "footprint": {
+      "w": 1,
+      "h": 1
+    },
+    "team_color_required": true
+  },
+  "art": {
+    "projection": "upright sprite anchored over projected isometric map tiles",
+    "directions": [
+      "south"
+    ],
+    "runtime_mirrors_horizontal": false,
+    "team_color_slots": [
+      "small pennant/shield"
+    ],
+    "visual_design": "Compact portcullis/gatehouse readable in any wall direction",
+    "source_role": "passable when open; auto/locked state"
+  },
+  "states": [
+    "closed",
+    "open",
+    "locked-open",
+    "locked-closed",
+    "construction"
+  ],
+  "actions": [
+    {
+      "id": "closed",
+      "description": "closed",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 1
+    },
+    {
+      "id": "open",
+      "description": "open",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 1
+    },
+    {
+      "id": "locked_open",
+      "description": "locked-open",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 1
+    },
+    {
+      "id": "locked_closed",
+      "description": "locked-closed",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 1
+    },
+    {
+      "id": "construction",
+      "description": "construction",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 1
+    }
+  ],
+  "paths": {
+    "runtime_root": "assets/tiles/entities/gate",
+    "manifest": "assets/tiles/entities/gate/manifest.json"
+  },
+  "sources": [
+    "include/realm.h",
+    "src/globals.cpp",
+    "docs/tileset/realm_tileset_visual_audit.md"
+  ]
+}

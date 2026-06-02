@@ -8,6 +8,7 @@ const outDir = process.env.REALM_WEB_SCREENSHOT_DIR || 'build/web-render-checks'
 const [viewportWidth, viewportHeight] = (process.env.REALM_WEB_VIEWPORT || '1280x820')
   .split('x')
   .map((part) => Number.parseInt(part, 10));
+const expectedAsciiOnly = process.env.REALM_EXPECT_ASCII_ONLY === '1';
 
 const common = new URLSearchParams({
   seed: '2468',
@@ -16,11 +17,11 @@ const common = new URLSearchParams({
   biome: '0',
 });
 
-const cases = [
-  { name: 'emoji-isometric', display: 'emoji', projection: 'isometric' },
-  { name: 'emoji-topdown', display: 'emoji', projection: 'topdown' },
-  { name: 'ascii-isometric', display: 'ascii', projection: 'isometric' },
-  { name: 'ascii-topdown', display: 'ascii', projection: 'topdown' },
+const cases = expectedAsciiOnly ? [
+  { name: 'ascii-only', display: 'tileset', expectedDisplayMode: 0 },
+] : [
+  { name: 'tileset', display: 'tileset' },
+  { name: 'ascii', display: 'ascii' },
 ];
 
 function hashBuffer(buffer) {
@@ -29,9 +30,9 @@ function hashBuffer(buffer) {
 
 function caseUrl(testCase) {
   const url = new URL(baseUrl);
+  url.pathname = `${url.pathname.replace(/\/$/, '')}/embed`;
   for (const [key, value] of common) url.searchParams.set(key, value);
   url.searchParams.set('display', testCase.display);
-  url.searchParams.set('projection', testCase.projection);
   return url.toString();
 }
 
@@ -91,22 +92,21 @@ async function runCase(browser, testCase) {
     const module = globalThis.Module;
     return module && typeof module._realm_web_tick === 'function' && module._realm_web_tick() > 2;
   }, null, { timeout: 60000 });
+  await page.waitForFunction(() => {
+    const module = globalThis.Module;
+    return module && typeof module._realm_web_display_mode === 'function';
+  }, null, { timeout: 60000 });
 
   const screenshotPath = path.join(outDir, `${testCase.name}.png`);
   const screenshot = await page.screenshot({ path: screenshotPath, fullPage: false });
 
   const stats = await canvasStats(page);
+  const displayMode = await page.evaluate(() => globalThis.Module._realm_web_display_mode());
   const screenshotHash = hashBuffer(screenshot);
   await page.locator('canvas').click({ position: { x: Math.floor(viewportWidth / 2), y: Math.floor(viewportHeight / 2) } });
   await page.waitForTimeout(100);
   const tick = await page.evaluate(() => globalThis.Module._realm_web_tick());
   const selectedBefore = await page.evaluate(() => globalThis.Module._realm_web_selected_id());
-  await page.keyboard.press('F6');
-  await page.waitForTimeout(250);
-  const afterF6Hash = hashBuffer(await page.screenshot({ fullPage: false }));
-  await page.keyboard.press('F7');
-  await page.waitForTimeout(250);
-  const afterF7Hash = hashBuffer(await page.screenshot({ fullPage: false }));
   await page.mouse.move(Math.floor(viewportWidth / 2), Math.floor(viewportHeight / 2));
   await page.mouse.wheel(0, -600);
   await page.waitForTimeout(250);
@@ -129,11 +129,10 @@ async function runCase(browser, testCase) {
     selectedBefore,
     selectedAfter,
     screenshotHash,
+    displayMode,
     stats,
     controls: {
-      projectionKeysChangedFrame:
-        afterF6Hash !== screenshotHash || afterF7Hash !== afterF6Hash,
-      zoomChangedFrame: afterZoomHash !== afterF7Hash,
+      zoomChangedFrame: afterZoomHash !== screenshotHash,
     },
     messages,
     failedRequests: actionableFailedRequests,
@@ -168,8 +167,8 @@ for (const result of results) {
   if (result.stats.dataUrlLength < 2000) {
     failures.push(`${result.name}: canvas export is unexpectedly small`);
   }
-  if (!result.controls.projectionKeysChangedFrame) {
-    failures.push(`${result.name}: F6/F7 projection controls did not change the rendered frame`);
+  if (typeof result.expectedDisplayMode === 'number' && result.displayMode !== result.expectedDisplayMode) {
+    failures.push(`${result.name}: expected display mode ${result.expectedDisplayMode}, got ${result.displayMode}`);
   }
   if (!result.controls.zoomChangedFrame) {
     failures.push(`${result.name}: mouse-wheel zoom did not change the rendered frame`);
@@ -179,17 +178,17 @@ for (const result of results) {
   if (/uncaught|exception|abort|content security|webassembly|wasm/i.test(text)) {
     failures.push(`${result.name}: fatal console output\n${text}`);
   }
-  if (/No emoji font found/i.test(text)) {
-    failures.push(`${result.name}: emoji font fallback was used`);
+  if (/No tileset symbol font found/i.test(text)) {
+    failures.push(`${result.name}: tileset symbol font fallback was used`);
   }
-  if (result.display === 'emoji' && !/Emoji font: \/assets\/fonts\/RealmSymbols\.ttf/i.test(text)) {
+  if (!expectedAsciiOnly && result.display === 'tileset' && !/Tileset symbol font: \/assets\/fonts\/RealmSymbols\.ttf/i.test(text)) {
     failures.push(`${result.name}: bundled symbol font was not loaded`);
   }
 }
 
 const screenshotHashes = new Set(results.map((result) => result.screenshotHash));
-if (screenshotHashes.size !== results.length) {
-  failures.push('render mode screenshots were not visually distinct across all display/projection combinations');
+if (!expectedAsciiOnly && screenshotHashes.size !== results.length) {
+  failures.push('render mode screenshots were not visually distinct across ASCII and Tileset');
 }
 
 console.log(JSON.stringify({ baseUrl, outDir, results }, null, 2));

@@ -1,0 +1,96 @@
+{
+  "schema": "realm.sprite_spec.v1",
+  "asset_type": "building",
+  "enum": "E_WALL",
+  "slug": "wall",
+  "name": "Wall",
+  "runtime": {
+    "glyph": "#",
+    "stats": {
+      "max_hp": 120,
+      "attack": 0,
+      "range": 0,
+      "speed": 0,
+      "attack_speed_ticks": 0,
+      "cost_gold": 0,
+      "cost_wood": 20,
+      "train_time_ticks": 15,
+      "supply_provided": 0,
+      "supply_used": 0,
+      "traits": []
+    },
+    "footprint": {
+      "w": 1,
+      "h": 1
+    },
+    "team_color_required": true
+  },
+  "art": {
+    "projection": "upright sprite anchored over projected isometric map tiles",
+    "directions": [
+      "south"
+    ],
+    "runtime_mirrors_horizontal": false,
+    "team_color_slots": [
+      "tiny banner only at intervals",
+      "not every tile"
+    ],
+    "visual_design": "Stone wall block that joins cleanly to neighbours",
+    "source_role": "drag-built blocker"
+  },
+  "states": [
+    "straight",
+    "corner",
+    "T-junction",
+    "cross",
+    "end-cap",
+    "construction"
+  ],
+  "actions": [
+    {
+      "id": "straight",
+      "description": "straight",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 1
+    },
+    {
+      "id": "corner",
+      "description": "corner",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 1
+    },
+    {
+      "id": "t_junction",
+      "description": "T-junction",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 1
+    },
+    {
+      "id": "cross",
+      "description": "cross",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 1
+    },
+    {
+      "id": "end_cap",
+      "description": "end-cap",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 1
+    },
+    {
+      "id": "construction",
+      "description": "construction",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 1
+    }
+  ],
+  "paths": {
+    "runtime_root": "assets/tiles/entities/wall",
+    "manifest": "assets/tiles/entities/wall/manifest.json"
+  },
+  "sources": [
+    "include/realm.h",
+    "src/globals.cpp",
+    "docs/tileset/realm_tileset_visual_audit.md"
+  ]
+}

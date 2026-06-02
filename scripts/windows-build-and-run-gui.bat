@@ -8,9 +8,10 @@ set "MSYS2=C:\msys64"
 set "SCRIPT_DIR=%~dp0"
 for %%I in ("%SCRIPT_DIR%..") do set "REPO=%%~fI"
 
-REM Important: do NOT put the log inside build/, because `make clean`
-REM deletes build/ and Windows will lock the log while this script writes it.
-set "LOG=%REPO%\windows-gui-build-log.txt"
+REM Keep the log outside build/, because `make clean` deletes build/.
+set "LOG_DIR=%REPO%\logs"
+if not exist "%LOG_DIR%" mkdir "%LOG_DIR%"
+set "LOG=%LOG_DIR%\windows-gui-build.log"
 
 echo Realm Windows GUI build
 echo Repo: %REPO%
@@ -33,7 +34,7 @@ echo Installing/checking MSYS2 UCRT64 build dependencies...
 echo Cleaning and building GUI target...
 echo.
 
-call "%MSYS2%\msys2_shell.cmd" -ucrt64 -defterm -no-start -where "%REPO%" -c "pacman -S --needed --noconfirm mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-make mingw-w64-ucrt-x86_64-pkgconf mingw-w64-ucrt-x86_64-SDL2 mingw-w64-ucrt-x86_64-SDL2_ttf && mingw32-make clean && mingw32-make gfx && test -f bin/realm.exe" > "%LOG%" 2>&1
+call "%MSYS2%\msys2_shell.cmd" -ucrt64 -defterm -no-start -where "%REPO%" -c "pacman -S --needed --noconfirm mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-make mingw-w64-ucrt-x86_64-pkgconf mingw-w64-ucrt-x86_64-SDL2 mingw-w64-ucrt-x86_64-SDL2_ttf mingw-w64-ucrt-x86_64-libpng && mingw32-make clean && mingw32-make gfx && test -f bin/realm.exe" > "%LOG%" 2>&1
 
 set "EXITCODE=%ERRORLEVEL%"
 

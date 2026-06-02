@@ -1,0 +1,30 @@
+{
+  "schema": "realm.terrain_sprite_spec.v1",
+  "asset_type": "ground",
+  "enum": "T_ASH",
+  "slug": "ash",
+  "name": "Ash",
+  "ui_name": "Volcanic Ash",
+  "runtime": {
+    "glyph": "."
+  },
+  "art": {
+    "projection": "top-down square source tile, projected into an isometric diamond in-app",
+    "layer_category": "grounds",
+    "terrain_type": "continuous ground",
+    "visual_design": "Dark near-black ash, grey speckle",
+    "required_variants": "12 variants; ember flecks optional",
+    "runtime_notes": "Slow movement; volcanic biome base",
+    "team_color_required": false
+  },
+  "paths": {
+    "runtime_root": "assets/tiles/terrain/ash",
+    "base": "assets/tiles/terrain/ash.png"
+  },
+  "sources": [
+    "include/realm.h",
+    "src/entity.cpp",
+    "src/gfx_renderer.cpp",
+    "docs/tileset/realm_tileset_visual_audit.md"
+  ]
+}

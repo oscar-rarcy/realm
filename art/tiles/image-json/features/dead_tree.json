@@ -1,0 +1,30 @@
+{
+  "schema": "realm.terrain_sprite_spec.v1",
+  "asset_type": "feature",
+  "enum": "T_DEAD_TREE",
+  "slug": "dead_tree",
+  "name": "Dead tree",
+  "ui_name": "Dead Tree",
+  "runtime": {
+    "glyph": "t"
+  },
+  "art": {
+    "projection": "transparent feature sprite anchored over a projected isometric map tile",
+    "layer_category": "features",
+    "terrain_type": "resource object",
+    "visual_design": "Swamp dead trunks, grey/brown limbs, moss",
+    "required_variants": "8 variants, including stump/fallen limb",
+    "runtime_notes": "Gatherable wood; depleted to dirt",
+    "team_color_required": false
+  },
+  "paths": {
+    "runtime_root": "assets/tiles/terrain/dead_tree",
+    "base": "assets/tiles/terrain/dead_tree.png"
+  },
+  "sources": [
+    "include/realm.h",
+    "src/entity.cpp",
+    "src/gfx_renderer.cpp",
+    "docs/tileset/realm_tileset_visual_audit.md"
+  ]
+}

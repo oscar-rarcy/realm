@@ -1,11 +1,17 @@
 #include "realm.h"
+#include "env_config.h"
+#include "entity_animation.h"
 #include <cassert>
+#include <algorithm>
 #include <chrono>
+#include <cctype>
 #include <cstdarg>
 #include <cstdlib>
 #include <cstring>
+#include <filesystem>
 #include <iostream>
 #include <locale.h>
+#include <sstream>
 #if defined(_WIN32)
 #include <windows.h>
 #endif
@@ -41,6 +47,7 @@ static int showSplash() {
     };
     int numAIs = 1;
     int biomeIdx = 7; // 7 = random
+    const bool asciiOnly = realmVisualModeIsAsciiOnly();
 
     int maxY, maxX;
     while (true) {
@@ -93,10 +100,12 @@ static int showSplash() {
         pr(row++, col, "  [S] Snow      [W] Swamp      [F] Forest");
         pr(row++, col, "  [V] Volcanic  [C] Coastal");
 
-        row++;
-        attron(A_BOLD); pr(row++, col, "DISPLAY"); attroff(A_BOLD);
-        pr(row++, col, "  [4] ASCII     [5] Emoji");
-        pr(row++, col, "  > Display: %s", displayMode == DM_EMOJI ? "Emoji" : "ASCII");
+        if (!asciiOnly) {
+            row++;
+            attron(A_BOLD); pr(row++, col, "DISPLAY"); attroff(A_BOLD);
+            pr(row++, col, "  [4] ASCII     [5] Emoji");
+            pr(row++, col, "  > Display: %s", displayMode == DM_EMOJI ? "Emoji" : "ASCII");
+        }
 
         row++;
         attron(A_BOLD);
@@ -122,7 +131,7 @@ static int showSplash() {
         else if (ch=='v'||ch=='V') biomeIdx=5;
         else if (ch=='c'||ch=='C') biomeIdx=6;
         else if (ch=='4') displayMode = DM_ASCII;
-        else if (ch=='5') displayMode = DM_EMOJI;
+        else if (ch=='5' && !asciiOnly) displayMode = DM_EMOJI;
     }
     g.biomeChoice = (biomeIdx == 7) ? -1 : biomeIdx;
     return numAIs;
@@ -318,8 +327,21 @@ void initGameWithSeed(int numAIs, unsigned seed, int humanCorner) {
 }
 
 #ifndef USE_SDL_RENDERER
-int main() {
+int main(int argc, char** argv) {
     forceUtf8Locale();
+    if (argc >= 2 && std::strcmp(argv[1], "--dump-missing-tileset-assets") == 0) {
+        return dumpMissingTilesetAssets();
+    }
+    if (argc >= 2 && std::strcmp(argv[1], "--dump-animation-spec") == 0) {
+        const char* entityArg = argc >= 3 ? argv[2] : "peasant";
+        EntityType type = entityTypeForAnimationSlug(entityArg);
+        if (!writeEntityAnimationSpecJson(std::cout, type)) {
+            std::cerr << "unknown entity animation spec: " << entityArg << "\n";
+            return 2;
+        }
+        return 0;
+    }
+    loadRealmEnvironmentFiles();
     displayMode = DM_ASCII;
     initscr(); cbreak(); noecho(); keypad(stdscr, TRUE); curs_set(0);
     // REPORT_MOUSE_POSITION gives continuous hover events for live cursor tracking

@@ -1,0 +1,50 @@
+{
+  "schema": "realm.frame_metadata.v1",
+  "entity": "peasant",
+  "action": "idle",
+  "direction": "front",
+  "frame": 1,
+  "phase": "Long-idle hold pose, arms crossed, both feet planted.",
+  "duration_ms": 20000,
+  "family": "idle",
+  "target_relation": "self_tile",
+  "range_tiles": 0,
+  "fit_profile": "standing",
+  "animation_spec_source": "code:bin\\realm.exe",
+  "source": "assets\\tiles\\workbench\\peasant\\idle\\front\\frame_01\\source.png",
+  "source_detection_method": "single-image",
+  "references": [
+    "assets\\tiles\\candidates\\peasant\\idle\\v001-back-angle-clean\\batch_source.png"
+  ],
+  "prompt_file": "assets\\tiles\\candidates\\peasant\\idle\\v001-back-angle-clean\\prompt.txt",
+  "base": "assets\\tiles\\entities\\peasant\\idle\\front\\frame_01_base.png",
+  "team_mask": "assets\\tiles\\entities\\peasant\\idle\\front\\frame_01_teammask.png",
+  "manual_review": "pending",
+  "transparent_key_pixels": 316702,
+  "stranded_key_pixels": 0,
+  "edge_fringe_key_pixels": 0,
+  "residual_key_pixels": 0,
+  "opaque_pixels": 76427,
+  "source_bbox": {
+    "x": 247,
+    "y": 47,
+    "w": 223,
+    "h": 466
+  },
+  "final_bbox": {
+    "x": 14,
+    "y": 4,
+    "w": 20,
+    "h": 42
+  },
+  "anchor": [
+    24,
+    39
+  ],
+  "anchor_offset": [
+    0,
+    7
+  ],
+  "scale": 0.09012875536480687,
+  "team_mask_pixels": 200
+}

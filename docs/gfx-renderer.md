@@ -17,7 +17,7 @@ Graphical build on WSL/WSLg
 One-time dependency install:
 
     sudo apt update
-    sudo apt install -y build-essential pkg-config libncursesw5-dev libsdl2-dev libsdl2-ttf-dev
+    sudo apt install -y build-essential pkg-config libncursesw5-dev libsdl2-dev libsdl2-ttf-dev libpng-dev
 
 Build/run:
 
@@ -31,7 +31,7 @@ Graphical build on native Windows with MSYS2 UCRT64
 Open the "MSYS2 UCRT64" shell, not plain PowerShell and not the MSYS shell.
 Then run:
 
-    pacman -S --needed mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-make mingw-w64-ucrt-x86_64-pkgconf mingw-w64-ucrt-x86_64-SDL2 mingw-w64-ucrt-x86_64-SDL2_ttf
+    pacman -S --needed mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-make mingw-w64-ucrt-x86_64-pkgconf mingw-w64-ucrt-x86_64-SDL2 mingw-w64-ucrt-x86_64-SDL2_ttf mingw-w64-ucrt-x86_64-libpng
 
 Build/run:
 
@@ -83,36 +83,132 @@ Match start logs the seed, AI count, human corner, biome, entity count, and
 projectile count to `realm-run.log`. In the SDL renderer, `F8` toggles the
 diagnostics panel during play.
 
+ASCII comparison captures
+-------------------------
+
+To compare the GUI ASCII renderer with the terminal-style reference on the same
+deterministic game states:
+
+    make ascii-compare
+
+or run the GUI binary with:
+
+    REALM_ASCII_COMPARE=1 ./bin/realm.exe
+
+The flow writes paired screenshots and reference text dumps to
+`build/ascii-compare`. Each `*-gui-ascii.bmp` is generated through the GUI path;
+each matching `*-terminal-reference.bmp` and `.txt` is generated from the same
+terminal grid model, seed, cursor, selection, and HUD state.
+
 Runtime controls added by hardening
 -----------------------------------
 
 - `F5` saves to `realm-save.txt`.
 - `F9` loads from `realm-save.txt`.
 - `F8` toggles diagnostics.
+- `F11` or `Alt+Enter` toggles fullscreen in the SDL GUI.
+- `Q` resigns and returns to the main menu during a match. `X` exits the native
+  SDL app; web builds ignore `X` because the browser tab owns exit.
 - `?` toggles the shared help overlay.
 - The right panel always shows cursor tile terrain, biome, resource amount, and
   visible stack information.
+- GUI text options that mirror keyboard choices can be clicked. They underline
+  on mouse hover in the splash screen, side panel, bottom command bar, and ASCII
+  terminal HUD. Mobile command buttons use the same hover treatment when driven
+  with a mouse and remain tap targets on touch devices.
 - The help overlay documents shared keyboard/mouse commands, SDL-only
-  zoom/pan/projection controls, food sources, winter starvation, owner colours,
+  zoom/pan controls, food sources, winter starvation, owner colours,
   neutral animals, and combat alerts.
 - Temporary command markers appear on empty target tiles after move, gather,
   attack, build, or rally-style orders.
 - Train mode stays open after queueing a unit; repeat unit keys to queue more,
   `Esc` cancels.
 
-Emoji font fix
---------------
+Tileset symbol fallback
+-----------------------
 
-The previous SDL renderer was drawing tofu boxes because it usually loaded only
-the monospace text font. This version explicitly searches for Segoe UI Emoji at:
+The GUI exposes two visual modes: ASCII and Tileset. ASCII uses the terminal-style
+text grid. Tileset is always isometric. Until real image tiles are added, Tileset
+uses the existing symbol/emoji placeholders where defined and falls back to the
+same one-character ASCII glyph used by the terminal renderer when no tile symbol
+is defined.
+
+The current placeholder symbol path explicitly searches for Segoe UI Emoji at:
 
     C:/Windows/Fonts/seguiemj.ttf
     /mnt/c/Windows/Fonts/seguiemj.ttf
     /c/Windows/Fonts/seguiemj.ttf
 
 So it works in native Windows, MSYS2 and WSL. At startup, the GUI renderer prints
-the text font and emoji font paths it actually loaded. If no emoji font is found, it
-uses ASCII-style fallbacks instead of drawing boxes.
+the text font and tileset symbol font paths it actually loaded. If no symbol font
+is found, it uses ASCII glyph fallbacks instead of drawing boxes.
+
+Missing tileset audit
+---------------------
+
+Local Tileset runs write a missing-tile manifest for future asset generation.
+Native/local GUI runs write:
+
+    build/missing-tiles.log
+
+Local browser runs on `localhost`, `127.0.0.1`, or `::1` mirror the same entries
+to browser local storage under:
+
+    realm.missingTilesLog
+
+Each line includes the tile kind, stable key, display name, current fallback
+glyph, and suggested future asset path. Deployed web builds do not emit this
+audit log. Set `REALM_TILESET_AUDIT=0` to disable it locally.
+
+Local tileset lab
+-----------------
+
+The native SDL build has a local-only tileset lab:
+
+    mingw32-make lab
+    ./bin/realm-lab.exe
+
+or, on Unix-like systems:
+
+    make lab
+    ./bin/realm-lab
+
+The lab renders a controlled single-tile preview through the same SDL renderer
+helpers used by the game: isometric diamond projection, terrain tinting,
+season/weather/time-of-day, fog visibility, torch/candle light, entity glyph
+fallbacks, and the ASCII terminal cell model. It also enables native PNG sprite
+loading for the preview.
+
+The lab starts with no entity selected. Use the mouse on the left panel to open
+dropdowns for terrain, biome, season, time, weather, fog, light, resources,
+entity, action, direction, frame, owner, and animation speed. Drag the hue wheel
+to change the team colour. Keyboard shortcuts remain available for fast
+iteration.
+
+Entity sprites are discovered by convention:
+
+    assets/tiles/entities/<entity>/<action>/<direction>/frame_XX_base.png
+    assets/tiles/entities/<entity>/<action>/<direction>/frame_XX_teammask.png
+
+The base layer is drawn as neutral art. The optional team mask is composited with
+the chosen lab team colour, using the mask luminance as shade. Missing sprites
+show a checker placeholder and the lab panel reports the expected base/mask
+paths instead of failing.
+
+Run the non-interactive smoke with:
+
+    REALM_LAB_SMOKE=1 ./bin/realm-lab.exe
+
+It writes verification captures to `build/lab-screenshots`, including the
+default no-entity state, tile-only, combined peasant, team-colour variants,
+missing-placeholder, night/candle, and ASCII preview scenarios.
+
+PNG image sprites in the normal game are still opt-in:
+
+    REALM_IMAGE_TILESET=1 ./bin/realm.exe
+
+Without that flag, the normal Tileset mode continues to use the existing
+symbol/emoji placeholders and missing-tile audit.
 
 Build separation
 ----------------
@@ -135,10 +231,17 @@ Mobile mode uses two panels only:
 - landscape: game viewport left of the HUD
 
 The mobile HUD contains resources, selection status, minimap, command buttons,
-and Menu/Pause/Idle controls. Keyboard shortcut labels are hidden in this mode.
+and Menu/Pause/Full/Idle controls. Keyboard shortcut labels are hidden in this mode.
 Touch-style input maps to existing game commands: tap selects or commands, drag
 pans the map, long press inspects, minimap tap/drag pans the camera, and Build
 uses an explicit placement preview with Cancel.
+
+ASCII mobile keeps those touch controls but renders them as terminal-style
+options, with a text-grid map, console HUD, and console-styled splash/settings/help
+screens. Tileset mobile keeps the shaded isometric mobile HUD. The UI screenshot
+suite writes the ASCII mobile captures as `19-mobile-ascii-menu.bmp`,
+`20-mobile-ascii-portrait-hud.bmp`, `21-mobile-ascii-portrait-build-menu.bmp`,
+and `22-mobile-ascii-landscape-hud.bmp`.
 
 The GUI test harness writes mobile layout captures in addition to desktop
 captures:
@@ -184,14 +287,14 @@ Linux/macOS/WSL terminal:
     ./bin/realm
 
 
-Isometric projection update
----------------------------
-The SDL GUI renderer now has a GUI-only projection option on the splash screen:
+Visual mode update
+------------------
+The SDL GUI renderer now has two visual choices on the splash screen:
 
-  [6] Top-down
-  [7] Isometric
+  [4] ASCII
+  [5] Tileset
 
-The ncurses terminal build is unchanged.  Isometric mode draws the terrain and
-tile backgrounds as flat isometric diamonds while keeping entities, buildings,
-resources, trees and text upright in the centre of each tile.  During the game
-F6 switches back to top-down and F7 switches to isometric.
+ASCII draws the terminal-style text grid. Tileset draws the terrain and tile
+backgrounds as flat isometric diamonds while keeping entities, buildings,
+resources, trees, and text upright in the centre of each tile. The old top-down
+Tileset/emoji projection is no longer offered.

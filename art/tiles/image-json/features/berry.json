@@ -1,0 +1,30 @@
+{
+  "schema": "realm.terrain_sprite_spec.v1",
+  "asset_type": "feature",
+  "enum": "T_BERRY",
+  "slug": "berry",
+  "name": "Berries",
+  "ui_name": "Berry Bush",
+  "runtime": {
+    "glyph": ":"
+  },
+  "art": {
+    "projection": "transparent feature sprite anchored over a projected isometric map tile",
+    "layer_category": "features",
+    "terrain_type": "resource object",
+    "visual_design": "Bushes with red/purple berries on green base",
+    "required_variants": "10 bush variants; depleted/empty optional",
+    "runtime_notes": "Gatherable food; depleted to grass",
+    "team_color_required": false
+  },
+  "paths": {
+    "runtime_root": "assets/tiles/terrain/berry",
+    "base": "assets/tiles/terrain/berry.png"
+  },
+  "sources": [
+    "include/realm.h",
+    "src/entity.cpp",
+    "src/gfx_renderer.cpp",
+    "docs/tileset/realm_tileset_visual_audit.md"
+  ]
+}

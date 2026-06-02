@@ -1,0 +1,84 @@
+{
+  "schema": "realm.sprite_spec.v1",
+  "asset_type": "building",
+  "enum": "E_HOUSE",
+  "slug": "house",
+  "name": "House",
+  "runtime": {
+    "glyph": "h",
+    "stats": {
+      "max_hp": 100,
+      "attack": 0,
+      "range": 0,
+      "speed": 0,
+      "attack_speed_ticks": 0,
+      "cost_gold": 0,
+      "cost_wood": 50,
+      "train_time_ticks": 60,
+      "supply_provided": 5,
+      "supply_used": 0,
+      "traits": [
+        "TR_GARRISON"
+      ]
+    },
+    "footprint": {
+      "w": 2,
+      "h": 2
+    },
+    "team_color_required": true
+  },
+  "art": {
+    "projection": "upright sprite anchored over projected isometric map tiles",
+    "directions": [
+      "south"
+    ],
+    "runtime_mirrors_horizontal": false,
+    "team_color_slots": [
+      "small pennant",
+      "door cloth"
+    ],
+    "visual_design": "Thatch/wood cottage, chimney, small fenced yard",
+    "source_role": "supply +5, garrison 4, defensive if garrisoned"
+  },
+  "states": [
+    "complete",
+    "construction",
+    "garrisoned",
+    "ruin footprint"
+  ],
+  "actions": [
+    {
+      "id": "complete",
+      "description": "complete",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 1
+    },
+    {
+      "id": "construction",
+      "description": "construction",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 1
+    },
+    {
+      "id": "garrisoned",
+      "description": "garrisoned",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 1
+    },
+    {
+      "id": "ruin_footprint",
+      "description": "ruin footprint",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 1
+    }
+  ],
+  "paths": {
+    "runtime_root": "assets/tiles/entities/house",
+    "manifest": "assets/tiles/entities/house/manifest.json"
+  },
+  "sources": [
+    "include/realm.h",
+    "src/globals.cpp",
+    "docs/tileset/realm_tileset_visual_audit.md"
+  ]
+}

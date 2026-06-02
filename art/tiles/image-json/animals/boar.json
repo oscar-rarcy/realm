@@ -1,0 +1,97 @@
+{
+  "schema": "realm.sprite_spec.v1",
+  "asset_type": "animal",
+  "enum": "E_BOAR",
+  "slug": "boar",
+  "name": "Boar",
+  "runtime": {
+    "glyph": "o",
+    "stats": {
+      "max_hp": 40,
+      "attack": 6,
+      "range": 1,
+      "speed": 2,
+      "attack_speed_ticks": 6,
+      "cost_gold": 0,
+      "cost_wood": 0,
+      "train_time_ticks": 0,
+      "supply_provided": 0,
+      "supply_used": 0,
+      "traits": [
+        "TR_WILD_ANIMAL",
+        "TR_HOSTILE_WILDLIFE"
+      ]
+    },
+    "footprint": {
+      "w": 1,
+      "h": 1
+    },
+    "team_color_required": false
+  },
+  "art": {
+    "projection": "upright sprite anchored over projected isometric map tiles",
+    "directions": [
+      "front",
+      "back"
+    ],
+    "runtime_mirrors_horizontal": true,
+    "team_color_slots": [],
+    "visual_design": "Dark brown boar, tusks, heavy body",
+    "source_role": "charges nearby units, rampages after hit; food on kill"
+  },
+  "states": [
+    "idle",
+    "walk",
+    "charge",
+    "attack",
+    "dead",
+    "decayed skeleton"
+  ],
+  "actions": [
+    {
+      "id": "idle",
+      "description": "idle",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2
+    },
+    {
+      "id": "walk",
+      "description": "walk",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2
+    },
+    {
+      "id": "charge",
+      "description": "charge",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2
+    },
+    {
+      "id": "attack",
+      "description": "attack",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2
+    },
+    {
+      "id": "dead",
+      "description": "dead",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2
+    },
+    {
+      "id": "decayed_skeleton",
+      "description": "decayed skeleton",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2
+    }
+  ],
+  "paths": {
+    "runtime_root": "assets/tiles/entities/boar",
+    "manifest": "assets/tiles/entities/boar/manifest.json"
+  },
+  "sources": [
+    "include/realm.h",
+    "src/globals.cpp",
+    "docs/tileset/realm_tileset_visual_audit.md"
+  ]
+}

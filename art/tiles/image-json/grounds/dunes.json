@@ -1,0 +1,30 @@
+{
+  "schema": "realm.terrain_sprite_spec.v1",
+  "asset_type": "ground",
+  "enum": "T_DUNES",
+  "slug": "dunes",
+  "name": "Dunes",
+  "ui_name": "Sand Dunes",
+  "runtime": {
+    "glyph": ","
+  },
+  "art": {
+    "projection": "top-down square source tile, projected into an isometric diamond in-app",
+    "layer_category": "grounds",
+    "terrain_type": "ground relief",
+    "visual_design": "Curved dune ridges, light highlights",
+    "required_variants": "8 ridge variants; 4 orientation variants",
+    "runtime_notes": "Slow/terrain identity for desert",
+    "team_color_required": false
+  },
+  "paths": {
+    "runtime_root": "assets/tiles/terrain/dunes",
+    "base": "assets/tiles/terrain/dunes.png"
+  },
+  "sources": [
+    "include/realm.h",
+    "src/entity.cpp",
+    "src/gfx_renderer.cpp",
+    "docs/tileset/realm_tileset_visual_audit.md"
+  ]
+}

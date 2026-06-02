@@ -1,0 +1,30 @@
+{
+  "schema": "realm.terrain_sprite_spec.v1",
+  "asset_type": "feature",
+  "enum": "T_PALM",
+  "slug": "palm",
+  "name": "Palm",
+  "ui_name": "Palm Grove",
+  "runtime": {
+    "glyph": "y"
+  },
+  "art": {
+    "projection": "transparent feature sprite anchored over a projected isometric map tile",
+    "layer_category": "features",
+    "terrain_type": "resource object",
+    "visual_design": "Desert/coastal palms, tan trunks, green crowns",
+    "required_variants": "8 palm variants; sand/root shadow variants",
+    "runtime_notes": "Gatherable wood; depleted to dirt",
+    "team_color_required": false
+  },
+  "paths": {
+    "runtime_root": "assets/tiles/terrain/palm",
+    "base": "assets/tiles/terrain/palm.png"
+  },
+  "sources": [
+    "include/realm.h",
+    "src/entity.cpp",
+    "src/gfx_renderer.cpp",
+    "docs/tileset/realm_tileset_visual_audit.md"
+  ]
+}
