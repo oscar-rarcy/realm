@@ -18,7 +18,7 @@ void dispatchCommand(GameContext& context, const Command& command) {
         selectAtTile(game, command.targetTile.x, command.targetTile.y);
         break;
     case CommandType::BoxSelect:
-        boxSelect(game, command.targetTile.x, command.targetTile.y, command.groupIndex >> 16, command.groupIndex & 0xffff);
+        boxSelect(game, command.targetTile.x, command.targetTile.y, command.boxEnd.x, command.boxEnd.y);
         break;
     case CommandType::SelectAllOfTypeInView:
         selectAllOfTypeInView(game, command.targetTile.x, command.targetTile.y);

@@ -43,11 +43,11 @@ struct Command {
     Selection selection;
     MapPos targetTile{-1, -1};
     MapPos lineEnd{-1, -1};
+    MapPos boxEnd{-1, -1};
     int targetEntity = -1;
     EntityType entityType = E_NONE;
     ResearchId researchId{};
     MarketTradeType marketTrade{};
-    int groupIndex = -1;
 };
 
 Selection currentSelection();

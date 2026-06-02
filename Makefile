@@ -8,9 +8,6 @@ BUILD_DIR := build
 OBJ_DIR := $(BUILD_DIR)/obj
 BIN_DIR := bin
 
-# -------------------------------------------------------------------
-# Platform detection
-# -------------------------------------------------------------------
 ifeq ($(OS),Windows_NT)
   NATIVE_WINDOWS := 1
   EXEEXT := .exe
@@ -21,9 +18,6 @@ endif
 
 UNAME_S := $(shell uname -s 2>/dev/null || echo Unknown)
 
-# -------------------------------------------------------------------
-# Targets / objects
-# -------------------------------------------------------------------
 ifeq ($(NATIVE_WINDOWS),1)
   TERM_TARGET := $(BIN_DIR)/realm-terminal$(EXEEXT)
   GFX_TARGET := $(BIN_DIR)/realm$(EXEEXT)
@@ -33,71 +27,25 @@ else
   GFX_TARGET := $(BIN_DIR)/realm-gfx$(EXEEXT)
   LAB_TARGET := $(BIN_DIR)/realm-lab$(EXEEXT)
 endif
-
-TERM_OBJS := \
-	$(OBJ_DIR)/main.o \
-	$(OBJ_DIR)/env_config.o \
-	$(OBJ_DIR)/entity_animation.o \
-	$(OBJ_DIR)/globals.o \
-	$(OBJ_DIR)/mapgen.o \
-	$(OBJ_DIR)/entity.o \
-	$(OBJ_DIR)/orders.o \
-	$(OBJ_DIR)/simulation.o \
-	$(OBJ_DIR)/ai.o \
-	$(OBJ_DIR)/render.o \
-	$(OBJ_DIR)/input.o \
-	$(OBJ_DIR)/display.o
-
-GFX_OBJS := \
-	$(OBJ_DIR)/main_gfx.o \
-	$(OBJ_DIR)/main_gfx_init.o \
-	$(OBJ_DIR)/env_config_gfx.o \
-	$(OBJ_DIR)/entity_animation_gfx.o \
-	$(OBJ_DIR)/globals_gfx.o \
-	$(OBJ_DIR)/mapgen_gfx.o \
-	$(OBJ_DIR)/entity_gfx.o \
-	$(OBJ_DIR)/orders_gfx.o \
-	$(OBJ_DIR)/simulation_gfx.o \
-	$(OBJ_DIR)/ai_gfx.o \
-	$(OBJ_DIR)/input_gfx.o \
-	$(OBJ_DIR)/display_gfx.o \
-	$(OBJ_DIR)/tileset_assets_gfx.o \
-	$(OBJ_DIR)/gfx_renderer.o
-
-LAB_OBJS := \
-	$(OBJ_DIR)/main_lab.o \
-	$(OBJ_DIR)/main_lab_init.o \
-	$(OBJ_DIR)/env_config_lab.o \
-	$(OBJ_DIR)/entity_animation_lab.o \
-	$(OBJ_DIR)/globals_lab.o \
-	$(OBJ_DIR)/mapgen_lab.o \
-	$(OBJ_DIR)/entity_lab.o \
-	$(OBJ_DIR)/orders_lab.o \
-	$(OBJ_DIR)/simulation_lab.o \
-	$(OBJ_DIR)/ai_lab.o \
-	$(OBJ_DIR)/input_lab.o \
-	$(OBJ_DIR)/display_lab.o \
-	$(OBJ_DIR)/tileset_assets_lab.o \
-	$(OBJ_DIR)/gfx_renderer_lab.o
-
 TEST_TARGET := $(BIN_DIR)/realm_headless_tests$(EXEEXT)
-TEST_OBJS := \
-	$(OBJ_DIR)/tests/realm_headless_tests.o \
-	$(OBJ_DIR)/main_headless.o \
-	$(OBJ_DIR)/entity_animation_headless.o \
-	$(OBJ_DIR)/globals_headless.o \
-	$(OBJ_DIR)/mapgen_headless.o \
-	$(OBJ_DIR)/entity_headless.o \
-	$(OBJ_DIR)/orders_headless.o \
-	$(OBJ_DIR)/simulation_headless.o \
-	$(OBJ_DIR)/ai_headless.o \
-	$(OBJ_DIR)/input_headless.o
 
-.DEFAULT_GOAL := gui
+CORE_SRCS := $(wildcard $(SRC_DIR)/core/*.cpp)
+SIM_SRCS := $(wildcard $(SRC_DIR)/sim/*.cpp)
+COMMAND_SRCS := $(wildcard $(SRC_DIR)/commands/*.cpp)
+AI_SRCS := $(wildcard $(SRC_DIR)/ai/*.cpp)
+MAP_SRCS := $(wildcard $(SRC_DIR)/map/*.cpp)
+PLATFORM_COMMON_SRCS := $(SRC_DIR)/platform/app_config.cpp $(SRC_DIR)/platform/game_init.cpp $(SRC_DIR)/platform/view_state.cpp
+GAME_SRCS := $(CORE_SRCS) $(SIM_SRCS) $(COMMAND_SRCS) $(AI_SRCS) $(MAP_SRCS) $(PLATFORM_COMMON_SRCS)
 
-# -------------------------------------------------------------------
-# Libraries
-# -------------------------------------------------------------------
+ASCII_RENDER_SRCS := $(SRC_DIR)/render/visual_model.cpp $(wildcard $(SRC_DIR)/render/ascii/*.cpp)
+SDL_RENDER_SRCS := $(SRC_DIR)/render/visual_model.cpp $(wildcard $(SRC_DIR)/render/sdl/*.cpp)
+
+TERM_SRCS := $(SRC_DIR)/platform/main_terminal.cpp $(GAME_SRCS) $(ASCII_RENDER_SRCS)
+GFX_SRCS := $(SRC_DIR)/platform/main_sdl.cpp $(GAME_SRCS) $(SDL_RENDER_SRCS)
+LAB_SRCS := $(SRC_DIR)/platform/main_lab.cpp $(GAME_SRCS) $(SDL_RENDER_SRCS)
+TEST_SRCS := tests/realm_headless_tests.cpp $(GAME_SRCS)
+WEB_SRCS := $(SRC_DIR)/platform/main_web.cpp $(GAME_SRCS) $(SDL_RENDER_SRCS)
+
 NCURSES_CFLAGS := $(shell $(PKG_CONFIG) --cflags ncursesw 2>/dev/null)
 ifeq ($(UNAME_S),Darwin)
   NCURSES_FALLBACK_LIBS := -lncurses
@@ -115,9 +63,18 @@ ifeq ($(NATIVE_WINDOWS),1)
 WINDOWS_RUNTIME_DLLS := SDL2.dll SDL2_ttf.dll libgcc_s_seh-1.dll libstdc++-6.dll libwinpthread-1.dll libfreetype-6.dll libharfbuzz-0.dll libbz2-1.dll zlib1.dll libbrotlidec.dll libbrotlicommon.dll libpng16-16.dll libgraphite2.dll libglib-2.0-0.dll libintl-8.dll libiconv-2.dll libpcre2-8-0.dll
 endif
 
-# -------------------------------------------------------------------
-# Public build commands
-# -------------------------------------------------------------------
+DEFAULT_INCLUDES := -I$(INC_DIR) -I$(SRC_DIR)
+
+define objs_for
+$(patsubst %.cpp,$(OBJ_DIR)/$(1)/%.o,$(filter %.cpp,$(2)))
+endef
+
+TERM_OBJS := $(call objs_for,term,$(TERM_SRCS))
+GFX_OBJS := $(call objs_for,gfx,$(GFX_SRCS))
+LAB_OBJS := $(call objs_for,lab,$(LAB_SRCS))
+TEST_OBJS := $(call objs_for,test,$(TEST_SRCS))
+
+.DEFAULT_GOAL := gui
 .PHONY: all gui gfx lab terminal term run run-gui run-lab run-terminal web test ui-test ascii-compare debug sanitize package clean check-sdl check-ncurses copy-windows-runtime help
 
 all: gui
@@ -137,10 +94,8 @@ lab: check-sdl $(LAB_TARGET)
 endif
 
 run: run-gui
-
 run-gui: gui
 	./$(GFX_TARGET)
-
 run-lab: lab
 	./$(LAB_TARGET)
 
@@ -151,7 +106,6 @@ terminal term run-terminal:
 	@exit 1
 else
 terminal term: check-ncurses $(TERM_TARGET)
-
 run-terminal: terminal
 	./$(TERM_TARGET)
 endif
@@ -181,9 +135,6 @@ endif
 web:
 	bash scripts/build-web.sh
 
-# -------------------------------------------------------------------
-# Dependency checks
-# -------------------------------------------------------------------
 check-sdl:
 	@$(PKG_CONFIG) --exists sdl2 SDL2_ttf libpng || ( \
 		echo "Missing SDL2/SDL2_ttf/libpng development packages."; \
@@ -198,9 +149,6 @@ check-sdl:
 check-ncurses:
 	@$(PKG_CONFIG) --exists ncursesw 2>/dev/null || true
 
-# -------------------------------------------------------------------
-# Link targets
-# -------------------------------------------------------------------
 $(GFX_TARGET): $(GFX_OBJS) | $(BIN_DIR)
 	$(CXX) $(CXXFLAGS) -o $@ $(GFX_OBJS) $(SDL_LIBS) $(PNG_LIBS)
 
@@ -213,131 +161,27 @@ $(TERM_TARGET): $(TERM_OBJS) | $(BIN_DIR)
 $(TEST_TARGET): $(TEST_OBJS) | $(BIN_DIR)
 	$(CXX) $(CXXFLAGS) -o $@ $(TEST_OBJS)
 
-# -------------------------------------------------------------------
-# Compile rules
-# -------------------------------------------------------------------
-$(OBJ_DIR)/env_config.o: $(SRC_DIR)/env_config.cpp $(INC_DIR)/env_config.h | $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) -I$(INC_DIR) -c -o $@ $(SRC_DIR)/env_config.cpp
+$(OBJ_DIR)/term/%.o: %.cpp | $(OBJ_DIR)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) -DUSE_NCURSES_RENDERER $(DEFAULT_INCLUDES) $(NCURSES_CFLAGS) -c -o $@ $<
 
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp $(INC_DIR)/realm.h | $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) -I$(INC_DIR) $(NCURSES_CFLAGS) -c -o $@ $<
+$(OBJ_DIR)/gfx/%.o: %.cpp | $(OBJ_DIR)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) -DUSE_SDL_RENDERER $(DEFAULT_INCLUDES) $(SDL_CFLAGS) $(PNG_CFLAGS) -c -o $@ $<
 
-$(OBJ_DIR)/main_gfx.o: $(SRC_DIR)/main_gfx.cpp $(INC_DIR)/realm.h $(INC_DIR)/gfx_renderer.h $(INC_DIR)/entity_animation.h | $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) -DUSE_SDL_RENDERER -I$(INC_DIR) $(SDL_CFLAGS) -c -o $@ $(SRC_DIR)/main_gfx.cpp
+$(OBJ_DIR)/lab/%.o: %.cpp | $(OBJ_DIR)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) -DUSE_SDL_RENDERER $(DEFAULT_INCLUDES) $(SDL_CFLAGS) $(PNG_CFLAGS) -c -o $@ $<
 
-$(OBJ_DIR)/main_gfx_init.o: $(SRC_DIR)/main.cpp $(INC_DIR)/realm.h $(INC_DIR)/entity_animation.h | $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) -DUSE_SDL_RENDERER -I$(INC_DIR) -c -o $@ $(SRC_DIR)/main.cpp
-
-$(OBJ_DIR)/env_config_gfx.o: $(SRC_DIR)/env_config.cpp $(INC_DIR)/env_config.h | $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) -DUSE_SDL_RENDERER -I$(INC_DIR) -c -o $@ $(SRC_DIR)/env_config.cpp
-
-$(OBJ_DIR)/entity_animation_gfx.o: $(SRC_DIR)/entity_animation.cpp $(INC_DIR)/realm.h $(INC_DIR)/entity_animation.h | $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) -DUSE_SDL_RENDERER -I$(INC_DIR) -c -o $@ $(SRC_DIR)/entity_animation.cpp
-
-$(OBJ_DIR)/globals_gfx.o: $(SRC_DIR)/globals.cpp $(INC_DIR)/realm.h | $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) -DUSE_SDL_RENDERER -I$(INC_DIR) -c -o $@ $(SRC_DIR)/globals.cpp
-
-$(OBJ_DIR)/mapgen_gfx.o: $(SRC_DIR)/mapgen.cpp $(INC_DIR)/realm.h | $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) -DUSE_SDL_RENDERER -I$(INC_DIR) -c -o $@ $(SRC_DIR)/mapgen.cpp
-
-$(OBJ_DIR)/entity_gfx.o: $(SRC_DIR)/entity.cpp $(INC_DIR)/realm.h | $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) -DUSE_SDL_RENDERER -I$(INC_DIR) -c -o $@ $(SRC_DIR)/entity.cpp
-
-$(OBJ_DIR)/orders_gfx.o: $(SRC_DIR)/orders.cpp $(INC_DIR)/realm.h | $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) -DUSE_SDL_RENDERER -I$(INC_DIR) -c -o $@ $(SRC_DIR)/orders.cpp
-
-$(OBJ_DIR)/simulation_gfx.o: $(SRC_DIR)/simulation.cpp $(INC_DIR)/realm.h | $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) -DUSE_SDL_RENDERER -I$(INC_DIR) -c -o $@ $(SRC_DIR)/simulation.cpp
-
-$(OBJ_DIR)/ai_gfx.o: $(SRC_DIR)/ai.cpp $(INC_DIR)/realm.h | $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) -DUSE_SDL_RENDERER -I$(INC_DIR) -c -o $@ $(SRC_DIR)/ai.cpp
-
-$(OBJ_DIR)/input_gfx.o: $(SRC_DIR)/input.cpp $(INC_DIR)/realm.h | $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) -DUSE_SDL_RENDERER -I$(INC_DIR) -c -o $@ $(SRC_DIR)/input.cpp
-
-$(OBJ_DIR)/display_gfx.o: $(SRC_DIR)/display.cpp $(INC_DIR)/realm.h $(INC_DIR)/display.h | $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) -DUSE_SDL_RENDERER -I$(INC_DIR) -c -o $@ $(SRC_DIR)/display.cpp
-
-$(OBJ_DIR)/gfx_renderer.o: $(SRC_DIR)/gfx_renderer.cpp $(INC_DIR)/realm.h $(INC_DIR)/gfx_renderer.h $(INC_DIR)/entity_animation.h $(INC_DIR)/tileset_assets.h | $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) -DUSE_SDL_RENDERER -I$(INC_DIR) $(SDL_CFLAGS) -c -o $@ $(SRC_DIR)/gfx_renderer.cpp
-
-$(OBJ_DIR)/tileset_assets_gfx.o: $(SRC_DIR)/tileset_assets.cpp $(INC_DIR)/tileset_assets.h $(INC_DIR)/realm.h | $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) -DUSE_SDL_RENDERER -I$(INC_DIR) $(SDL_CFLAGS) $(PNG_CFLAGS) -c -o $@ $(SRC_DIR)/tileset_assets.cpp
-
-$(OBJ_DIR)/main_lab.o: $(SRC_DIR)/main_lab.cpp $(INC_DIR)/realm.h $(INC_DIR)/gfx_renderer.h $(INC_DIR)/env_config.h | $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) -DUSE_SDL_RENDERER -I$(INC_DIR) $(SDL_CFLAGS) -c -o $@ $(SRC_DIR)/main_lab.cpp
-
-$(OBJ_DIR)/main_lab_init.o: $(SRC_DIR)/main.cpp $(INC_DIR)/realm.h $(INC_DIR)/entity_animation.h | $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) -DUSE_SDL_RENDERER -I$(INC_DIR) -c -o $@ $(SRC_DIR)/main.cpp
-
-$(OBJ_DIR)/env_config_lab.o: $(SRC_DIR)/env_config.cpp $(INC_DIR)/env_config.h | $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) -DUSE_SDL_RENDERER -I$(INC_DIR) -c -o $@ $(SRC_DIR)/env_config.cpp
-
-$(OBJ_DIR)/entity_animation_lab.o: $(SRC_DIR)/entity_animation.cpp $(INC_DIR)/realm.h $(INC_DIR)/entity_animation.h | $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) -DUSE_SDL_RENDERER -I$(INC_DIR) -c -o $@ $(SRC_DIR)/entity_animation.cpp
-
-$(OBJ_DIR)/globals_lab.o: $(SRC_DIR)/globals.cpp $(INC_DIR)/realm.h | $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) -DUSE_SDL_RENDERER -I$(INC_DIR) -c -o $@ $(SRC_DIR)/globals.cpp
-
-$(OBJ_DIR)/mapgen_lab.o: $(SRC_DIR)/mapgen.cpp $(INC_DIR)/realm.h | $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) -DUSE_SDL_RENDERER -I$(INC_DIR) -c -o $@ $(SRC_DIR)/mapgen.cpp
-
-$(OBJ_DIR)/entity_lab.o: $(SRC_DIR)/entity.cpp $(INC_DIR)/realm.h | $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) -DUSE_SDL_RENDERER -I$(INC_DIR) -c -o $@ $(SRC_DIR)/entity.cpp
-
-$(OBJ_DIR)/orders_lab.o: $(SRC_DIR)/orders.cpp $(INC_DIR)/realm.h | $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) -DUSE_SDL_RENDERER -I$(INC_DIR) -c -o $@ $(SRC_DIR)/orders.cpp
-
-$(OBJ_DIR)/simulation_lab.o: $(SRC_DIR)/simulation.cpp $(INC_DIR)/realm.h | $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) -DUSE_SDL_RENDERER -I$(INC_DIR) -c -o $@ $(SRC_DIR)/simulation.cpp
-
-$(OBJ_DIR)/ai_lab.o: $(SRC_DIR)/ai.cpp $(INC_DIR)/realm.h | $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) -DUSE_SDL_RENDERER -I$(INC_DIR) -c -o $@ $(SRC_DIR)/ai.cpp
-
-$(OBJ_DIR)/input_lab.o: $(SRC_DIR)/input.cpp $(INC_DIR)/realm.h | $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) -DUSE_SDL_RENDERER -I$(INC_DIR) -c -o $@ $(SRC_DIR)/input.cpp
-
-$(OBJ_DIR)/display_lab.o: $(SRC_DIR)/display.cpp $(INC_DIR)/realm.h $(INC_DIR)/display.h | $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) -DUSE_SDL_RENDERER -I$(INC_DIR) -c -o $@ $(SRC_DIR)/display.cpp
-
-$(OBJ_DIR)/tileset_assets_lab.o: $(SRC_DIR)/tileset_assets.cpp $(INC_DIR)/tileset_assets.h $(INC_DIR)/realm.h | $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) -DUSE_SDL_RENDERER -I$(INC_DIR) $(SDL_CFLAGS) $(PNG_CFLAGS) -c -o $@ $(SRC_DIR)/tileset_assets.cpp
-
-$(OBJ_DIR)/gfx_renderer_lab.o: $(SRC_DIR)/gfx_renderer.cpp $(INC_DIR)/realm.h $(INC_DIR)/gfx_renderer.h $(INC_DIR)/entity_animation.h $(INC_DIR)/tileset_assets.h | $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) -DUSE_SDL_RENDERER -I$(INC_DIR) $(SDL_CFLAGS) -c -o $@ $(SRC_DIR)/gfx_renderer.cpp
-
-$(OBJ_DIR)/tests/realm_headless_tests.o: tests/realm_headless_tests.cpp $(INC_DIR)/realm.h $(INC_DIR)/entity_animation.h | $(OBJ_DIR)/tests
-	$(CXX) $(CXXFLAGS) -DUSE_SDL_RENDERER -I$(INC_DIR) -c -o $@ tests/realm_headless_tests.cpp
-
-$(OBJ_DIR)/main_headless.o: $(SRC_DIR)/main.cpp $(INC_DIR)/realm.h $(INC_DIR)/entity_animation.h | $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) -DUSE_SDL_RENDERER -I$(INC_DIR) -c -o $@ $(SRC_DIR)/main.cpp
-
-$(OBJ_DIR)/entity_animation_headless.o: $(SRC_DIR)/entity_animation.cpp $(INC_DIR)/realm.h $(INC_DIR)/entity_animation.h | $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) -DUSE_SDL_RENDERER -I$(INC_DIR) -c -o $@ $(SRC_DIR)/entity_animation.cpp
-
-$(OBJ_DIR)/globals_headless.o: $(SRC_DIR)/globals.cpp $(INC_DIR)/realm.h | $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) -DUSE_SDL_RENDERER -I$(INC_DIR) -c -o $@ $(SRC_DIR)/globals.cpp
-
-$(OBJ_DIR)/mapgen_headless.o: $(SRC_DIR)/mapgen.cpp $(INC_DIR)/realm.h | $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) -DUSE_SDL_RENDERER -I$(INC_DIR) -c -o $@ $(SRC_DIR)/mapgen.cpp
-
-$(OBJ_DIR)/entity_headless.o: $(SRC_DIR)/entity.cpp $(INC_DIR)/realm.h | $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) -DUSE_SDL_RENDERER -I$(INC_DIR) -c -o $@ $(SRC_DIR)/entity.cpp
-
-$(OBJ_DIR)/orders_headless.o: $(SRC_DIR)/orders.cpp $(INC_DIR)/realm.h | $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) -DUSE_SDL_RENDERER -I$(INC_DIR) -c -o $@ $(SRC_DIR)/orders.cpp
-
-$(OBJ_DIR)/simulation_headless.o: $(SRC_DIR)/simulation.cpp $(INC_DIR)/realm.h | $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) -DUSE_SDL_RENDERER -I$(INC_DIR) -c -o $@ $(SRC_DIR)/simulation.cpp
-
-$(OBJ_DIR)/ai_headless.o: $(SRC_DIR)/ai.cpp $(INC_DIR)/realm.h | $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) -DUSE_SDL_RENDERER -I$(INC_DIR) -c -o $@ $(SRC_DIR)/ai.cpp
-
-$(OBJ_DIR)/input_headless.o: $(SRC_DIR)/input.cpp $(INC_DIR)/realm.h | $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) -DUSE_SDL_RENDERER -I$(INC_DIR) -c -o $@ $(SRC_DIR)/input.cpp
+$(OBJ_DIR)/test/%.o: %.cpp | $(OBJ_DIR)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $(DEFAULT_INCLUDES) -c -o $@ $<
 
 test: $(TEST_TARGET)
 	./$(TEST_TARGET)
+
+architecture-check:
+	python scripts/check_architecture.py
 
 ui-test: gui
 	REALM_UI_TEST=1 ./$(GFX_TARGET)
@@ -362,7 +206,7 @@ endif
 package: gui
 	/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/package-windows.ps1
 
-$(OBJ_DIR) $(OBJ_DIR)/tests $(BIN_DIR):
+$(OBJ_DIR) $(BIN_DIR):
 	mkdir -p $@
 
 ifeq ($(NATIVE_WINDOWS),1)

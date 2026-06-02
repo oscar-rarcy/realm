@@ -651,7 +651,7 @@ void gfxPollInput(bool& quitRequested) {
                         Command command;
                         command.type = CommandType::BoxSelect;
                         command.targetTile = {s.dragStartX, s.dragStartY};
-                        command.groupIndex = (mx << 16) | (my & 0xffff);
+                        command.boxEnd = {mx, my};
                         dispatchCommand(g, command);
                     } else {
                         Command command;

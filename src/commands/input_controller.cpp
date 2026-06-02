@@ -651,7 +651,7 @@ void handleInput(int ch) {
                     Command command;
                     command.type = CommandType::BoxSelect;
                     command.targetTile = {view.dragStartX, view.dragStartY};
-                    command.groupIndex = (mapX << 16) | (mapY & 0xffff);
+                    command.boxEnd = {mapX, mapY};
                     dispatchCommand(g, command);
                 } else {
                     // Click: select entity at cursor
