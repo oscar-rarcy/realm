@@ -759,6 +759,90 @@ static void testCommandSelectionDriftProtection() {
     assert(validateGameState(nullptr));
 }
 
+static void testCommandDispatcherAppActions() {
+    initGameWithSeed(1, 4802u, 0);
+    Command command;
+    command.type = CommandType::TogglePause;
+    dispatchCommand(g, command);
+    assert(g.mode == M_PAUSED);
+    dispatchCommand(g, command);
+    assert(g.mode == M_NORMAL);
+
+    command = Command{};
+    command.type = CommandType::ToggleDiagnostics;
+    bool diagnosticsBefore = g.diagnostics;
+    dispatchCommand(g, command);
+    assert(g.diagnostics != diagnosticsBefore);
+
+    g.map[0][0].visible[0] = false;
+    g.map[0][0].explored[0] = false;
+    command = Command{};
+    command.type = CommandType::RevealMapDebug;
+    dispatchCommand(g, command);
+    assert(g.map[0][0].visible[0] && g.map[0][0].explored[0]);
+
+    int gid = spawnEntity(E_GATE, 0, 30, 30);
+    Entity* gate = findEntity(gid);
+    assert(gate && !gate->gateLocked);
+    command = Command{};
+    command.type = CommandType::ToggleGate;
+    command.selection.primaryId = gid;
+    command.selection.ids = { gid };
+    dispatchCommand(g, command);
+    assert(gate->gateLocked && gate->gateOpen);
+    dispatchCommand(g, command);
+    assert(gate->gateLocked && !gate->gateOpen);
+    dispatchCommand(g, command);
+    assert(!gate->gateLocked);
+
+    int tid = spawnEntity(E_TREBUCHET, 0, 34, 30);
+    Entity* treb = findEntity(tid);
+    assert(treb && treb->packed == 1);
+    command = Command{};
+    command.type = CommandType::ToggleTrebuchetPacked;
+    command.selection.primaryId = tid;
+    command.selection.ids = { tid };
+    dispatchCommand(g, command);
+    assert(treb->packed == 0 && treb->packTicks == 40);
+
+    int a = spawnEntity(E_MILITIA, 0, 40, 30);
+    int b = spawnEntity(E_ARCHER, 0, 41, 30);
+    command = Command{};
+    command.type = CommandType::AssignControlGroup;
+    command.selection.primaryId = a;
+    command.selection.ids = { a, b };
+    command.slot = 2;
+    dispatchCommand(g, command);
+    assert(g.controlGroups[2].size() == 2);
+    g.selectedId = -1;
+    g.selectedIds.clear();
+    command = Command{};
+    command.type = CommandType::RecallControlGroup;
+    command.slot = 2;
+    dispatchCommand(g, command);
+    assert(g.selectedId == a);
+    assert(g.selectedIds.size() == 2);
+
+    command = Command{};
+    command.type = CommandType::Save;
+    command.slot = 7;
+    std::remove("realm-slot7.sav");
+    dispatchCommand(g, command);
+    unsigned savedSeed = g.seed;
+    initGameWithSeed(1, 4803u, 0);
+    command.type = CommandType::Load;
+    command.slot = 7;
+    dispatchCommand(g, command);
+    assert(g.seed == savedSeed);
+    std::remove("realm-slot7.sav");
+
+    command = Command{};
+    command.type = CommandType::Resign;
+    g.returnToMenu = false;
+    dispatchCommand(g, command);
+    assert(g.returnToMenu);
+}
+
 static void testProductionService() {
     initGameWithSeed(1, 4901u, 0);
     int bid = spawnEntity(E_BARRACKS, 0, 30, 30);
@@ -1230,6 +1314,7 @@ int main() {
     testUnitFoodCostTable();
     testMarketTradeService();
     testCommandSelectionDriftProtection();
+    testCommandDispatcherAppActions();
     testProductionService();
     testBuildService();
     testGameEventSink();

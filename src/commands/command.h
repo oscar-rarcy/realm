@@ -35,7 +35,11 @@ enum class CommandType {
     TogglePause,
     Save,
     Load,
-    Resign
+    Resign,
+    ToggleGate,
+    ToggleTrebuchetPacked,
+    ToggleDiagnostics,
+    RevealMapDebug
 };
 
 struct Command {
@@ -48,6 +52,7 @@ struct Command {
     EntityType entityType = E_NONE;
     ResearchId researchId{};
     MarketTradeType marketTrade{};
+    int slot = -1;
 };
 
 Selection currentSelection();

@@ -2,8 +2,6 @@
 #include "view_state.h"
 #include "input_keys.h"
 
-#include <iostream>
-
 #include "commands/command.h"
 
 static void dispatchBuildCommand(EntityType type, int x, int y, int endX = -1, int endY = -1) {
@@ -36,18 +34,39 @@ static void dispatchTileCommand(CommandType type, int x, int y) {
     dispatchCommand(g, command);
 }
 
+static void dispatchSimpleCommand(CommandType type) {
+    Command command;
+    command.type = type;
+    command.selection = currentSelection();
+    dispatchCommand(g, command);
+}
+
+static void dispatchSlotCommand(CommandType type, int slot) {
+    Command command;
+    command.type = type;
+    command.selection = currentSelection();
+    command.slot = slot;
+    dispatchCommand(g, command);
+}
+
+static void moveCursorToSelected() {
+    Entity* selected = findEntity(g.selectedId);
+    if (!selected) return;
+    view.cursorX = selected->x;
+    view.cursorY = selected->y;
+}
+
 void handleInput(int ch) {
     if (ch == ERR) return;
     if (ch == 'q' || ch == 'Q') {
-        g.returnToMenu = true;
-        std::cerr << "realm: resign/return-to-menu requested tick=" << g.tick << "\n";
+        dispatchSimpleCommand(CommandType::Resign);
         return;
     }
     if ((ch=='\n'||ch==KEY_ENTER||ch=='\r') && g.mode==M_GAME_OVER) {
-        g.returnToMenu = true; return;
+        dispatchSimpleCommand(CommandType::Resign); return;
     }
     if ((ch=='p'||ch=='P') && (g.mode==M_NORMAL||g.mode==M_PAUSED)) {
-        g.mode = (g.mode==M_PAUSED) ? M_NORMAL : M_PAUSED; return;
+        dispatchSimpleCommand(CommandType::TogglePause); return;
     }
     if (g.mode==M_PAUSED || g.mode==M_GAME_OVER) return;
 
@@ -289,74 +308,35 @@ void handleInput(int ch) {
         {
             Entity* sel = findEntity(g.selectedId);
             if (sel && sel->alive && sel->owner == 0 && sel->type == E_TREBUCHET) {
-                if (sel->packTicks > 0) { setStatus("Trebuchet is already changing stance."); break; }
-                int ticks = (g.players[0].research & R_COUNTERWEIGHT) ? 25 : 40;
-                sel->packed = sel->packed ? 0 : 1;
-                sel->packTicks = ticks;
-                sel->state = S_IDLE;
-                sel->path.clear();
-                sel->pathIdx = 0;
-                setStatus(sel->packed ? "Packing trebuchet..." : "Deploying trebuchet...");
+                dispatchSimpleCommand(CommandType::ToggleTrebuchetPacked);
             } else {
-                g.diagnostics = !g.diagnostics;
-                setStatus(g.diagnostics ? "Diagnostics on." : "Diagnostics off.");
+                dispatchSimpleCommand(CommandType::ToggleDiagnostics);
             }
         }
         break;
 
     case 'v': case 'V':
-        if (saveGame("realm-save.txt")) {
-            setStatus("Saved realm-save.txt");
-            std::cerr << "realm: saved realm-save.txt tick=" << g.tick << "\n";
-        } else {
-            setStatus("Save failed.");
-            std::cerr << "realm: save failed realm-save.txt tick=" << g.tick << "\n";
-        }
+        dispatchSlotCommand(CommandType::Save, 0);
         break;
 
     case KEY_F(5): case KEY_F(6): case KEY_F(7): case KEY_F(8): {
         int slot = ch - KEY_F(5) + 1;
-        std::string path = "realm-slot" + std::to_string(slot) + ".sav";
-        if (saveGame(path)) setStatus("Saved to slot " + std::to_string(slot) + ".");
-        else setStatus("Save failed.");
+        dispatchSlotCommand(CommandType::Save, slot);
         break;
     }
 
     case 'l': case 'L':
-        if (loadGame("realm-save.txt")) {
-            setStatus("Loaded realm-save.txt");
-            std::cerr << "realm: loaded realm-save.txt tick=" << g.tick << "\n";
-        } else {
-            setStatus("Load failed.");
-            std::cerr << "realm: load failed realm-save.txt\n";
-        }
+        dispatchSlotCommand(CommandType::Load, 0);
         break;
 
     case KEY_F(9): case KEY_F(10): case KEY_F(11): case KEY_F(12): {
         int slot = ch - KEY_F(9) + 1;
-        std::string path = "realm-slot" + std::to_string(slot) + ".sav";
-        if (loadGame(path)) setStatus("Loaded slot " + std::to_string(slot) + ".");
-        else setStatus("Load failed.");
+        dispatchSlotCommand(CommandType::Load, slot);
         break;
     }
 
     case ' ': {
-        Entity* ent = entityAtOwner(view.cursorX, view.cursorY, 0);
-        if (ent) {
-            g.selectedId = ent->id;
-            g.selectedIds.clear();
-            setStatus(std::string("Selected: ") + STATS[ent->type].name);
-        } else {
-            Entity* any = entityAt(view.cursorX, view.cursorY);
-            if (any && any->alive && g.map[view.cursorY][view.cursorX].visible[0]) {
-                g.selectedId = any->id;
-                g.selectedIds.clear();
-                setStatus(std::string(any->owner==OWNER_NATURE?"Animal: ":"Enemy ") + STATS[any->type].name);
-            } else {
-                g.selectedId = -1;
-                g.selectedIds.clear();
-            }
-        }
+        dispatchTileCommand(CommandType::Select, view.cursorX, view.cursorY);
         break;
     }
 
@@ -387,12 +367,7 @@ void handleInput(int ch) {
 
     // Eject garrison from selected building or transport
     case 'U': case 'u': {
-        Entity* sel = findEntity(g.selectedId);
-        if (sel && sel->alive && sel->owner == 0 && canGarrisonIn(sel->type)) {
-            int n = (int)sel->garrison.size();
-            if (n > 0) { ejectGarrison(*sel); setStatus(std::to_string(n) + " unit(s) ejected"); }
-            else setStatus("No garrison to eject");
-        }
+        dispatchSimpleCommand(CommandType::EjectGarrison);
         break;
     }
 
@@ -441,29 +416,13 @@ void handleInput(int ch) {
 
     // Gate toggle: cycle auto -> locked-open -> locked-closed -> auto
     case 'O': {
-        Entity* sel = findEntity(g.selectedId);
-        if (sel && sel->alive && sel->owner==0 && sel->type==E_GATE && !sel->underConstruction) {
-            if (!sel->gateLocked) {
-                sel->gateLocked = true; sel->gateOpen = true;
-                setStatus("Gate locked open");
-            } else if (sel->gateOpen) {
-                sel->gateOpen = false;
-                setStatus("Gate locked closed");
-            } else {
-                sel->gateLocked = false;
-                setStatus("Gate auto");
-            }
-        }
+        dispatchSimpleCommand(CommandType::ToggleGate);
         break;
     }
 
     // Debug: reveal entire map (Shift+S)
     case 'S': {
-        for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
-            g.map[y][x].visible[0]  = true;
-            g.map[y][x].explored[0] = true;
-        }
-        setStatus("Debug: map revealed");
+        dispatchSimpleCommand(CommandType::RevealMapDebug);
         break;
     }
 
@@ -503,18 +462,7 @@ void handleInput(int ch) {
 
     // Hold position — stop and ignore auto-aggro until explicitly ordered.
     case 'X': case 'x': {
-        auto hold = [](Entity* e) {
-            if (!e || !e->alive || e->owner != 0 || !isUnit(e->type)) return;
-            e->state = S_IDLE; e->path.clear(); e->pathIdx = 0;
-            e->attackMove = 0; e->holdPosition = 1; e->targetId = -1;
-        };
-        int n = 0;
-        if (!g.selectedIds.empty()) {
-            for (int id : g.selectedIds) { hold(findEntity(id)); n++; }
-        } else if (g.selectedId >= 0) {
-            hold(findEntity(g.selectedId)); n = 1;
-        }
-        if (n > 0) setStatus("Hold position.");
+        dispatchSimpleCommand(CommandType::HoldPosition);
         break;
     }
 
@@ -535,23 +483,10 @@ void handleInput(int ch) {
     case '6': case '7': case '8': case '9': {
         int idx = ch - '1';
         if (g.groupAssignPending) {
-            g.controlGroups[idx] = g.selectedIds;
-            g.groupAssignPending  = false;
-            setStatus(std::string("Group ") + (char)ch + " assigned (" +
-                      std::to_string(g.selectedIds.size()) + " units)");
+            dispatchSlotCommand(CommandType::AssignControlGroup, idx);
         } else {
-            if (g.controlGroups[idx].empty()) {
-                setStatus(std::string("Group ") + (char)ch + " is empty");
-            } else {
-                g.selectedIds = g.controlGroups[idx];
-                g.selectedId  = -1;
-                for (int id : g.selectedIds) {
-                    Entity* e = findEntity(id);
-                    if (e && e->alive) { g.selectedId=e->id; view.cursorX=e->x; view.cursorY=e->y; break; }
-                }
-                setStatus(std::string("Group ") + (char)ch + " recalled (" +
-                          std::to_string(g.selectedIds.size()) + " units)");
-            }
+            dispatchSlotCommand(CommandType::RecallControlGroup, idx);
+            moveCursorToSelected();
         }
         break;
     }
