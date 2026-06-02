@@ -7,10 +7,13 @@
 #include "core/research_service.h"
 #include "core/market_service.h"
 #include "core/world_index.h"
+#include "sim/save_migration.h"
 
 #include <cassert>
 #include <cstdlib>
 #include <cstdio>
+#include <fstream>
+#include <iterator>
 #include <queue>
 #include <set>
 #include <map>
@@ -1149,11 +1152,33 @@ static void testSaveLoadRoundTrip() {
     for (int i = 0; i < 20; i++) tickSimulationOnce();
     std::string before = startupSummary();
     assert(saveGame("build/test-save.realm"));
+    {
+        std::ifstream in("build/test-save.realm");
+        std::string tag;
+        int version = 0;
+        assert(in >> tag >> version);
+        assert(tag == "REALM_SAVE");
+        assert(version == REALM_SAVE_VERSION);
+    }
     initGameWithSeed(1, 9999u, 0);
     assert(loadGame("build/test-save.realm"));
     assert(g.seed == 4004u);
     assert(startupSummary() == before);
     for (int i = 0; i < 20; i++) tickSimulationOnce();
+
+    // Version 8 uses the same payload as version 9 and should migrate in place.
+    {
+        std::ifstream in("build/test-save.realm", std::ios::binary);
+        std::string content((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+        size_t pos = content.find("REALM_SAVE 9");
+        assert(pos != std::string::npos);
+        content.replace(pos, std::string("REALM_SAVE 9").size(), "REALM_SAVE 8");
+        std::ofstream out("build/test-save-v8.realm", std::ios::binary);
+        out << content;
+    }
+    initGameWithSeed(1, 9998u, 0);
+    assert(loadGame("build/test-save-v8.realm"));
+    assert(g.seed == 4004u);
 
     initGameWithSeed(2, 4444u, 1);
     for (int i = 0; i < 250; i++) tickSimulationOnce();
