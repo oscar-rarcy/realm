@@ -2,6 +2,7 @@
 
 #include "realm.h"
 #include "core/research_defs.h"
+#include "core/market_service.h"
 
 struct Selection {
     int primaryId = -1;
@@ -19,6 +20,7 @@ enum class CommandType {
     BuildLine,
     Train,
     Research,
+    MarketTrade,
     Garrison,
     EjectGarrison,
     SetRally,
@@ -43,6 +45,7 @@ struct Command {
     int targetEntity = -1;
     EntityType entityType = E_NONE;
     ResearchId researchId{};
+    MarketTradeType marketTrade{};
     int groupIndex = -1;
 };
 

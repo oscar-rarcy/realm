@@ -128,18 +128,18 @@ void handleInput(int ch) {
         if (!market || market->type != E_MARKET || market->owner != 0 || market->underConstruction) {
             g.mode = M_NORMAL; return;
         }
-        Player& p = g.players[0];
-        auto trade = [&](int& from, int fromAmt, int& to, int toAmt, const char* msg) {
-            if (from < fromAmt) { setStatus("Not enough resources."); return; }
-            from -= fromAmt;
-            to += toAmt;
-            setStatus(msg);
+        auto dispatchTrade = [&](MarketTradeType type) {
+            Command command;
+            command.type = CommandType::MarketTrade;
+            command.selection = currentSelection();
+            command.marketTrade = type;
+            dispatchCommand(g, command);
             g.mode = M_NORMAL;
         };
-        if (ch == 'g' || ch == 'G') trade(p.gold, 40, p.wood, 30, "Traded gold for wood.");
-        else if (ch == 'w' || ch == 'W') trade(p.wood, 40, p.gold, 30, "Traded wood for gold.");
-        else if (ch == 'f' || ch == 'F') trade(p.gold, 50, p.food, 30, "Bought food.");
-        else if (ch == 'v' || ch == 'V') trade(p.food, 40, p.gold, 30, "Sold food.");
+        if (ch == 'g' || ch == 'G') dispatchTrade(MarketTradeType::GoldForWood);
+        else if (ch == 'w' || ch == 'W') dispatchTrade(MarketTradeType::WoodForGold);
+        else if (ch == 'f' || ch == 'F') dispatchTrade(MarketTradeType::GoldForFood);
+        else if (ch == 'v' || ch == 'V') dispatchTrade(MarketTradeType::FoodForGold);
         return;
     }
 

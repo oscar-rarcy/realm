@@ -1,6 +1,7 @@
 #include "realm.h"
 #include "entity_animation.h"
 #include "core/research_service.h"
+#include "core/market_service.h"
 
 #include <cassert>
 #include <cstdlib>
@@ -646,6 +647,63 @@ static void testUnitFoodCostTable() {
     assert(validateGameState(nullptr));
 }
 
+static void testMarketTradeService() {
+    // Shared market service: rates come from one table; validation centralized.
+    initGameWithSeed(1, 4701u, 0);
+    int mid = spawnEntity(E_MARKET, 0, 30, 30);
+    Entity* market = findEntity(mid);
+    assert(market && !market->underConstruction);
+
+    Player& p = g.players[0];
+    p.gold = 100; p.wood = 0; p.food = 0;
+
+    // Gold -> wood at the canonical 40:30 rate.
+    assert(executeTrade(g, 0, market->id, MarketTradeType::GoldForWood));
+    assert(p.gold == 60 && p.wood == 30);
+
+    // Wood -> gold.
+    p.wood = 40; p.gold = 0;
+    assert(executeTrade(g, 0, market->id, MarketTradeType::WoodForGold));
+    assert(p.wood == 0 && p.gold == 30);
+
+    // Gold -> food.
+    p.gold = 50; p.food = 0;
+    assert(executeTrade(g, 0, market->id, MarketTradeType::GoldForFood));
+    assert(p.gold == 0 && p.food == 30);
+
+    // Food -> gold.
+    p.food = 40; p.gold = 0;
+    assert(executeTrade(g, 0, market->id, MarketTradeType::FoodForGold));
+    assert(p.food == 0 && p.gold == 30);
+
+    // Insufficient resources rejected, nothing mutated.
+    p.gold = 10; p.wood = 5;
+    assert(!executeTrade(g, 0, market->id, MarketTradeType::GoldForWood));
+    assert(p.gold == 10 && p.wood == 5);
+
+    // Trade against another player's market is rejected.
+    initGameWithSeed(1, 4702u, 0);
+    int amid = spawnEntity(E_MARKET, 1, 30, 30);
+    Entity* aiMarket = findEntity(amid);
+    assert(aiMarket);
+    g.players[0].gold = 100;
+    int p0GoldBefore = g.players[0].gold;
+    CanTradeResult notMine = canTrade(g, 0, *aiMarket, MarketTradeType::GoldForWood);
+    assert(!notMine.ok);
+    assert(!executeTrade(g, 0, aiMarket->id, MarketTradeType::GoldForWood));
+    assert(g.players[0].gold == p0GoldBefore);
+
+    // Trade against an under-construction market is rejected.
+    initGameWithSeed(1, 4703u, 0);
+    int umid = spawnEntity(E_MARKET, 0, 30, 30, false);
+    Entity* uMarket = findEntity(umid);
+    assert(uMarket && uMarket->underConstruction);
+    g.players[0].gold = 100;
+    assert(!executeTrade(g, 0, uMarket->id, MarketTradeType::GoldForWood));
+    assert(g.players[0].gold == 100);
+    assert(validateGameState(nullptr));
+}
+
 static void testBerryGatherAndDepletion() {
     initGameWithSeed(1, 3503u, 0);
     Entity* peasant = nullptr;
@@ -927,6 +985,7 @@ int main() {
     testWallLineBuild();
     testResearchService();
     testUnitFoodCostTable();
+    testMarketTradeService();
     testBerryGatherAndDepletion();
     testMillFoodStockpile();
     testWinterPartialWaterFreeze();

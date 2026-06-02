@@ -1,5 +1,6 @@
 #include "command.h"
 #include "core/research_service.h"
+#include "core/market_service.h"
 
 void dispatchCommand(Game& game, const Command& command) {
     switch (command.type) {
@@ -44,6 +45,12 @@ void dispatchCommand(Game& game, const Command& command) {
         Entity* building = findEntity(command.selection.primaryId);
         if (!building) return;
         startResearch(game, building->owner, building->id, command.researchId);
+        break;
+    }
+    case CommandType::MarketTrade: {
+        Entity* market = findEntity(command.selection.primaryId);
+        if (!market) return;
+        executeTrade(game, market->owner, market->id, command.marketTrade);
         break;
     }
     case CommandType::SetRally: {
