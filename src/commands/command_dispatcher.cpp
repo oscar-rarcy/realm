@@ -1,4 +1,5 @@
 #include "command.h"
+#include "core/research_service.h"
 
 void dispatchCommand(Game& game, const Command& command) {
     switch (command.type) {
@@ -37,6 +38,12 @@ void dispatchCommand(Game& game, const Command& command) {
         Entity* building = findEntity(command.selection.primaryId);
         if (!building) return;
         orderTrain(*building, command.entityType);
+        break;
+    }
+    case CommandType::Research: {
+        Entity* building = findEntity(command.selection.primaryId);
+        if (!building) return;
+        startResearch(game, building->owner, building->id, command.researchId);
         break;
     }
     case CommandType::SetRally: {

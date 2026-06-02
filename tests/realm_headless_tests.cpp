@@ -1,5 +1,6 @@
 #include "realm.h"
 #include "entity_animation.h"
+#include "core/research_service.h"
 
 #include <cassert>
 #include <cstdlib>
@@ -541,6 +542,81 @@ static void testWallLineBuild() {
     assert(validateGameState(nullptr));
 }
 
+static void testResearchService() {
+    // Shared research service: same canonical costs/durations for human and AI,
+    // validation rules enforced centrally.
+    initGameWithSeed(1, 4501u, 0);
+    int sid = spawnEntity(E_BLACKSMITH, 0, 30, 30); // built=true
+    Entity* smith = findEntity(sid);
+    assert(smith && !smith->underConstruction);
+
+    const ResearchDef* iron = researchDef(ResearchId::IronWeapons);
+    assert(iron && iron->bit == R_IRON_WEAPONS);
+
+    // Human pays the canonical cost and gets the canonical duration.
+    g.players[0].gold = iron->costGold;
+    g.players[0].wood = iron->costWood;
+    bool started = startResearch(g, 0, smith->id, ResearchId::IronWeapons);
+    assert(started);
+    assert(g.players[0].gold == 0 && g.players[0].wood == 0);
+    assert(smith->researching == R_IRON_WEAPONS);
+    assert(smith->researchTime == iron->ticks);
+
+    // Can't start a second research while one is in progress.
+    g.players[0].gold = 999; g.players[0].wood = 999;
+    assert(!startResearch(g, 0, smith->id, ResearchId::Crossbows));
+
+    // Complete the research; bit gets set and the smith frees up.
+    for (int i = 0; i < iron->ticks + 50; i++) {
+        tickSimulationOnce();
+        if (g.players[0].research & R_IRON_WEAPONS) break;
+    }
+    assert(g.players[0].research & R_IRON_WEAPONS);
+
+    // Already-researched is rejected even with resources.
+    g.players[0].gold = 999; g.players[0].wood = 999;
+    smith = findEntity(sid);
+    assert(smith && smith->researching == 0);
+    CanResearchResult again = canResearch(g, 0, *smith, ResearchId::IronWeapons);
+    assert(!again.ok);
+    assert(!startResearch(g, 0, smith->id, ResearchId::IronWeapons));
+
+    // Counterweight requires an owned, completed Castle.
+    const ResearchDef* cw = researchDef(ResearchId::Counterweight);
+    assert(cw && cw->requiredOwnedBuilding == E_CASTLE);
+    g.players[0].gold = cw->costGold; g.players[0].wood = cw->costWood;
+    assert(!startResearch(g, 0, smith->id, ResearchId::Counterweight));
+    int castleId = spawnEntity(E_CASTLE, 0, 50, 50); // built=true
+    (void)castleId;
+    g.players[0].gold = cw->costGold; g.players[0].wood = cw->costWood;
+    smith = findEntity(sid);
+    assert(startResearch(g, 0, smith->id, ResearchId::Counterweight));
+    assert(smith->researching == R_COUNTERWEIGHT);
+
+    // AI (owner 1) pays resources through the same service.
+    initGameWithSeed(1, 4502u, 0);
+    int asid = spawnEntity(E_BLACKSMITH, 1, 30, 30);
+    Entity* aiSmith = findEntity(asid);
+    assert(aiSmith && !aiSmith->underConstruction);
+    g.players[1].gold = iron->costGold; g.players[1].wood = iron->costWood;
+    int p0Gold = g.players[0].gold, p0Wood = g.players[0].wood;
+    bool aiStarted = startResearch(g, 1, aiSmith->id, ResearchId::IronWeapons);
+    assert(aiStarted);
+    assert(g.players[1].gold == 0 && g.players[1].wood == 0);
+    assert(aiSmith->researchTime == iron->ticks); // same duration as human
+    assert(g.players[0].gold == p0Gold && g.players[0].wood == p0Wood); // human untouched
+
+    // Not enough resources is rejected.
+    initGameWithSeed(1, 4503u, 0);
+    int psid = spawnEntity(E_BLACKSMITH, 0, 30, 30);
+    Entity* poorSmith = findEntity(psid);
+    assert(poorSmith);
+    g.players[0].gold = 0; g.players[0].wood = 0;
+    assert(!startResearch(g, 0, poorSmith->id, ResearchId::IronWeapons));
+    assert(poorSmith->researching == 0);
+    assert(validateGameState(nullptr));
+}
+
 static void testBerryGatherAndDepletion() {
     initGameWithSeed(1, 3503u, 0);
     Entity* peasant = nullptr;
@@ -820,6 +896,7 @@ int main() {
     testTownHallTrainInputFlow();
     testHoldPositionInput();
     testWallLineBuild();
+    testResearchService();
     testBerryGatherAndDepletion();
     testMillFoodStockpile();
     testWinterPartialWaterFreeze();

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "realm.h"
+#include "core/research_defs.h"
 
 struct Selection {
     int primaryId = -1;
@@ -41,6 +42,7 @@ struct Command {
     MapPos lineEnd{-1, -1};
     int targetEntity = -1;
     EntityType entityType = E_NONE;
+    ResearchId researchId{};
     int groupIndex = -1;
 };
 

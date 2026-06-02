@@ -243,25 +243,23 @@ void handleInput(int ch) {
     // Research selection from the blacksmith.
     if (g.mode == M_RESEARCH_SELECT) {
         if (ch == 27) { g.mode = M_NORMAL; return; }
-        Player& pl = g.players[0];
         Entity* bs = findEntity(g.selectedId);
         if (!bs || bs->type != E_BLACKSMITH || bs->underConstruction) {
             g.mode = M_NORMAL; return;
         }
-        auto startResearch = [&](int bit, int gold, int wood, int ticks, const char* startMsg) {
-            if (pl.research & bit) { setStatus("Already researched."); return; }
-            if (bs->researching != 0) { setStatus("Already researching."); return; }
-            if (pl.gold < gold || pl.wood < wood) { setStatus("Not enough resources!"); return; }
-            pl.gold -= gold; pl.wood -= wood;
-            bs->researching = bit; bs->researchProgress = 0; bs->researchTime = ticks;
-            setStatus(startMsg);
+        auto dispatchResearch = [&](ResearchId id) {
+            Command command;
+            command.type = CommandType::Research;
+            command.selection = currentSelection();
+            command.researchId = id;
+            dispatchCommand(g, command);
+            g.mode = M_NORMAL;
         };
-        // ~75 sec at 80 ms tick = 940 ticks.
-        if (ch == 'i' || ch == 'I') { startResearch(R_IRON_WEAPONS, 100, 100, 940, "Researching Iron Weapons..."); g.mode = M_NORMAL; }
-        else if (ch == 'c' || ch == 'C') { startResearch(R_CROSSBOWS, 80, 80, 820, "Researching Crossbows..."); g.mode = M_NORMAL; }
-        else if (ch == 'p' || ch == 'P') { startResearch(R_PIKES, 100, 100, 900, "Researching Pikes..."); g.mode = M_NORMAL; }
-        else if (ch == 'w' || ch == 'W') { startResearch(R_COUNTERWEIGHT, 120, 150, 980, "Researching Counterweight..."); g.mode = M_NORMAL; }
-        else if (ch == 'h' || ch == 'H') { startResearch(R_PLATE_HELM, 120, 100, 980, "Researching Plate Helm..."); g.mode = M_NORMAL; }
+        if (ch == 'i' || ch == 'I') dispatchResearch(ResearchId::IronWeapons);
+        else if (ch == 'c' || ch == 'C') dispatchResearch(ResearchId::Crossbows);
+        else if (ch == 'p' || ch == 'P') dispatchResearch(ResearchId::Pikes);
+        else if (ch == 'w' || ch == 'W') dispatchResearch(ResearchId::Counterweight);
+        else if (ch == 'h' || ch == 'H') dispatchResearch(ResearchId::PlateHelm);
         return;
     }
 
