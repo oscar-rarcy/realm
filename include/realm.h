@@ -218,7 +218,7 @@ enum {
 // ============================================================
 struct EntityStats {
     const char* name; char glyph;
-    int maxHp, atk, range, speed, atkSpeed, costGold, costWood, trainTime;
+    int maxHp, atk, range, speed, atkSpeed, costGold, costWood, costFood, trainTime;
     int sizeW, sizeH, supplyProvided, supplyUsed; bool isBuilding;
     uint32_t traits;
 };

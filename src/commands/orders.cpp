@@ -191,13 +191,7 @@ void orderTrain(Entity& bld, EntityType ut) {
         if (bld.owner==0) setStatus("Need more houses!");
         return;
     }
-    int foodCost = 0;
-    if (ut==E_MILITIA||ut==E_ARCHER||ut==E_SPEARMAN) foodCost = 20;
-    else if (ut==E_KNIGHT) foodCost = 40;
-    else if (ut==E_CATAPULT) foodCost = 30;
-    else if (ut==E_TREBUCHET) foodCost = 30;
-    else if (ut==E_WARSHIP)  foodCost = 20;
-    else if (ut==E_TRANSPORT) foodCost = 10;
+    int foodCost = STATS[ut].costFood;
     if (p.food < foodCost) { if (bld.owner==0) setStatus("Need more food!"); return; }
     spendPlayerFood(bld.owner, foodCost);
     p.gold -= STATS[ut].costGold; p.wood -= STATS[ut].costWood;

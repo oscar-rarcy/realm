@@ -617,6 +617,35 @@ static void testResearchService() {
     assert(validateGameState(nullptr));
 }
 
+static void testUnitFoodCostTable() {
+    // Food costs are now sourced from STATS[].costFood; guard the canonical values
+    // that previously lived in an orderTrain switch so behavior can't silently drift.
+    assert(STATS[E_MILITIA].costFood == 20);
+    assert(STATS[E_ARCHER].costFood == 20);
+    assert(STATS[E_SPEARMAN].costFood == 20);
+    assert(STATS[E_KNIGHT].costFood == 40);
+    assert(STATS[E_CATAPULT].costFood == 30);
+    assert(STATS[E_TREBUCHET].costFood == 30);
+    assert(STATS[E_WARSHIP].costFood == 20);
+    assert(STATS[E_TRANSPORT].costFood == 10);
+    assert(STATS[E_PEASANT].costFood == 0);
+    assert(STATS[E_RAM].costFood == 0);
+
+    // Training deducts food via the table.
+    initGameWithSeed(1, 4601u, 0);
+    int bid = spawnEntity(E_BARRACKS, 0, 30, 30);
+    Entity* bar = findEntity(bid);
+    assert(bar && !bar->underConstruction);
+    g.players[0].gold = 999; g.players[0].wood = 999;
+    g.players[0].food = 100;
+    g.players[0].supplyMax = 50;
+    int foodBefore = g.players[0].food;
+    orderTrain(*bar, E_MILITIA);
+    assert(bar->producing == E_MILITIA);
+    assert(g.players[0].food == foodBefore - STATS[E_MILITIA].costFood);
+    assert(validateGameState(nullptr));
+}
+
 static void testBerryGatherAndDepletion() {
     initGameWithSeed(1, 3503u, 0);
     Entity* peasant = nullptr;
@@ -897,6 +926,7 @@ int main() {
     testHoldPositionInput();
     testWallLineBuild();
     testResearchService();
+    testUnitFoodCostTable();
     testBerryGatherAndDepletion();
     testMillFoodStockpile();
     testWinterPartialWaterFreeze();
