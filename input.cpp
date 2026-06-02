@@ -1,5 +1,45 @@
 #include "realm.h"
 
+// ============================================================
+// SELECTION HELPERS — keep selectedId (leader) and selectedIds (group) in sync.
+// Shift+click and shift+drag use these so single-and-multi selection stay
+// indistinguishable to the rest of the codebase.
+// ============================================================
+static bool selectionContains(int id) {
+    if (id < 0) return false;
+    if (g.selectedId == id) return true;
+    for (int s : g.selectedIds) if (s == id) return true;
+    return false;
+}
+
+static void addToSelection(int id) {
+    if (id < 0 || selectionContains(id)) return;
+    // Promote any existing single-selection into the group list first.
+    if (g.selectedIds.empty() && g.selectedId >= 0) {
+        g.selectedIds.push_back(g.selectedId);
+    }
+    g.selectedIds.push_back(id);
+    if (g.selectedId < 0) g.selectedId = id;
+}
+
+static void removeFromSelection(int id) {
+    if (id < 0) return;
+    if (!g.selectedIds.empty()) {
+        g.selectedIds.erase(std::remove(g.selectedIds.begin(), g.selectedIds.end(), id),
+                            g.selectedIds.end());
+        if (g.selectedIds.size() == 1) {
+            g.selectedId = g.selectedIds.front();
+            g.selectedIds.clear();
+        } else if (g.selectedIds.empty()) {
+            g.selectedId = -1;
+        } else if (g.selectedId == id) {
+            g.selectedId = g.selectedIds.front();
+        }
+    } else if (g.selectedId == id) {
+        g.selectedId = -1;
+    }
+}
+
 // Single right-click / Enter command from a selected player unit onto (x,y).
 // Picks the right verb based on what's at the tile: help-build / tend-farm /
 // garrison / attack / gather / sow-farm / fish / move. Used by both the
@@ -686,6 +726,25 @@ void handleInput(int ch) {
             lastMx = mapX; lastMy = mapY;
         }
 
+        // Edge scrolling: nudge the viewport when the mouse hovers within 2 cells
+        // of the map area's edge. Fires on each motion event — terminals with
+        // REPORT_MOUSE_POSITION stream events while the mouse moves, so this feels
+        // continuous in practice. A parked-at-edge mouse will stop after the last
+        // event; small wiggle resumes the scroll.
+        if (!clickEvt) {
+            const int EDGE_MARGIN = 2;
+            const int EDGE_STEP   = 2;
+            int dx = 0, dy = 0;
+            if (mapSX < EDGE_MARGIN)               dx = -EDGE_STEP;
+            else if (mapSX >= g.viewW - EDGE_MARGIN) dx =  EDGE_STEP;
+            if (mapSY < EDGE_MARGIN)               dy = -EDGE_STEP;
+            else if (mapSY >= g.viewH - EDGE_MARGIN) dy =  EDGE_STEP;
+            if (dx || dy) {
+                g.viewX = std::max(0, std::min(g.viewX + dx, MAP_W - g.viewW));
+                g.viewY = std::max(0, std::min(g.viewY + dy, MAP_H - g.viewH));
+            }
+        }
+
         if (me.bstate & BUTTON1_DOUBLE_CLICKED) {
             // Select all of clicked unit type within the current viewport.
             Entity* ent = entityAtOwner(mapX, mapY, 0);
@@ -705,6 +764,54 @@ void handleInput(int ch) {
             g.dragging = false;
             break;
         }
+        bool shift = (me.bstate & BUTTON_SHIFT) != 0;
+
+        // Shared logic for non-drag clicks: shift toggles membership, plain click replaces.
+        auto handleClick = [&](){
+            Entity* ent = entityAtOwner(mapX, mapY, 0);
+            if (shift && ent && isUnit(ent->type)) {
+                if (selectionContains(ent->id)) { removeFromSelection(ent->id); setStatus("Removed from selection"); }
+                else                            { addToSelection(ent->id);      setStatus("Added to selection"); }
+                return;
+            }
+            if (ent) {
+                g.selectedId = ent->id; g.selectedIds.clear();
+                setStatus(std::string("Selected: ") + STATS[ent->type].name);
+            } else {
+                Entity* any = entityAt(mapX, mapY);
+                if (any && any->alive && g.map[mapY][mapX].visible[0]) {
+                    g.selectedId = any->id; g.selectedIds.clear();
+                    setStatus(std::string(any->owner==OWNER_NATURE?"Animal: ":"Enemy ") + STATS[any->type].name);
+                } else { g.selectedId = -1; g.selectedIds.clear(); }
+            }
+        };
+
+        // Drag-box commit: shift unions with current selection; otherwise replaces.
+        // When the box would pull in both military and peasants, peasants are dropped
+        // (unless shift held) so dragging across your base doesn't yank workers off jobs.
+        auto handleDragBox = [&](int x0, int y0, int x1, int y1){
+            std::vector<int> hits;
+            bool sawMilitary = false, sawPeasant = false;
+            for (auto& e : g.entities) {
+                if (!e.alive || e.owner != 0 || !isUnit(e.type)) continue;
+                if (e.state == S_GARRISONED) continue;
+                if (e.x < x0 || e.x > x1 || e.y < y0 || e.y > y1) continue;
+                if (e.type == E_PEASANT) sawPeasant = true; else sawMilitary = true;
+                hits.push_back(e.id);
+            }
+            bool filterPeasants = (!shift && sawMilitary && sawPeasant);
+            if (!shift) { g.selectedIds.clear(); g.selectedId = -1; }
+            for (int id : hits) {
+                Entity* e = findEntity(id);
+                if (!e) continue;
+                if (filterPeasants && e->type == E_PEASANT) continue;
+                addToSelection(id);
+            }
+            int n = (int)g.selectedIds.size();
+            if (n == 0 && g.selectedId >= 0) n = 1;
+            if (n > 0) setStatus(std::to_string(n) + " units selected");
+        };
+
         if (me.bstate & BUTTON1_PRESSED) {
             // Start of left-button drag/click
             g.dragging    = true;
@@ -716,50 +823,18 @@ void handleInput(int ch) {
                 g.dragging = false;
                 bool moved = (std::abs(mapX - g.dragStartX) + std::abs(mapY - g.dragStartY)) > 1;
                 if (moved) {
-                    // Box select: all own units inside the rectangle
                     int x0 = std::min(g.dragStartX, mapX), x1 = std::max(g.dragStartX, mapX);
                     int y0 = std::min(g.dragStartY, mapY), y1 = std::max(g.dragStartY, mapY);
-                    g.selectedIds.clear(); g.selectedId = -1;
-                    for (auto& e : g.entities) {
-                        if (!e.alive || e.owner != 0 || !isUnit(e.type)) continue;
-                        if (e.state == S_GARRISONED) continue;
-                        if (e.x >= x0 && e.x <= x1 && e.y >= y0 && e.y <= y1) {
-                            g.selectedIds.push_back(e.id);
-                            if (g.selectedId < 0) g.selectedId = e.id;
-                        }
-                    }
-                    if (!g.selectedIds.empty())
-                        setStatus(std::to_string(g.selectedIds.size()) + " units selected");
+                    handleDragBox(x0, y0, x1, y1);
                 } else {
-                    // Click: select entity at cursor
-                    Entity* ent = entityAtOwner(mapX, mapY, 0);
-                    if (ent) {
-                        g.selectedId = ent->id; g.selectedIds.clear();
-                        setStatus(std::string("Selected: ") + STATS[ent->type].name);
-                    } else {
-                        Entity* any = entityAt(mapX, mapY);
-                        if (any && any->alive && g.map[mapY][mapX].visible[0]) {
-                            g.selectedId = any->id; g.selectedIds.clear();
-                            setStatus(std::string(any->owner==OWNER_NATURE?"Animal: ":"Enemy ") + STATS[any->type].name);
-                        } else { g.selectedId = -1; g.selectedIds.clear(); }
-                    }
+                    handleClick();
                 }
             }
         }
         else if (me.bstate & BUTTON1_CLICKED) {
             // Terminals that report CLICKED instead of PRESSED+RELEASED
             g.dragging = false;
-            Entity* ent = entityAtOwner(mapX, mapY, 0);
-            if (ent) {
-                g.selectedId = ent->id; g.selectedIds.clear();
-                setStatus(std::string("Selected: ") + STATS[ent->type].name);
-            } else {
-                Entity* any = entityAt(mapX, mapY);
-                if (any && any->alive && g.map[mapY][mapX].visible[0]) {
-                    g.selectedId = any->id; g.selectedIds.clear();
-                    setStatus(std::string(any->owner==OWNER_NATURE?"Animal: ":"Enemy ") + STATS[any->type].name);
-                } else { g.selectedId = -1; g.selectedIds.clear(); }
-            }
+            handleClick();
         }
         else if (me.bstate & (BUTTON3_CLICKED | BUTTON3_PRESSED)) {
             // Right click: issue command at cursor position
