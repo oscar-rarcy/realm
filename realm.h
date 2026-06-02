@@ -144,7 +144,7 @@ struct Entity {
     int moveCd, atkCd, gatherCd, gatherType;
     EntityType producing; int prodProgress, prodTime;
     bool underConstruction, alive; int rallyX, rallyY;
-    int carrying;
+    int carrying;   // Peasants: resource units in inventory (gold/wood/food). Farms: harvest waiting for pickup. Transports: unused (garrison vector is the cargo).
     int stuckTicks;
     int alertTicks; // > 0 = recently in combat; render flashes '!'
     int rallySet;   // 0 = default, 1 = player-set rally point honoured on training
@@ -233,8 +233,11 @@ int     spawnEntity(EntityType type,int owner,int x,int y,bool built=true);
 void spawnProjectile(int sx,int sy,int tx,int ty,char gl,int col);
 void tickProjectiles();
 std::vector<std::pair<int,int>> findPath(int sx,int sy,int tx,int ty,int maxSteps=300,bool naval=false);
+inline std::vector<std::pair<int,int>> findPathFor(Entity& e, int tx, int ty) {
+    return findPath(e.x, e.y, tx, ty, 300, isNaval(e.type));
+}
 
-// entity.cpp — orders
+// combat.cpp — orders / combat / garrison
 Entity* findNearestEnemy(Entity& e,int range);
 void orderMove(Entity& e,int tx,int ty);
 void orderAttack(Entity& e,int tid);
@@ -246,18 +249,24 @@ void orderGroupAttack(int tid);
 void orderGroupAttackMove(int tx,int ty);
 void orderHelp(Entity& e,int buildingId);
 void orderGarrison(Entity& e,int buildingId);
-void moveAlongPath(Entity& e);
-
-// entity.cpp — garrison
 bool canGarrisonIn(EntityType bt);
 int  garrisonCap(EntityType bt);
 void ejectGarrison(Entity& bld);
+void killEntity(Entity& t);
+int  unitAtk(const Entity& e);
+int  unitRange(const Entity& e);
+int  damageVs(EntityType attacker, EntityType target, int rawDmg, int targetOwner = -1);
 
-// entity.cpp — state management
+// entity.cpp — movement / state
+void moveAlongPath(Entity& e);
 void resetDetectMapCache();
+void spendPlayerFood(int owner, int amount);
 
-// entity.cpp — tick / game logic
+// entity.cpp — tick (units)
 void tickEntity(Entity& e);
+void updateFog();
+
+// world.cpp — passive ticks, seasons, weather, win
 void tickTowers();
 void tickGates();
 void tickFarms();
@@ -270,7 +279,6 @@ void tickWinter();
 void tickPaving();
 void tickWeather();
 void checkWin();
-void updateFog();
 
 // entity.cpp — AI
 int     aiCount(int owner,EntityType t);
