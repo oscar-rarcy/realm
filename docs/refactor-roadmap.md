@@ -27,12 +27,26 @@ short working checklist and records the established conventions/safety net.
 - [x] Phase 1.2 wall-line build ownership/cost/validation.
 - [x] Phase 1.3 / 3.3 shared research service (player + AI, AI now pays/uses canonical durations).
 - [x] Phase 3.1 production food cost in `EntityStats` (`costFood`), `orderTrain` switch removed.
+- [x] Phase 3.1/3.2 production and build services (`startTraining`, `startBuild`, `startBuildLine`).
 - [x] Phase 3.4 market trade service (`MarketTrade` command + rate table).
-- [x] Phase 2.3 (partial) exhaustive command dispatcher switch.
-- [ ] Phases 2.1–2.2/2.4, 4–14 (larger structural work): typed command payload migration of the
-      remaining direct order paths, event sink, `GameContext`, header cleanup, `WorldIndex`,
-      AI sensor/economy/production/combat redesign, save migration framework, render model,
-      mapgen invariants, legacy-wrapper removal, architecture-enforcement script, docs.
+- [x] Phase 2.1/2.2/2.3 (partial) explicit command payloads for implemented commands, no
+      box-select coordinate packing, group/context execution uses command selection instead of
+      current global selection, dispatcher switch has no silent default.
+- [x] Phase 4 (initial) `GameEvent`/`EventSink`/`LegacyUiEventSink`; command/domain services and
+      order helpers emit events instead of direct `setStatus()` / `addActionMarker()` calls.
+- [x] Phase 5 (initial) `EntityId`/`PlayerId`, `GameContext`, `UiContext`, command dispatcher
+      accepts `GameContext&` with a legacy `Game&` wrapper.
+- [x] Phase 6 (initial) `WorldIndex` with id/owner/tile/occupancy/resource indexes and parity tests.
+- [x] Phase 8 (initial) save version constant + supported-version gate + migration hook; v8 saves
+      migrate into current v9 format.
+- [x] Phase 14 (initial) `scripts/check_architecture.py` + `make architecture-check` for migrated
+      command/domain boundaries.
+- [ ] Remaining structural work: finish input-intent split, route save/load and more UI actions
+      through commands, thread event sinks instead of using the global legacy sink, migrate hot
+      query paths and AI to `WorldIndex`, split AI combat/economy/planning, fully separate save
+      parse/migrate/hydrate/validate, consolidate render model consumers, replace empty wrapper
+      headers, remove legacy wrappers/global `g` use from migrated layers, and expand architecture
+      checks as each boundary is migrated.
 
 ## Notes for continuation
 - Domain services live under `src/core/` (auto-globbed by both `Makefile` and
@@ -40,4 +54,3 @@ short working checklist and records the established conventions/safety net.
 - The `Makefile` does NOT track header dependencies: after editing any header, run
   `mingw32-make clean` before rebuilding to avoid stale-object struct-layout mismatches.
 - Commit only specific files; the tree has many unrelated staged migration changes.
-
