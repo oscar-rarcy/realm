@@ -6,6 +6,7 @@
 #include "core/production_service.h"
 #include "core/research_service.h"
 #include "core/market_service.h"
+#include "core/world_index.h"
 
 #include <cassert>
 #include <cstdlib>
@@ -866,6 +867,61 @@ static void testGameEventSink() {
     assert(g.actionMarkers.size() == markersBefore + 1);
 }
 
+static void testWorldIndexParity() {
+    initGameWithSeed(2, 5201u, 1);
+    WorldIndex world = buildWorldIndex(g);
+
+    for (const auto& e : g.entities) {
+        if (!e.alive) continue;
+        assert(entityById(g, world, e.id) == findEntity(e.id));
+        if (e.owner >= 0 && e.owner <= MAX_PLAYERS) {
+            const auto& ownerList = world.entitiesByOwner[e.owner];
+            assert(std::find(ownerList.begin(), ownerList.end(), e.id) != ownerList.end());
+        }
+    }
+    assert(entityById(g, world, -12345) == nullptr);
+
+    for (int y = 0; y < MAP_H; y++) {
+        for (int x = 0; x < MAP_W; x++) {
+            Entity* legacyTop = entityAt(x, y);
+            EntityId indexedTop = topEntityAt(g, world, { x, y });
+            assert((legacyTop ? legacyTop->id : -1) == indexedTop);
+            Entity* legacyOwner = entityAtOwner(x, y, 0);
+            EntityId indexedOwner = topEntityAtOwner(g, world, { x, y }, 0);
+            assert((legacyOwner ? legacyOwner->id : -1) == indexedOwner);
+        }
+    }
+
+    OccupancyGrid unitOcc{};
+    OccupancyGrid buildingOcc{};
+    buildOccupancyGrid(unitOcc, true, false);
+    buildOccupancyGrid(buildingOcc, false, true);
+    for (int y = 0; y < MAP_H; y++) {
+        for (int x = 0; x < MAP_W; x++) {
+            assert(isOccupied(world, { x, y }, OccupancyLayer::Units) == unitOcc.occupied[y][x]);
+            assert(isOccupied(world, { x, y }, OccupancyLayer::Buildings) == buildingOcc.occupied[y][x]);
+            assert(isOccupied(world, { x, y }, OccupancyLayer::Any)
+                   == (unitOcc.occupied[y][x] || buildingOcc.occupied[y][x]));
+        }
+    }
+
+    int wood = 0, gold = 0, food = 0, fish = 0;
+    for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
+        if (g.map[y][x].resources <= 0) continue;
+        switch (resourceForTerrain(g.map[y][x].terrain)) {
+            case CR_WOOD: wood++; break;
+            case CR_GOLD: gold++; break;
+            case CR_FOOD: food++; break;
+            case CR_FISH: fish++; break;
+            default: break;
+        }
+    }
+    assert((int)world.resources.wood.size() == wood);
+    assert((int)world.resources.gold.size() == gold);
+    assert((int)world.resources.food.size() == food);
+    assert((int)world.resources.fish.size() == fish);
+}
+
 static void testBerryGatherAndDepletion() {
     initGameWithSeed(1, 3503u, 0);
     Entity* peasant = nullptr;
@@ -1152,6 +1208,7 @@ int main() {
     testProductionService();
     testBuildService();
     testGameEventSink();
+    testWorldIndexParity();
     testBerryGatherAndDepletion();
     testMillFoodStockpile();
     testWinterPartialWaterFreeze();
