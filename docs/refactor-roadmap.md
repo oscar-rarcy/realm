@@ -24,8 +24,20 @@ short working checklist and records the established conventions/safety net.
 ## Progress
 - [x] Phase 0 safety net (pre-existing harness) + roadmap.
 - [x] Phase 1.1 `x`/`X` input conflict.
-- [ ] Phase 1.2 wall-line build ownership/cost/validation.
-- [ ] Phase 1.3 / 3.3 shared research service.
-- [ ] Phase 3.1 production food cost in definitions.
-- [ ] Phase 3.4 market trade service.
-- [ ] Phases 2, 4–14 (larger structural work).
+- [x] Phase 1.2 wall-line build ownership/cost/validation.
+- [x] Phase 1.3 / 3.3 shared research service (player + AI, AI now pays/uses canonical durations).
+- [x] Phase 3.1 production food cost in `EntityStats` (`costFood`), `orderTrain` switch removed.
+- [x] Phase 3.4 market trade service (`MarketTrade` command + rate table).
+- [x] Phase 2.3 (partial) exhaustive command dispatcher switch.
+- [ ] Phases 2.1–2.2/2.4, 4–14 (larger structural work): typed command payload migration of the
+      remaining direct order paths, event sink, `GameContext`, header cleanup, `WorldIndex`,
+      AI sensor/economy/production/combat redesign, save migration framework, render model,
+      mapgen invariants, legacy-wrapper removal, architecture-enforcement script, docs.
+
+## Notes for continuation
+- Domain services live under `src/core/` (auto-globbed by both `Makefile` and
+  `scripts/build-web.sh`); adding a new top-level `src/` dir requires editing both build files.
+- The `Makefile` does NOT track header dependencies: after editing any header, run
+  `mingw32-make clean` before rebuilding to avoid stale-object struct-layout mismatches.
+- Commit only specific files; the tree has many unrelated staged migration changes.
+
