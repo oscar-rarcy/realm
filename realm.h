@@ -58,7 +58,7 @@ enum EntityState {
     S_BUILDING, S_TRAINING, S_RETURNING, S_DEAD,
     S_ENTERING, S_GARRISONED
 };
-enum GameMode  { M_NORMAL, M_BUILD_SELECT, M_TRAIN_SELECT, M_WALL_DRAG, M_PAUSED, M_GAME_OVER, M_RALLY_SET, M_RESEARCH_SELECT, M_ATTACK_MOVE, M_MARKET_TRADE };
+enum GameMode  { M_NORMAL, M_BUILD_SELECT, M_BUILD_PLACE, M_TRAIN_SELECT, M_WALL_DRAG, M_PAUSED, M_GAME_OVER, M_RALLY_SET, M_RESEARCH_SELECT, M_ATTACK_MOVE, M_MARKET_TRADE };
 
 // Research bits stored in Player.research
 enum Research { R_IRON_WEAPONS = 1, R_CROSSBOWS = 2, R_PIKES = 4, R_COUNTERWEIGHT = 8, R_PLATE_HELM = 16 };
@@ -107,6 +107,7 @@ enum {
     // One set per player slot (0=human, 1-3=AI); separate night variants.
     CP_OWN_P0, CP_OWN_P1, CP_OWN_P2, CP_OWN_P3,
     CP_OWN_P0_NIGHT, CP_OWN_P1_NIGHT, CP_OWN_P2_NIGHT, CP_OWN_P3_NIGHT,
+    CP_BUILD_OK, CP_BUILD_BAD,
     CP_COUNT
 };
 
@@ -225,7 +226,7 @@ Entity* findEntity(int id);
 Entity* findDepot(Entity& e);
 Entity* entityAt(int x,int y);
 Entity* entityAtOwner(int x,int y,int owner);
-bool    canPlace(EntityType type,int x,int y,int owner);
+bool    canPlace(EntityType type,int x,int y,int owner,int ignoreId=-1);
 void    updateSupply(int owner);
 int     spawnEntity(EntityType type,int owner,int x,int y,bool built=true);
 

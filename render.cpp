@@ -225,6 +225,9 @@ void initColors() {
 
     // Cursor: black-on-gold pops on snow, grass, water, and dark biomes alike.
     init_pair(CP_CURSOR,         C::NEAR_BLACK,   C::BRIGHT_GOLD);
+    // Build placement preview: green footprint = canPlace, red = blocked.
+    init_pair(CP_BUILD_OK,       C::NEAR_BLACK,   C::BRIGHT_GREEN);
+    init_pair(CP_BUILD_BAD,      C::NEAR_BLACK,   C::RED);
     init_pair(CP_HP_GREEN,       C::BRIGHT_GREEN, bg);
     init_pair(CP_HP_YELLOW,      C::BRIGHT_GOLD,  bg);
     init_pair(CP_HP_RED,         C::RED,          bg);
@@ -843,6 +846,21 @@ void renderMap() {
         boxY1 = std::max(g.dragStartY, g.cursorY);
     }
 
+    // Precompute building footprint preview for M_BUILD_PLACE.
+    // bldPrev[y][x] = 0 not in footprint, 1 valid, 2 blocked.
+    static unsigned char bldPrev[MAP_H][MAP_W];
+    memset(bldPrev, 0, sizeof(bldPrev));
+    if (g.mode == M_BUILD_PLACE && g.buildPending != E_NONE) {
+        Entity* sel = findEntity(g.selectedId);
+        int ignoreId = (sel && sel->alive) ? sel->id : -1;
+        bool ok = canPlace(g.buildPending, g.cursorX, g.cursorY, 0, ignoreId);
+        auto& s = STATS[g.buildPending];
+        for (int dy = 0; dy < s.sizeH; dy++) for (int dx = 0; dx < s.sizeW; dx++) {
+            int nx = g.cursorX+dx, ny = g.cursorY+dy;
+            if (inBounds(nx, ny)) bldPrev[ny][nx] = ok ? 1 : 2;
+        }
+    }
+
     // Precompute wall drag preview line (Bresenham)
     static bool wallPrev[MAP_H][MAP_W];
     memset(wallPrev, 0, sizeof(wallPrev));
@@ -1124,7 +1142,13 @@ void renderMap() {
                 }
             };
 
-            if (isCur) {
+            if (bldPrev[my][mx]) {
+                // Footprint overlay wins over cursor so the build outline reads cleanly.
+                int cpFP = (bldPrev[my][mx] == 1) ? CP_BUILD_OK : CP_BUILD_BAD;
+                attron(COLOR_PAIR(cpFP)|A_BOLD);
+                drawAt(scY, scX, drawCh, emojiStr);
+                attroff(COLOR_PAIR(cpFP)|A_BOLD);
+            } else if (isCur) {
                 attron(COLOR_PAIR(CP_CURSOR));
                 drawAt(scY, scX, drawCh, emojiStr);
                 attroff(COLOR_PAIR(CP_CURSOR));
@@ -1528,6 +1552,10 @@ void renderUI() {
     attron(COLOR_PAIR(CP_UI_BAR)); mvhline(botY2, 0, ' ', maxX);
     if (g.mode == M_BUILD_SELECT)
         mvprintw(botY2, 1, " BUILD: [H]ouse [B]arracks [S]table [T]ower [F]arm [W]all [G]ate [A]rmory [C]hurch [M]arket [K]Castle [L]umber [N]mine [I]mill [D]ock [Esc] ");
+    else if (g.mode == M_BUILD_PLACE) {
+        const char* name = (g.buildPending != E_NONE) ? STATS[g.buildPending].name : "building";
+        mvprintw(botY2, 1, " PLACE %s: Arrows/Mouse to position, [Enter]/Click to build, [Esc]/RClick to cancel ", name);
+    }
     else if (g.mode == M_TRAIN_SELECT) {
         Entity* s2 = findEntity(g.selectedId);
         if (s2) {

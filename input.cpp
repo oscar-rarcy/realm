@@ -158,7 +158,60 @@ void handleInput(int ch) {
         case 27: g.mode = M_NORMAL; return;
         default: return;
         }
-        if (tb != E_NONE) { orderBuild(*sel, tb, g.cursorX, g.cursorY); g.mode = M_NORMAL; }
+        if (tb != E_NONE) {
+            // Two-step placement: pick the type, then move the cursor with a
+            // footprint preview and Enter to commit. Wall handled separately above.
+            g.buildPending = tb;
+            g.mode = M_BUILD_PLACE;
+            setStatus(std::string("Place ") + STATS[tb].name + " — arrows/mouse to position, Enter to build, Esc to cancel");
+        }
+        return;
+    }
+
+    // Build placement mode: cursor moves freely with a ghost footprint preview.
+    if (g.mode == M_BUILD_PLACE) {
+        Entity* sel = findEntity(g.selectedId);
+        if (!sel || sel->type != E_PEASANT || sel->owner != 0) {
+            g.mode = M_NORMAL; g.buildPending = E_NONE; return;
+        }
+        if (ch == 27) {
+            g.mode = M_NORMAL; g.buildPending = E_NONE;
+            setStatus("Build cancelled."); return;
+        }
+        if (ch == KEY_UP)    { g.cursorY--; goto clamp; }
+        if (ch == KEY_DOWN)  { g.cursorY++; goto clamp; }
+        if (ch == KEY_LEFT)  { g.cursorX--; goto clamp; }
+        if (ch == KEY_RIGHT) { g.cursorX++; goto clamp; }
+        if (ch == ' ' || ch == '\n' || ch == '\r' || ch == KEY_ENTER) {
+            EntityType bt = g.buildPending;
+            orderBuild(*sel, bt, g.cursorX, g.cursorY);
+            // orderBuild leaves state at S_BUILDING on success; failure paths
+            // set a status and don't change peasant state. Either way, exit place mode.
+            g.mode = M_NORMAL; g.buildPending = E_NONE;
+            return;
+        }
+        if (ch == KEY_MOUSE) {
+            MEVENT me;
+            if (getmouse(&me) != OK) goto clamp;
+            int tileW = (displayMode == DM_EMOJI) ? 2 : 1;
+            int mapSY = me.y - 2;
+            int mapSX = me.x / tileW;
+            int mapX  = g.viewX + mapSX;
+            int mapY  = g.viewY + mapSY;
+            bool inMap = (mapSY >= 0 && g.viewW > 0 && me.x < g.viewW * tileW && inBounds(mapX, mapY));
+            if (inMap) { g.cursorX = mapX; g.cursorY = mapY; }
+            if (me.bstate & (BUTTON1_CLICKED | BUTTON1_RELEASED)) {
+                if (inMap) {
+                    EntityType bt = g.buildPending;
+                    orderBuild(*sel, bt, mapX, mapY);
+                    g.mode = M_NORMAL; g.buildPending = E_NONE;
+                }
+            } else if (me.bstate & (BUTTON3_CLICKED | BUTTON3_PRESSED)) {
+                g.mode = M_NORMAL; g.buildPending = E_NONE;
+                setStatus("Build cancelled.");
+            }
+            goto clamp;
+        }
         return;
     }
 

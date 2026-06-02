@@ -155,7 +155,7 @@ void orderBuild(Entity& e, EntityType bt, int bx, int by) {
     if (p.gold < STATS[bt].costGold || p.wood < STATS[bt].costWood) {
         if (e.owner == 0) setStatus("Not enough resources!"); return;
     }
-    if (!canPlace(bt, bx, by, e.owner)) {
+    if (!canPlace(bt, bx, by, e.owner, e.id)) {
         if (e.owner == 0) setStatus("Can't build there!"); return;
     }
     p.gold -= STATS[bt].costGold; p.wood -= STATS[bt].costWood;

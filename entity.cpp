@@ -159,7 +159,7 @@ Entity* entityAtOwner(int x, int y, int owner) {
     return nullptr;
 }
 
-bool canPlace(EntityType type, int x, int y, int owner) {
+bool canPlace(EntityType type, int x, int y, int owner, int ignoreId) {
     (void)owner;
     // Top-level bounds check protects every g.map read below, including the
     // farm-only terrain read that previously ran before any inBounds check.
@@ -182,7 +182,10 @@ bool canPlace(EntityType type, int x, int y, int owner) {
         // walkable for units but not foundations. (Docks are special: their
         // footprint must be land, plus one neighbour must be water — handled below.)
         if (ter==T_SHALLOWS||ter==T_MARSH||ter==T_REEDS||ter==T_ICE) return false;
-        if (entityAt(nx,ny)) return false;
+        Entity* o = entityAt(nx,ny);
+        // ignoreId lets the builder peasant stand on its own foundation tile —
+        // it'll path off via orderBuild's adjacent-tile pick next tick.
+        if (o && o->id != ignoreId) return false;
     }
     // Docks must sit on the shoreline — at least one neighbouring tile must be water.
     if (type == E_DOCK) {
