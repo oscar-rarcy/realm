@@ -377,9 +377,12 @@ BuildingVisualState buildingVisualState(const Entity& e) {
     }
     if (e.researching == R_IRON_WEAPONS) return BVS_RESEARCHING_IRON_WEAPONS;
     if (e.researching == R_CROSSBOWS) return BVS_RESEARCHING_CROSSBOWS;
+    if (e.researching == R_PIKES) return BVS_RESEARCHING_PIKES;
+    if (e.researching == R_COUNTERWEIGHT) return BVS_RESEARCHING_COUNTERWEIGHT;
+    if (e.researching == R_PLATE_HELM) return BVS_RESEARCHING_PLATE_HELM;
     if (e.producing != E_NONE) {
         if (e.producing == E_PEASANT) return BVS_TRAINING_PEASANT;
-        if (e.producing == E_MILITIA || e.producing == E_ARCHER) return BVS_TRAINING_INFANTRY;
+        if (e.producing == E_MILITIA || e.producing == E_ARCHER || e.producing == E_SPEARMAN) return BVS_TRAINING_INFANTRY;
         if (e.producing == E_KNIGHT) return BVS_TRAINING_CAVALRY;
         if (isNaval(e.producing)) return BVS_TRAINING_SHIP;
     }
@@ -423,6 +426,9 @@ const char* buildingVisualStateName(BuildingVisualState state) {
         case BVS_TRAINING_SHIP: return "training_ship";
         case BVS_RESEARCHING_IRON_WEAPONS: return "researching_iron_weapons";
         case BVS_RESEARCHING_CROSSBOWS: return "researching_crossbows";
+        case BVS_RESEARCHING_PIKES: return "researching_pikes";
+        case BVS_RESEARCHING_COUNTERWEIGHT: return "researching_counterweight";
+        case BVS_RESEARCHING_PLATE_HELM: return "researching_plate_helm";
     }
     return "unknown";
 }
@@ -507,6 +513,7 @@ const char* modeName(GameMode m) {
         case M_PAUSED: return "Paused"; case M_GAME_OVER: return "Game over";
         case M_RALLY_SET: return "Rally"; case M_RESEARCH_SELECT: return "Research";
         case M_ATTACK_MOVE: return "Attack move";
+        case M_MARKET_TRADE: return "Market trade";
     }
     return "Unknown";
 }
@@ -658,7 +665,7 @@ static void ensureDetectMap(int observerOwner) {
 }
 
 bool isDetectedBy(int x, int y, int observerOwner) {
-    if (!isConcealing()) return true;
+    if (!isConcealing() && !isConcealingTile(x, y)) return true;
     if (observerOwner < 0 || observerOwner >= MAX_PLAYERS) return true;
     if (!inBounds(x, y)) return false;
     ensureDetectMap(observerOwner);
@@ -776,7 +783,7 @@ bool canPlace(EntityType type, int x, int y, int owner) {
     if (type == E_FARM) {
         if (getSeason() == WINTER) return false;
         Terrain t = g.map[y][x].terrain;
-        if (t!=T_GRASS&&t!=T_MEADOW&&t!=T_TALL_GRASS&&t!=T_FLOWERS&&t!=T_DIRT&&t!=T_WHEAT) return false;
+        if (t!=T_GRASS&&t!=T_MEADOW&&t!=T_TALL_GRASS&&t!=T_FLOWERS&&t!=T_DIRT&&t!=T_WHEAT&&t!=T_SNOW) return false;
     }
     OccupancyGrid occ{};
     buildOccupancyGrid(occ, true, true);
@@ -973,6 +980,10 @@ int spawnEntity(EntityType type, int owner, int x, int y, bool built) {
     e.carcassFoodMax = carcassFoodForAnimal(type);
     e.carcassFoodRemaining = e.carcassFoodMax;
     e.facingDx = 1; e.facingDy = 0;
+    e.convertTicks = 0;
+    e.retreating = 0;
+    e.packed = (type == E_TREBUCHET) ? 1 : 0;
+    e.packTicks = 0;
     e.cargo = emptyCargo();
     if (type == E_FISHING_BOAT) e.cargo.type = CR_FISH;
     g.entities.push_back(e);
@@ -1126,10 +1137,13 @@ int dumpMissingTilesetAssets() {
 }
 
 bool saveGame(const std::string& path) {
-    std::ofstream os(path);
+    std::filesystem::path finalPath(path);
+    std::filesystem::path tmpPath = finalPath;
+    tmpPath.replace_extension(tmpPath.extension().string() + ".tmp");
+    std::ofstream os(tmpPath);
     if (!os) return false;
     os << std::setprecision(std::numeric_limits<float>::max_digits10);
-    os << "REALM_SAVE 6\n";
+    os << "REALM_SAVE 7\n";
     os << "META " << g.seed << ' ' << g.startupAIs << ' ' << g.humanCorner << ' '
        << g.matchNumber << ' ' << g.biomeChoice << ' ' << g.tick << ' '
        << (int)g.mode << ' ' << g.cursorX << ' ' << g.cursorY << ' '
@@ -1137,7 +1151,8 @@ bool saveGame(const std::string& path) {
        << g.selectedId << ' ' << g.winner << ' ' << g.aiTimer << ' ' << g.farmTimer << ' '
        << g.animalTimer << ' '
        << g.dayPhase << ' ' << g.seasonPhase << ' ' << g.prevSeason << ' '
-       << g.weather << ' ' << g.weatherTimer << ' ' << g.nextId << ' ' << g.rngState << ' '
+       << g.weather << ' ' << g.weatherTimer << ' ' << g.prevTimePhase << ' ' << g.attackNotifyCd << ' '
+       << g.nextId << ' ' << g.rngState << ' '
        << (g.returnToMenu ? 1 : 0) << ' ' << (g.diagnostics ? 1 : 0) << ' '
        << (g.helpOverlay ? 1 : 0) << "\n";
     for (int p = 0; p <= MAX_PLAYERS; p++) {
@@ -1180,7 +1195,8 @@ bool saveGame(const std::string& path) {
            << e.rallySet << ' ' << e.researching << ' '
            << e.attackMove << ' ' << e.holdPosition << ' ' << e.facingDx << ' ' << e.facingDy << ' '
            << (e.gateOpen ? 1 : 0) << ' '
-           << (e.gateLocked ? 1 : 0);
+           << (e.gateLocked ? 1 : 0) << ' '
+           << e.convertTicks << ' ' << e.retreating << ' ' << e.packed << ' ' << e.packTicks;
         os << " PATH " << e.path.size();
         for (auto pt : e.path) os << ' ' << pt.first << ' ' << pt.second;
         os << " QUEUE ";
@@ -1197,7 +1213,15 @@ bool saveGame(const std::string& path) {
     os << "MARKERS " << g.actionMarkers.size() << "\n";
     for (const ActionMarker& m : g.actionMarkers)
         os << "MARKER " << m.x << ' ' << m.y << ' ' << m.ticks << ' ' << (int)m.glyph << "\n";
-    return true;
+    os.flush();
+    if (!os) return false;
+    os.close();
+    if (!os) return false;
+    std::error_code ec;
+    if (std::filesystem::exists(finalPath, ec)) std::filesystem::remove(finalPath, ec);
+    ec = {};
+    std::filesystem::rename(tmpPath, finalPath, ec);
+    return !ec;
 }
 
 bool loadGame(const std::string& path) {
@@ -1205,7 +1229,7 @@ bool loadGame(const std::string& path) {
     if (!is) return false;
     std::string tag;
     int version = 0;
-    if (!(is >> tag >> version) || tag != "REALM_SAVE" || (version < 3 || version > 6)) return false;
+    if (!(is >> tag >> version) || tag != "REALM_SAVE" || (version < 3 || version > 7)) return false;
     Game ng{};
     if (!(is >> tag) || tag != "META") return false;
     int mode = 0, ret = 0, diag = 0, help = 0;
@@ -1213,8 +1237,14 @@ bool loadGame(const std::string& path) {
           >> ng.tick >> mode >> ng.cursorX >> ng.cursorY >> ng.viewX >> ng.viewY
           >> ng.viewW >> ng.viewH >> ng.selectedId >> ng.winner >> ng.aiTimer >> ng.farmTimer
           >> ng.animalTimer
-          >> ng.dayPhase >> ng.seasonPhase >> ng.prevSeason >> ng.weather >> ng.weatherTimer
-          >> ng.nextId >> ng.rngState >> ret >> diag >> help)) return false;
+          >> ng.dayPhase >> ng.seasonPhase >> ng.prevSeason >> ng.weather >> ng.weatherTimer)) return false;
+    if (version >= 7) {
+        if (!(is >> ng.prevTimePhase >> ng.attackNotifyCd)) return false;
+    } else {
+        ng.prevTimePhase = 0;
+        ng.attackNotifyCd = 0;
+    }
+    if (!(is >> ng.nextId >> ng.rngState >> ret >> diag >> help)) return false;
     ng.mode = (GameMode)mode;
     ng.returnToMenu = ret != 0;
     ng.diagnostics = diag != 0;
@@ -1286,6 +1316,14 @@ bool loadGame(const std::string& path) {
             e.facingDy = 0;
         }
         if (!(is >> gateOpen >> gateLocked)) return false;
+        if (version >= 7) {
+            if (!(is >> e.convertTicks >> e.retreating >> e.packed >> e.packTicks)) return false;
+        } else {
+            e.convertTicks = 0;
+            e.retreating = 0;
+            e.packed = ((EntityType)type == E_TREBUCHET) ? 1 : 0;
+            e.packTicks = 0;
+        }
         e.type = (EntityType)type;
         e.state = (EntityState)state;
         e.cargo.type = (CargoResource)cargoType;
@@ -1345,12 +1383,33 @@ static int unitAtk(const Entity& e) {
     int a = STATS[e.type].atk;
     int r = g.players[e.owner].research;
     if ((e.type == E_MILITIA || e.type == E_KNIGHT) && (r & R_IRON_WEAPONS)) a += 2;
+    if (e.type == E_MILITIA) {
+        int adj = 0;
+        for (auto& ally : g.entities) {
+            if (!ally.alive || ally.id == e.id || ally.owner != e.owner || ally.type != E_MILITIA) continue;
+            if (dist(e.x, e.y, ally.x, ally.y) <= 1 && ++adj >= 2) break;
+        }
+        a += adj;
+    }
     return a;
 }
 // Building-damage multiplier: catapults are siege specialists, everyone else
 // is bad at chewing through walls. Returns the damage actually applied.
-static int damageVs(EntityType attacker, EntityType target, int rawDmg) {
-    if (!isBuilding(target)) return rawDmg;
+static int damageVs(EntityType attacker, EntityType target, int rawDmg, int targetOwner = -1) {
+    if ((target == E_WALL || target == E_GATE) && !isSiege(attacker)) return 0;
+    if (attacker == E_SPEARMAN && target == E_KNIGHT) rawDmg += 14;
+    if (target == E_KNIGHT && attacker != E_SPEARMAN && attacker != E_CATAPULT
+        && attacker != E_TREBUCHET && attacker != E_WARSHIP && attacker != E_RAM) {
+        bool plateHelm = targetOwner >= 0 && targetOwner < MAX_PLAYERS
+            && (g.players[targetOwner].research & R_PLATE_HELM);
+        rawDmg = (rawDmg * (plateHelm ? 60 : 75)) / 100;
+        rawDmg = std::max(1, rawDmg);
+    }
+    if (!isBuilding(target)) {
+        if (attacker == E_TREBUCHET) return std::max(1, rawDmg / 4);
+        return rawDmg;
+    }
+    if (attacker == E_TREBUCHET) return rawDmg * 3;
     if (attacker == E_CATAPULT) return (rawDmg * 3) / 2; // 1.5x
     return std::max(1, rawDmg / 2);                       // 0.5x, floor 1
 }
@@ -1358,6 +1417,7 @@ static int unitRange(const Entity& e) {
     int rng = STATS[e.type].range;
     int r = g.players[e.owner].research;
     if (e.type == E_ARCHER && (r & R_CROSSBOWS)) rng += 2;
+    if (e.type == E_SPEARMAN && (r & R_PIKES)) rng += 1;
     return rng;
 }
 
@@ -1552,7 +1612,7 @@ void moveAlongPath(Entity& e) {
         if (!isOpenGate) {
             // Tolerate transient blocks; only repath after several stuck ticks (staggered by id).
             e.stuckTicks++;
-            int threshold = 3 + (e.id % 5);
+            int threshold = 2 + (e.id % 3);
             if (e.stuckTicks >= threshold) {
                 e.stuckTicks = 0;
                 int gx = e.path.empty() ? e.targetX : e.path.back().first;
@@ -1659,12 +1719,13 @@ void tickEntity(Entity& e) {
                 e.trainProgress = e.trainTime; // stay at completion threshold
             } else {
                 // Send to rally point if the building has a player-set one
+                EntityType completed = e.producing;
                 if (e.rallySet && newId >= 0) {
                     Entity* nu = findEntity(newId);
                     if (nu) orderMove(*nu, e.rallyX, e.rallyY);
                 }
                 e.producing = E_NONE; e.trainProgress = 0; e.trainTime = 0; e.state = S_IDLE;
-                if (e.owner==0) setStatus("Training complete!");
+                if (e.owner==0) setStatus(std::string(STATS[completed].name) + " is ready.");
                 // Pop the next queued unit straight into production.
                 if (!e.queue.empty()) {
                     EntityType next = (EntityType)e.queue.front();
@@ -1685,6 +1746,9 @@ void tickEntity(Entity& e) {
             if (e.owner == 0) {
                 if (bit == R_IRON_WEAPONS) setStatus("Iron Weapons researched — militia/knights +2 atk!");
                 else if (bit == R_CROSSBOWS) setStatus("Crossbows researched — archers +2 range!");
+                else if (bit == R_PIKES) setStatus("Pikes researched — spearmen +1 range!");
+                else if (bit == R_COUNTERWEIGHT) setStatus("Counterweight researched — trebuchets deploy faster!");
+                else if (bit == R_PLATE_HELM) setStatus("Plate Helm researched — knights take less melee damage!");
             }
         }
     }
@@ -1725,12 +1789,37 @@ void tickEntity(Entity& e) {
         return;
     }
     if (!isUnit(e.type)) return;
+    if (e.type == E_TREBUCHET && e.packTicks > 0) {
+        e.packTicks--;
+        if (e.packTicks == 0 && e.owner == 0)
+            setStatus(e.packed ? "Trebuchet packed." : "Trebuchet deployed.");
+        return;
+    }
+    if (e.retreating > 0) {
+        e.retreating--;
+        if (e.hp * 100 >= e.maxHp * 30) e.retreating = 0;
+    } else if (e.owner < OWNER_NATURE && isMilitary(e.type) && e.hp > 0
+            && e.hp * 100 < e.maxHp * 15 && e.state != S_GARRISONED) {
+        Entity* safe = nullptr;
+        int bestD = 99999;
+        for (auto& b : g.entities) {
+            if (!b.alive || b.owner != e.owner || b.underConstruction) continue;
+            if (b.type != E_TOWNHALL && b.type != E_CASTLE && b.type != E_TOWER) continue;
+            int d = mdist(e.x, e.y, b.x, b.y);
+            if (d < bestD) { bestD = d; safe = &b; }
+        }
+        if (safe) {
+            e.retreating = 120;
+            orderMove(e, safe->x, safe->y);
+        }
+    }
 
     switch (e.state) {
     case S_IDLE:
         // Military auto-engages anything visible within fog radius — units now
         // close in on threats they can see rather than waiting to be poked.
-        if (!e.holdPosition && isMilitary(e.type) && canAttack(e.type) && e.type != E_RAM
+        if (!e.retreating && !e.holdPosition && isMilitary(e.type) && canAttack(e.type) && e.type != E_RAM
+            && !(e.type == E_TREBUCHET && e.packed == 1)
             && e.owner != OWNER_NATURE) {
             // Melee units engage at 5 tiles; ranged at full fog radius — prevents
             // instant magnetic battles where everyone charges across the map.
@@ -1755,7 +1844,7 @@ void tickEntity(Entity& e) {
         break;
     case S_MOVING:
         // Attack-move: engage anything in range while marching toward the destination.
-        if (e.attackMove && STATS[e.type].atk > 0) {
+        if (e.attackMove && STATS[e.type].atk > 0 && !(e.type == E_TREBUCHET && e.packed == 1)) {
             Entity* en = findNearestEnemy(e, unitRange(e)+1);
             if (en) { orderAttack(e, en->id); break; }
         }
@@ -1772,18 +1861,23 @@ void tickEntity(Entity& e) {
         // target dies inside the safe building.
         if (t->state == S_GARRISONED) { e.state = S_IDLE; e.targetId = -1; break; }
         int d = dist(e.x, e.y, t->x, t->y);
+        if (e.type == E_TREBUCHET && (e.packed == 1 || e.packTicks > 0)) { e.state = S_IDLE; break; }
         // Catapults need standoff — too close to arm the sling properly.
         if (e.type == E_CATAPULT && d < 2) { e.state = S_IDLE; break; }
         if (d <= unitRange(e)) {
             if (e.atkCd <= 0) {
                 int rawDmg = unitAtk(e);
-                int dmg = damageVs(e.type, t->type, rawDmg);
+                int dmg = damageVs(e.type, t->type, rawDmg, t->owner);
                 t->hp -= dmg;
                 e.atkCd = STATS[e.type].atkSpeed;
                 e.alertTicks = 12; t->alertTicks = 12;
+                if (t->owner == 0 && g.attackNotifyCd == 0 && t->type != E_NONE) {
+                    setStatus("Your people are under attack!");
+                    g.attackNotifyCd = 200;
+                }
                 if (isRanged(e.type)) {
-                    char pc = (e.type==E_CATAPULT) ? 'o' : '-';
-                    int pcol = (e.type==E_CATAPULT) ? CP_PROJ_BOULDER : CP_PROJ_ARROW;
+                    char pc = (e.type==E_CATAPULT || e.type==E_TREBUCHET) ? 'o' : '-';
+                    int pcol = (e.type==E_CATAPULT || e.type==E_TREBUCHET) ? CP_PROJ_BOULDER : CP_PROJ_ARROW;
                     spawnProjectile(e.x, e.y, t->x, t->y, pc, pcol);
                 }
                 // Catapult splash: 1-tile radius around impact centre, ~1/3 of the
@@ -1799,7 +1893,7 @@ void tickEntity(Entity& e) {
                         int ox = std::max(o.x, std::min(tcx, o.x + os.sizeW - 1));
                         int oy = std::max(o.y, std::min(tcy, o.y + os.sizeH - 1));
                         if (std::abs(ox - tcx) <= 1 && std::abs(oy - tcy) <= 1) {
-                            int splashDmg = damageVs(E_CATAPULT, o.type, splashRaw);
+                            int splashDmg = damageVs(E_CATAPULT, o.type, splashRaw, o.owner);
                             o.hp -= splashDmg; o.alertTicks = 12;
                             if (o.hp <= 0) killEntity(o);
                         }
@@ -1826,7 +1920,10 @@ void tickEntity(Entity& e) {
                 auto end = e.path.back();
                 if (dist(end.first, end.second, t->x, t->y) > 2) stale = true;
             }
-            if (stale) { e.path = findPathFor(e, t->x, t->y); e.pathIdx = 0; }
+            if (stale) {
+                e.path = findPathFor(e, t->x, t->y); e.pathIdx = 0;
+                if (e.path.empty()) { e.state = S_IDLE; e.targetId = -1; break; }
+            }
             moveAlongPath(e);
         }
         break;
@@ -2001,7 +2098,7 @@ void tickEntity(Entity& e) {
         if (!bld->underConstruction && bld->type == E_FARM) {
             int d = dist(e.x, e.y, bld->x, bld->y);
             // Pick up ripe wheat once enough has accumulated to make the trip worthwhile
-            if (d <= 1 && bld->storedFood >= 5 && e.cargo.amount == 0) {
+            if (d <= 1 && bld->storedFood >= 3 && e.cargo.amount == 0) {
                 int take = std::min(bld->storedFood, CARRY_MAX);
                 e.cargo = {CR_FOOD, take, bld->x, bld->y};
                 e.resourceX = bld->x; e.resourceY = bld->y;
@@ -2059,6 +2156,32 @@ void tickTowers() {
     for (auto& e : g.entities) {
         if (!e.alive || e.underConstruction) continue;
         if (!isBuilding(e.type)) continue;
+        if (e.type == E_CASTLE) {
+            if (e.atkCd > 0) { e.atkCd--; continue; }
+            std::vector<Entity*> targets;
+            for (auto& o : g.entities) {
+                if (!o.alive || o.owner == e.owner || o.owner == OWNER_NATURE || o.state == S_GARRISONED) continue;
+                if (!isDetectedBy(o.x, o.y, e.owner)) continue;
+                if (dist(e.x, e.y, o.x, o.y) <= 9) targets.push_back(&o);
+            }
+            std::sort(targets.begin(), targets.end(), [&](Entity* a, Entity* b) {
+                return dist(e.x, e.y, a->x, a->y) < dist(e.x, e.y, b->x, b->y);
+            });
+            int sx = e.x + STATS[e.type].sizeW/2;
+            int sy = e.y + STATS[e.type].sizeH/2;
+            int fired = 0;
+            for (Entity* en : targets) {
+                if (fired >= 4) break;
+                int dmg = damageVs(E_ARCHER, en->type, 12, en->owner);
+                en->hp -= dmg;
+                en->alertTicks = 12;
+                spawnProjectile(sx, sy, en->x, en->y, '-', CP_PROJ_TOWER);
+                if (en->hp <= 0) killEntity(*en);
+                fired++;
+            }
+            if (fired > 0) e.atkCd = 6;
+            continue;
+        }
         bool isTower    = (e.type == E_TOWER);
         bool canGarrAtk = canGarrisonIn(e.type) && !e.garrison.empty();
         if (!isTower && !canGarrAtk) continue;
@@ -2085,7 +2208,7 @@ void tickTowers() {
             if (e.atkCd <= 0) {
                 // Towers/garrison-fire respect the same building-damage rule —
                 // garrisoned archers can wear down walls but not blow them open.
-                int dmg = damageVs(E_ARCHER, en->type, atk);
+                int dmg = damageVs(E_ARCHER, en->type, atk, en->owner);
                 en->hp -= dmg; e.atkCd = isTower ? STATS[E_TOWER].atkSpeed : 9;
                 en->alertTicks = 12;
                 // Bolt-style projectile so tower fire reads as arrows instead of stars.
@@ -2127,7 +2250,6 @@ void tickFarms() {
         bool hasMill = false;
         for (auto& e : g.entities)
             if (e.alive && e.owner==p && e.type==E_MILL && !e.underConstruction) { hasMill=true; break; }
-        if (!hasMill) continue;
 
         for (auto& farm : g.entities) {
             if (!farm.alive || farm.type!=E_FARM || farm.owner!=p || farm.underConstruction) continue;
@@ -2139,13 +2261,15 @@ void tickFarms() {
             }
             // Food ripens on the farm itself (capped); a courier peasant carries it
             // to a Mill or Town Hall — see S_BUILDING farm-tending branch.
-            if (tended && farm.storedFood < FARM_CAP)
-                farm.storedFood = std::min(FARM_CAP, farm.storedFood + 3 + bonus);
+            if (tended && farm.storedFood < FARM_CAP) {
+                int yield = (hasMill ? 6 : 3) + bonus;
+                farm.storedFood = std::min(FARM_CAP, farm.storedFood + yield);
+            }
 
             // AI helper: if ripe food is sitting on an AI farm with no courier
             // assigned, grab the nearest idle owner-peasant and send them to tend.
             // Player keeps explicit control — never auto-yanks the player's peasants.
-            if (p != 0 && farm.storedFood >= 5) {
+            if (p != 0 && farm.storedFood >= 3) {
                 bool assigned = false;
                 for (auto& u : g.entities) {
                     if (!u.alive || u.owner!=p || !isWorker(u.type)) continue;
@@ -2177,13 +2301,34 @@ void tickMarkets() {
 }
 
 void tickChurches() {
-    if (g.tick % 20 != 0) return;
     for (auto& e : g.entities) {
         if (!e.alive || e.type!=E_CHURCH || e.underConstruction) continue;
         for (auto& u : g.entities) {
-            if (!u.alive || u.owner!=e.owner || !isUnit(u.type)) continue;
-            if (dist(u.x,u.y,e.x,e.y) <= 3 && u.hp < u.maxHp)
-                u.hp = std::min(u.maxHp, u.hp + 1);
+            if (!u.alive || !isUnit(u.type) || u.owner == OWNER_NATURE || u.state == S_GARRISONED) continue;
+            if (u.owner == e.owner) {
+                if (g.tick % 25 == 0 && dist(u.x,u.y,e.x,e.y) <= 6 && u.hp < u.maxHp)
+                    u.hp = std::min(u.maxHp, u.hp + 1);
+                continue;
+            }
+            if (dist(u.x,u.y,e.x,e.y) <= 6) {
+                u.convertTicks++;
+                int threshold = 200 + u.maxHp * 3;
+                if (u.convertTicks >= threshold) {
+                    int oldOwner = u.owner;
+                    u.owner = e.owner;
+                    u.convertTicks = 0;
+                    u.state = S_IDLE;
+                    u.targetId = -1;
+                    u.path.clear();
+                    u.pathIdx = 0;
+                    updateSupply(oldOwner);
+                    updateSupply(u.owner);
+                    if (oldOwner == 0) setStatus(std::string(STATS[u.type].name) + " was converted!");
+                    else if (u.owner == 0) setStatus(std::string(STATS[u.type].name) + " converted!");
+                }
+            } else if (u.convertTicks > 0 && g.tick % 8 == 0) {
+                u.convertTicks--;
+            }
         }
     }
 }
@@ -2221,12 +2366,27 @@ static void applyWinter() {
 }
 
 void tickSeasons() {
+    if (g.attackNotifyCd > 0) g.attackNotifyCd--;
     int s = (int)getSeason();
     if (s != g.prevSeason) {
         if (s == WINTER) applyWinter();
+        else if (s == SUMMER && g.players[0].alive) setStatus("Summer crowns the fields in gold.");
+        else if (s == AUTUMN && g.players[0].alive) setStatus("Autumn reddens the woods.");
         if (s == SPRING && g.prevSeason == WINTER && g.players[0].alive)
             setStatus("Spring stirs. The thaw begins.");
         g.prevSeason = s;
+    }
+    int phase = 0;
+    if (isDusk()) phase = 1;
+    else if (isNight()) phase = 2;
+    else if (isDawn()) phase = 3;
+    if (phase != g.prevTimePhase) {
+        if (g.players[0].alive) {
+            if (phase == 1) setStatus("Evening gathers over the realm.");
+            else if (phase == 2) setStatus("Night settles. Torches flicker.");
+            else if (phase == 3) setStatus("Dawn breaks over the realm.");
+        }
+        g.prevTimePhase = phase;
     }
 }
 
@@ -2473,9 +2633,9 @@ void tickAnimals() {
             }
         }
 
-        // Boars charge nearby units; hitting them triggers a rampage (wider search range).
+        // Boars forage peacefully until struck, then retaliate briefly.
         if (e.type == E_BOAR) {
-            int chargeRange = (e.alertTicks > 0) ? 8 : 3;
+            int chargeRange = (e.alertTicks > 0) ? 4 : 0;
             if (e.state == S_IDLE || (e.state == S_MOVING && e.path.empty())) {
                 for (auto& o : g.entities) {
                     if (!o.alive || o.owner == OWNER_NATURE || !isUnit(o.type)) continue;

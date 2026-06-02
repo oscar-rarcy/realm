@@ -236,7 +236,9 @@ const char* entitySlug(EntityType type) {
         case E_MILITIA: return "militia";
         case E_ARCHER: return "archer";
         case E_KNIGHT: return "knight";
+        case E_SPEARMAN: return "spearman";
         case E_CATAPULT: return "catapult";
+        case E_TREBUCHET: return "trebuchet";
         case E_FISHING_BOAT: return "fishing_boat";
         case E_WARSHIP: return "warship";
         case E_TRANSPORT: return "transport";
@@ -253,6 +255,7 @@ const EntityActionAnimationSpec* deathActionSpecFor(EntityType type) {
     switch (type) {
         case E_PEASANT: return &PEASANT_ACTIONS[15];
         case E_MILITIA:
+        case E_SPEARMAN:
         case E_ARCHER:
         case E_KNIGHT:
             return &HUMAN_DEATH_ACTION;
@@ -262,6 +265,7 @@ const EntityActionAnimationSpec* deathActionSpecFor(EntityType type) {
         case E_BOAR:
             return &ANIMAL_DEATH_ACTION;
         case E_CATAPULT:
+        case E_TREBUCHET:
         case E_FISHING_BOAT:
         case E_WARSHIP:
         case E_TRANSPORT:

@@ -20,6 +20,8 @@ constexpr int KEY_SR = 1011;
 constexpr int KEY_SF = 1012;
 constexpr int KEY_SLEFT = 1013;
 constexpr int KEY_SRIGHT = 1014;
+constexpr int KEY_F0 = 1100;
+constexpr int KEY_F(int n) { return KEY_F0 + n; }
 struct MEVENT { int x = 0; int y = 0; unsigned long bstate = 0; };
 constexpr unsigned long BUTTON1_PRESSED      = 1ul << 0;
 constexpr unsigned long BUTTON1_RELEASED     = 1ul << 1;
@@ -47,8 +49,8 @@ inline void getmaxyx(void*, int& y, int& x) { y = 0; x = 0; }
 // ============================================================
 // CONSTANTS
 // ============================================================
-const int MAP_W        = 140;
-const int MAP_H        = 90;
+const int MAP_W        = 180;
+const int MAP_H        = 110;
 const int TICK_MS      = 80;
 const int FOG_RADIUS   = 7;
 const int GATHER_RATE  = 8;
@@ -81,7 +83,7 @@ enum Terrain {
 
 enum EntityType {
     E_NONE = 0,
-    E_PEASANT, E_MILITIA, E_ARCHER, E_KNIGHT, E_CATAPULT,
+    E_PEASANT, E_MILITIA, E_ARCHER, E_KNIGHT, E_SPEARMAN, E_CATAPULT, E_TREBUCHET,
     E_FISHING_BOAT, E_WARSHIP, E_TRANSPORT, E_RAM,
     E_TOWNHALL, E_HOUSE, E_BARRACKS, E_STABLE, E_TOWER,
     E_FARM, E_BLACKSMITH, E_CHURCH, E_MARKET, E_WALL, E_GATE, E_CASTLE,
@@ -94,10 +96,10 @@ enum EntityState {
     S_BUILDING, S_TRAINING, S_RETURNING, S_DEAD,
     S_ENTERING, S_GARRISONED
 };
-enum GameMode  { M_NORMAL, M_BUILD_SELECT, M_TRAIN_SELECT, M_WALL_DRAG, M_PAUSED, M_GAME_OVER, M_RALLY_SET, M_RESEARCH_SELECT, M_ATTACK_MOVE };
+enum GameMode  { M_NORMAL, M_BUILD_SELECT, M_TRAIN_SELECT, M_WALL_DRAG, M_PAUSED, M_GAME_OVER, M_RALLY_SET, M_RESEARCH_SELECT, M_ATTACK_MOVE, M_MARKET_TRADE };
 
 // Research bits stored in Player.research
-enum Research { R_IRON_WEAPONS = 1, R_CROSSBOWS = 2 };
+enum Research { R_IRON_WEAPONS = 1, R_CROSSBOWS = 2, R_PIKES = 4, R_COUNTERWEIGHT = 8, R_PLATE_HELM = 16 };
 enum Biome     { B_TEMPERATE, B_DESERT, B_SNOW, B_SWAMP, B_FOREST, B_VOLCANIC, B_OCEAN };
 enum Season    { SPRING = 0, SUMMER, AUTUMN, WINTER };
 enum Weather   { W_CLEAR = 0, W_RAIN, W_STORM, W_SNOW };
@@ -161,7 +163,10 @@ enum BuildingVisualState {
     BVS_TRAINING_CAVALRY,
     BVS_TRAINING_SHIP,
     BVS_RESEARCHING_IRON_WEAPONS,
-    BVS_RESEARCHING_CROSSBOWS
+    BVS_RESEARCHING_CROSSBOWS,
+    BVS_RESEARCHING_PIKES,
+    BVS_RESEARCHING_COUNTERWEIGHT,
+    BVS_RESEARCHING_PLATE_HELM
 };
 
 enum AnimalCarcassVisualState {
@@ -221,6 +226,7 @@ enum {
     CP_DAWN_SKY, CP_DUSK_SKY,
     CP_PLAYER, CP_PLAYER_NIGHT, CP_ENEMY, CP_ENEMY_NIGHT,
     CP_SHIP_PLAYER, CP_SHIP_ENEMY,
+    CP_SHIP_P0, CP_SHIP_P1, CP_SHIP_P2, CP_SHIP_P3,
     CP_PROJ_ARROW, CP_PROJ_BOULDER, CP_PROJ_TOWER,
     CP_RAIN, CP_SNOW_FALL,
     CP_UI_BAR, CP_UI_TEXT, CP_UI_HIGH, CP_UI_DIM, CP_UI_ACCENT,
@@ -336,6 +342,10 @@ struct Entity {
     int facingDy;    // last or intended facing delta, map-space y component
     bool gateOpen;   // E_GATE only: open (passable) vs closed (blocks pathing)
     bool gateLocked; // E_GATE only: manual mode — don't auto-toggle on ally proximity
+    int convertTicks; // accumulated exposure to an enemy church
+    int retreating;   // >0 while fleeing to safety at low HP
+    int packed;       // E_TREBUCHET: 1 = mobile/packed, 0 = deployed/firing
+    int packTicks;    // E_TREBUCHET: ticks remaining in pack/unpack transition
     std::vector<int> queue;    // pending EntityTypes to train (FIFO, max 5)
     std::vector<int> garrison; // unit ids currently inside this building
 };
@@ -363,6 +373,8 @@ struct Game {
     int winner, aiTimer, farmTimer, animalTimer;
     float dayPhase, seasonPhase;
     int prevSeason; // for detecting season transitions
+    int prevTimePhase;   // 0=day 1=dusk 2=night 3=dawn; for transition messages
+    int attackNotifyCd;  // ticks until next under-attack notification
     int weather;       // current Weather state
     int weatherTimer;  // ticks until next weather change roll
     int biomeChoice;   // -1 = random, else Biome enum value forced on whole map
@@ -384,6 +396,8 @@ extern Game g;
 
 // mapgen.cpp
 void generateMap();
+void clearStartArea(int cx,int cy,int radius);
+void placeGoldCluster(int cx,int cy,int count);
 
 // entity.cpp — time
 float       getBrightness();

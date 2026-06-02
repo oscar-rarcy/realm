@@ -679,7 +679,9 @@ static const char* tilesetEntityGlyph(const Entity& e, bool& hasTile) {
         case E_MILITIA: return u8"🤺";
         case E_ARCHER: return u8"🏹";
         case E_KNIGHT: return u8"🐎";
+        case E_SPEARMAN: return u8"🗡";
         case E_CATAPULT: return u8"🛞";
+        case E_TREBUCHET: return u8"🎯";
         case E_FISHING_BOAT: return u8"🛶";
         case E_WARSHIP: return u8"🚢";
         case E_TRANSPORT: return u8"⛴";
@@ -2262,7 +2264,7 @@ static void drawTopBar() {
 }
 
 static bool isTrainProducer(EntityType t) {
-    return t == E_TOWNHALL || t == E_BARRACKS || t == E_STABLE || t == E_DOCK;
+    return t == E_TOWNHALL || t == E_BARRACKS || t == E_STABLE || t == E_DOCK || t == E_CASTLE;
 }
 
 static std::string trainPromptFor(const Entity* sel) {
@@ -2270,8 +2272,9 @@ static std::string trainPromptFor(const Entity* sel) {
         return "TRAIN: select a production building, Esc cancel";
     switch (sel->type) {
         case E_TOWNHALL: return "TRAIN: P Peasant (50g), repeat to queue, Esc cancel";
-        case E_BARRACKS: return "TRAIN: M Militia  A Archer  C Catapult  R Ram, Esc cancel";
+        case E_BARRACKS: return "TRAIN: M Militia  A Archer  S Spearman  C Catapult  R Ram, Esc cancel";
         case E_STABLE: return "TRAIN: K Knight, repeat to queue, Esc cancel";
+        case E_CASTLE: return "TRAIN: P Peasant  T Trebuchet, repeat to queue, Esc cancel";
         case E_DOCK: return "TRAIN: B Fishing boat  W Warship  T Transport, Esc cancel";
         default: return "TRAIN: no units available, Esc cancel";
     }
@@ -2280,8 +2283,9 @@ static std::string trainPromptFor(const Entity* sel) {
 static std::vector<std::string> trainPanelHintsFor(EntityType t) {
     switch (t) {
         case E_TOWNHALL: return {"P: peasant (50g)"};
-        case E_BARRACKS: return {"M: militia  A: archer", "C: catapult  R: ram"};
+        case E_BARRACKS: return {"M: militia  A: archer", "S: spearman  C: catapult", "R: ram"};
         case E_STABLE: return {"K: knight"};
+        case E_CASTLE: return {"P: peasant", "T: trebuchet"};
         case E_DOCK: return {"B: fish boat  W: warship", "T: transport"};
         default: return {};
     }
@@ -2290,8 +2294,9 @@ static std::vector<std::string> trainPanelHintsFor(EntityType t) {
 static std::vector<std::pair<std::string, int>> trainOptionTokensFor(EntityType t) {
     switch (t) {
         case E_TOWNHALL: return {{"P", 'p'}, {"Esc", 27}};
-        case E_BARRACKS: return {{"M", 'm'}, {"A", 'a'}, {"C", 'c'}, {"R", 'r'}, {"Esc", 27}};
+        case E_BARRACKS: return {{"M", 'm'}, {"A", 'a'}, {"S", 's'}, {"C", 'c'}, {"R", 'r'}, {"Esc", 27}};
         case E_STABLE: return {{"K", 'k'}, {"Esc", 27}};
+        case E_CASTLE: return {{"P", 'p'}, {"T", 't'}, {"Esc", 27}};
         case E_DOCK: return {{"B", 'b'}, {"W", 'w'}, {"T", 't'}, {"Esc", 27}};
         default: return {{"Esc", 27}};
     }
@@ -2315,11 +2320,11 @@ static std::vector<std::pair<std::string, int>> terminalBuildTokens() {
 
 static std::vector<std::pair<std::string, int>> defaultBottomTokens() {
 #if defined(REALM_WEB)
-    return {{"B:Build", 'b'}, {"T:Train", 't'}, {"F5:Save", 'v'}, {"F8:Diag", 'd'},
-            {"F9:Load", 'l'}, {"Q:Resign", 'q'}};
+    return {{"B:Build", 'b'}, {"T:Train", 't'}, {"F5-F8:Save", 'v'}, {"F9-F12:Load", 'l'},
+            {"D:Diag", 'd'}, {"Q:Resign", 'q'}};
 #else
-    return {{"B:Build", 'b'}, {"T:Train", 't'}, {"F5:Save", 'v'}, {"F8:Diag", 'd'},
-            {"F9:Load", 'l'}, {"Q:Resign", 'q'}, {"X:Exit", 'x'}};
+    return {{"B:Build", 'b'}, {"T:Train", 't'}, {"F5-F8:Save", 'v'}, {"F9-F12:Load", 'l'},
+            {"D:Diag", 'd'}, {"Q:Resign", 'q'}, {"X:Exit", 'x'}};
 #endif
 }
 
@@ -2449,6 +2454,7 @@ static EntityType mobileDefaultTrainType(EntityType producer) {
         case E_TOWNHALL: return E_PEASANT;
         case E_BARRACKS: return E_MILITIA;
         case E_STABLE: return E_KNIGHT;
+        case E_CASTLE: return E_TREBUCHET;
         case E_DOCK: return E_FISHING_BOAT;
         default: return E_NONE;
     }
@@ -2502,6 +2508,8 @@ static std::vector<MobileButton> mobileHudButtons() {
                 || sel->type == E_STABLE || sel->type == E_DOCK) {
                 cmd.push_back({"rally", "Rally"});
             }
+            if (sel->type == E_MARKET) cmd.push_back({"trade", "Trade"});
+            if (sel->type == E_BLACKSMITH) cmd.push_back({"research", "Research"});
             cmd.push_back({"cancelqueue", "Cancel Queue"});
         } else {
             cmd = {{"selectarmy", "Select Army"}, {"help", "Help"}};
@@ -2545,7 +2553,7 @@ static void drawMobileHud() {
         drawTextFit(pr.x + pad, summaryY + 22,
                     std::string("Placing ") + STATS[s.mobileBuildType].name + " - tap a valid tile",
                     rgb(145,220,245), summaryW);
-    } else if (g.mode == M_RALLY_SET || g.mode == M_ATTACK_MOVE || g.mode == M_BUILD_SELECT) {
+    } else if (g.mode == M_RALLY_SET || g.mode == M_ATTACK_MOVE || g.mode == M_BUILD_SELECT || g.mode == M_MARKET_TRADE) {
         drawTextFit(pr.x + pad, summaryY + 22, modeName(g.mode), rgb(145,220,245), summaryW);
     } else if (g.statusTimer > 0) {
         drawTextFit(pr.x + pad, summaryY + 22, g.statusMsg, rgb(255,230,120), summaryW);
@@ -2658,9 +2666,9 @@ static void drawBottom() {
     std::string controls1 = "Arrows:Move  Space/Click:Select  Enter/R-click:Cmd  B:Build  T:Train";
     std::string controls2 =
 #if defined(REALM_WEB)
-        "F5:Save  F8:Diag  F9:Load  F11:Full  +/-:Zoom  Q:Resign";
+        "F5-F8:Save  F9-F12:Load  D:Diag  Alt+Enter:Full  +/-:Zoom  Q:Resign";
 #else
-        "F5:Save  F8:Diag  F9:Load  F11:Full  +/-:Zoom  Q:Resign  X:Exit";
+        "F5-F8:Save  F9-F12:Load  D:Diag  Alt+Enter:Full  +/-:Zoom  Q:Resign  X:Exit";
 #endif
     ;
     if (g.mode == M_PAUSED) { controls1 = "PAUSED - Press P to resume"; controls2.clear(); }
@@ -2672,8 +2680,9 @@ static void drawBottom() {
 #endif
         controls2.clear();
     }
-    else if (g.mode == M_BUILD_SELECT) { controls1 = "BUILD: H House, B Barracks, S Stable, T Tower, F Farm, W Wall, K Castle"; controls2 = "L Lumber camp  N Mining camp  I Mill  D Dock  Esc cancel"; }
+    else if (g.mode == M_BUILD_SELECT) { controls1 = "BUILD: H House, B Barracks, S Stable, T Tower, F Farm, W Wall, K Castle"; controls2 = "G Gate  A Armory  C Church  M Market  L Lumber  N Mine  I Mill  D Dock  Esc"; }
     else if (g.mode == M_TRAIN_SELECT) { controls1 = trainPromptFor(findEntity(g.selectedId)); controls2.clear(); }
+    else if (g.mode == M_MARKET_TRADE) { controls1 = "MARKET: G 40g->30w  W 40w->30g  F 50g->30f  V 40f->30g"; controls2 = "Esc cancel"; }
     int hintX = s.winW - 14;
     if (devCaptureEnabled()) {
         const std::string captureHint = "Y:Capture issue";
@@ -3086,6 +3095,8 @@ static void terminalDrawSelection(TerminalFrame& frame, int panelX, int panelW, 
             line("[Enter] Move/Attack", termAccent());
         } else if (isBuilding(sel->type) && !sel->underConstruction) {
             if (isTrainProducer(sel->type)) line("[T] Train", termAccent());
+            if (sel->type == E_MARKET) line("[R] Trade", termAccent());
+            if (sel->type == E_BLACKSMITH) line("[R] Research", termAccent());
             if (sel->type == E_FARM) {
                 line("Generates food", termAccent());
                 std::ostringstream ripe; ripe << "Ripe: " << sel->storedFood << " / 20";
@@ -3117,6 +3128,8 @@ static void terminalDrawBottom(TerminalFrame& frame) {
         line = " BUILD: [H]ouse [B]arracks [S]table [T]ower [F]arm [W]all [G]ate [A]rmory [C]hurch [M]arket [K]Castle [L]umber [N]mine [I]mill [D]ock [Esc] ";
     else if (g.mode == M_TRAIN_SELECT)
         line = trainPromptFor(findEntity(g.selectedId));
+    else if (g.mode == M_MARKET_TRADE)
+        line = " MARKET: [G] 40g->30w  [W] 40w->30g  [F] 50g->30f  [V] 40f->30g  [Esc] ";
     else if (g.mode == M_PAUSED)
         line = " PAUSED - Press [P] to resume ";
     else if (g.mode == M_GAME_OVER)
@@ -3145,6 +3158,9 @@ static void registerTerminalKeyTokens(const TerminalFrame& frame) {
         Entity* sel = findEntity(g.selectedId);
         line = trainPromptFor(sel);
         tokens = sel ? trainOptionTokensFor(sel->type) : std::vector<std::pair<std::string, int>>{{"Esc", 27}};
+    } else if (g.mode == M_MARKET_TRADE) {
+        line = " MARKET: [G] 40g->30w  [W] 40w->30g  [F] 50g->30f  [V] 40f->30g  [Esc] ";
+        tokens = {{"[G]", 'g'}, {"[W]", 'w'}, {"[F]", 'f'}, {"[V]", 'v'}, {"[Esc]", 27}};
     } else if (g.mode == M_PAUSED) {
         line = " PAUSED - Press [P] to resume ";
         tokens = {{"[P]", 'p'}};
@@ -3670,7 +3686,6 @@ static int applySplashChoice(int ch, int& numAIs, int& biomeIdx) {
     else if (ch == 's' || ch == 'S') biomeIdx = 2;
     else if (ch == 'w' || ch == 'W') biomeIdx = 3;
     else if (ch == 'f' || ch == 'F') biomeIdx = 4;
-    else if (ch == 'v' || ch == 'V') biomeIdx = 5;
     else if (ch == 'c' || ch == 'C') biomeIdx = 6;
     else if (ch == '4') displayMode = DM_ASCII;
     else if (ch == '5' && !s.asciiOnly) { displayMode = DM_EMOJI; s.isometric = true; }
@@ -3723,8 +3738,8 @@ static void drawSplash(int numAIs, int biomeIdx) {
     drawKeyTokensInText(col, y, "  [S] Snow      [W] Swamp      [F] Forest",
                         {{"[S]", 's'}, {"[W]", 'w'}, {"[F]", 'f'}},
                         rgb(220,225,220), 720); y += 22;
-    drawKeyTokensInText(col, y, "  [V] Volcanic  [C] Coastal",
-                        {{"[V]", 'v'}, {"[C]", 'c'}},
+    drawKeyTokensInText(col, y, "  [C] Coastal",
+                        {{"[C]", 'c'}},
                         rgb(220,225,220), 720); y += 22;
     if (!s.asciiOnly) {
         y += 4;
@@ -4127,6 +4142,20 @@ static void handleMobileHudButton(const std::string& id) {
         }
         return;
     }
+    if (id == "trade") {
+        if (sel && sel->type == E_MARKET) {
+            g.mode = M_MARKET_TRADE;
+            setStatus("Choose a market trade.");
+        }
+        return;
+    }
+    if (id == "research") {
+        if (sel && sel->type == E_BLACKSMITH) {
+            g.mode = M_RESEARCH_SELECT;
+            setStatus("Choose research.");
+        }
+        return;
+    }
     if (id == "cancelqueue") {
         if (sel && isBuilding(sel->type)) {
             sel->queue.clear();
@@ -4430,7 +4459,7 @@ void gfxPollInput(bool& quitRequested) {
         }
         if (e.type == SDL_KEYDOWN) {
             SDL_Keycode k = e.key.keysym.sym;
-            if (k == SDLK_F11 || (k == SDLK_RETURN && (e.key.keysym.mod & KMOD_ALT))) {
+            if (k == SDLK_RETURN && (e.key.keysym.mod & KMOD_ALT)) {
                 toggleFullscreen();
                 continue;
             }
@@ -4443,9 +4472,20 @@ void gfxPollInput(bool& quitRequested) {
                 return;
 #endif
             }
-            if (k == SDLK_F5) { saveGame("realm-save.txt"); continue; }
-            if (k == SDLK_F8) { g.diagnostics = !g.diagnostics; continue; }
-            if (k == SDLK_F9) { loadGame("realm-save.txt"); updateViewMetrics(true); continue; }
+            if (k >= SDLK_F5 && k <= SDLK_F8) {
+                int slot = (int)(k - SDLK_F5) + 1;
+                std::string path = "realm-slot" + std::to_string(slot) + ".sav";
+                if (saveGame(path)) setStatus("Saved to slot " + std::to_string(slot) + ".");
+                else setStatus("Save failed.");
+                continue;
+            }
+            if (k >= SDLK_F9 && k <= SDLK_F12) {
+                int slot = (int)(k - SDLK_F9) + 1;
+                std::string path = "realm-slot" + std::to_string(slot) + ".sav";
+                if (loadGame(path)) { setStatus("Loaded slot " + std::to_string(slot) + "."); updateViewMetrics(true); }
+                else setStatus("Load failed.");
+                continue;
+            }
             if (devCaptureEnabled() && k == SDLK_y) { captureIssueBundle(); continue; }
             if (k == SDLK_EQUALS || k == SDLK_PLUS || k == SDLK_KP_PLUS) { setZoom(s.tile+3); continue; }
             if (k == SDLK_MINUS || k == SDLK_KP_MINUS) { setZoom(s.tile-3); continue; }

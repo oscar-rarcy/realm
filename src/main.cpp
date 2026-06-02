@@ -98,7 +98,7 @@ static int showSplash() {
         attron(A_BOLD); pr(row++, col, "BIOME"); attroff(A_BOLD);
         pr(row++, col, "  [0] Random    [T] Temperate  [D] Desert");
         pr(row++, col, "  [S] Snow      [W] Swamp      [F] Forest");
-        pr(row++, col, "  [V] Volcanic  [C] Coastal");
+        pr(row++, col, "  [C] Coastal");
 
         if (!asciiOnly) {
             row++;
@@ -128,7 +128,6 @@ static int showSplash() {
         else if (ch=='s'||ch=='S') biomeIdx=2;
         else if (ch=='w'||ch=='W') biomeIdx=3;
         else if (ch=='f'||ch=='F') biomeIdx=4;
-        else if (ch=='v'||ch=='V') biomeIdx=5;
         else if (ch=='c'||ch=='C') biomeIdx=6;
         else if (ch=='4') displayMode = DM_ASCII;
         else if (ch=='5' && !asciiOnly) displayMode = DM_EMOJI;
@@ -201,6 +200,7 @@ void initGameWithSeed(int numAIs, unsigned seed, int humanCorner) {
     g.statusMsg.clear(); g.statusTimer = 0;
     g.buildPending = E_NONE; g.wallDragX = 0; g.wallDragY = 0;
     g.dayPhase = 0.25f; g.seasonPhase = 0.0f; g.prevSeason = -1;
+    g.prevTimePhase = 0; g.attackNotifyCd = 0;
     g.weather = W_CLEAR; g.weatherTimer = 0;
     g.returnToMenu = false;
     g.seed = seed;
@@ -216,62 +216,130 @@ void initGameWithSeed(int numAIs, unsigned seed, int humanCorner) {
 
     generateMap();
 
-    // Four corner spawn points: thX,thY, peasant row anchor pX,pY, pDir (+1 or -1 along X)
-    struct Spawn { int thX,thY, pX,pY, pDir; };
-    const Spawn corners[4] = {
-        {5,        5,        9,         9,         1},   // top-left
-        {MAP_W-9,  5,        MAP_W-14,  9,         1},   // top-right
-        {5,        MAP_H-9,  9,         MAP_H-5,   1},   // bottom-left
-        {MAP_W-9,  MAP_H-9,  MAP_W-14,  MAP_H-5,   1},   // bottom-right
-    };
-    // Free-for-all: one human at a random corner, up to numAIs at the others.
-    // Corners beyond what the player chose are left empty.
-    if (humanCorner < 0 || humanCorner >= 4) humanCorner = realmRand() % 4;
-    g.humanCorner = humanCorner;
-    for (const Spawn& s : corners) placeStartResources(s.thX, s.thY);
-    int aiCounter = 0;
-    bool spawned[MAX_PLAYERS] = {false};
-    bool occupiedCorners[4] = {false};
-    for (int c = 0; c < 4; c++) {
-        int owner;
-        if (c == humanCorner) owner = 0;
-        else {
-            if (aiCounter >= numAIs) continue;          // skip empty corner
-            owner = 1 + aiCounter++;
-            if (owner >= MAX_PLAYERS) continue;         // safety net
+    struct Spawn { int thX, thY; };
+    const int needed = std::min(MAX_PLAYERS, 1 + numAIs);
+    const int minSpawnDist = std::min(MAP_W, MAP_H) * 2 / 3;
+    const int edge = 12;
+
+    auto scoreSpawn = [](int cx, int cy) -> int {
+        for (int dy = -2; dy <= 2; dy++) for (int dx = -2; dx <= 2; dx++) {
+            int x = cx+dx, y = cy+dy;
+            if (!inBounds(x,y)) return -1;
+            Terrain t = g.map[y][x].terrain;
+            if (t==T_WATER||t==T_MOUNTAIN||t==T_LAVA||t==T_SHALLOWS||t==T_GOLD) return -1;
         }
+        int score = 100;
+        int grass = 0;
+        for (int dy = -4; dy <= 4; dy++) for (int dx = -4; dx <= 4; dx++) {
+            int x = cx+dx, y = cy+dy;
+            if (!inBounds(x,y)) continue;
+            Terrain t = g.map[y][x].terrain;
+            if (t==T_GRASS||t==T_MEADOW||t==T_DIRT||t==T_TALL_GRASS) grass++;
+        }
+        score += grass;
+        bool hasWood = false;
+        for (int dy = -10; dy <= 10 && !hasWood; dy++)
+            for (int dx = -10; dx <= 10 && !hasWood; dx++) {
+                int x = cx+dx, y = cy+dy;
+                if (!inBounds(x,y)) continue;
+                Terrain t = g.map[y][x].terrain;
+                if (t==T_FOREST||t==T_PINE||t==T_PALM||t==T_DEAD_TREE) hasWood = true;
+            }
+        if (hasWood) score += 40; else score -= 30;
+        return score;
+    };
+
+    struct Cand { int x, y, score; };
+    std::vector<Cand> candidates;
+    candidates.reserve(260);
+    for (int i = 0; i < 260; i++) {
+        int cx = edge + realmRand() % (MAP_W - 2*edge);
+        int cy = edge + realmRand() % (MAP_H - 2*edge);
+        int s = scoreSpawn(cx, cy);
+        if (s > 0) candidates.push_back({cx, cy, s});
+    }
+    std::sort(candidates.begin(), candidates.end(),
+              [](const Cand& a, const Cand& b){ return a.score > b.score; });
+
+    std::vector<Spawn> spawns;
+    for (auto& c : candidates) {
+        if ((int)spawns.size() >= needed) break;
+        bool ok = true;
+        for (auto& s : spawns) {
+            if (dist(c.x, c.y, s.thX, s.thY) < minSpawnDist) { ok = false; break; }
+        }
+        if (ok) spawns.push_back({c.x, c.y});
+    }
+    if ((int)spawns.size() < needed) {
+        int relaxed = minSpawnDist / 2;
+        for (auto& c : candidates) {
+            if ((int)spawns.size() >= needed) break;
+            bool duplicate = false;
+            for (auto& s : spawns) if (s.thX==c.x && s.thY==c.y) { duplicate = true; break; }
+            if (duplicate) continue;
+            bool ok = true;
+            for (auto& s : spawns) if (dist(c.x, c.y, s.thX, s.thY) < relaxed) { ok = false; break; }
+            if (ok) spawns.push_back({c.x, c.y});
+        }
+    }
+    const int cornerAnchors[4][2] = {
+        {5, 5}, {MAP_W-9, 5}, {5, MAP_H-9}, {MAP_W-9, MAP_H-9}
+    };
+    if (spawns.empty()) {
+        for (int i = 0; i < needed; i++) spawns.push_back({cornerAnchors[i][0], cornerAnchors[i][1]});
+    }
+    if (humanCorner < 0 || humanCorner >= 4) {
+        humanCorner = realmRand() % 4;
+        if (spawns.size() > 1) std::swap(spawns[0], spawns[realmRand() % spawns.size()]);
+    } else if (spawns.size() > 1) {
+        int best = 0;
+        for (int i = 1; i < (int)spawns.size(); i++) {
+            if (dist(spawns[i].thX, spawns[i].thY, cornerAnchors[humanCorner][0], cornerAnchors[humanCorner][1])
+                < dist(spawns[best].thX, spawns[best].thY, cornerAnchors[humanCorner][0], cornerAnchors[humanCorner][1]))
+                best = i;
+        }
+        std::swap(spawns[0], spawns[best]);
+    }
+    g.humanCorner = humanCorner;
+
+    bool spawned[MAX_PLAYERS] = {false};
+    for (int i = 0; i < (int)spawns.size() && i <= numAIs; i++) {
+        int owner = (i == 0) ? 0 : i;
+        if (owner >= MAX_PLAYERS) break;
         spawned[owner] = true;
-        occupiedCorners[c] = true;
-        auto& s = corners[c];
-        spawnEntity(E_TOWNHALL, owner, s.thX, s.thY);
-        for (int i = 0; i < 4; i++) spawnEntity(E_PEASANT, owner, s.pX + i*s.pDir, s.pY);
+        clearStartArea(spawns[i].thX - 2, spawns[i].thY - 2, 6);
+        placeGoldCluster(spawns[i].thX + 9, spawns[i].thY + 4, 5);
+        placeStartResources(spawns[i].thX, spawns[i].thY);
+        spawnEntity(E_TOWNHALL, owner, spawns[i].thX, spawns[i].thY);
+        for (int j = 0; j < 4; j++)
+            spawnEntity(E_PEASANT, owner, spawns[i].thX + 4 + j, spawns[i].thY + 4);
     }
     // Mark any non-spawned slots dead so checkWin doesn't wait on them.
     for (int p = 1; p < MAX_PLAYERS; p++) if (!spawned[p]) g.players[p].alive = false;
     for (int p = 0; p < MAX_PLAYERS; p++) updateSupply(p);
 
-    auto& s0 = corners[humanCorner];
-    g.cursorX = s0.thX + 2; g.cursorY = s0.thY + 2;
-    g.viewX = std::max(0, s0.thX - 10); g.viewY = std::max(0, s0.thY - 5);
+    g.cursorX = spawns[0].thX + 2; g.cursorY = spawns[0].thY + 2;
+    g.viewX = std::max(0, spawns[0].thX - 10); g.viewY = std::max(0, spawns[0].thY - 5);
 
-    auto nearOccupiedStart = [&](int x, int y, int radius) {
-        for (int c = 0; c < 4; c++) {
-            if (!occupiedCorners[c]) continue;
-            if (dist(x, y, corners[c].thX + 1, corners[c].thY + 1) <= radius) return true;
+    auto farFromAnyBase = [](int ax, int ay, int radius) {
+        for (auto& e : g.entities) {
+            if (!e.alive) continue;
+            if (e.type != E_TOWNHALL && e.type != E_CASTLE) continue;
+            if (std::abs(ax - e.x) <= radius && std::abs(ay - e.y) <= radius) return false;
         }
-        return false;
+        return true;
     };
 
     // Wild deer in herds of 3-6, each herd anchored to a random open spot.
     {
         int total = 0;
-        for (int h = 0; h < 7 && total < 30; h++) {
+        for (int h = 0; h < 10 && total < 42; h++) {
             int hx = -1, hy = -1;
             for (int t = 0; t < 300 && hx < 0; t++) {
                 int ax = 10 + realmRand()%(MAP_W-20), ay = 10 + realmRand()%(MAP_H-20);
                 Terrain tr = g.map[ay][ax].terrain;
                 if ((tr==T_GRASS||tr==T_MEADOW||tr==T_TALL_GRASS||tr==T_FOREST)
-                    && !nearOccupiedStart(ax, ay, 16))
+                    && farFromAnyBase(ax, ay, 14))
                     { hx=ax; hy=ay; }
             }
             if (hx < 0) continue;
@@ -282,31 +350,32 @@ void initGameWithSeed(int numAIs, unsigned seed, int humanCorner) {
                 ay = std::max(1, std::min(ay, MAP_H-2));
                 Terrain tr = g.map[ay][ax].terrain;
                 if ((tr==T_GRASS||tr==T_MEADOW||tr==T_TALL_GRASS||tr==T_FOREST)
-                    && !nearOccupiedStart(ax, ay, 14) && !entityAt(ax,ay))
+                    && !entityAt(ax,ay) && farFromAnyBase(ax, ay, 10))
                     { spawnEntity(E_DEER, OWNER_NATURE, ax, ay); i++; total++; }
             }
         }
     }
     // Wolves in forested areas
-    for (int i = 0, t = 0; i < 5 && t < 600; t++) {
+    for (int i = 0, t = 0; i < 7 && t < 600; t++) {
         int ax = 10 + realmRand()%(MAP_W-20), ay = 10 + realmRand()%(MAP_H-20);
         Terrain tr = g.map[ay][ax].terrain;
-        if ((tr==T_FOREST||tr==T_PINE||tr==T_TALL_GRASS) && !nearOccupiedStart(ax, ay, 16) && !entityAt(ax,ay))
+        if ((tr==T_FOREST||tr==T_PINE||tr==T_TALL_GRASS) && !entityAt(ax,ay)
+            && farFromAnyBase(ax, ay, 16))
             { spawnEntity(E_WOLF, OWNER_NATURE, ax, ay); i++; }
     }
     // Boars in temperate woodland and forest biomes
-    for (int i = 0, t = 0; i < 14 && t < 800; t++) {
+    for (int i = 0, t = 0; i < 18 && t < 800; t++) {
         int ax = 10 + realmRand()%(MAP_W-20), ay = 10 + realmRand()%(MAP_H-20);
         Terrain tr = g.map[ay][ax].terrain;
         Biome  b  = g.map[ay][ax].biome;
         if ((tr==T_FOREST||tr==T_PINE||tr==T_TALL_GRASS||tr==T_GRASS)
-            && (b==B_TEMPERATE||b==B_FOREST) && !nearOccupiedStart(ax, ay, 16) && !entityAt(ax,ay))
+            && (b==B_TEMPERATE||b==B_FOREST) && !entityAt(ax,ay)
+            && farFromAnyBase(ax, ay, 16))
             { spawnEntity(E_BOAR, OWNER_NATURE, ax, ay); i++; }
     }
-    // Domestic sheep near each player's town hall (one cluster per occupied corner)
-    for (int c = 0; c < 4; c++) {
-        if (!occupiedCorners[c]) continue;
-        int bx = corners[c].thX + 4, by = corners[c].thY + 4;
+    // Domestic sheep near each player's town hall (one cluster per chosen spawn)
+    for (int i = 0; i < (int)spawns.size() && i <= numAIs; i++) {
+        int bx = spawns[i].thX + 4, by = spawns[i].thY + 4;
         for (int i = 0, t = 0; i < 4 && t < 200; t++) {
             int ax = bx+(realmRand()%7)-3, ay = by+(realmRand()%7)-3;
             ax = std::max(1, std::min(ax, MAP_W-2)); ay = std::max(1, std::min(ay, MAP_H-2));

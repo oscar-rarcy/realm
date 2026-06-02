@@ -20,7 +20,7 @@ static void cmdAtTileSingle(Entity* sel, int x, int y) {
         orderHelp(*sel, tgt->id); setStatus("Tending farm..."); return;
     }
     if (tgt && tgt->alive && tgt->owner == 0 && !tgt->underConstruction
-        && canGarrisonIn(tgt->type) && sel->type != E_CATAPULT) {
+        && canGarrisonIn(tgt->type) && !isSiege(sel->type)) {
         orderGarrison(*sel, tgt->id); return;
     }
     if (tgt && tgt->alive && tgt->owner != 0 && visible) {
@@ -67,7 +67,7 @@ static void cmdAtTileGroup(int x, int y) {
         && !tgt->underConstruction && canGarrisonIn(tgt->type)) {
         for (int id : g.selectedIds) {
             Entity* u = findEntity(id);
-            if (u && u->alive && u->owner == 0 && isUnit(u->type) && u->type != E_CATAPULT)
+            if (u && u->alive && u->owner == 0 && isUnit(u->type) && !isSiege(u->type))
                 orderGarrison(*u, tgt->id);
         }
         setStatus("Garrisoning...");
@@ -216,10 +216,15 @@ void handleInput(int ch) {
         else if (sel->type == E_BARRACKS) {
             if (ch=='m'||ch=='M') tt = E_MILITIA;
             else if (ch=='a'||ch=='A') tt = E_ARCHER;
+            else if (ch=='s'||ch=='S') tt = E_SPEARMAN;
             else if (ch=='c'||ch=='C') tt = E_CATAPULT;
             else if (ch=='r'||ch=='R') tt = E_RAM;
         }
         else if (sel->type == E_STABLE) { if (ch=='k'||ch=='K') tt = E_KNIGHT; }
+        else if (sel->type == E_CASTLE) {
+            if (ch=='p'||ch=='P') tt = E_PEASANT;
+            else if (ch=='t'||ch=='T') tt = E_TREBUCHET;
+        }
         else if (sel->type == E_DOCK)   {
             if      (ch=='b'||ch=='B') tt = E_FISHING_BOAT;
             else if (ch=='w'||ch=='W') tt = E_WARSHIP;
@@ -232,6 +237,28 @@ void handleInput(int ch) {
             if (findEntity(g.selectedId)) g.mode = M_TRAIN_SELECT;
         }
         if (ch == 27) g.mode = M_NORMAL;
+        return;
+    }
+
+    // Market resource trade.
+    if (g.mode == M_MARKET_TRADE) {
+        if (ch == 27) { g.mode = M_NORMAL; return; }
+        Entity* market = findEntity(g.selectedId);
+        if (!market || market->type != E_MARKET || market->owner != 0 || market->underConstruction) {
+            g.mode = M_NORMAL; return;
+        }
+        Player& p = g.players[0];
+        auto trade = [&](int& from, int fromAmt, int& to, int toAmt, const char* msg) {
+            if (from < fromAmt) { setStatus("Not enough resources."); return; }
+            from -= fromAmt;
+            to += toAmt;
+            setStatus(msg);
+            g.mode = M_NORMAL;
+        };
+        if (ch == 'g' || ch == 'G') trade(p.gold, 40, p.wood, 30, "Traded gold for wood.");
+        else if (ch == 'w' || ch == 'W') trade(p.wood, 40, p.gold, 30, "Traded wood for gold.");
+        else if (ch == 'f' || ch == 'F') trade(p.gold, 50, p.food, 30, "Bought food.");
+        else if (ch == 'v' || ch == 'V') trade(p.food, 40, p.gold, 30, "Sold food.");
         return;
     }
 
@@ -393,6 +420,9 @@ void handleInput(int ch) {
         // ~75 sec at 80 ms tick = 940 ticks.
         if (ch == 'i' || ch == 'I') { startResearch(R_IRON_WEAPONS, 100, 100, 940, "Researching Iron Weapons..."); g.mode = M_NORMAL; }
         else if (ch == 'c' || ch == 'C') { startResearch(R_CROSSBOWS, 80, 80, 820, "Researching Crossbows..."); g.mode = M_NORMAL; }
+        else if (ch == 'p' || ch == 'P') { startResearch(R_PIKES, 100, 100, 900, "Researching Pikes..."); g.mode = M_NORMAL; }
+        else if (ch == 'w' || ch == 'W') { startResearch(R_COUNTERWEIGHT, 120, 150, 980, "Researching Counterweight..."); g.mode = M_NORMAL; }
+        else if (ch == 'h' || ch == 'H') { startResearch(R_PLATE_HELM, 120, 100, 980, "Researching Plate Helm..."); g.mode = M_NORMAL; }
         return;
     }
 
@@ -419,8 +449,22 @@ void handleInput(int ch) {
         break;
 
     case 'd': case 'D':
-        g.diagnostics = !g.diagnostics;
-        setStatus(g.diagnostics ? "Diagnostics on." : "Diagnostics off.");
+        {
+            Entity* sel = findEntity(g.selectedId);
+            if (sel && sel->alive && sel->owner == 0 && sel->type == E_TREBUCHET) {
+                if (sel->packTicks > 0) { setStatus("Trebuchet is already changing stance."); break; }
+                int ticks = (g.players[0].research & R_COUNTERWEIGHT) ? 25 : 40;
+                sel->packed = sel->packed ? 0 : 1;
+                sel->packTicks = ticks;
+                sel->state = S_IDLE;
+                sel->path.clear();
+                sel->pathIdx = 0;
+                setStatus(sel->packed ? "Packing trebuchet..." : "Deploying trebuchet...");
+            } else {
+                g.diagnostics = !g.diagnostics;
+                setStatus(g.diagnostics ? "Diagnostics on." : "Diagnostics off.");
+            }
+        }
         break;
 
     case 'v': case 'V':
@@ -433,6 +477,14 @@ void handleInput(int ch) {
         }
         break;
 
+    case KEY_F(5): case KEY_F(6): case KEY_F(7): case KEY_F(8): {
+        int slot = ch - KEY_F(5) + 1;
+        std::string path = "realm-slot" + std::to_string(slot) + ".sav";
+        if (saveGame(path)) setStatus("Saved to slot " + std::to_string(slot) + ".");
+        else setStatus("Save failed.");
+        break;
+    }
+
     case 'l': case 'L':
         if (loadGame("realm-save.txt")) {
             setStatus("Loaded realm-save.txt");
@@ -442,6 +494,14 @@ void handleInput(int ch) {
             std::cerr << "realm: load failed realm-save.txt\n";
         }
         break;
+
+    case KEY_F(9): case KEY_F(10): case KEY_F(11): case KEY_F(12): {
+        int slot = ch - KEY_F(9) + 1;
+        std::string path = "realm-slot" + std::to_string(slot) + ".sav";
+        if (loadGame(path)) setStatus("Loaded slot " + std::to_string(slot) + ".");
+        else setStatus("Load failed.");
+        break;
+    }
 
     case ' ': {
         Entity* ent = entityAtOwner(g.cursorX, g.cursorY, 0);
@@ -481,7 +541,7 @@ void handleInput(int ch) {
     case 't': case 'T': {
         Entity* sel = findEntity(g.selectedId);
         if (sel && sel->owner==0 && isBuilding(sel->type) && !sel->underConstruction) {
-            if (sel->type==E_TOWNHALL||sel->type==E_BARRACKS||sel->type==E_STABLE||sel->type==E_DOCK) {
+            if (sel->type==E_TOWNHALL||sel->type==E_BARRACKS||sel->type==E_STABLE||sel->type==E_DOCK||sel->type==E_CASTLE) {
                 g.mode = M_TRAIN_SELECT;
                 setStatus("Select unit to train...");
             } else setStatus("This building can't train.");
@@ -507,9 +567,12 @@ void handleInput(int ch) {
             setStatus("Select a production building first.");
             break;
         }
-        if (sel->type == E_BLACKSMITH) {
+        if (sel->type == E_MARKET) {
+            g.mode = M_MARKET_TRADE;
+            setStatus("Trade: [G] 40g->30w  [W] 40w->30g  [F] 50g->30f  [V] 40f->30g");
+        } else if (sel->type == E_BLACKSMITH) {
             g.mode = M_RESEARCH_SELECT;
-            setStatus("Research: [I]ron Weapons 100g/100w  [C]rossbows 80g/80w  [Esc]");
+            setStatus("Research: [I]ron [C]rossbows [P]ikes [W]eight [H]elm  [Esc]");
         } else if (sel->type == E_TOWNHALL || sel->type == E_CASTLE
                 || sel->type == E_BARRACKS || sel->type == E_STABLE || sel->type == E_DOCK) {
             g.mode = M_RALLY_SET;

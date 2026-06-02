@@ -8,7 +8,9 @@ const EntityStats STATS[] = {
     {"Militia",    'm',  70, 8,1,3,6, 60,  0, 50, 1,1,  0,1, false, TR_MILITARY|TR_INFANTRY},
     {"Archer",     'a',  45, 6,5,3,7, 70,  0, 60, 1,1,  0,1, false, TR_MILITARY|TR_INFANTRY|TR_RANGED},
     {"Knight",     'k', 110,14,1,1,5,120,  0, 80, 1,1,  0,2, false, TR_MILITARY},
+    {"Spearman",   's',  55, 5,1,3,6, 40,  0, 55, 1,1,  0,1, false, TR_MILITARY|TR_INFANTRY},
     {"Catapult",   'c',  70,25,8,8,12,150, 40, 90, 1,1,  0,3, false, TR_MILITARY|TR_RANGED|TR_SIEGE},
+    {"Trebuchet",  'q',  90,35,12,8,18,200,250,140, 1,1, 0,4, false, TR_MILITARY|TR_RANGED|TR_SIEGE},
     {"Fishing Boat",'b', 40, 0,0,5, 0, 80, 50, 60, 1,1,  0,1, false, TR_GATHERER|TR_NAVAL},
     {"Warship",    'V',  70, 9,5,4, 7,150, 80,100, 1,1,  0,3, false, TR_MILITARY|TR_RANGED|TR_NAVAL},
     {"Transport",  'F',  80, 0,0,5, 0, 80, 40, 70, 1,1,  0,2, false, TR_NAVAL|TR_GARRISON},
@@ -32,5 +34,5 @@ const EntityStats STATS[] = {
     {"Deer",       'd',  20, 0,0,2,0,  0,  0,  0, 1,1,  0,0, false, TR_WILD_ANIMAL},
     {"Wolf",       'w',  35, 4,1,2,8,  0,  0,  0, 1,1,  0,0, false, TR_WILD_ANIMAL|TR_HOSTILE_WILDLIFE},
     {"Sheep",      's',  12, 0,0,3,0,  0,  0,  0, 1,1,  0,0, false, TR_WILD_ANIMAL},
-    {"Boar",       'o',  40, 6,1,2,6,  0,  0,  0, 1,1,  0,0, false, TR_WILD_ANIMAL|TR_HOSTILE_WILDLIFE},
+    {"Boar",       'o',  25, 3,1,2,6,  0,  0,  0, 1,1,  0,0, false, TR_WILD_ANIMAL|TR_HOSTILE_WILDLIFE},
 };

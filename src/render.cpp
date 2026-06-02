@@ -147,6 +147,10 @@ void initColors() {
     // solid hulls instead of single floating characters on open water.
     init_pair(CP_SHIP_PLAYER,    C::PLAYER_CYAN,  C::BROWN);
     init_pair(CP_SHIP_ENEMY,     C::ENEMY_RED,    C::BROWN);
+    init_pair(CP_SHIP_P0,        C::PLAYER_CYAN,  C::BROWN);
+    init_pair(CP_SHIP_P1,        C::ENEMY_RED,    C::BROWN);
+    init_pair(CP_SHIP_P2,        C::BRIGHT_GOLD,  C::BROWN);
+    init_pair(CP_SHIP_P3,        C::LAVENDER,     C::BROWN);
 
     init_pair(CP_PROJ_ARROW,     C::BRIGHT_GOLD,  bg);
     init_pair(CP_PROJ_BOULDER,   C::BRIGHT_GRAY,  bg);
@@ -529,12 +533,13 @@ void renderMap() {
             if (displayMode == DM_ASCII && !ent && inBounds(mx-1, my)) {
                 Entity* leftEnt = entityAt(mx-1, my);
                 if (leftEnt && leftEnt->alive && !leftEnt->underConstruction
-                    && (leftEnt->type == E_CATAPULT || leftEnt->type == E_RAM)) {
+                    && (leftEnt->type == E_CATAPULT || leftEnt->type == E_RAM
+                        || (leftEnt->type == E_TREBUCHET && leftEnt->packed == 0 && leftEnt->packTicks == 0))) {
                     bool inCropLeft = g.map[my][mx-1].terrain == T_WHEAT;
                     bool leftCloaked = leftEnt->owner != 0 && leftEnt->owner < MAX_PLAYERS
                         && (isConcealing() || inCropLeft) && !isDetectedBy(mx-1, my, 0);
                     if (!leftCloaked) {
-                        char sc = (leftEnt->type == E_CATAPULT) ? 'c' : 'r';
+                        char sc = (leftEnt->type == E_CATAPULT) ? 'c' : (leftEnt->type == E_TREBUCHET ? 'q' : 'r');
                         bool bodyIsSel = leftEnt->id == g.selectedId;
                         if (!bodyIsSel)
                             for (int sid : g.selectedIds) if (sid == leftEnt->id) { bodyIsSel = true; break; }
@@ -558,7 +563,7 @@ void renderMap() {
             int stackedMil = 0;
             if (ent && ent->alive && !isBuilding(ent->type)) {
                 auto isMil = [](EntityType t) {
-                    return t==E_MILITIA||t==E_ARCHER||t==E_KNIGHT||t==E_CATAPULT
+                    return t==E_MILITIA||t==E_ARCHER||t==E_KNIGHT||t==E_SPEARMAN||t==E_CATAPULT||t==E_TREBUCHET
                         || t==E_WARSHIP;
                 };
                 int prio = isMil(ent->type) ? 1 : 0;
@@ -603,8 +608,15 @@ void renderMap() {
                     cp = ownerColorPair(ent->owner, night);
                 }
                 // Ships override — wood-deck background preserved on water.
-                if (isNaval(ent->type))
-                    cp = (ent->owner == 0) ? CP_SHIP_PLAYER : CP_SHIP_ENEMY;
+                if (isNaval(ent->type)) {
+                    switch (ent->owner) {
+                        case 0: cp = CP_SHIP_P0; break;
+                        case 1: cp = CP_SHIP_P1; break;
+                        case 2: cp = CP_SHIP_P2; break;
+                        case 3: cp = CP_SHIP_P3; break;
+                        default: cp = CP_SHIP_ENEMY; break;
+                    }
+                }
 
                 // State-specific glyph overrides (gate, construction, siege engines, alert).
                 if (ent->type == E_GATE && !ent->underConstruction) {
@@ -634,9 +646,15 @@ void renderMap() {
                 // Siege engine arm animations.
                 // Catapult: arm at rest = ◄ (loaded), arm firing = ╱ (swinging).
                 if (ent->type == E_CATAPULT) {
-                    bool firing = ent->state==S_ATTACKING && ent->atkCd > STATS[E_CATAPULT].atkSpeed*2/3;
+                    bool firing = ent->state==S_ATTACKING && ent->atkCd > STATS[E_CATAPULT].atkSpeed - 3;
                     ch = firing ? '/' : '-'; drawCh = (chtype)ch;
                     emojiStr = firing ? "\xe2\x95\xb1" : "\xe2\x97\x84"; // ╱ : ◄
+                }
+                if (ent->type == E_TREBUCHET) {
+                    bool firing = ent->state==S_ATTACKING && ent->atkCd > STATS[E_TREBUCHET].atkSpeed - 5;
+                    ch = ent->packed ? 'q' : (firing ? '/' : 'L');
+                    drawCh = (chtype)ch;
+                    emojiStr = ent->packed ? "q" : (firing ? "\xe2\x95\xb1" : "L");
                 }
                 // Ram: approaching = ► (pointer), ramming = ▶ (larger triangle, impact).
                 if (ent->type == E_RAM) {
@@ -914,13 +932,14 @@ void renderUI() {
 
     if (g.selectedIds.size() > 1) {
         // Multi-unit group summary
-        int counts[6] = {0};
+        int counts[8] = {0};
         for (int sid : g.selectedIds) {
             Entity* e = findEntity(sid); if (!e || !e->alive) continue;
             switch (e->type) {
             case E_PEASANT:  counts[0]++; break; case E_MILITIA:  counts[1]++; break;
             case E_ARCHER:   counts[2]++; break; case E_KNIGHT:   counts[3]++; break;
-            case E_CATAPULT: counts[4]++; break; default: counts[5]++; break;
+            case E_SPEARMAN: counts[4]++; break; case E_CATAPULT: counts[5]++; break;
+            case E_TREBUCHET: counts[6]++; break; default: counts[7]++; break;
             }
         }
         attron(COLOR_PAIR(CP_OWN_P0)|A_BOLD);
@@ -932,8 +951,10 @@ void renderUI() {
         if (counts[1]) mvprintw(iy++, panelX+1, "  %s x%d Militia",  getEntityEmoji(E_MILITIA),  counts[1]);
         if (counts[2]) mvprintw(iy++, panelX+1, "  %s x%d Archer",   getEntityEmoji(E_ARCHER),   counts[2]);
         if (counts[3]) mvprintw(iy++, panelX+1, "  %s x%d Knight",   getEntityEmoji(E_KNIGHT),   counts[3]);
-        if (counts[4]) mvprintw(iy++, panelX+1, "  %s x%d Catapult", getEntityEmoji(E_CATAPULT), counts[4]);
-        if (counts[5]) mvprintw(iy++, panelX+1, "  + x%d Other",    counts[5]);
+        if (counts[4]) mvprintw(iy++, panelX+1, "  %s x%d Spearman", getEntityEmoji(E_SPEARMAN), counts[4]);
+        if (counts[5]) mvprintw(iy++, panelX+1, "  %s x%d Catapult", getEntityEmoji(E_CATAPULT), counts[5]);
+        if (counts[6]) mvprintw(iy++, panelX+1, "  %s x%d Trebuchet", getEntityEmoji(E_TREBUCHET), counts[6]);
+        if (counts[7]) mvprintw(iy++, panelX+1, "  + x%d Other",    counts[7]);
         attroff(COLOR_PAIR(CP_UI_TEXT));
         iy++;
         attron(COLOR_PAIR(CP_UI_ACCENT));
@@ -1032,7 +1053,10 @@ void renderUI() {
                 iy++;
                 int pp = sel->researchProgress * 100 / std::max(1, sel->researchTime);
                 const char* rn = (sel->researching == R_IRON_WEAPONS) ? "Iron Weapons" :
-                                 (sel->researching == R_CROSSBOWS)   ? "Crossbows"    : "Research";
+                                 (sel->researching == R_CROSSBOWS)   ? "Crossbows"    :
+                                 (sel->researching == R_PIKES)       ? "Pikes"        :
+                                 (sel->researching == R_COUNTERWEIGHT) ? "Counterweight" :
+                                 (sel->researching == R_PLATE_HELM)  ? "Plate Helm"   : "Research";
                 attron(COLOR_PAIR(CP_UI_HIGH)); mvprintw(iy++, panelX+1, "Researching: %s", rn);
                 int pb = panelW-4, pf = pp*pb/100;
                 for (int i = 0; i < pb; i++) { int c=(i<pf)?CP_UI_HIGH:CP_FOG; attron(COLOR_PAIR(c)); mvaddch(iy, panelX+1+i, (i<pf)?'=':'-'); attroff(COLOR_PAIR(c)); }
@@ -1049,11 +1073,12 @@ void renderUI() {
                 if (sel->type == E_PEASANT) { mvprintw(iy++, panelX+1, "[B] Build"); mvprintw(iy++, panelX+1, "[Enter] Move/Gather"); }
                 else if (isUnit(sel->type)) mvprintw(iy++, panelX+1, "[Enter] Move/Attack");
                 else if (isBuilding(sel->type) && !sel->underConstruction) {
-                    if (sel->type==E_TOWNHALL||sel->type==E_BARRACKS||sel->type==E_STABLE||sel->type==E_DOCK) mvprintw(iy++, panelX+1, "[T] Train");
+                    if (sel->type==E_TOWNHALL||sel->type==E_BARRACKS||sel->type==E_STABLE||sel->type==E_DOCK||sel->type==E_CASTLE) mvprintw(iy++, panelX+1, "[T] Train");
                     if (sel->type==E_DOCK)        mvprintw(iy++, panelX+1, "Fish drop-off");
                     if (sel->type==E_BLACKSMITH) mvprintw(iy++, panelX+1, "Speeds training");
                     if (sel->type==E_CHURCH)     mvprintw(iy++, panelX+1, "Heals nearby +Vision");
-                    if (sel->type==E_MARKET)     mvprintw(iy++, panelX+1, "Passive gold income");
+                    if (sel->type==E_MARKET)     { mvprintw(iy++, panelX+1, "Passive gold income");
+                                                     mvprintw(iy++, panelX+1, "[R] Trade"); }
                     if (sel->type==E_FARM)        { mvprintw(iy++, panelX+1, "Generates food");
                                                      mvprintw(iy++, panelX+1, "Assign peasant to tend");
                                                      mvprintw(iy++, panelX+1, "Ripe: %d / 20", sel->storedFood); }
@@ -1067,7 +1092,8 @@ void renderUI() {
                         mvprintw(iy++, panelX+1, sel->gateLocked ? "Mode: Locked" : "Mode: Auto");
                         mvprintw(iy++, panelX+1, "[O] Toggle/Lock");
                     }
-                    if (sel->type==E_CASTLE)     mvprintw(iy++, panelX+1, "+15 Supply, 350 HP");
+                    if (sel->type==E_CASTLE)     { mvprintw(iy++, panelX+1, "+15 Supply, 350 HP");
+                                                     mvprintw(iy++, panelX+1, "[T] Peasants/Trebuchets"); }
                     if (canGarrisonIn(sel->type)) {
                         mvprintw(iy++, panelX+1, "Garrison: %d/%d",
                                  (int)sel->garrison.size(), garrisonCap(sel->type));
@@ -1155,10 +1181,13 @@ void renderUI() {
         Entity* s2 = findEntity(g.selectedId);
         if (s2) {
             if (s2->type==E_TOWNHALL)  mvprintw(botY2, 1, " TRAIN: [P]easant(50g), repeat keys to queue [Esc] ");
-            else if (s2->type==E_BARRACKS) mvprintw(botY2, 1, " TRAIN: [M]ilitia [A]rcher [C]atapult [R]am, repeat keys to queue [Esc] ");
+            else if (s2->type==E_BARRACKS) mvprintw(botY2, 1, " TRAIN: [M]ilitia [A]rcher [S]pearman [C]atapult [R]am, repeat keys to queue [Esc] ");
             else if (s2->type==E_STABLE)   mvprintw(botY2, 1, " TRAIN: [K]night, repeat keys to queue [Esc] ");
             else if (s2->type==E_DOCK)     mvprintw(botY2, 1, " TRAIN: [B]oat [W]arship [T]ransport, repeat keys to queue [Esc] ");
+            else if (s2->type==E_CASTLE)   mvprintw(botY2, 1, " TRAIN: [P]easant [T]rebuchet, repeat keys to queue [Esc] ");
         }
+    } else if (g.mode == M_MARKET_TRADE) {
+        mvprintw(botY2, 1, " TRADE: [G]40g->30w [W]40w->30g [F]50g->30f [V]40f->30g [Esc] ");
     } else if (g.mode == M_WALL_DRAG) {
         if (g.dragging)
             mvprintw(botY2, 1, " WALL: Drag to cursor position — release to place  [Esc] Cancel ");

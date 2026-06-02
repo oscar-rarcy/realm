@@ -40,8 +40,12 @@ static const char* ENTITY_EMOJI[] = {
     "\xe2\x99\x97",   // ♝ U+2657
     // E_KNIGHT    — heavy cavalry: black chess knight
     "\xe2\x99\x9e",   // ♞ U+265E
+    // E_SPEARMAN  — infantry counter: white up-pointing triangle
+    "\xe2\x96\xb3",   // △ U+25B3
     // E_CATAPULT  — body glyph (arm chars handled separately in render)
     "\xe2\x8a\x99",   // ⊙ U+2299  CIRCLED DOT OPERATOR = catapult wheel
+    // E_TREBUCHET — heavier siege arm
+    "\xe2\x8c\x90",   // ⌐ U+2310
     // E_FISHING_BOAT — hull shape: union ∪
     "\xe2\x88\xaa",   // ∪ U+222A
     // E_WARSHIP   — solid prow: black down-pointing triangle
@@ -91,7 +95,7 @@ static const char* ENTITY_EMOJI[] = {
     // E_BOAR      — heavy beast: black circle (solid, heavy)
     "\xe2\x97\x8f",   // ● U+25CF
 };
-static_assert(sizeof(ENTITY_EMOJI)/sizeof(ENTITY_EMOJI[0]) == 30,
+static_assert(sizeof(ENTITY_EMOJI)/sizeof(ENTITY_EMOJI[0]) == 32,
     "ENTITY_EMOJI must have an entry for every EntityType (0..E_BOAR)");
 
 // ============================================================

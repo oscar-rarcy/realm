@@ -191,8 +191,12 @@ static void testTraits() {
     assert(canBuild(E_PEASANT));
     assert(isMilitary(E_MILITIA));
     assert(isMilitary(E_ARCHER));
+    assert(isMilitary(E_SPEARMAN));
+    assert(isMilitary(E_TREBUCHET));
     assert(isRanged(E_ARCHER));
+    assert(isRanged(E_TREBUCHET));
     assert(isSiege(E_CATAPULT));
+    assert(isSiege(E_TREBUCHET));
     assert(isNaval(E_WARSHIP));
     assert(isHostileWildlife(E_WOLF));
     assert(isHostileWildlife(E_BOAR));
@@ -656,24 +660,27 @@ static void testMapgenReachabilityAcrossSeeds() {
 }
 
 static void testStartSafetyAcrossSeeds() {
-    const int starts[4][2] = {
-        {5, 5}, {MAP_W - 9, 5}, {5, MAP_H - 9}, {MAP_W - 9, MAP_H - 9}
-    };
     for (unsigned seed = 1; seed <= 60; seed++) {
         initGameWithSeed(3, seed, (int)(seed % 4));
+        std::map<int, std::pair<int,int>> bases;
+        for (const auto& e : g.entities) {
+            if (e.alive && e.type == E_TOWNHALL && e.owner >= 0 && e.owner < MAX_PLAYERS)
+                bases[e.owner] = {e.x, e.y};
+        }
+        assert(bases.size() == 4);
         for (const auto& e : g.entities) {
             if (!e.alive) continue;
-            for (auto& st : starts) {
+            for (auto& kv : bases) {
+                auto& st = kv.second;
                 if (e.type == E_DEER)
-                    assert(dist(e.x, e.y, st[0] + 1, st[1] + 1) > 14);
+                    assert(!(std::abs(e.x - st.first) <= 10 && std::abs(e.y - st.second) <= 10));
                 if (isHostileWildlife(e.type))
-                    assert(dist(e.x, e.y, st[0] + 1, st[1] + 1) > 16);
+                    assert(!(std::abs(e.x - st.first) <= 16 && std::abs(e.y - st.second) <= 16));
             }
             if (e.owner > 0 && e.owner < MAX_PLAYERS) {
-                bool nearAStart = false;
-                for (auto& st : starts)
-                    if (dist(e.x, e.y, st[0] + 1, st[1] + 1) <= 8) nearAStart = true;
-                assert(nearAStart);
+                auto it = bases.find(e.owner);
+                assert(it != bases.end());
+                assert(dist(e.x, e.y, it->second.first + 1, it->second.second + 1) <= 8);
             }
         }
     }

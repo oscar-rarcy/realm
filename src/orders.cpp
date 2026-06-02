@@ -1,6 +1,10 @@
 #include "realm.h"
 
 void orderMove(Entity& e, int tx, int ty) {
+    if (e.type == E_TREBUCHET && e.packed == 0) {
+        if (e.owner == 0) setStatus("Pack the trebuchet first [D].");
+        return;
+    }
     e.state = S_MOVING; e.targetX = tx; e.targetY = ty; e.targetId = -1;
     e.stuckTicks = 0;
     e.attackMove = 0; e.holdPosition = 0;
@@ -22,6 +26,11 @@ void orderAttack(Entity& e, int tid) {
     Entity* t = findEntity(tid);
     if (!t) return;
     if (e.type == E_RAM && !isBuilding(t->type)) return; // rams demolish buildings only
+    if (e.type == E_TREBUCHET && e.packed == 1) {
+        if (e.owner == 0) setStatus("Deploy the trebuchet first [D].");
+        return;
+    }
+    if (e.type == E_TREBUCHET && e.packTicks > 0) return;
     e.holdPosition = 0;
     e.state = S_ATTACKING; e.targetId = tid;
     if (e.owner == 0) addActionMarker(t->x, t->y, '!');
@@ -113,6 +122,13 @@ void orderBuild(Entity& e, EntityType bt, int bx, int by) {
 
 void orderTrain(Entity& bld, EntityType ut) {
     if (!isBuilding(bld.type) || bld.underConstruction) return;
+    bool allowed = false;
+    if (bld.type == E_TOWNHALL) allowed = (ut == E_PEASANT);
+    else if (bld.type == E_BARRACKS) allowed = (ut == E_MILITIA || ut == E_ARCHER || ut == E_SPEARMAN || ut == E_CATAPULT || ut == E_RAM);
+    else if (bld.type == E_STABLE) allowed = (ut == E_KNIGHT);
+    else if (bld.type == E_CASTLE) allowed = (ut == E_PEASANT || ut == E_TREBUCHET);
+    else if (bld.type == E_DOCK) allowed = (ut == E_FISHING_BOAT || ut == E_WARSHIP || ut == E_TRANSPORT);
+    if (!allowed) return;
     // Queue if busy; reject only when queue is full.
     if (bld.producing != E_NONE && (int)bld.queue.size() >= 5) {
         if (bld.owner==0) setStatus("Queue full!");
@@ -128,9 +144,10 @@ void orderTrain(Entity& bld, EntityType ut) {
         return;
     }
     int foodCost = 0;
-    if (ut==E_MILITIA||ut==E_ARCHER) foodCost = 20;
+    if (ut==E_MILITIA||ut==E_ARCHER||ut==E_SPEARMAN) foodCost = 20;
     else if (ut==E_KNIGHT) foodCost = 40;
     else if (ut==E_CATAPULT) foodCost = 30;
+    else if (ut==E_TREBUCHET) foodCost = 30;
     else if (ut==E_WARSHIP)  foodCost = 20;
     else if (ut==E_TRANSPORT) foodCost = 10;
     if (p.food < foodCost) { if (bld.owner==0) setStatus("Need more food!"); return; }
@@ -149,9 +166,11 @@ static int rolePriority(EntityType t) {
     switch (t) {
         case E_KNIGHT:   return 0;
         case E_MILITIA:  return 1;
+        case E_SPEARMAN: return 1;
         case E_PEASANT:  return 2;
         case E_ARCHER:   return 3;
         case E_CATAPULT: return 4;
+        case E_TREBUCHET:return 4;
         default:         return 5;
     }
 }
