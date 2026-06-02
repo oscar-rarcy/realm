@@ -356,6 +356,7 @@ struct Game {
     int selectedId;
     std::vector<int> selectedIds;
     std::vector<int> controlGroups[9];
+    std::vector<int> controlGroupsByOwner[MAX_PLAYERS][9]; // runtime-only slots for non-local issuers
     bool groupAssignPending;
     std::string statusMsg; int statusTimer;
     EntityType buildPending;
@@ -384,6 +385,14 @@ extern Game g;
 // ============================================================
 
 // map generation
+struct MapGenerationConfig {
+    int biomeChoice = -1;
+};
+struct WorldIndex;
+MapGenerationConfig currentMapGenerationConfig();
+MapGenerationConfig currentMapGenerationConfig(const Game& game);
+void generateMap(Game& game,const MapGenerationConfig& config);
+void generateMap(const MapGenerationConfig& config);
 void generateMap();
 void clearStartArea(int cx,int cy,int radius);
 void placeGoldCluster(int cx,int cy,int count);
@@ -402,17 +411,25 @@ void snapshotPreWinterTerrain();
 
 // time
 float       getBrightness();
+float       getBrightness(const Game& game);
 Season      getSeason();
+Season      getSeason(const Game& game);
 float       getSeasonProgress();
+float       getSeasonProgress(const Game& game);
 const char* getSeasonName();
 const char* getTimeName();
 bool        isNight();
+bool        isNight(const Game& game);
 bool        isDusk();
+bool        isDusk(const Game& game);
 bool        isDawn();
+bool        isDawn(const Game& game);
 
 // core helpers
 void    realmSrand(unsigned seed);
+void    realmSrand(Game& game,unsigned seed);
 int     realmRand();
+int     realmRand(Game& game);
 int     dist(int x1,int y1,int x2,int y2);
 int     mdist(int x1,int y1,int x2,int y2);
 bool    inBounds(int x,int y);
@@ -434,6 +451,7 @@ VisualTileParts visualPartsForTerrain(Terrain terrain,Biome biome,int resources,
 uint32_t featureTraits(FeatureType feature);
 bool    featureConceals(FeatureType feature);
 bool    isConcealingTile(int x,int y);
+bool    isConcealingTile(const Game& game,int x,int y);
 int     movementPenaltyForTile(const Tile& tile);
 BuildingVisualState buildingVisualState(const Entity& e);
 AnimalCarcassVisualState animalCarcassVisualState(const Entity& e);
@@ -443,83 +461,152 @@ const char* animalCarcassVisualStateName(AnimalCarcassVisualState s);
 const char* transportVisualStateName(TransportVisualState s);
 const CommandBinding* gameplayCommands(int& count);
 std::string commandHelpLine();
+enum class ValidationSeverity { Recoverable, Error };
+struct ValidationIssue {
+    ValidationSeverity severity;
+    std::string code;
+    std::string message;
+    int entityId = -1;
+    MapPos tile{ -1, -1 };
+};
+struct RecoveryResult {
+    bool recovered = false;
+    int issuesProcessed = 0;
+    std::vector<ValidationIssue> remainingIssues;
+};
+std::vector<ValidationIssue> validateGameStateIssues();
+std::vector<ValidationIssue> validateGameStateIssues(const Game& game);
+RecoveryResult recoverGameState(Game& game,const std::vector<ValidationIssue>& issues);
 bool    validateGameState(std::string* error=nullptr);
+bool    validateMapInvariants(const Game& game,std::string* error=nullptr);
 bool    isPassable(int x,int y);
+bool    isPassable(const Game& game,int x,int y);
 bool    isPassableWater(int x,int y);
+bool    isPassableWater(const Game& game,int x,int y);
 bool    isDetectedBy(int x,int y,int observerOwner);
+bool    isDetectedBy(const Game& game,int x,int y,int observerOwner);
 bool    isConcealing();
+bool    isConcealing(const Game& game);
 void    setStatus(const std::string& msg);
 void    addActionMarker(int x,int y,char glyph);
 void    addPlayerFood(int owner,int amount,Entity* depot);
+void    addPlayerFood(Game& game,int owner,int amount,Entity* depot);
 void    spendPlayerFood(int owner,int amount);
+void    spendPlayerFood(Game& game,int owner,int amount);
 Entity* findEntity(int id);
+Entity* findEntity(Game& game,const WorldIndex& world,int id);
 Entity* findDepot(Entity& e);
+Entity* findDepot(Game& game,const WorldIndex& world,Entity& e);
 Entity* entityAt(int x,int y);
+Entity* entityAt(Game& game,const WorldIndex& world,int x,int y);
 Entity* entityAtOwner(int x,int y,int owner);
+Entity* entityAtOwner(Game& game,const WorldIndex& world,int x,int y,int owner);
 Entity* corpseAt(int x,int y);
+Entity* corpseAt(Game& game,const WorldIndex& world,int x,int y);
 bool    isHarvestableCarcass(const Entity& e);
 void    buildOccupancyGrid(OccupancyGrid& grid,bool includeUnits,bool includeBuildings,int ignoreEntityId=-1);
+void    buildOccupancyGrid(const Game& game,OccupancyGrid& grid,bool includeUnits,bool includeBuildings,int ignoreEntityId=-1);
 bool    isOccupied(const OccupancyGrid& grid,int x,int y);
 bool    canPlace(EntityType type,int x,int y,int owner);
+bool    canPlace(const Game& game,const WorldIndex& world,EntityType type,int x,int y,int owner);
 void    updateSupply(int owner);
+void    updateSupply(Game& game,int owner);
 int     reservedSupply(int owner);
+int     reservedSupply(const Game& game,int owner);
 int     spawnEntity(EntityType type,int owner,int x,int y,bool built=true);
+int     spawnEntity(Game& game,EntityType type,int owner,int x,int y,bool built=true);
 
 // projectiles / pathfinding
 void spawnProjectile(int sx,int sy,int tx,int ty,char gl,int col);
+void spawnProjectile(Game& game,int sx,int sy,int tx,int ty,char gl,int col);
 void tickProjectiles();
+void tickProjectiles(Game& game);
 std::vector<std::pair<int,int>> findPath(int sx,int sy,int tx,int ty,int maxSteps=300,bool naval=false);
+std::vector<std::pair<int,int>> findPath(const Game& game,int sx,int sy,int tx,int ty,int maxSteps=300,bool naval=false);
 std::vector<std::pair<int,int>> findPathFor(Entity& e,int tx,int ty);
+std::vector<std::pair<int,int>> findPathFor(const Game& game,Entity& e,int tx,int ty);
 
 // orders
 Entity* findNearestEnemy(Entity& e,int range);
+Entity* findNearestEnemy(Game& game,Entity& e,int range);
 int unitAtk(const Entity& e);
+int unitAtk(const Game& game,const Entity& e);
 int unitRange(const Entity& e);
+int unitRange(const Game& game,const Entity& e);
 int damageVs(EntityType attacker,EntityType target,int rawDmg,int targetOwner=-1);
+int damageVs(const Game& game,EntityType attacker,EntityType target,int rawDmg,int targetOwner=-1);
 void killEntity(Entity& target);
+void killEntity(Game& game,Entity& target);
 void orderMove(Entity& e,int tx,int ty);
+void orderMove(Game& game,Entity& e,int tx,int ty);
 void orderAttack(Entity& e,int tid);
+void orderAttack(Game& game,const WorldIndex& world,Entity& e,int tid);
 void orderGather(Entity& e,int tx,int ty);
+void orderGather(Game& game,const WorldIndex& world,Entity& e,int tx,int ty);
+void orderGarrison(Game& game,const WorldIndex& world,Entity& e,int buildingId);
 void orderBuild(Entity& e,EntityType bt,int bx,int by);
 void orderBuildLine(Entity& e,EntityType bt,int x0,int y0,int x1,int y1);
 void orderTrain(Entity& bld,EntityType ut);
 struct Selection;
-void orderGroupMove(const Selection& selection,int tx,int ty);
-void orderGroupAttack(const Selection& selection,int tid);
-void orderGroupAttackMove(const Selection& selection,int tx,int ty);
+void orderGroupMove(const Selection& selection,int tx,int ty,int owner=0);
+void orderGroupAttack(const Selection& selection,int tid,int owner=0);
+void orderGroupAttackMove(const Selection& selection,int tx,int ty,int owner=0);
 void orderHelp(Entity& e,int buildingId);
+void orderHelp(Game& game,const WorldIndex& world,Entity& e,int buildingId);
 void orderGarrison(Entity& e,int buildingId);
 void moveAlongPath(Entity& e);
+void moveAlongPath(Game& game,Entity& e);
 bool findNearbyResource(Entity& e);
+bool findNearbyResource(Game& game,Entity& e);
 
 // garrison
 bool canGarrisonIn(EntityType bt);
 int  garrisonCap(EntityType bt);
 void ejectGarrison(Entity& bld);
+void ejectGarrison(Game& game,Entity& bld);
 
 // state management
 void resetDetectMapCache();
 
 // tick / game logic
 void tickEntity(Entity& e);
+void tickEntity(Game& game,Entity& e);
 void tickProduction(Entity& e);
+void tickProduction(Game& game,Entity& e);
 void tickResearch(Entity& e);
+void tickResearch(Game& game,Entity& e);
 void tickTowers();
+void tickTowers(Game& game);
 void tickGates();
+void tickGates(Game& game);
 void tickFarms();
+void tickFarms(Game& game);
 void tickMarkets();
+void tickMarkets(Game& game);
 void tickChurches();
+void tickChurches(Game& game);
 void tickAnimals();
+void tickAnimals(Game& game);
 void tickSeasons();
+void tickSeasons(Game& game);
 void tickThaw();
+void tickThaw(Game& game);
 void tickWinter();
+void tickWinter(Game& game);
 void tickPaving();
+void tickPaving(Game& game);
 void tickWeather();
+void tickWeather(Game& game);
 void checkWin();
+void checkWin(Game& game);
 void updateFog();
+void updateFog(Game& game);
 void tickActionMarkers();
+void tickActionMarkers(Game& game);
 bool saveGame(const std::string& path);
+bool saveGame(Game& game,const std::string& path);
 bool loadGame(const std::string& path);
+bool loadGame(Game& game,const std::string& path);
 int  dumpMissingTilesetAssets();
 
 // AI
@@ -550,4 +637,6 @@ unsigned envUnsigned(const char* name,unsigned fallback);
 // game initialization
 void initGame(int numAIs);
 void initGameWithSeed(int numAIs,unsigned seed,int humanCorner);
+void initGameWithSeed(int numAIs,unsigned seed,int humanCorner,const MapGenerationConfig& mapConfig);
 void tickSimulationOnce();
+void tickSimulationOnce(Game& game);

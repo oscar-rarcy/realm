@@ -12,8 +12,8 @@
       "range": 0,
       "speed": 0,
       "attack_speed_ticks": 0,
-      "cost_gold": 0,
-      "cost_wood": 50,
+      "cost_gold": 50,
+      "cost_wood": 0,
       "train_time_ticks": 60,
       "supply_provided": 5,
       "supply_used": 0,
@@ -37,6 +37,16 @@
       "small pennant",
       "door cloth"
     ],
+    "recommended_player_colour": {
+      "name": "blue",
+      "hex": "#00AFFF"
+    },
+    "player_sigil": null,
+    "operated_by_person": false,
+    "operator_contract": "",
+    "ammunition": [],
+    "research_visual_lines": [],
+    "research_visual_variants": [],
     "visual_design": "Thatch/wood cottage, chimney, small fenced yard",
     "source_role": "supply +5, garrison 4, defensive if garrisoned"
   },
@@ -78,7 +88,7 @@
   },
   "sources": [
     "include/realm.h",
-    "src/globals.cpp",
+    "src/core/entity_defs.cpp",
     "docs/tileset/realm_tileset_visual_audit.md"
   ]
 }

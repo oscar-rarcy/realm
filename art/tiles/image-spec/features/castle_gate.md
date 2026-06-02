@@ -10,7 +10,6 @@ Generate Realm image sheets for **castle gate feature**.
 - Projection: transparent upright sprite anchored over a projected isometric map tile
 - Footprint: 1 by 1 tile
 - Directions: tile
-- Team colour required: no
 - Default state: `closed`
 
 ## Image Output Contract
@@ -21,7 +20,6 @@ Generate Realm image sheets for **castle gate feature**.
 - Gutters: keep clear separation between cells so each slot can be cropped or regenerated independently.
 - Consistency: keep the same asset identity, palette, lighting direction, scale, and outline weight across every slot in the file.
 - Margins: leave enough padding that no silhouette, weapon, tool, projectile, shadow, crop, corpse, decal, or effect touches a cell edge.
-- Team colour: Do not use team colour markers.
 - Negative prompt: no text, labels, numbers, arrows, UI chrome, watermarks, signatures, photo texture, heavy blur, cropped silhouettes, or extra unlisted states.
 
 ## States Or Variants To Generate
@@ -34,7 +32,7 @@ Use a small contact shadow only where it helps anchor the sprite to the tile.
 Use the same camera height and isometric lighting as unit and building sprites, not a flat icon view.
 Keep the bottom anchor stable: depletion, snow, rain, damage, or trample states should not shift the object across the tile.
 
-### Sheet 1 of 1
+### Sheet
 
 Use a **3 by 3** grid for this sheet.
 
@@ -57,10 +55,10 @@ Use a **3 by 3** grid for this sheet.
 
 ## Prompt
 
-Generate Realm castle gate feature image sheets. Use transparent-background anchored sprites with no full ground tile, consistent anchor position, and readable silhouette. Team colour is not required. Create one sprite for each listed state or variant. The default state is closed. If there are more than 16 items, split them across multiple images, each image using a 4 by 4 grid. Order items left to right and top to bottom within each sheet. Use clean readable small-RTS art, stable scale, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork. Use transparent background, or a single flat #ff00ff magenta background if transparency is not available.
+Generate Realm castle gate feature image sheets. Use transparent-background anchored sprites with no full ground tile, consistent anchor position, and readable silhouette. Create one sprite for each of the 9 listed states or variants. The default state is closed.  Order items left to right and top to bottom within each sheet. Use clean readable small-RTS art, stable scale, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork. Use transparent background, or a single flat #ff00ff magenta background if transparency is not available.
 
 Slot order:
-- Sheet 1 of 1: 3 by 3 grid
+- Grid: 3 by 3
   - row 1, column 1: closed castle gate, clearly blocking
   - row 1, column 2: open castle gate, clearly passable
   - row 1, column 3: locked or barred castle gate

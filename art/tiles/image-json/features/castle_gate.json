@@ -3,7 +3,7 @@
   "asset_type": "feature",
   "enum": "T_CASTLE_GATE",
   "slug": "castle_gate",
-  "name": "Castle gate",
+  "name": "Castle Gate",
   "ui_name": "Castle Gate",
   "runtime": {
     "glyph": "|"
@@ -23,8 +23,8 @@
   },
   "sources": [
     "include/realm.h",
-    "src/entity.cpp",
-    "src/gfx_renderer.cpp",
+    "src/core/terrain_defs.cpp",
+    "src/render/sdl/display_glyphs.cpp",
     "docs/tileset/realm_tileset_visual_audit.md"
   ]
 }

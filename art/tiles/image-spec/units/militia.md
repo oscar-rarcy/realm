@@ -5,7 +5,7 @@ Generate one Realm sprite reference sheet per direction for **Militia**.
 ## Art Brief
 
 - Source role: melee infantry
-- Visual design: Spearman/swordsman with round shield, simple helmet, rough gambeson
+- Visual design: Swordsman with simple helmet, round shield in team color, rough gambeson in team color
 - Projection: upright sprite anchored over projected isometric map tiles
 - Footprint: 1 by 1 tile(s)
 - Directions: front, back
@@ -16,6 +16,17 @@ Generate one Realm sprite reference sheet per direction for **Militia**.
 - shield face
 - tabard stripe
 - plume
+
+## Player Colour
+
+- Use blue (#00AFFF) for the player-colour areas listed above.
+- Add a white diagonal stripe running from top left to bottom right on the shield face, and the tabard stripe.
+
+## Research Visual Tiers
+
+Generate the complete state set for each equipment tier below.
+- Starting equipment (default, no research required): starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement.
+- After Iron Weapons research: upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims.
 
 ## Direction And Anchor Contract
 
@@ -32,32 +43,37 @@ Generate one Realm sprite reference sheet per direction for **Militia**.
 - Gutters: keep clear separation between cells so each slot can be cropped or regenerated independently.
 - Consistency: keep the same asset identity, palette, lighting direction, scale, and outline weight across every slot in the file.
 - Margins: leave enough padding that no silhouette, weapon, tool, projectile, shadow, crop, corpse, decal, or effect touches a cell edge.
-- Team colour: Use team colour only in deliberate maskable areas such as banners, shields, cloth trim, pennants, sails, or painted markers. Keep skin, stone, wood, shadows, weapons, animals, and cargo out of team colour.
+- Team colour: Use the recommended preview player colour blue (#00AFFF) only in deliberate maskable areas such as banners, shields, cloth trim, pennants, sails, or painted markers. Keep skin, stone, wood, shadows, weapons, animals, and cargo out of team colour.
 - Negative prompt: no text, labels, numbers, arrows, UI chrome, watermarks, signatures, photo texture, heavy blur, cropped silhouettes, or extra unlisted states.
 
 ## Entity-Specific Art Notes
 
 - Keep the same unit identity, clothing, armour, hull, siege frame, weapon set, and carried-equipment scale across every state.
-- State changes should be literal and readable: attacks show the weapon or projectile setup, gathering shows the tool/resource, carrying shows the carried material, and death/decay keeps durable gear visible.
-- Do not add terrain patches, target enemies, resource nodes, UI badges, or extra helper characters inside the cell.
+- State changes should be literal and readable: attacks show the weapon setup before release or the follow-through after release, gathering shows the tool/resource, carrying shows the carried material, and death/decay keeps durable gear visible.
+- Do not add terrain patches, target enemies, resource nodes, UI badges, or unrelated helper characters inside the cell.
 
 ## States To Generate
 
-Generate **one frame for each state**. There are 9 state(s). Each image may contain at most **16 states** in a **4 by 4** grid.
+Generate **one frame for each state**. There are 14 state(s). Each image may contain at most **16 states** in a **4 by 4** grid.
 
-### Sheet 1 of 1
+### Sheet
 
-Use a **3 by 3** grid for this sheet.
+Use a **4 by 4** grid for this sheet.
 
-- row 1, column 1: `idle` - idle
-- row 1, column 2: `walk` - walk
-- row 1, column 3: `attack_swing_thrust` - attack swing/thrust
-- row 2, column 1: `hold_position` - hold-position
-- row 2, column 2: `hit_alert` - hit/alert
-- row 2, column 3: `iron_weapons_overlay` - visible upgraded metal weapon treatment overlay for completed Iron Weapons research
-- row 3, column 1: `iron_weapons_action_variant` - full unit action variant with upgraded iron weapon treatment
-- row 3, column 2: `dead` - dead human body lying on the ground with clothing, armour, weapons, and equipment still intact
-- row 3, column 3: `decayed` - human skeleton remains, with armour, weapons, bows, shields, tools, and other equipment still intact and readable
+- row 1, column 1: `basic_weapons__idle` - Basic weapons: idle; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
+- row 1, column 2: `basic_weapons__walk` - Basic weapons: walk; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
+- row 1, column 3: `basic_weapons__attack_swing_thrust` - Basic weapons: attack swing/thrust; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
+- row 1, column 4: `basic_weapons__hold_position` - Basic weapons: hold-position; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
+- row 2, column 1: `basic_weapons__hit_alert` - Basic weapons: hit/alert; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
+- row 2, column 2: `basic_weapons__dead` - Basic weapons: dead human body lying on the ground with clothing, armour, weapons, and equipment still intact; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
+- row 2, column 3: `basic_weapons__decayed` - Basic weapons: human skeleton remains, with armour, weapons, and equipment still intact and readable; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
+- row 2, column 4: `iron_weapons__idle` - Iron Weapons: idle; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
+- row 3, column 1: `iron_weapons__walk` - Iron Weapons: walk; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
+- row 3, column 2: `iron_weapons__attack_swing_thrust` - Iron Weapons: attack swing/thrust; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
+- row 3, column 3: `iron_weapons__hold_position` - Iron Weapons: hold-position; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
+- row 3, column 4: `iron_weapons__hit_alert` - Iron Weapons: hit/alert; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
+- row 4, column 1: `iron_weapons__dead` - Iron Weapons: dead human body lying on the ground with clothing, armour, weapons, and equipment still intact; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
+- row 4, column 2: `iron_weapons__decayed` - Iron Weapons: human skeleton remains, with armour, weapons, and equipment still intact and readable; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
 
 ## Production Follow-Up
 
@@ -69,16 +85,21 @@ Use a **3 by 3** grid for this sheet.
 
 ## Prompt
 
-Generate sprites for my Realm Militia. The footprint is 1 by 1 tile(s). Team colour is required. Valid directions are front, back. Produce one sheet at a time for the requested direction, using the same state grid for each direction. Create one frame for each listed state. If there are more than 16 states, split them across multiple images, each image using a 4 by 4 grid. Order states left to right and top to bottom within each sheet. Keep the character or building consistent across every slot. Use transparent background, or a single flat #ff00ff magenta background if transparency is not available. Use clean readable small-RTS proportions, stable anchor, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork.
+Generate sprites for my Realm Militia. The footprint is 1 by 1 tile(s). Team colour is required and the recommended preview player colour is blue (#00AFFF). Valid directions are front, back. Produce one sheet at a time for the requested direction, using the same state grid for each direction. Create one frame for each of the 14 listed states. Order states left to right and top to bottom within each sheet. Keep the character or building consistent across every slot. Use transparent background, or a single flat #ff00ff magenta background if transparency is not available. Use clean readable small-RTS proportions, stable anchor, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork.
 
 Slot order:
-- Sheet 1 of 1: 3 by 3 grid
-  - row 1, column 1: idle
-  - row 1, column 2: walk
-  - row 1, column 3: attack swing/thrust
-  - row 2, column 1: hold-position
-  - row 2, column 2: hit/alert
-  - row 2, column 3: visible upgraded metal weapon treatment overlay for completed Iron Weapons research
-  - row 3, column 1: full unit action variant with upgraded iron weapon treatment
-  - row 3, column 2: dead human body lying on the ground with clothing, armour, weapons, and equipment still intact
-  - row 3, column 3: human skeleton remains, with armour, weapons, bows, shields, tools, and other equipment still intact and readable
+- Grid: 4 by 4
+  - row 1, column 1: Basic weapons: idle; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
+  - row 1, column 2: Basic weapons: walk; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
+  - row 1, column 3: Basic weapons: attack swing/thrust; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
+  - row 1, column 4: Basic weapons: hold-position; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
+  - row 2, column 1: Basic weapons: hit/alert; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
+  - row 2, column 2: Basic weapons: dead human body lying on the ground with clothing, armour, weapons, and equipment still intact; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
+  - row 2, column 3: Basic weapons: human skeleton remains, with armour, weapons, and equipment still intact and readable; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
+  - row 2, column 4: Iron Weapons: idle; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
+  - row 3, column 1: Iron Weapons: walk; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
+  - row 3, column 2: Iron Weapons: attack swing/thrust; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
+  - row 3, column 3: Iron Weapons: hold-position; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
+  - row 3, column 4: Iron Weapons: hit/alert; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
+  - row 4, column 1: Iron Weapons: dead human body lying on the ground with clothing, armour, weapons, and equipment still intact; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
+  - row 4, column 2: Iron Weapons: human skeleton remains, with armour, weapons, and equipment still intact and readable; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims

@@ -17,6 +17,17 @@ Generate a Realm sprite reference sheet for **Castle**.
 - banners
 - shield plaques
 
+## Player Colour
+
+- Use blue (#00AFFF) for the player-colour areas listed above.
+
+## Ammunition References
+
+- Unit/building sheets may show ammunition only while it is still loaded, nocked, held, or otherwise not yet released.
+- Released, airborne, or impact ammunition must be generated from the ammunition files below, not baked into the unit/building frame.
+- `tower_bolt`: `art/tiles/image-spec/ammunition/tower_bolt.md`
+- `trebuchet_boulder`: `art/tiles/image-spec/ammunition/trebuchet_boulder.md`
+
 ## Direction And Anchor Contract
 
 - `south` means the building is drawn in the Realm isometric three-quarter view, with the readable front facing down-screen/right enough to match the map perspective.
@@ -31,7 +42,7 @@ Generate a Realm sprite reference sheet for **Castle**.
 - Gutters: keep clear separation between cells so each slot can be cropped or regenerated independently.
 - Consistency: keep the same asset identity, palette, lighting direction, scale, and outline weight across every slot in the file.
 - Margins: leave enough padding that no silhouette, weapon, tool, projectile, shadow, crop, corpse, decal, or effect touches a cell edge.
-- Team colour: Use team colour only in deliberate maskable areas such as banners, shields, cloth trim, pennants, sails, or painted markers. Keep skin, stone, wood, shadows, weapons, animals, and cargo out of team colour.
+- Team colour: Use the recommended preview player colour blue (#00AFFF) only in deliberate maskable areas such as banners, shields, cloth trim, pennants, sails, or painted markers. Keep skin, stone, wood, shadows, weapons, animals, and cargo out of team colour.
 - Negative prompt: no text, labels, numbers, arrows, UI chrome, watermarks, signatures, photo texture, heavy blur, cropped silhouettes, or extra unlisted states.
 
 ## Entity-Specific Art Notes
@@ -48,7 +59,7 @@ Generate **one frame for each state**. There are 15 state(s). Each image may con
 Environment states are generated only for the completed building. Do not make a full cross-product of construction, damaged, garrisoned, and weather states.
 Night states should add visible warm light sources; broad nighttime dimming can still be handled by the renderer.
 
-### Sheet 1 of 1
+### Sheet
 
 Use a **4 by 4** grid for this sheet.
 
@@ -61,7 +72,7 @@ Use a **4 by 4** grid for this sheet.
 - row 2, column 3: `construction_1_frame` - 34-66 percent construction: visible frame and scaffolding
 - row 2, column 4: `construction_2_nearly_complete` - 67-99 percent construction: nearly complete shell with final work visible
 - row 3, column 1: `training_peasant` - building visibly training a peasant
-- row 3, column 2: `garrison_firing` - building body visibly reacting while its garrison fires
+- row 3, column 2: `garrison_firing` - building body visibly reacting while its garrison fires; show launcher/garrison reaction only, with no airborne ammunition in the building frame
 - row 3, column 3: `night_lit` - completed building at night with warm torch, candle, forge, or window light; keep team colour readable
 - row 3, column 4: `rain_frame_1` - completed building in rain, wet roof/ground and drip or splash detail frame 1
 - row 4, column 1: `rain_frame_2` - completed building in rain, wet roof/ground and drip or splash detail frame 2
@@ -78,10 +89,10 @@ Use a **4 by 4** grid for this sheet.
 
 ## Prompt
 
-Generate sprites for my Realm Castle. The footprint is 4 by 4 tile(s). Team colour is required. Use south direction artwork. Create one frame for each listed state. If there are more than 16 states, split them across multiple images, each image using a 4 by 4 grid. Order states left to right and top to bottom within each sheet. Keep the character or building consistent across every slot. Use transparent background, or a single flat #ff00ff magenta background if transparency is not available. Use clean readable small-RTS proportions, stable anchor, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork.
+Generate sprites for my Realm Castle. The footprint is 4 by 4 tile(s). Team colour is required and the recommended preview player colour is blue (#00AFFF). Use south direction artwork. Create one frame for each of the 15 listed states. Order states left to right and top to bottom within each sheet. Keep the character or building consistent across every slot. Use transparent background, or a single flat #ff00ff magenta background if transparency is not available. Use clean readable small-RTS proportions, stable anchor, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork. Use ammunition reference files for released projectiles.
 
 Slot order:
-- Sheet 1 of 1: 4 by 4 grid
+- Grid: 4 by 4
   - row 1, column 1: complete
   - row 1, column 2: garrisoned
   - row 1, column 3: damaged
@@ -91,7 +102,7 @@ Slot order:
   - row 2, column 3: 34-66 percent construction: visible frame and scaffolding
   - row 2, column 4: 67-99 percent construction: nearly complete shell with final work visible
   - row 3, column 1: building visibly training a peasant
-  - row 3, column 2: building body visibly reacting while its garrison fires
+  - row 3, column 2: building body visibly reacting while its garrison fires; show launcher/garrison reaction only, with no airborne ammunition in the building frame
   - row 3, column 3: completed building at night with warm torch, candle, forge, or window light; keep team colour readable
   - row 3, column 4: completed building in rain, wet roof/ground and drip or splash detail frame 1
   - row 4, column 1: completed building in rain, wet roof/ground and drip or splash detail frame 2

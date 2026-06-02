@@ -3,7 +3,7 @@
   "asset_type": "feature",
   "enum": "T_CASTLE_WALL",
   "slug": "castle_wall",
-  "name": "Castle wall",
+  "name": "Castle Wall",
   "ui_name": "Castle Wall",
   "runtime": {
     "glyph": "#"
@@ -23,8 +23,8 @@
   },
   "sources": [
     "include/realm.h",
-    "src/entity.cpp",
-    "src/gfx_renderer.cpp",
+    "src/core/terrain_defs.cpp",
+    "src/render/sdl/display_glyphs.cpp",
     "docs/tileset/realm_tileset_visual_audit.md"
   ]
 }

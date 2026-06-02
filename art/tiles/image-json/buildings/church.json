@@ -12,8 +12,8 @@
       "range": 0,
       "speed": 0,
       "attack_speed_ticks": 0,
-      "cost_gold": 80,
-      "cost_wood": 100,
+      "cost_gold": 100,
+      "cost_wood": 0,
       "train_time_ticks": 90,
       "supply_provided": 0,
       "supply_used": 0,
@@ -34,6 +34,16 @@
     "team_color_slots": [
       "banner/door cloth only"
     ],
+    "recommended_player_colour": {
+      "name": "blue",
+      "hex": "#00AFFF"
+    },
+    "player_sigil": null,
+    "operated_by_person": false,
+    "operator_contract": "",
+    "ammunition": [],
+    "research_visual_lines": [],
+    "research_visual_variants": [],
     "visual_design": "Small stone chapel, cross, stained glass, grave/path",
     "source_role": "heals nearby, vision"
   },
@@ -75,7 +85,7 @@
   },
   "sources": [
     "include/realm.h",
-    "src/globals.cpp",
+    "src/core/entity_defs.cpp",
     "docs/tileset/realm_tileset_visual_audit.md"
   ]
 }

@@ -12,8 +12,8 @@
       "range": 8,
       "speed": 8,
       "attack_speed_ticks": 12,
-      "cost_gold": 150,
-      "cost_wood": 40,
+      "cost_gold": 40,
+      "cost_wood": 30,
       "train_time_ticks": 90,
       "supply_provided": 0,
       "supply_used": 3,
@@ -41,6 +41,21 @@
       "side shield plaques",
       "crew cloth"
     ],
+    "recommended_player_colour": {
+      "name": "blue",
+      "hex": "#00AFFF"
+    },
+    "player_sigil": {
+      "id": "player-sigil",
+      "description": "white diagonal stripe running from top left to bottom right"
+    },
+    "operated_by_person": true,
+    "operator_contract": "Show exactly one visible human operator actively handling, pushing, loading, firing, bracing, or inspecting this movable machine.",
+    "ammunition": [
+      "catapult_boulder"
+    ],
+    "research_visual_lines": [],
+    "research_visual_variants": [],
     "visual_design": "Wood-and-iron torsion/sling machine; exaggerated throwing arm",
     "source_role": "siege ranged, splash, standoff"
   },
@@ -110,7 +125,7 @@
   },
   "sources": [
     "include/realm.h",
-    "src/globals.cpp",
+    "src/core/entity_defs.cpp",
     "docs/tileset/realm_tileset_visual_audit.md"
   ]
 }

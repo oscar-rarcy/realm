@@ -34,8 +34,14 @@ WorldIndex buildWorldIndex(const Game& game) {
 
     for (size_t i = 0; i < game.entities.size(); i++) {
         const Entity& entity = game.entities[i];
-        if (!entity.alive) continue;
         world.entityIndexById[entity.id] = i;
+        bool corpse = !entity.alive && entity.state == S_DEAD && isUnit(entity.type) && !isBuilding(entity.type);
+        if (!entity.alive && !corpse) continue;
+
+        if (corpse) {
+            indexEntityTile(world, entity, false, false, entity.x, entity.y);
+            continue;
+        }
 
         if (entity.owner >= 0 && entity.owner <= MAX_PLAYERS) {
             world.entitiesByOwner[entity.owner].push_back(entity.id);
@@ -69,6 +75,20 @@ const Entity* entityById(const Game& game, const WorldIndex& world, EntityId id)
     if (it == world.entityIndexById.end() || it->second >= game.entities.size()) return nullptr;
     const Entity& entity = game.entities[it->second];
     return entity.alive && entity.id == id ? &entity : nullptr;
+}
+
+Entity* entityByIdAny(Game& game, const WorldIndex& world, EntityId id) {
+    auto it = world.entityIndexById.find(id);
+    if (it == world.entityIndexById.end() || it->second >= game.entities.size()) return nullptr;
+    Entity& entity = game.entities[it->second];
+    return entity.id == id ? &entity : nullptr;
+}
+
+const Entity* entityByIdAny(const Game& game, const WorldIndex& world, EntityId id) {
+    auto it = world.entityIndexById.find(id);
+    if (it == world.entityIndexById.end() || it->second >= game.entities.size()) return nullptr;
+    const Entity& entity = game.entities[it->second];
+    return entity.id == id ? &entity : nullptr;
 }
 
 std::vector<EntityId> entitiesAt(const WorldIndex& world, MapPos tile) {

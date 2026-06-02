@@ -35,6 +35,242 @@ RULES: list[tuple[str, list[str], re.Pattern[str]]] = [
         ],
         re.compile(r"\bgroupIndex\b|<<\s*16|&\s*0xffff"),
     ),
+    (
+        "AI planners must issue typed commands instead of direct order/service mutations",
+        [
+            "src/ai/*.cpp",
+        ],
+        re.compile(
+            r"\border(Build|Train|Gather|Move|Attack|Garrison|Help)\s*\("
+            r"|\bejectGarrison\s*\("
+            r"|\bstart(Research|Move|AttackMove|Attack|Gather|Garrison)\s*\("
+            r"|\bejectGarrisonService\s*\("
+            r"|\b(setRallyPoint|toggleGateMode|toggleTrebuchetPacked|holdPosition|stopUnits)\s*\("
+        ),
+    ),
+    (
+        "app save/load shortcuts must dispatch typed commands instead of calling save/load directly",
+        [
+            "src/render/sdl/gfx_renderer.cpp",
+            "src/platform/main_sdl.cpp",
+            "src/platform/main_web.cpp",
+        ],
+        re.compile(r"\b(saveGame|loadGame)\s*\("),
+    ),
+    (
+        "simulation systems must emit game events instead of calling UI status helpers directly",
+        [
+            "src/sim/*.cpp",
+        ],
+        re.compile(r"\b(setStatus|addActionMarker)\s*\("),
+    ),
+    (
+        "dispatcher must delegate control-group state changes to the selection service",
+        [
+            "src/commands/command_dispatcher.cpp",
+        ],
+        re.compile(r"\bcontrolGroups\b"),
+    ),
+    (
+        "core services must use indexed entity lookups instead of legacy global findEntity(id)",
+        [
+            "src/core/*_service.cpp",
+        ],
+        re.compile(r"\bfindEntity\s*\(\s*(?!game\s*,)"),
+    ),
+    (
+        "core services must spawn entities into the supplied Game",
+        [
+            "src/core/*_service.cpp",
+        ],
+        re.compile(r"\bspawnEntity\s*\(\s*(?!game\s*,)"),
+    ),
+    (
+        "order services must use local Game-aware single-unit order helpers",
+        [
+            "src/core/order_service.cpp",
+        ],
+        re.compile(r"\border(Move|Attack|Gather|Garrison)\s*\(\s*(?!game\s*,)"),
+    ),
+    (
+        "input controller must dispatch commands instead of direct gameplay order/spawn calls",
+        [
+            "src/commands/input_controller.cpp",
+        ],
+        re.compile(r"\border(Build|Train|Attack|Gather|Move|Garrison)\s*\(|\bspawnEntity\s*\("),
+    ),
+    (
+        "context command resolution must create farms through typed BuildCommand/build service",
+        [
+            "src/commands/command_resolver.cpp",
+        ],
+        re.compile(r"\bspawnEntity\s*\("),
+    ),
+    (
+        "input controller must not mutate player resources directly",
+        [
+            "src/commands/input_controller.cpp",
+        ],
+        re.compile(r"\bplayers\s*\[[^\]]+\]\s*\.\s*(gold|wood|food|supply|supplyMax)\s*[+\-*/]?="),
+    ),
+    (
+        "input controller must use selection/query services instead of scanning entity storage",
+        [
+            "src/commands/input_controller.cpp",
+        ],
+        re.compile(r"\bg\s*\.\s*entities\b"),
+    ),
+    (
+        "input controller must centralize game-mode transitions through input_mode_controller",
+        [
+            "src/commands/input_controller.cpp",
+        ],
+        re.compile(r"\bg\s*\.\s*mode\s*=[^=]"),
+    ),
+    (
+        "input controller must route status text through UI feedback helpers",
+        [
+            "src/commands/input_controller.cpp",
+        ],
+        re.compile(r"\bsetStatus\s*\("),
+    ),
+    (
+        "input controller must use view-state helpers for screen/map coordinate conversion",
+        [
+            "src/commands/input_controller.cpp",
+        ],
+        re.compile(r"\bview\s*\.\s*view[XY]\s*\+|\bmapSY\b"),
+    ),
+    (
+        "input controller must use controller/service helpers instead of direct entity lookups",
+        [
+            "src/commands/input_controller.cpp",
+        ],
+        re.compile(r"\bfindEntity\s*\(|\bisBuilding\s*\(|\bisMilitary\s*\("),
+    ),
+    (
+        "input controller must use selection services instead of direct selection state mutation",
+        [
+            "src/commands/input_controller.cpp",
+        ],
+        re.compile(r"\bselectedId\s*=|\bselectedIds\s*\.|\bgroupAssignPending\s*="),
+    ),
+    (
+        "input controller must use mode/UI helpers for pending build, help overlay, and control-group pending state",
+        [
+            "src/commands/input_controller.cpp",
+        ],
+        re.compile(r"\bbuildPending\b|\bhelpOverlay\b|\bgroupAssignPending\b"),
+    ),
+    (
+        "AI command helpers must execute through AIContext instead of dispatchCommand(g, ...)",
+        [
+            "src/ai/*.cpp",
+        ],
+        re.compile(r"\bdispatchCommand\s*\(\s*g\s*,"),
+    ),
+    (
+        "local save/load overloads must not swap through global g",
+        [
+            "src/sim/save_load.cpp",
+        ],
+        re.compile(r"\bstd::swap\s*\(\s*g\s*,\s*game\s*\)"),
+    ),
+    (
+        "save orchestration must delegate parsing to save_reader",
+        [
+            "src/sim/save_load.cpp",
+        ],
+        re.compile(r"\b(parseSaveStream|readIntVec|std::ifstream|REALM_SAVE)\b"),
+    ),
+    (
+        "AI planners must use typed stance commands instead of mutating trebuchet packed fields",
+        [
+            "src/ai/*.cpp",
+        ],
+        re.compile(r"\.\s*(packed|packTicks)\s*="),
+    ),
+    (
+        "AI planners should narrow inputs instead of blanket void suppressions",
+        [
+            "src/ai/*.cpp",
+        ],
+        re.compile(r"\(void\)\s*\w+"),
+    ),
+    (
+        "migrated AI modules must use WorldIndex instead of scanning global entity storage",
+        [
+            "src/ai/ai_query.cpp",
+            "src/ai/ai_combat.cpp",
+            "src/ai/ai_economy.cpp",
+            "src/ai/ai_production.cpp",
+        ],
+        re.compile(r"\bg\s*\.\s*entities\b"),
+    ),
+    (
+        "production tick system must use local Game-aware query/spawn/resource paths",
+        [
+            "src/sim/production_system.cpp",
+        ],
+        re.compile(
+            r"\bg\s*\.\s*(entities|players)\b"
+            r"|\b(findEntity|entityAt|spawnEntity)\s*\(\s*(?!game\s*,)"
+        ),
+    ),
+    (
+        "production tick system must emit owner-tagged events instead of filtering to owner 0",
+        [
+            "src/sim/production_system.cpp",
+        ],
+        re.compile(r"\bowner\s*==\s*0\b"),
+    ),
+    (
+        "entity tick internals must use supplied Game state instead of global storage",
+        [
+            "src/sim/entity_tick.cpp",
+        ],
+        re.compile(r"\bg\s*\.\s*(entities|players|map|tick|attackNotifyCd|projectiles)\b"),
+    ),
+    (
+        "tower tick system must use supplied Game state instead of global storage",
+        [
+            "src/sim/building_system.cpp",
+        ],
+        re.compile(r"\bg\s*\.\s*(entities|players|map|tick|projectiles)\b"),
+    ),
+    (
+        "projectile tick system must use supplied Game state instead of global storage",
+        [
+            "src/sim/projectile_system.cpp",
+        ],
+        re.compile(r"\bg\s*\.\s*(projectiles|tick)\b"),
+    ),
+    (
+        "win-condition system must use supplied Game state instead of global storage",
+        [
+            "src/sim/win_system.cpp",
+        ],
+        re.compile(r"\bg\s*\."),
+    ),
+    (
+        "simulation tick orchestration must use supplied Game state instead of direct global storage",
+        [
+            "src/sim/simulation.cpp",
+        ],
+        re.compile(r"\bg\s*\."),
+    ),
+    (
+        "focused state/save utility headers must not include the realm umbrella",
+        [
+            "src/core/types.h",
+            "src/core/rng.h",
+            "src/core/game_state.h",
+            "src/sim/save_reader.h",
+            "src/sim/save_migration.h",
+            "src/sim/save_writer.h",
+        ],
+        re.compile(r'#include\s+"realm\.h"'),
+    ),
 ]
 
 
@@ -53,6 +289,17 @@ def main() -> int:
             for line_no, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
                 if regex.search(line):
                     failures.append(f"{rel}:{line_no}: {description}: {line.strip()}")
+
+    for path in iter_files(["src/core/*.h", "include/core/*.h"]):
+        rel = path.relative_to(ROOT)
+        meaningful = []
+        for line in path.read_text(encoding="utf-8").splitlines():
+            stripped = line.strip()
+            if not stripped or stripped.startswith("//"):
+                continue
+            meaningful.append(stripped)
+        if meaningful in (["#pragma once", '#include "realm.h"'], ['#include "realm.h"']):
+            failures.append(f"{rel}:1: refactored module headers must not be empty realm.h wrappers")
 
     if failures:
         print("Architecture check failed:")

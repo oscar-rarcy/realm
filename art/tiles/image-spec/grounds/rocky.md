@@ -10,7 +10,6 @@ Generate Realm image sheets for **rocky ground**.
 - Projection: top-down square source tile, projected into an isometric diamond by the game
 - Footprint: 1 by 1 tile
 - Directions: tile
-- Team colour required: no
 - Default state: `base_clear`
 
 ## Image Output Contract
@@ -21,7 +20,6 @@ Generate Realm image sheets for **rocky ground**.
 - Gutters: keep clear separation between cells so each tile sample can be cropped independently.
 - Consistency: keep the same material identity, palette, lighting direction, detail scale, and outline weight across every slot in the file.
 - Tile edges: make each cell seamless on all four edges; do not add interior padding, drop shadows, borders, vignettes, or fade-outs.
-- Team colour: Do not use team colour markers.
 - Negative prompt: no text, labels, numbers, arrows, UI chrome, watermarks, signatures, photo texture, heavy blur, diamond-shaped tiles, or extra unlisted states.
 
 ## States Or Variants To Generate
@@ -34,7 +32,7 @@ Each cell should be an edge-to-edge seamless tile sample, with no transparent bo
 Keep detail broad enough for repeated tiling; avoid unique rocks, flowers, footprints, or landmarks unless that feature is the actual material state.
 Do not include upright objects, buildings, units, labels, or baked shadows from separate feature sprites.
 
-### Sheet 1 of 1
+### Sheet
 
 Use a **3 by 2** grid for this sheet.
 
@@ -53,10 +51,10 @@ Use a **3 by 2** grid for this sheet.
 
 ## Prompt
 
-Generate Realm rocky ground image sheets. Use top-down square source tiles that tile cleanly at the edges and remain readable after isometric projection. Team colour is not required. Create one tile for each listed state or variant. The default state is base_clear. If there are more than 16 items, split them across multiple images, each image using a 4 by 4 grid. Order items left to right and top to bottom within each sheet. Use clean readable small-RTS art, stable scale, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork. Use opaque edge-to-edge tile art in each cell, with clear gutters between cells and no transparent border.
+Generate Realm rocky ground image sheets. Use top-down square source tiles that tile cleanly at the edges and remain readable after isometric projection. Create one tile for each of the 5 listed states or variants. The default state is base_clear.  Order items left to right and top to bottom within each sheet. Use clean readable small-RTS art, stable scale, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork. Use opaque edge-to-edge tile art in each cell, with clear gutters between cells and no transparent border.
 
 Slot order:
-- Sheet 1 of 1: 3 by 2 grid
+- Grid: 3 by 2
   - row 1, column 1: default rocky ground with small cracks and stone texture
   - row 1, column 2: rocky ground darkened by rain
   - row 1, column 3: rocky ground with frost in cracks and shaded crevices

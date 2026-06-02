@@ -17,6 +17,24 @@ Generate one Realm sprite reference sheet per direction for **Archer**.
 - quiver wrap
 - shoulder sash
 
+## Player Colour
+
+- Use blue (#00AFFF) for the player-colour areas listed above.
+- Add a white diagonal stripe running from top left to bottom right on the shoulder sash.
+
+## Ammunition References
+
+- Unit/building sheets may show ammunition only while it is still loaded, nocked, held, or otherwise not yet released.
+- Released, airborne, or impact ammunition must be generated from the ammunition files below, not baked into the unit/building frame.
+- `arrow`: `art/tiles/image-spec/ammunition/arrow.md`
+- `crossbow_bolt`: `art/tiles/image-spec/ammunition/crossbow_bolt.md`
+
+## Research Visual Tiers
+
+Generate the complete state set for each equipment tier below.
+- Starting equipment (default, no research required): starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows.
+- After Crossbows research: upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts.
+
 ## Direction And Anchor Contract
 
 - `front` means a three-quarter RTS front angle, body or object turned about 30-45 degrees toward screen right. It is not a flat face-on mascot pose.
@@ -32,33 +50,37 @@ Generate one Realm sprite reference sheet per direction for **Archer**.
 - Gutters: keep clear separation between cells so each slot can be cropped or regenerated independently.
 - Consistency: keep the same asset identity, palette, lighting direction, scale, and outline weight across every slot in the file.
 - Margins: leave enough padding that no silhouette, weapon, tool, projectile, shadow, crop, corpse, decal, or effect touches a cell edge.
-- Team colour: Use team colour only in deliberate maskable areas such as banners, shields, cloth trim, pennants, sails, or painted markers. Keep skin, stone, wood, shadows, weapons, animals, and cargo out of team colour.
+- Team colour: Use the recommended preview player colour blue (#00AFFF) only in deliberate maskable areas such as banners, shields, cloth trim, pennants, sails, or painted markers. Keep skin, stone, wood, shadows, weapons, animals, and cargo out of team colour.
 - Negative prompt: no text, labels, numbers, arrows, UI chrome, watermarks, signatures, photo texture, heavy blur, cropped silhouettes, or extra unlisted states.
 
 ## Entity-Specific Art Notes
 
 - Keep the same unit identity, clothing, armour, hull, siege frame, weapon set, and carried-equipment scale across every state.
-- State changes should be literal and readable: attacks show the weapon or projectile setup, gathering shows the tool/resource, carrying shows the carried material, and death/decay keeps durable gear visible.
-- Do not add terrain patches, target enemies, resource nodes, UI badges, or extra helper characters inside the cell.
+- State changes should be literal and readable: attacks show the weapon setup before release or the follow-through after release, gathering shows the tool/resource, carrying shows the carried material, and death/decay keeps durable gear visible.
+- Do not add terrain patches, target enemies, resource nodes, UI badges, or unrelated helper characters inside the cell.
 
 ## States To Generate
 
-Generate **one frame for each state**. There are 10 state(s). Each image may contain at most **16 states** in a **4 by 4** grid.
+Generate **one frame for each state**. There are 14 state(s). Each image may contain at most **16 states** in a **4 by 4** grid.
 
-### Sheet 1 of 1
+### Sheet
 
-Use a **4 by 3** grid for this sheet.
+Use a **4 by 4** grid for this sheet.
 
-- row 1, column 1: `idle` - idle
-- row 1, column 2: `walk` - walk
-- row 1, column 3: `aim` - aim
-- row 1, column 4: `release` - release
-- row 2, column 1: `reload` - reload
-- row 2, column 2: `optional_upgraded_crossbow_variant` - optional upgraded crossbow variant
-- row 2, column 3: `crossbows_overlay` - visible crossbow upgrade equipment overlay for completed Crossbows research
-- row 2, column 4: `crossbows_action_variant` - full archer action variant using crossbow equipment for completed Crossbows research
-- row 3, column 1: `dead` - dead human body lying on the ground with clothing, armour, weapons, and equipment still intact
-- row 3, column 2: `decayed` - human skeleton remains, with armour, weapons, bows, shields, tools, and other equipment still intact and readable
+- row 1, column 1: `self_bow__idle` - Self Bow: idle; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
+- row 1, column 2: `self_bow__walk` - Self Bow: walk; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
+- row 1, column 3: `self_bow__aim` - Self Bow: aim with ammunition held in the weapon; ammunition is not airborne; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
+- row 1, column 4: `self_bow__release` - Self Bow: release follow-through after the shot; weapon discharged, no airborne ammunition visible; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
+- row 2, column 1: `self_bow__reload` - Self Bow: reload by taking ammunition from the quiver or bolt case; no airborne ammunition visible; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
+- row 2, column 2: `self_bow__dead` - Self Bow: dead human body lying on the ground with clothing, armour, weapons, and equipment still intact; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
+- row 2, column 3: `self_bow__decayed` - Self Bow: human skeleton remains, with armour, weapons, and equipment still intact and readable; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
+- row 2, column 4: `crossbow__idle` - Crossbows: idle; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
+- row 3, column 1: `crossbow__walk` - Crossbows: walk; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
+- row 3, column 2: `crossbow__aim` - Crossbows: aim with ammunition held in the weapon; ammunition is not airborne; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
+- row 3, column 3: `crossbow__release` - Crossbows: release follow-through after the shot; weapon discharged, no airborne ammunition visible; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
+- row 3, column 4: `crossbow__reload` - Crossbows: reload by taking ammunition from the quiver or bolt case; no airborne ammunition visible; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
+- row 4, column 1: `crossbow__dead` - Crossbows: dead human body lying on the ground with clothing, armour, weapons, and equipment still intact; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
+- row 4, column 2: `crossbow__decayed` - Crossbows: human skeleton remains, with armour, weapons, and equipment still intact and readable; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
 
 ## Production Follow-Up
 
@@ -70,17 +92,21 @@ Use a **4 by 3** grid for this sheet.
 
 ## Prompt
 
-Generate sprites for my Realm Archer. The footprint is 1 by 1 tile(s). Team colour is required. Valid directions are front, back. Produce one sheet at a time for the requested direction, using the same state grid for each direction. Create one frame for each listed state. If there are more than 16 states, split them across multiple images, each image using a 4 by 4 grid. Order states left to right and top to bottom within each sheet. Keep the character or building consistent across every slot. Use transparent background, or a single flat #ff00ff magenta background if transparency is not available. Use clean readable small-RTS proportions, stable anchor, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork.
+Generate sprites for my Realm Archer. The footprint is 1 by 1 tile(s). Team colour is required and the recommended preview player colour is blue (#00AFFF). Valid directions are front, back. Produce one sheet at a time for the requested direction, using the same state grid for each direction. Create one frame for each of the 14 listed states. Order states left to right and top to bottom within each sheet. Keep the character or building consistent across every slot. Use transparent background, or a single flat #ff00ff magenta background if transparency is not available. Use clean readable small-RTS proportions, stable anchor, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork. Use ammunition reference files for released projectiles.
 
 Slot order:
-- Sheet 1 of 1: 4 by 3 grid
-  - row 1, column 1: idle
-  - row 1, column 2: walk
-  - row 1, column 3: aim
-  - row 1, column 4: release
-  - row 2, column 1: reload
-  - row 2, column 2: optional upgraded crossbow variant
-  - row 2, column 3: visible crossbow upgrade equipment overlay for completed Crossbows research
-  - row 2, column 4: full archer action variant using crossbow equipment for completed Crossbows research
-  - row 3, column 1: dead human body lying on the ground with clothing, armour, weapons, and equipment still intact
-  - row 3, column 2: human skeleton remains, with armour, weapons, bows, shields, tools, and other equipment still intact and readable
+- Grid: 4 by 4
+  - row 1, column 1: Self Bow: idle; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
+  - row 1, column 2: Self Bow: walk; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
+  - row 1, column 3: Self Bow: aim with ammunition held in the weapon; ammunition is not airborne; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
+  - row 1, column 4: Self Bow: release follow-through after the shot; weapon discharged, no airborne ammunition visible; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
+  - row 2, column 1: Self Bow: reload by taking ammunition from the quiver or bolt case; no airborne ammunition visible; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
+  - row 2, column 2: Self Bow: dead human body lying on the ground with clothing, armour, weapons, and equipment still intact; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
+  - row 2, column 3: Self Bow: human skeleton remains, with armour, weapons, and equipment still intact and readable; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
+  - row 2, column 4: Crossbows: idle; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
+  - row 3, column 1: Crossbows: walk; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
+  - row 3, column 2: Crossbows: aim with ammunition held in the weapon; ammunition is not airborne; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
+  - row 3, column 3: Crossbows: release follow-through after the shot; weapon discharged, no airborne ammunition visible; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
+  - row 3, column 4: Crossbows: reload by taking ammunition from the quiver or bolt case; no airborne ammunition visible; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
+  - row 4, column 1: Crossbows: dead human body lying on the ground with clothing, armour, weapons, and equipment still intact; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
+  - row 4, column 2: Crossbows: human skeleton remains, with armour, weapons, and equipment still intact and readable; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts

@@ -21,6 +21,7 @@ Start with `README.md`. It is the human-facing overview and should stay beginner
 - `docs/gfx-renderer.md`: SDL/isometric renderer notes.
 - `docs/tileset/realm_visual_asset_architecture.md`: tileset architecture.
 - `.agents/skills/realm-tileset-from-images/SKILL.md`: tileset generation workflow.
+- `scripts/export_image_generation_prompts.py`: canonical generator for `art/tiles/image-spec` markdown prompts from current game/entity/terrain data.
 
 ## Common Commands
 
@@ -43,9 +44,16 @@ make terminal
 Web:
 
 ```sh
+bash scripts/validate.sh
 bash scripts/build-web.sh
+bash scripts/setup-web.sh
 npm run test:web
 ```
+
+`bash scripts/validate.sh` is the default validation path. It always runs the
+native checks and only runs the web build automatically when Emscripten is
+already available. If an agent hits missing emsdk during web work, it should
+ask before running `bash scripts/setup-web.sh`.
 
 ## Rules Of Thumb
 

@@ -12,8 +12,8 @@
       "range": 0,
       "speed": 0,
       "attack_speed_ticks": 0,
-      "cost_gold": 100,
-      "cost_wood": 250,
+      "cost_gold": 250,
+      "cost_wood": 0,
       "train_time_ticks": 150,
       "supply_provided": 15,
       "supply_used": 0,
@@ -41,6 +41,19 @@
       "banners",
       "shield plaques"
     ],
+    "recommended_player_colour": {
+      "name": "blue",
+      "hex": "#00AFFF"
+    },
+    "player_sigil": null,
+    "operated_by_person": false,
+    "operator_contract": "",
+    "ammunition": [
+      "tower_bolt",
+      "trebuchet_boulder"
+    ],
+    "research_visual_lines": [],
+    "research_visual_variants": [],
     "visual_design": "Multi-tower stone fortress with inner keep and courtyard",
     "source_role": "major base, supply +15, garrison 10, vision, defensive base"
   },
@@ -89,7 +102,7 @@
   },
   "sources": [
     "include/realm.h",
-    "src/globals.cpp",
+    "src/core/entity_defs.cpp",
     "docs/tileset/realm_tileset_visual_audit.md"
   ]
 }

@@ -1,7 +1,14 @@
 #include "research_service.h"
+#include "core/entity_query.h"
 #include "core/game_events.h"
+#include "core/world_index.h"
 
 CanResearchResult canResearch(const Game& game, int player, const Entity& building, ResearchId id) {
+    WorldIndex world = buildWorldIndex(game);
+    return canResearch(game, world, player, building, id);
+}
+
+CanResearchResult canResearch(const Game& game, const WorldIndex& world, int player, const Entity& building, ResearchId id) {
     const ResearchDef* def = researchDef(id);
     if (!def) return {false, "Unknown research."};
     if (building.type != def->requiredBuilding) return {false, "Wrong building."};
@@ -14,9 +21,14 @@ CanResearchResult canResearch(const Game& game, int player, const Entity& buildi
 
     if (def->requiredOwnedBuilding != E_NONE) {
         bool has = false;
-        for (const auto& e : game.entities) {
-            if (e.alive && e.owner == player && e.type == def->requiredOwnedBuilding
-                && !e.underConstruction) { has = true; break; }
+        if (player >= 0 && player <= MAX_PLAYERS) {
+            for (EntityId id : world.buildingsByOwner[player]) {
+                const Entity* e = entityById(game, world, id);
+                if (e && e->type == def->requiredOwnedBuilding && !e->underConstruction) {
+                    has = true;
+                    break;
+                }
+            }
         }
         if (!has) return {false, "Requires a Castle."};
     }
@@ -28,13 +40,22 @@ CanResearchResult canResearch(const Game& game, int player, const Entity& buildi
 }
 
 bool startResearch(Game& game, int player, int buildingId, ResearchId id) {
-    Entity* building = findEntity(buildingId);
-    if (!building) return false;
+    return startResearchService(game, player, buildingId, id).ok;
+}
 
-    CanResearchResult result = canResearch(game, player, *building, id);
+ServiceResult startResearchService(Game& game, int player, int buildingId, ResearchId id) {
+    WorldIndex world = buildWorldIndex(game);
+    return startResearchService(game, world, player, buildingId, id);
+}
+
+ServiceResult startResearchService(Game& game, const WorldIndex& world, int player, int buildingId, ResearchId id) {
+    Entity* building = findEntity(game, world, buildingId);
+    if (!building) return { false, "Research building not found." };
+
+    CanResearchResult result = canResearch(game, world, player, *building, id);
     if (!result.ok) {
         emitStatusEvent(player, result.reason, GameEventType::CommandRejected);
-        return false;
+        return { false, result.reason };
     }
 
     const ResearchDef* def = researchDef(id);
@@ -45,5 +66,5 @@ bool startResearch(Game& game, int player, int buildingId, ResearchId id) {
     building->researchProgress = 0;
     building->researchTime = def->ticks;
     emitStatusEvent(player, def->startMessage, GameEventType::ResearchStarted);
-    return true;
+    return { true, nullptr };
 }

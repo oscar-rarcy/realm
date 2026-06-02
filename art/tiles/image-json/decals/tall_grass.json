@@ -3,7 +3,7 @@
   "asset_type": "decal",
   "enum": "T_TALL_GRASS",
   "slug": "tall_grass",
-  "name": "Tall grass",
+  "name": "Tall Grass",
   "ui_name": "Tall Grass",
   "runtime": {
     "glyph": "\""
@@ -23,8 +23,8 @@
   },
   "sources": [
     "include/realm.h",
-    "src/entity.cpp",
-    "src/gfx_renderer.cpp",
+    "src/core/terrain_defs.cpp",
+    "src/render/sdl/display_glyphs.cpp",
     "docs/tileset/realm_tileset_visual_audit.md"
   ]
 }

@@ -5,12 +5,20 @@ void LegacyUiEventSink::emit(const GameEvent& event) {
 
     switch (event.type) {
         case GameEventType::StatusMessage:
+        case GameEventType::CommandAccepted:
         case GameEventType::CommandRejected:
+        case GameEventType::ResourcesChanged:
+        case GameEventType::EntitySpawned:
+        case GameEventType::EntityDestroyed:
+        case GameEventType::UnitOrdered:
+        case GameEventType::GarrisonChanged:
         case GameEventType::ResearchStarted:
         case GameEventType::ResearchCompleted:
         case GameEventType::TrainingStarted:
         case GameEventType::TrainingQueued:
         case GameEventType::BuildingPlaced:
+        case GameEventType::SaveCompleted:
+        case GameEventType::LoadCompleted:
             if (!event.message.empty()) {
                 g.statusMsg = event.message;
                 g.statusTimer = 35;

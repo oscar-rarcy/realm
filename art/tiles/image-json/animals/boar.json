@@ -7,8 +7,8 @@
   "runtime": {
     "glyph": "o",
     "stats": {
-      "max_hp": 40,
-      "attack": 6,
+      "max_hp": 25,
+      "attack": 3,
       "range": 1,
       "speed": 2,
       "attack_speed_ticks": 6,
@@ -36,6 +36,13 @@
     ],
     "runtime_mirrors_horizontal": true,
     "team_color_slots": [],
+    "recommended_player_colour": null,
+    "player_sigil": null,
+    "operated_by_person": false,
+    "operator_contract": "",
+    "ammunition": [],
+    "research_visual_lines": [],
+    "research_visual_variants": [],
     "visual_design": "Dark brown boar, tusks, heavy body",
     "source_role": "charges nearby units, rampages after hit; food on kill"
   },
@@ -91,7 +98,7 @@
   },
   "sources": [
     "include/realm.h",
-    "src/globals.cpp",
+    "src/core/entity_defs.cpp",
     "docs/tileset/realm_tileset_visual_audit.md"
   ]
 }

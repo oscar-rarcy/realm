@@ -12,8 +12,8 @@
       "range": 0,
       "speed": 5,
       "attack_speed_ticks": 0,
-      "cost_gold": 80,
-      "cost_wood": 40,
+      "cost_gold": 40,
+      "cost_wood": 10,
       "train_time_ticks": 70,
       "supply_provided": 0,
       "supply_used": 2,
@@ -39,6 +39,16 @@
       "sail/pennant",
       "side banner"
     ],
+    "recommended_player_colour": {
+      "name": "red",
+      "hex": "#FF0000"
+    },
+    "player_sigil": null,
+    "operated_by_person": false,
+    "operator_contract": "",
+    "ammunition": [],
+    "research_visual_lines": [],
+    "research_visual_variants": [],
     "visual_design": "Broad ferry/barge, visible cargo deck",
     "source_role": "carries garrisoned units"
   },
@@ -94,7 +104,7 @@
   },
   "sources": [
     "include/realm.h",
-    "src/globals.cpp",
+    "src/core/entity_defs.cpp",
     "docs/tileset/realm_tileset_visual_audit.md"
   ]
 }

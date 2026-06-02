@@ -12,8 +12,8 @@
       "range": 1,
       "speed": 1,
       "attack_speed_ticks": 5,
-      "cost_gold": 120,
-      "cost_wood": 0,
+      "cost_gold": 0,
+      "cost_wood": 40,
       "train_time_ticks": 80,
       "supply_provided": 0,
       "supply_used": 2,
@@ -39,6 +39,92 @@
       "saddle cloth",
       "pennant"
     ],
+    "recommended_player_colour": {
+      "name": "blue",
+      "hex": "#00AFFF"
+    },
+    "player_sigil": {
+      "id": "player-sigil",
+      "description": "white diagonal stripe running from top left to bottom right"
+    },
+    "operated_by_person": false,
+    "operator_contract": "",
+    "ammunition": [],
+    "research_visual_lines": [
+      {
+        "id": "weapon_material",
+        "name": "weapon material",
+        "tiers": [
+          {
+            "id": "basic_weapons",
+            "name": "Basic weapons",
+            "research": null,
+            "description": "starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement"
+          },
+          {
+            "id": "iron_weapons",
+            "name": "Iron Weapons",
+            "research": "Iron Weapons",
+            "description": "upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims"
+          }
+        ]
+      },
+      {
+        "id": "knight_helmet",
+        "name": "knight helmet",
+        "tiers": [
+          {
+            "id": "open_helmet",
+            "name": "Open Helmet",
+            "research": null,
+            "description": "starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection"
+          },
+          {
+            "id": "plate_helm",
+            "name": "Plate Helm",
+            "research": "Plate Helm",
+            "description": "upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection"
+          }
+        ]
+      }
+    ],
+    "research_visual_variants": [
+      {
+        "id": "basic_weapons__open_helmet",
+        "name": "Basic weapons + Open Helmet",
+        "description": "starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
+        "research": [],
+        "is_default": true
+      },
+      {
+        "id": "basic_weapons__plate_helm",
+        "name": "Basic weapons + Plate Helm",
+        "description": "starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+        "research": [
+          "Plate Helm"
+        ],
+        "is_default": false
+      },
+      {
+        "id": "iron_weapons__open_helmet",
+        "name": "Iron Weapons + Open Helmet",
+        "description": "upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
+        "research": [
+          "Iron Weapons"
+        ],
+        "is_default": false
+      },
+      {
+        "id": "iron_weapons__plate_helm",
+        "name": "Iron Weapons + Plate Helm",
+        "description": "upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+        "research": [
+          "Iron Weapons",
+          "Plate Helm"
+        ],
+        "is_default": false
+      }
+    ],
     "visual_design": "Armoured rider on horse; should read as cavalry even at small size",
     "source_role": "fast heavy cavalry"
   },
@@ -48,58 +134,338 @@
     "charge/strike",
     "hit/alert",
     "dead",
-    "decayed skeleton with armour",
-    "horse gear",
-    "and weapon"
+    "decayed skeleton with armour horse gear and weapon"
   ],
   "actions": [
     {
-      "id": "idle",
-      "description": "idle",
+      "id": "basic_weapons__open_helmet__idle",
+      "description": "Basic weapons + Open Helmet: idle; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
       "source": "docs/tileset/realm_tileset_visual_audit.md",
-      "frames_recommended": 2
+      "frames_recommended": 2,
+      "research_visual_variant": {
+        "id": "basic_weapons__open_helmet",
+        "name": "Basic weapons + Open Helmet",
+        "research": [],
+        "is_default": true
+      }
     },
     {
-      "id": "trot",
-      "description": "trot",
+      "id": "basic_weapons__open_helmet__trot",
+      "description": "Basic weapons + Open Helmet: trot; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
       "source": "docs/tileset/realm_tileset_visual_audit.md",
-      "frames_recommended": 2
+      "frames_recommended": 2,
+      "research_visual_variant": {
+        "id": "basic_weapons__open_helmet",
+        "name": "Basic weapons + Open Helmet",
+        "research": [],
+        "is_default": true
+      }
     },
     {
-      "id": "charge_strike",
-      "description": "charge/strike",
+      "id": "basic_weapons__open_helmet__charge_strike",
+      "description": "Basic weapons + Open Helmet: charge/strike; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
       "source": "docs/tileset/realm_tileset_visual_audit.md",
-      "frames_recommended": 2
+      "frames_recommended": 2,
+      "research_visual_variant": {
+        "id": "basic_weapons__open_helmet",
+        "name": "Basic weapons + Open Helmet",
+        "research": [],
+        "is_default": true
+      }
     },
     {
-      "id": "hit_alert",
-      "description": "hit/alert",
+      "id": "basic_weapons__open_helmet__hit_alert",
+      "description": "Basic weapons + Open Helmet: hit/alert; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
       "source": "docs/tileset/realm_tileset_visual_audit.md",
-      "frames_recommended": 2
+      "frames_recommended": 2,
+      "research_visual_variant": {
+        "id": "basic_weapons__open_helmet",
+        "name": "Basic weapons + Open Helmet",
+        "research": [],
+        "is_default": true
+      }
     },
     {
-      "id": "dead",
-      "description": "dead",
+      "id": "basic_weapons__open_helmet__dead",
+      "description": "Basic weapons + Open Helmet: dead; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
       "source": "docs/tileset/realm_tileset_visual_audit.md",
-      "frames_recommended": 2
+      "frames_recommended": 2,
+      "research_visual_variant": {
+        "id": "basic_weapons__open_helmet",
+        "name": "Basic weapons + Open Helmet",
+        "research": [],
+        "is_default": true
+      }
     },
     {
-      "id": "decayed_skeleton_with_armour",
-      "description": "decayed skeleton with armour",
+      "id": "basic_weapons__open_helmet__decayed_skeleton_with_armour_horse_gear_and_weapon",
+      "description": "Basic weapons + Open Helmet: decayed skeleton with armour horse gear and weapon; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
       "source": "docs/tileset/realm_tileset_visual_audit.md",
-      "frames_recommended": 2
+      "frames_recommended": 2,
+      "research_visual_variant": {
+        "id": "basic_weapons__open_helmet",
+        "name": "Basic weapons + Open Helmet",
+        "research": [],
+        "is_default": true
+      }
     },
     {
-      "id": "horse_gear",
-      "description": "horse gear",
+      "id": "basic_weapons__plate_helm__idle",
+      "description": "Basic weapons + Plate Helm: idle; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
       "source": "docs/tileset/realm_tileset_visual_audit.md",
-      "frames_recommended": 2
+      "frames_recommended": 2,
+      "research_visual_variant": {
+        "id": "basic_weapons__plate_helm",
+        "name": "Basic weapons + Plate Helm",
+        "research": [
+          "Plate Helm"
+        ],
+        "is_default": false
+      }
     },
     {
-      "id": "and_weapon",
-      "description": "and weapon",
+      "id": "basic_weapons__plate_helm__trot",
+      "description": "Basic weapons + Plate Helm: trot; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
       "source": "docs/tileset/realm_tileset_visual_audit.md",
-      "frames_recommended": 2
+      "frames_recommended": 2,
+      "research_visual_variant": {
+        "id": "basic_weapons__plate_helm",
+        "name": "Basic weapons + Plate Helm",
+        "research": [
+          "Plate Helm"
+        ],
+        "is_default": false
+      }
+    },
+    {
+      "id": "basic_weapons__plate_helm__charge_strike",
+      "description": "Basic weapons + Plate Helm: charge/strike; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2,
+      "research_visual_variant": {
+        "id": "basic_weapons__plate_helm",
+        "name": "Basic weapons + Plate Helm",
+        "research": [
+          "Plate Helm"
+        ],
+        "is_default": false
+      }
+    },
+    {
+      "id": "basic_weapons__plate_helm__hit_alert",
+      "description": "Basic weapons + Plate Helm: hit/alert; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2,
+      "research_visual_variant": {
+        "id": "basic_weapons__plate_helm",
+        "name": "Basic weapons + Plate Helm",
+        "research": [
+          "Plate Helm"
+        ],
+        "is_default": false
+      }
+    },
+    {
+      "id": "basic_weapons__plate_helm__dead",
+      "description": "Basic weapons + Plate Helm: dead; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2,
+      "research_visual_variant": {
+        "id": "basic_weapons__plate_helm",
+        "name": "Basic weapons + Plate Helm",
+        "research": [
+          "Plate Helm"
+        ],
+        "is_default": false
+      }
+    },
+    {
+      "id": "basic_weapons__plate_helm__decayed_skeleton_with_armour_horse_gear_and_weapon",
+      "description": "Basic weapons + Plate Helm: decayed skeleton with armour horse gear and weapon; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2,
+      "research_visual_variant": {
+        "id": "basic_weapons__plate_helm",
+        "name": "Basic weapons + Plate Helm",
+        "research": [
+          "Plate Helm"
+        ],
+        "is_default": false
+      }
+    },
+    {
+      "id": "iron_weapons__open_helmet__idle",
+      "description": "Iron Weapons + Open Helmet: idle; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2,
+      "research_visual_variant": {
+        "id": "iron_weapons__open_helmet",
+        "name": "Iron Weapons + Open Helmet",
+        "research": [
+          "Iron Weapons"
+        ],
+        "is_default": false
+      }
+    },
+    {
+      "id": "iron_weapons__open_helmet__trot",
+      "description": "Iron Weapons + Open Helmet: trot; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2,
+      "research_visual_variant": {
+        "id": "iron_weapons__open_helmet",
+        "name": "Iron Weapons + Open Helmet",
+        "research": [
+          "Iron Weapons"
+        ],
+        "is_default": false
+      }
+    },
+    {
+      "id": "iron_weapons__open_helmet__charge_strike",
+      "description": "Iron Weapons + Open Helmet: charge/strike; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2,
+      "research_visual_variant": {
+        "id": "iron_weapons__open_helmet",
+        "name": "Iron Weapons + Open Helmet",
+        "research": [
+          "Iron Weapons"
+        ],
+        "is_default": false
+      }
+    },
+    {
+      "id": "iron_weapons__open_helmet__hit_alert",
+      "description": "Iron Weapons + Open Helmet: hit/alert; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2,
+      "research_visual_variant": {
+        "id": "iron_weapons__open_helmet",
+        "name": "Iron Weapons + Open Helmet",
+        "research": [
+          "Iron Weapons"
+        ],
+        "is_default": false
+      }
+    },
+    {
+      "id": "iron_weapons__open_helmet__dead",
+      "description": "Iron Weapons + Open Helmet: dead; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2,
+      "research_visual_variant": {
+        "id": "iron_weapons__open_helmet",
+        "name": "Iron Weapons + Open Helmet",
+        "research": [
+          "Iron Weapons"
+        ],
+        "is_default": false
+      }
+    },
+    {
+      "id": "iron_weapons__open_helmet__decayed_skeleton_with_armour_horse_gear_and_weapon",
+      "description": "Iron Weapons + Open Helmet: decayed skeleton with armour horse gear and weapon; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2,
+      "research_visual_variant": {
+        "id": "iron_weapons__open_helmet",
+        "name": "Iron Weapons + Open Helmet",
+        "research": [
+          "Iron Weapons"
+        ],
+        "is_default": false
+      }
+    },
+    {
+      "id": "iron_weapons__plate_helm__idle",
+      "description": "Iron Weapons + Plate Helm: idle; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2,
+      "research_visual_variant": {
+        "id": "iron_weapons__plate_helm",
+        "name": "Iron Weapons + Plate Helm",
+        "research": [
+          "Iron Weapons",
+          "Plate Helm"
+        ],
+        "is_default": false
+      }
+    },
+    {
+      "id": "iron_weapons__plate_helm__trot",
+      "description": "Iron Weapons + Plate Helm: trot; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2,
+      "research_visual_variant": {
+        "id": "iron_weapons__plate_helm",
+        "name": "Iron Weapons + Plate Helm",
+        "research": [
+          "Iron Weapons",
+          "Plate Helm"
+        ],
+        "is_default": false
+      }
+    },
+    {
+      "id": "iron_weapons__plate_helm__charge_strike",
+      "description": "Iron Weapons + Plate Helm: charge/strike; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2,
+      "research_visual_variant": {
+        "id": "iron_weapons__plate_helm",
+        "name": "Iron Weapons + Plate Helm",
+        "research": [
+          "Iron Weapons",
+          "Plate Helm"
+        ],
+        "is_default": false
+      }
+    },
+    {
+      "id": "iron_weapons__plate_helm__hit_alert",
+      "description": "Iron Weapons + Plate Helm: hit/alert; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2,
+      "research_visual_variant": {
+        "id": "iron_weapons__plate_helm",
+        "name": "Iron Weapons + Plate Helm",
+        "research": [
+          "Iron Weapons",
+          "Plate Helm"
+        ],
+        "is_default": false
+      }
+    },
+    {
+      "id": "iron_weapons__plate_helm__dead",
+      "description": "Iron Weapons + Plate Helm: dead; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2,
+      "research_visual_variant": {
+        "id": "iron_weapons__plate_helm",
+        "name": "Iron Weapons + Plate Helm",
+        "research": [
+          "Iron Weapons",
+          "Plate Helm"
+        ],
+        "is_default": false
+      }
+    },
+    {
+      "id": "iron_weapons__plate_helm__decayed_skeleton_with_armour_horse_gear_and_weapon",
+      "description": "Iron Weapons + Plate Helm: decayed skeleton with armour horse gear and weapon; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+      "source": "docs/tileset/realm_tileset_visual_audit.md",
+      "frames_recommended": 2,
+      "research_visual_variant": {
+        "id": "iron_weapons__plate_helm",
+        "name": "Iron Weapons + Plate Helm",
+        "research": [
+          "Iron Weapons",
+          "Plate Helm"
+        ],
+        "is_default": false
+      }
     }
   ],
   "paths": {
@@ -108,7 +474,7 @@
   },
   "sources": [
     "include/realm.h",
-    "src/globals.cpp",
+    "src/core/entity_defs.cpp",
     "docs/tileset/realm_tileset_visual_audit.md"
   ]
 }

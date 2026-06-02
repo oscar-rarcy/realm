@@ -1,9 +1,12 @@
 #pragma once
 
 #include "realm.h"
+#include "core/service_result.h"
 
 // Single source of truth for market exchange rates, shared by input handling and
 // any future AI trading (see docs/implementation/refactor-plan.md phase 3.4).
+
+struct WorldIndex;
 
 enum class TradeResource { Gold, Wood, Food };
 
@@ -37,3 +40,5 @@ CanTradeResult canTrade(const Game& game, int player, const Entity& market, Mark
 // Validates and, on success, moves resources for the trade. Emits a status
 // message for the human player (owner 0). Returns true when the trade happened.
 bool executeTrade(Game& game, int player, int marketId, MarketTradeType type);
+ServiceResult executeTradeService(Game& game, int player, int marketId, MarketTradeType type);
+ServiceResult executeTradeService(Game& game, const WorldIndex& world, int player, int marketId, MarketTradeType type);

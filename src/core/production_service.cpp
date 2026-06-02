@@ -1,5 +1,7 @@
 #include "production_service.h"
+#include "core/entity_query.h"
 #include "core/game_events.h"
+#include "core/world_index.h"
 
 static const EntityType TOWN_HALL_UNITS[] = { E_PEASANT };
 static const EntityType BARRACKS_UNITS[] = { E_MILITIA, E_ARCHER, E_SPEARMAN, E_CATAPULT, E_RAM };
@@ -49,25 +51,34 @@ CanTrainResult canTrain(const Game& game, int player, const Entity& producer, En
     const Player& p = game.players[player];
     const EntityStats& stats = STATS[unitType];
     if (p.gold < stats.costGold || p.wood < stats.costWood) return { false, "Not enough resources!" };
-    if (reservedSupply(player) + stats.supplyUsed > p.supplyMax) return { false, "Need more houses!" };
+    if (reservedSupply(game, player) + stats.supplyUsed > p.supplyMax) return { false, "Need more houses!" };
     if (p.food < stats.costFood) return { false, "Need more food!" };
 
     return { true, nullptr };
 }
 
 bool startTraining(Game& game, int player, int producerId, EntityType unitType) {
-    Entity* producer = findEntity(producerId);
-    if (!producer) return false;
+    return startTrainingService(game, player, producerId, unitType).ok;
+}
+
+ServiceResult startTrainingService(Game& game, int player, int producerId, EntityType unitType) {
+    WorldIndex world = buildWorldIndex(game);
+    return startTrainingService(game, world, player, producerId, unitType);
+}
+
+ServiceResult startTrainingService(Game& game, const WorldIndex& world, int player, int producerId, EntityType unitType) {
+    Entity* producer = findEntity(game, world, producerId);
+    if (!producer) return { false, "Producer not found." };
 
     CanTrainResult result = canTrain(game, player, *producer, unitType);
     if (!result.ok) {
         emitStatusEvent(player, result.reason, GameEventType::CommandRejected);
-        return false;
+        return { false, result.reason };
     }
 
     Player& p = game.players[player];
     const EntityStats& stats = STATS[unitType];
-    spendPlayerFood(player, stats.costFood);
+    spendPlayerFood(game, player, stats.costFood);
     p.gold -= stats.costGold;
     p.wood -= stats.costWood;
 
@@ -81,5 +92,5 @@ bool startTraining(Game& game, int player, int producerId, EntityType unitType) 
         producer->queue.push_back((int)unitType);
         emitStatusEvent(player, "Queued.", GameEventType::TrainingQueued);
     }
-    return true;
+    return { true, nullptr };
 }

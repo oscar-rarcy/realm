@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import itertools
 import math
 import re
 import shutil
@@ -11,16 +12,24 @@ from pathlib import Path
 from typing import Any
 
 from export_tile_specs import (
+    AMMUNITION_SPECS,
     ENTITY_RANGES,
+    PLAYER_SIGIL,
     ROOT,
+    ammunition_refs_for_entity,
     category_for_entity,
     clean_cell,
+    entity_profile,
     enum_values,
+    is_military_unit,
+    is_operated_unit,
     lower_slug,
     parse_audit_tables,
     parse_stats,
+    recommended_player_colour,
     peasant_actions,
     read_text,
+    research_visual_lines_for_entity,
     split_list,
 )
 
@@ -324,10 +333,10 @@ def rain_frames(prefix: str, subject: str) -> list[dict[str, str]]:
 def death_states_for(enum_name: str, category: str) -> list[dict[str, str]]:
     if category == "animals":
         return [
-            {"id": "dead_unharvested", "description": "dead animal body lying on the ground, full carcass, species silhouette still readable"},
-            {"id": "partly_harvested", "description": "partly harvested carcass, some meat or hide removed, species still readable"},
-            {"id": "mostly_harvested", "description": "mostly harvested carcass, sparse remains with bones beginning to show"},
-            {"id": "depleted_skeleton", "description": "fully depleted decayed skeleton remains, species silhouette still readable"},
+            {"id": "dead_unharvested", "description": "freshly killed animal body lying on the ground, full carcass, species silhouette still readable"},
+            {"id": "partly_harvested", "description": "partly butchered and harvested carcass, some meat or hide cleanly removed, species still readable"},
+            {"id": "mostly_harvested", "description": "mostly butchered and harvested carcass, clean bones beginning to show, not rotting"},
+            {"id": "depleted_skeleton", "description": "fully harvested clean skeleton remains, species silhouette still readable, not decayed or rotten"},
         ]
     if category != "units":
         return []
@@ -336,14 +345,14 @@ def death_states_for(enum_name: str, category: str) -> list[dict[str, str]]:
             {"id": "dead", "description": "dead villager body lying on the ground with clothing and simple tools still intact"},
             {"id": "decayed", "description": "human skeleton remains, with small clothing and tool scraps still readable"},
         ]
-    if enum_name in {"E_CATAPULT", "E_FISHING_BOAT", "E_WARSHIP", "E_TRANSPORT", "E_RAM"}:
+    if enum_name in {"E_CATAPULT", "E_TREBUCHET", "E_FISHING_BOAT", "E_WARSHIP", "E_TRANSPORT", "E_RAM"}:
         return [
             {"id": "dead", "description": "destroyed wreck, broken but still recognizable"},
             {"id": "decayed", "description": "weathered wreckage, with durable wood, metal, wheels, hull, or siege parts still readable"},
         ]
     return [
         {"id": "dead", "description": "dead human body lying on the ground with clothing, armour, weapons, and equipment still intact"},
-        {"id": "decayed", "description": "human skeleton remains, with armour, weapons, bows, shields, tools, and other equipment still intact and readable"},
+        {"id": "decayed", "description": "human skeleton remains, with armour, weapons, and equipment still intact and readable"},
     ]
 
 
@@ -373,6 +382,91 @@ def append_unique_actions(actions: list[dict[str, str]], extras: list[dict[str, 
         seen.add(extra["id"])
 
 
+def research_tier_variants(enum_name: str) -> list[dict[str, Any]]:
+    lines = research_visual_lines_for_entity(enum_name)
+    if not lines:
+        return []
+    variants: list[dict[str, Any]] = []
+    for combo in itertools.product(*[line["tiers"] for line in lines]):
+        variant_id = "__".join(tier["id"] for tier in combo)
+        variant_name = " + ".join(tier["name"] for tier in combo)
+        descriptions = [tier["description"] for tier in combo]
+        researched = [tier["research"] for tier in combo if tier.get("research")]
+        variants.append(
+            {
+                "id": variant_id,
+                "name": variant_name,
+                "description": "; ".join(descriptions),
+                "research": researched,
+                "is_default": not researched,
+            }
+        )
+    return variants
+
+
+def apply_research_variants(enum_name: str, actions: list[dict[str, str]]) -> list[dict[str, str]]:
+    variants = research_tier_variants(enum_name)
+    if not variants:
+        return actions
+    expanded: list[dict[str, str]] = []
+    for variant in variants:
+        for action in actions:
+            expanded.append(
+                {
+                    "id": f"{variant['id']}__{action['id']}",
+                    "description": f"{variant['name']}: {action['description']}; {variant['description']}",
+                }
+            )
+    return expanded
+
+
+def guided_action_description(enum_name: str, action_id: str, description: str) -> str:
+    action = action_id.lower()
+    if "no airborne ammunition" in description:
+        return description
+    if enum_name == "E_ARCHER":
+        if action == "aim":
+            return "aim with ammunition held in the weapon; ammunition is not airborne"
+        if action == "release":
+            return "release follow-through after the shot; weapon discharged, no airborne ammunition visible"
+        if action == "reload":
+            return "reload by taking ammunition from the quiver or bolt case; no airborne ammunition visible"
+    if enum_name == "E_WARSHIP" and "fire" in action:
+        return "fire or arrow-volley follow-through; do not draw released arrows or airborne shot in the ship frame"
+    if enum_name in {"E_TOWER", "E_CASTLE"} and "firing" in action:
+        return f"{description}; show launcher/garrison reaction only, with no airborne ammunition in the building frame"
+    if enum_name == "E_CATAPULT":
+        if action == "idle":
+            return "idle catapult with one visible human operator at the controls; no loaded boulder unless the state says load"
+        if action == "roll":
+            return "operator walking beside the handles while the wheeled catapult rolls; no airborne ammunition"
+        if action == "load":
+            return "operator loading the boulder into the sling; ammunition visible because it has not been released"
+        if action == "fire":
+            return "operator has just released the throwing arm; sling empty and no airborne boulder visible"
+        if action == "recoil":
+            return "operator bracing after firing; arm recoiling empty, no airborne boulder visible"
+    if enum_name == "E_TREBUCHET":
+        if action == "idle":
+            return "idle trebuchet with one visible human operator beside the winch or sling; no loaded boulder unless the state says load"
+        if action == "roll":
+            return "operator guiding the wheeled trebuchet while it rolls; no airborne ammunition"
+        if action == "load":
+            return "operator loading the boulder into the sling; ammunition visible because it has not been released"
+        if action == "fire":
+            return "operator has just released the trebuchet; sling empty and no airborne boulder visible"
+        if action == "recoil":
+            return "operator bracing after firing; throwing arm recoiling empty, no airborne boulder visible"
+    if enum_name == "E_RAM":
+        if action == "idle":
+            return "idle ram with one visible human operator at the handles or cover opening"
+        if action == "roll":
+            return "operator walking with the wheeled ram as it rolls"
+        if "impact" in action or "ramming" in action:
+            return "operator bracing the ram during impact; no projectile or extra crew"
+    return description
+
+
 def building_environment_states(enum_name: str) -> list[dict[str, str]]:
     if enum_name == "E_FARM":
         return [
@@ -391,7 +485,7 @@ def building_environment_states(enum_name: str) -> list[dict[str, str]]:
     ]
 
 
-def entity_actions(enum_name: str, category: str, audit: dict[str, str]) -> list[dict[str, str]]:
+def entity_actions(enum_name: str, category: str, stats: dict[str, Any], audit: dict[str, str]) -> list[dict[str, str]]:
     if enum_name == "E_PEASANT":
         actions = []
         for action in peasant_actions():
@@ -402,8 +496,10 @@ def entity_actions(enum_name: str, category: str, audit: dict[str, str]) -> list
         return add_death_states(enum_name, category, actions)
 
     out = []
-    for state in split_list(audit.get("required_states", "")):
-        out.append({"id": lower_slug(state.replace("/", " ")), "description": state})
+    profile = entity_profile(enum_name, audit)
+    for state in split_list(profile.get("required_states", "")):
+        action_id = lower_slug(state.replace("/", " "))
+        out.append({"id": action_id, "description": guided_action_description(enum_name, action_id, state)})
     if category == "buildings":
         append_unique_actions(out, [
             state_item("construction_0_foundation", "0-33 percent construction: foundation footprint and early site materials"),
@@ -438,17 +534,9 @@ def entity_actions(enum_name: str, category: str, audit: dict[str, str]) -> list
             state_item("loaded_full", "transport fully loaded using covered cargo, weight, flags, or silhouette cues"),
             state_item("load_unload", "transport in load or unload state without drawing passenger identities"),
         ])
-    if enum_name == "E_ARCHER":
-        out.extend([
-            state_item("crossbows_overlay", "visible crossbow upgrade equipment overlay for completed Crossbows research"),
-            state_item("crossbows_action_variant", "full archer action variant using crossbow equipment for completed Crossbows research"),
-        ])
-    elif enum_name in {"E_MILITIA", "E_KNIGHT"}:
-        out.extend([
-            state_item("iron_weapons_overlay", "visible upgraded metal weapon treatment overlay for completed Iron Weapons research"),
-            state_item("iron_weapons_action_variant", "full unit action variant with upgraded iron weapon treatment"),
-        ])
-    return add_death_states(enum_name, category, out)
+    for action in out:
+        action["description"] = guided_action_description(enum_name, action["id"], action["description"])
+    return apply_research_variants(enum_name, add_death_states(enum_name, category, out))
 
 
 def terrain_items(enum_name: str, audit: dict[str, str]) -> list[dict[str, str]]:
@@ -649,12 +737,54 @@ def md_list(items: list[str]) -> str:
     return "".join(f"- {item}\n" for item in items)
 
 
-def common_sheet_contract(group: str, item_noun: str, team_color_required: bool) -> list[str]:
-    team_rule = (
-        "Use team colour only in deliberate maskable areas such as banners, shields, cloth trim, pennants, sails, or painted markers. Keep skin, stone, wood, shadows, weapons, animals, and cargo out of team colour."
-        if team_color_required
-        else "Do not use team colour markers."
+def player_colour_text(player_colour: dict[str, str] | None) -> str:
+    if not player_colour:
+        return "none"
+    return f"{player_colour['name']} ({player_colour['hex']})"
+
+
+def create_each_sentence(item_noun: str, count: int, singular_label: str, plural_label: str) -> str:
+    label = singular_label if count == 1 else plural_label
+    return f"Create one {item_noun} for each of the {count} listed {label}."
+
+
+def split_guidance_sentence(count: int, plural_label: str) -> str:
+    if count <= MAX_SLOTS_PER_SHEET:
+        return ""
+    return (
+        f" Since there are more than {MAX_SLOTS_PER_SHEET} {plural_label}, split them across multiple images, "
+        "each image using a 4 by 4 grid."
     )
+
+
+def sheet_label(sheet_index: int, sheet_count: int) -> str:
+    if sheet_count == 1:
+        return "Sheet"
+    return f"Sheet {sheet_index} of {sheet_count}"
+
+
+def append_slot_order(lines: list[str], sheets: list[list[dict[str, str]]], total_count: int) -> None:
+    for sheet_index, sheet in enumerate(sheets, start=1):
+        cols, rows = grid_for_sheet(total_count, len(sheet))
+        if len(sheets) > 1:
+            lines.append(f"- Sheet {sheet_index} of {len(sheets)}: {cols} by {rows} grid")
+        else:
+            lines.append(f"- Grid: {cols} by {rows}")
+        for i, item in enumerate(sheet):
+            lines.append(f"  - {slot_name(i, cols)}: {item['description']}")
+
+
+def common_sheet_contract(
+    group: str,
+    item_noun: str,
+    team_color_required: bool,
+    player_colour: dict[str, str] | None = None,
+) -> list[str]:
+    team_rule_lines = []
+    if team_color_required:
+        team_rule_lines = [
+            f"- Team colour: Use the recommended preview player colour {player_colour_text(player_colour)} only in deliberate maskable areas such as banners, shields, cloth trim, pennants, sails, or painted markers. Keep skin, stone, wood, shadows, weapons, animals, and cargo out of team colour."
+        ]
     if group == "grounds":
         return [
             "## Image Output Contract",
@@ -665,7 +795,7 @@ def common_sheet_contract(group: str, item_noun: str, team_color_required: bool)
             "- Gutters: keep clear separation between cells so each tile sample can be cropped independently.",
             "- Consistency: keep the same material identity, palette, lighting direction, detail scale, and outline weight across every slot in the file.",
             "- Tile edges: make each cell seamless on all four edges; do not add interior padding, drop shadows, borders, vignettes, or fade-outs.",
-            f"- Team colour: {team_rule}",
+            *team_rule_lines,
             "- Negative prompt: no text, labels, numbers, arrows, UI chrome, watermarks, signatures, photo texture, heavy blur, diamond-shaped tiles, or extra unlisted states.",
             "",
         ]
@@ -679,7 +809,7 @@ def common_sheet_contract(group: str, item_noun: str, team_color_required: bool)
         "- Gutters: keep clear separation between cells so each slot can be cropped or regenerated independently.",
         "- Consistency: keep the same asset identity, palette, lighting direction, scale, and outline weight across every slot in the file.",
         "- Margins: leave enough padding that no silhouette, weapon, tool, projectile, shadow, crop, corpse, decal, or effect touches a cell edge.",
-        f"- Team colour: {team_rule}",
+        *team_rule_lines,
         "- Negative prompt: no text, labels, numbers, arrows, UI chrome, watermarks, signatures, photo texture, heavy blur, cropped silhouettes, or extra unlisted states.",
         "",
     ]
@@ -731,6 +861,59 @@ def production_follow_up(group: str, item_noun: str) -> list[str]:
     ]
 
 
+def sigil_targets(team_slots: list[str]) -> str:
+    if not team_slots:
+        return "the main player-colour cloth marker"
+    preferred = [
+        slot for slot in team_slots
+        if any(word in slot.lower() for word in ["shield", "tabard", "sail", "pennant", "banner", "plaque", "flag", "sash"])
+    ]
+    chosen = preferred or team_slots[:1]
+    chosen = [slot if slot.lower().startswith("the ") else f"the {slot}" for slot in chosen]
+    if len(chosen) == 1:
+        return chosen[0]
+    return ", ".join(chosen[:-1]) + f", and {chosen[-1]}"
+
+
+def player_colour_contract(
+    category: str,
+    stats: dict[str, Any],
+    player_colour: dict[str, str] | None,
+    team_slots: list[str],
+) -> list[str]:
+    if category not in {"units", "buildings"}:
+        return []
+    lines = [
+        "## Player Colour",
+        "",
+        f"- Use {player_colour_text(player_colour)} for the player-colour areas listed above.",
+    ]
+    if is_military_unit(category, stats):
+        lines.extend(
+            [
+                f"- Add a {PLAYER_SIGIL['description']} on {sigil_targets(team_slots)}.",
+            ]
+        )
+    lines.append("")
+    return lines
+
+
+def ammunition_contract(enum_name: str) -> list[str]:
+    refs = ammunition_refs_for_entity(enum_name)
+    if not refs:
+        return []
+    lines = [
+        "## Ammunition References",
+        "",
+        "- Unit/building sheets may show ammunition only while it is still loaded, nocked, held, or otherwise not yet released.",
+        "- Released, airborne, or impact ammunition must be generated from the ammunition files below, not baked into the unit/building frame.",
+    ]
+    for slug in refs:
+        lines.append(f"- `{slug}`: `art/tiles/image-spec/ammunition/{slug}.md`")
+    lines.append("")
+    return lines
+
+
 def entity_direction_contract(category: str, directions: list[str]) -> list[str]:
     if category == "buildings":
         return [
@@ -779,24 +962,51 @@ def entity_quality_notes(enum_name: str, category: str, stats: dict[str, Any]) -
             "## Entity-Specific Art Notes",
             "",
             "- Keep the same unit identity, clothing, armour, hull, siege frame, weapon set, and carried-equipment scale across every state.",
-            "- State changes should be literal and readable: attacks show the weapon or projectile setup, gathering shows the tool/resource, carrying shows the carried material, and death/decay keeps durable gear visible.",
-            "- Do not add terrain patches, target enemies, resource nodes, UI badges, or extra helper characters inside the cell.",
+            "- State changes should be literal and readable: attacks show the weapon setup before release or the follow-through after release, gathering shows the tool/resource, carrying shows the carried material, and death/decay keeps durable gear visible.",
+            "- Do not add terrain patches, target enemies, resource nodes, UI badges, or unrelated helper characters inside the cell.",
         ]
         if enum_name in {"E_FISHING_BOAT", "E_WARSHIP", "E_TRANSPORT"}:
             notes.append("- Naval units should sit on transparent background without baked water, while hull direction and sail/team-colour areas remain readable.")
-        if enum_name in {"E_CATAPULT", "E_RAM"}:
+        if is_operated_unit(enum_name):
+            notes.append("- This is an operated movable machine: show exactly one visible human operator in every intact state, actively handling the machine for that state.")
+            notes.append("- The operator counts as part of the unit identity; do not add extra crew beyond that one operator.")
+        if enum_name in {"E_CATAPULT", "E_TREBUCHET", "E_RAM"}:
             notes.append("- Siege units should keep wheels, frame, sling/ram head, and destroyed wreck silhouettes readable from both source directions.")
         notes.append("")
         return notes
     return []
 
 
+def research_visual_contract(enum_name: str) -> list[str]:
+    variants = research_tier_variants(enum_name)
+    if not variants:
+        return []
+    lines = [
+        "## Research Visual Tiers",
+        "",
+        "Generate the complete state set for each equipment tier below.",
+    ]
+    for variant in variants:
+        if variant["is_default"]:
+            label = "Starting equipment (default, no research required)"
+        elif len(variant["research"]) == 1:
+            label = f"After {variant['research'][0]} research"
+        else:
+            label = "After " + " and ".join(variant["research"]) + " research"
+        lines.append(f"- {label}: {variant['description']}.")
+    lines.append("")
+    return lines
+
+
 def entity_markdown(enum_name: str, category: str, stats: dict[str, Any], audit: dict[str, str]) -> str:
-    actions = entity_actions(enum_name, category, audit)
+    profile = entity_profile(enum_name, audit)
+    actions = entity_actions(enum_name, category, stats, audit)
     sheets = sheet_chunks(actions)
     directions = ["front", "back"] if category != "buildings" else ["south"]
     team_color_required = category in {"units", "buildings"}
-    team_slots = split_list(audit.get("team_color_slots", "")) if team_color_required else []
+    team_slots = split_list(profile.get("team_color_slots", "")) if team_color_required else []
+    player_colour = recommended_player_colour(enum_name, stats, audit) if team_color_required else None
+    ammunition_sentence = " Use ammunition reference files for released projectiles." if ammunition_refs_for_entity(enum_name) else ""
     footprint = stats["footprint"]
 
     direction_sentence = (
@@ -818,19 +1028,22 @@ def entity_markdown(enum_name: str, category: str, stats: dict[str, Any], audit:
         "",
         "## Art Brief",
         "",
-        f"- Source role: {audit.get('role', 'unspecified')}",
-        f"- Visual design: {audit.get('visual_design', 'unspecified')}",
+        f"- Source role: {profile.get('role') or 'unspecified'}",
+        f"- Visual design: {profile.get('visual_design') or 'unspecified'}",
         f"- Projection: upright sprite anchored over projected isometric map tiles",
         f"- Footprint: {footprint['w']} by {footprint['h']} tile(s)",
         f"- Directions: {', '.join(directions)}",
-        f"- Team colour required: {'yes' if team_color_required else 'no'}",
+        *(["- Team colour required: yes"] if team_color_required else []),
         "",
         "## Team Colour Slots",
         "",
         md_list(team_slots).rstrip(),
         "",
+        *player_colour_contract(category, stats, player_colour, team_slots),
+        *ammunition_contract(enum_name),
+        *research_visual_contract(enum_name),
         *entity_direction_contract(category, directions),
-        *common_sheet_contract(category, "sprite frame", team_color_required),
+        *common_sheet_contract(category, "sprite frame", team_color_required, player_colour),
         *entity_quality_notes(enum_name, category, stats),
         "## States To Generate",
         "",
@@ -850,6 +1063,7 @@ def entity_markdown(enum_name: str, category: str, stats: dict[str, Any], audit:
         lines.extend(
             [
                 "Animal carcass states use four depletion levels: dead unharvested, partly harvested, mostly harvested, and depleted skeleton.",
+                "Harvested animal states must look butchered and processed for food or hide, not rotten, moldy, or naturally decayed.",
                 "",
             ]
         )
@@ -863,7 +1077,7 @@ def entity_markdown(enum_name: str, category: str, stats: dict[str, Any], audit:
 
     for sheet_index, sheet in enumerate(sheets, start=1):
         cols, rows = grid_for_sheet(len(actions), len(sheet))
-        label = f"Sheet {sheet_index} of {len(sheets)}"
+        label = sheet_label(sheet_index, len(sheets))
         lines.extend([f"### {label}", ""])
         lines.append(f"Use a **{cols} by {rows}** grid for this sheet.")
         if len(actions) > MAX_SLOTS_PER_SHEET and len(sheet) < MAX_SLOTS_PER_SHEET:
@@ -873,6 +1087,13 @@ def entity_markdown(enum_name: str, category: str, stats: dict[str, Any], audit:
             lines.append(f"- {slot_name(i, cols)}: `{action['id']}` - {action['description']}")
         lines.append("")
 
+    team_colour_prompt = ""
+    if team_color_required:
+        team_colour_prompt = (
+            f"Team colour is required and the recommended preview player colour is {player_colour_text(player_colour)}. "
+        )
+    state_create_prompt = create_each_sentence("frame", len(actions), "state", "states")
+    state_split_prompt = split_guidance_sentence(len(actions), "states")
     lines.extend(
         [
             *production_follow_up(category, "sprite frame"),
@@ -881,24 +1102,18 @@ def entity_markdown(enum_name: str, category: str, stats: dict[str, Any], audit:
             "",
             (
                 f"Generate sprites for my Realm {stats['name']}. The footprint is {footprint['w']} by "
-                f"{footprint['h']} tile(s). Team colour is "
-                f"{'required' if team_color_required else 'not required'}. "
-                f"{direction_prompt} Create one frame for each listed state. If there are more than 16 states, "
-                "split them across multiple images, each image using a 4 by 4 grid. Order states left to right "
+                f"{footprint['h']} tile(s). {team_colour_prompt}"
+                f"{direction_prompt} {state_create_prompt}{state_split_prompt} Order states left to right "
                 "and top to bottom within each sheet. Keep the character or building "
                 "consistent across every slot. Use transparent background, or a single flat #ff00ff magenta background "
                 "if transparency is not available. Use clean readable small-RTS proportions, stable anchor, clear gutters, "
-                "no text labels, no numbers, no watermark, and no cropped artwork."
+                f"no text labels, no numbers, no watermark, and no cropped artwork.{ammunition_sentence}"
             ),
             "",
             "Slot order:",
         ]
     )
-    for sheet_index, sheet in enumerate(sheets, start=1):
-        cols, rows = grid_for_sheet(len(actions), len(sheet))
-        lines.append(f"- Sheet {sheet_index} of {len(sheets)}: {cols} by {rows} grid")
-        for i, action in enumerate(sheet):
-            lines.append(f"  - {slot_name(i, cols)}: {action['description']}")
+    append_slot_order(lines, sheets, len(actions))
     lines.append("")
     return "\n".join(lines)
 
@@ -921,7 +1136,6 @@ def terrain_markdown(enum_name: str, runtime_name: str, audit: dict[str, str]) -
         f"- Layer category: {layer['group']}",
         "- Footprint: 1 by 1 tile",
         "- Directions: tile",
-        "- Team colour required: no",
         f"- Default state: `{default_state}`",
         "",
         "## States Or Variants To Generate",
@@ -940,7 +1154,7 @@ def terrain_markdown(enum_name: str, runtime_name: str, audit: dict[str, str]) -
         )
     for sheet_index, sheet in enumerate(sheets, start=1):
         cols, rows = grid_for_sheet(len(items), len(sheet))
-        label = f"Sheet {sheet_index} of {len(sheets)}"
+        label = sheet_label(sheet_index, len(sheets))
         lines.extend([f"### {label}", ""])
         lines.append(f"Use a **{cols} by {rows}** grid for this sheet.")
         if len(items) > MAX_SLOTS_PER_SHEET and len(sheet) < MAX_SLOTS_PER_SHEET:
@@ -957,9 +1171,9 @@ def terrain_markdown(enum_name: str, runtime_name: str, audit: dict[str, str]) -
             "",
             (
                 f"Generate Realm terrain assets for {runtime_name}. Use {layer['generation']}. "
-                f"Team colour is not required. Create one {layer['item']} for each listed state or variant group. "
+                f"{create_each_sentence(layer['item'], len(items), 'state or variant group', 'states or variant groups')} "
                 f"The default state is {default_state}. "
-                "If there are more than 16 items, split them across multiple images, each image using a 4 by 4 grid. "
+                f"{split_guidance_sentence(len(items), 'items')} "
                 "Order items left to right and top to bottom within each sheet. Keep the terrain style consistent "
                 "across every slot. Use clean readable small-RTS tile art, no text labels, no numbers, no watermark, "
                 "and no cropped artwork."
@@ -968,11 +1182,7 @@ def terrain_markdown(enum_name: str, runtime_name: str, audit: dict[str, str]) -
             "Slot order:",
         ]
     )
-    for sheet_index, sheet in enumerate(sheets, start=1):
-        cols, rows = grid_for_sheet(len(items), len(sheet))
-        lines.append(f"- Sheet {sheet_index} of {len(sheets)}: {cols} by {rows} grid")
-        for i, item in enumerate(sheet):
-            lines.append(f"  - {slot_name(i, cols)}: {item['description']}")
+    append_slot_order(lines, sheets, len(items))
     lines.append("")
     return "\n".join(lines)
 
@@ -1004,7 +1214,6 @@ def target_asset_markdown(
         f"- Projection: {projection}",
         "- Footprint: 1 by 1 tile",
         "- Directions: tile",
-        "- Team colour required: no",
         f"- Default state: `{default_state}`",
         "",
         *common_sheet_contract(group, item_noun, False),
@@ -1021,7 +1230,7 @@ def target_asset_markdown(
 
     for sheet_index, sheet in enumerate(sheets, start=1):
         cols, rows = grid_for_sheet(len(items), len(sheet))
-        label = f"Sheet {sheet_index} of {len(sheets)}"
+        label = sheet_label(sheet_index, len(sheets))
         lines.extend([f"### {label}", ""])
         lines.append(f"Use a **{cols} by {rows}** grid for this sheet.")
         if len(items) > MAX_SLOTS_PER_SHEET and len(sheet) < MAX_SLOTS_PER_SHEET:
@@ -1038,9 +1247,9 @@ def target_asset_markdown(
             "",
             (
                 f"Generate Realm {display_name} image sheets. Use {generation}. "
-                f"Team colour is not required. Create one {item_noun} for each listed state or variant. "
+                f"{create_each_sentence(item_noun, len(items), 'state or variant', 'states or variants')} "
                 f"The default state is {default_state}. "
-                "If there are more than 16 items, split them across multiple images, each image using a 4 by 4 grid. "
+                f"{split_guidance_sentence(len(items), 'items')} "
                 "Order items left to right and top to bottom within each sheet. "
                 "Use clean readable small-RTS art, stable scale, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork. "
                 f"{sheet_prompt_background_sentence(group)}"
@@ -1049,11 +1258,7 @@ def target_asset_markdown(
             "Slot order:",
         ]
     )
-    for sheet_index, sheet in enumerate(sheets, start=1):
-        cols, rows = grid_for_sheet(len(items), len(sheet))
-        lines.append(f"- Sheet {sheet_index} of {len(sheets)}: {cols} by {rows} grid")
-        for i, item in enumerate(sheet):
-            lines.append(f"  - {slot_name(i, cols)}: {item['description']}")
+    append_slot_order(lines, sheets, len(items))
     lines.append("")
     return "\n".join(lines)
 
@@ -1125,10 +1330,6 @@ def decal_markdown(slug: str, display_name: str, visual_design: str, items: list
 
 def effects_ui_items() -> list[dict[str, str]]:
     return [
-        state_item("arrow_projectile", "upright_world arrow projectile"),
-        state_item("tower_bolt_projectile", "upright_world tower or garrison bolt"),
-        state_item("warship_shot_projectile", "upright_world warship shot"),
-        state_item("catapult_boulder_projectile", "upright_world catapult boulder"),
         state_item("melee_hit_spark", "upright_world melee hit spark"),
         state_item("arrow_hit", "upright_world arrow impact"),
         state_item("boulder_impact", "upright_world boulder dust impact"),
@@ -1160,6 +1361,24 @@ def effects_ui_items() -> list[dict[str, str]]:
     ]
 
 
+def ammunition_markdown(spec: dict[str, Any]) -> str:
+    return target_asset_markdown(
+        "ammunition",
+        spec["slug"],
+        spec["name"],
+        spec["description"],
+        "transparent upright_world projectile sprite or tiny animation",
+        "transparent ammunition sprites after release, separate from unit/building sheets",
+        "ammunition sprite",
+        spec["states"],
+        [
+            "Ammunition art is used only after release. Do not include the firing unit, launcher, building, target, impact burst, water splash, terrain, UI labels, or motion arrows.",
+            "Keep the sprite compact, centred, readable over light and dark terrain, and suitable for animation between tiles.",
+            "If the ammunition has multiple states, keep the same projectile identity while changing only the animated part such as flame flicker or volley spacing.",
+        ],
+    )
+
+
 def effects_ui_markdown() -> str:
     return target_asset_markdown(
         "effects-ui",
@@ -1186,11 +1405,11 @@ def write(path: Path, text: str) -> None:
 
 def export_prompts(out_dir: Path, clean: bool) -> dict[str, list[tuple[str, str]]]:
     realm_h = read_text(ROOT / "include" / "realm.h")
-    globals_cpp = read_text(ROOT / "src" / "globals.cpp")
+    entity_defs_cpp = read_text(ROOT / "src" / "core" / "entity_defs.cpp")
     audit_md = read_text(ROOT / "docs" / "tileset" / "realm_tileset_visual_audit.md")
 
     entity_order = enum_values(realm_h, "EntityType")
-    stats = parse_stats(globals_cpp)
+    stats = parse_stats(entity_defs_cpp)
     entity_audit, _terrain_audit = parse_audit_tables(audit_md)
 
     if clean and out_dir.exists():
@@ -1199,7 +1418,7 @@ def export_prompts(out_dir: Path, clean: bool) -> dict[str, list[tuple[str, str]
 
     index: dict[str, list[tuple[str, str]]] = {
         "grounds": [], "features": [], "decals": [],
-        "units": [], "animals": [], "buildings": [], "effects-ui": [],
+        "units": [], "animals": [], "buildings": [], "ammunition": [], "effects-ui": [],
     }
 
     for slug, display_name, visual_design, items in ground_specs():
@@ -1227,6 +1446,11 @@ def export_prompts(out_dir: Path, clean: bool) -> dict[str, list[tuple[str, str]
         write(out_dir / rel, text)
         index[category].append((record["name"], rel.as_posix()))
 
+    for spec in AMMUNITION_SPECS:
+        rel = Path("ammunition") / f"{spec['slug']}.md"
+        write(out_dir / rel, ammunition_markdown(spec))
+        index["ammunition"].append((spec["name"], rel.as_posix()))
+
     write(out_dir / "environment-state-design.md", environment_state_design_markdown())
     write(out_dir / "effects-ui" / "effects-ui.md", effects_ui_markdown())
     index["effects-ui"].append(("Effects UI", "effects-ui/effects-ui.md"))
@@ -1242,14 +1466,15 @@ def index_markdown(index: dict[str, list[tuple[str, str]]]) -> str:
         "",
         "## Generation Contract",
         "",
-        "- Generate groups in this order: grounds, features, decals, units, animals, buildings, effects-ui.",
+        "- Generate groups in this order: grounds, features, decals, units, animals, buildings, ammunition, effects-ui.",
         "- Generate one image sheet for each `Sheet` section in each prompt.",
         "- When a unit or animal prompt lists multiple directions, generate the full sheet set once per direction.",
         "- Treat these generated sheets as review contact sheets first; once a slot is accepted, generate or crop a standalone square production image for that slot.",
         "- For standalone production images, use transparent background where possible, or a single flat #ff00ff magenta key background for later cleanup.",
         "- Keep emoji, symbol, ASCII, and procedural fallbacks readable until replacement art exists.",
         "- Peasant idle is the only sprite lane assumed to already exist; every other prompt should be treated as needed art.",
-        "- Ground prompts are top-down square tile art. Feature prompts are transparent anchored sprites. Decal prompts are transparent ground overlays. Effects/UI prompts are transparent overlays.",
+        "- Ground prompts are top-down square tile art. Feature prompts are transparent anchored sprites. Decal prompts are transparent ground overlays. Ammunition and effects/UI prompts are transparent overlays.",
+        "- Unit and building sheets may show ammunition only before release; released projectiles belong in the ammunition prompts.",
         "- Unit and animal `front` is a three-quarter screen-right RTS angle; `back` is the matching rear-right angle. Do not generate mirrored left-facing source art.",
         "- Do not add text labels, numbers, watermarks, cropped artwork, or baked UI chrome to generated image sheets.",
         "",

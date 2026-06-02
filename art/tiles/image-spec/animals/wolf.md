@@ -9,7 +9,6 @@ Generate one Realm sprite reference sheet per direction for **Wolf**.
 - Projection: upright sprite anchored over projected isometric map tiles
 - Footprint: 1 by 1 tile(s)
 - Directions: front, back
-- Team colour required: no
 
 ## Team Colour Slots
 
@@ -30,7 +29,6 @@ Generate one Realm sprite reference sheet per direction for **Wolf**.
 - Gutters: keep clear separation between cells so each slot can be cropped or regenerated independently.
 - Consistency: keep the same asset identity, palette, lighting direction, scale, and outline weight across every slot in the file.
 - Margins: leave enough padding that no silhouette, weapon, tool, projectile, shadow, crop, corpse, decal, or effect touches a cell edge.
-- Team colour: Do not use team colour markers.
 - Negative prompt: no text, labels, numbers, arrows, UI chrome, watermarks, signatures, photo texture, heavy blur, cropped silhouettes, or extra unlisted states.
 
 ## Entity-Specific Art Notes
@@ -44,10 +42,11 @@ Generate one Realm sprite reference sheet per direction for **Wolf**.
 Generate **one frame for each state**. There are 8 state(s). Each image may contain at most **16 states** in a **4 by 4** grid.
 
 Animal carcass states use four depletion levels: dead unharvested, partly harvested, mostly harvested, and depleted skeleton.
+Harvested animal states must look butchered and processed for food or hide, not rotten, moldy, or naturally decayed.
 
 Wolf carcass depletion states are for visual consistency with other animals only; wolf carcass harvesting is not enabled in gameplay.
 
-### Sheet 1 of 1
+### Sheet
 
 Use a **3 by 3** grid for this sheet.
 
@@ -55,10 +54,10 @@ Use a **3 by 3** grid for this sheet.
 - row 1, column 2: `prowl` - prowl
 - row 1, column 3: `attack` - attack
 - row 2, column 1: `winter_aggressive_variant_optional` - winter-aggressive variant optional
-- row 2, column 2: `dead_unharvested` - dead animal body lying on the ground, full carcass, species silhouette still readable
-- row 2, column 3: `partly_harvested` - partly harvested carcass, some meat or hide removed, species still readable
-- row 3, column 1: `mostly_harvested` - mostly harvested carcass, sparse remains with bones beginning to show
-- row 3, column 2: `depleted_skeleton` - fully depleted decayed skeleton remains, species silhouette still readable
+- row 2, column 2: `dead_unharvested` - freshly killed animal body lying on the ground, full carcass, species silhouette still readable
+- row 2, column 3: `partly_harvested` - partly butchered and harvested carcass, some meat or hide cleanly removed, species still readable
+- row 3, column 1: `mostly_harvested` - mostly butchered and harvested carcass, clean bones beginning to show, not rotting
+- row 3, column 2: `depleted_skeleton` - fully harvested clean skeleton remains, species silhouette still readable, not decayed or rotten
 
 ## Production Follow-Up
 
@@ -70,15 +69,15 @@ Use a **3 by 3** grid for this sheet.
 
 ## Prompt
 
-Generate sprites for my Realm Wolf. The footprint is 1 by 1 tile(s). Team colour is not required. Valid directions are front, back. Produce one sheet at a time for the requested direction, using the same state grid for each direction. Create one frame for each listed state. If there are more than 16 states, split them across multiple images, each image using a 4 by 4 grid. Order states left to right and top to bottom within each sheet. Keep the character or building consistent across every slot. Use transparent background, or a single flat #ff00ff magenta background if transparency is not available. Use clean readable small-RTS proportions, stable anchor, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork.
+Generate sprites for my Realm Wolf. The footprint is 1 by 1 tile(s). Valid directions are front, back. Produce one sheet at a time for the requested direction, using the same state grid for each direction. Create one frame for each of the 8 listed states. Order states left to right and top to bottom within each sheet. Keep the character or building consistent across every slot. Use transparent background, or a single flat #ff00ff magenta background if transparency is not available. Use clean readable small-RTS proportions, stable anchor, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork.
 
 Slot order:
-- Sheet 1 of 1: 3 by 3 grid
+- Grid: 3 by 3
   - row 1, column 1: idle
   - row 1, column 2: prowl
   - row 1, column 3: attack
   - row 2, column 1: winter-aggressive variant optional
-  - row 2, column 2: dead animal body lying on the ground, full carcass, species silhouette still readable
-  - row 2, column 3: partly harvested carcass, some meat or hide removed, species still readable
-  - row 3, column 1: mostly harvested carcass, sparse remains with bones beginning to show
-  - row 3, column 2: fully depleted decayed skeleton remains, species silhouette still readable
+  - row 2, column 2: freshly killed animal body lying on the ground, full carcass, species silhouette still readable
+  - row 2, column 3: partly butchered and harvested carcass, some meat or hide cleanly removed, species still readable
+  - row 3, column 1: mostly butchered and harvested carcass, clean bones beginning to show, not rotting
+  - row 3, column 2: fully harvested clean skeleton remains, species silhouette still readable, not decayed or rotten

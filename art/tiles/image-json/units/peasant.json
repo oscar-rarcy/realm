@@ -12,7 +12,7 @@
       "range": 1,
       "speed": 3,
       "attack_speed_ticks": 8,
-      "cost_gold": 50,
+      "cost_gold": 0,
       "cost_wood": 0,
       "train_time_ticks": 40,
       "supply_provided": 0,
@@ -41,6 +41,16 @@
       "belt sash",
       "shoulder cloth"
     ],
+    "recommended_player_colour": {
+      "name": "blue",
+      "hex": "#00AFFF"
+    },
+    "player_sigil": null,
+    "operated_by_person": false,
+    "operator_contract": "",
+    "ammunition": [],
+    "research_visual_lines": [],
+    "research_visual_variants": [],
     "visual_design": "Hooded medieval labourer with tunic, belt, simple tool; neutral cloth/leather",
     "source_role": "worker, builder, gatherer, basic attacker"
   },
@@ -399,7 +409,7 @@
   },
   "sources": [
     "include/realm.h",
-    "src/globals.cpp",
+    "src/core/entity_defs.cpp",
     "docs/tileset/realm_tileset_visual_audit.md"
   ]
 }

@@ -7,12 +7,20 @@
 enum class GameEventType {
     StatusMessage,
     ActionMarker,
+    CommandAccepted,
     CommandRejected,
+    ResourcesChanged,
+    EntitySpawned,
+    EntityDestroyed,
+    UnitOrdered,
+    GarrisonChanged,
     ResearchStarted,
     ResearchCompleted,
     TrainingStarted,
     TrainingQueued,
     BuildingPlaced,
+    SaveCompleted,
+    LoadCompleted,
 };
 
 struct GameEvent {

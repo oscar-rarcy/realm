@@ -35,6 +35,16 @@
       "tiny post flag optional",
       "very subtle"
     ],
+    "recommended_player_colour": {
+      "name": "blue",
+      "hex": "#00AFFF"
+    },
+    "player_sigil": null,
+    "operated_by_person": false,
+    "operator_contract": "",
+    "ammunition": [],
+    "research_visual_lines": [],
+    "research_visual_variants": [],
     "visual_design": "Cultivated wheat plot, furrows, scarecrow/sickle marker",
     "source_role": "food generator when tended; dies in winter"
   },
@@ -90,7 +100,7 @@
   },
   "sources": [
     "include/realm.h",
-    "src/globals.cpp",
+    "src/core/entity_defs.cpp",
     "docs/tileset/realm_tileset_visual_audit.md"
   ]
 }

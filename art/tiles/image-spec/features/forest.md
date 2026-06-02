@@ -10,7 +10,6 @@ Generate Realm image sheets for **forest feature**.
 - Projection: transparent upright sprite anchored over a projected isometric map tile
 - Footprint: 1 by 1 tile
 - Directions: tile
-- Team colour required: no
 - Default state: `spring_full`
 
 ## Image Output Contract
@@ -21,7 +20,6 @@ Generate Realm image sheets for **forest feature**.
 - Gutters: keep clear separation between cells so each slot can be cropped or regenerated independently.
 - Consistency: keep the same asset identity, palette, lighting direction, scale, and outline weight across every slot in the file.
 - Margins: leave enough padding that no silhouette, weapon, tool, projectile, shadow, crop, corpse, decal, or effect touches a cell edge.
-- Team colour: Do not use team colour markers.
 - Negative prompt: no text, labels, numbers, arrows, UI chrome, watermarks, signatures, photo texture, heavy blur, cropped silhouettes, or extra unlisted states.
 
 ## States Or Variants To Generate
@@ -36,7 +34,7 @@ Keep the bottom anchor stable: depletion, snow, rain, damage, or trample states 
 Concealing feature contract: define separate `back` and `front_occluder` layers so units can appear partly behind foliage or reeds.
 The `back` layer should contain trunks, rear foliage, stems, and contact details; the `front_occluder` layer should contain only the foreground coverage that can overlap units.
 
-### Sheet 1 of 1
+### Sheet
 
 Use a **4 by 4** grid for this sheet.
 
@@ -66,10 +64,10 @@ Use a **4 by 4** grid for this sheet.
 
 ## Prompt
 
-Generate Realm forest feature image sheets. Use transparent-background anchored sprites with no full ground tile, consistent anchor position, and readable silhouette. Team colour is not required. Create one sprite for each listed state or variant. The default state is spring_full. If there are more than 16 items, split them across multiple images, each image using a 4 by 4 grid. Order items left to right and top to bottom within each sheet. Use clean readable small-RTS art, stable scale, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork. Use transparent background, or a single flat #ff00ff magenta background if transparency is not available.
+Generate Realm forest feature image sheets. Use transparent-background anchored sprites with no full ground tile, consistent anchor position, and readable silhouette. Create one sprite for each of the 16 listed states or variants. The default state is spring_full.  Order items left to right and top to bottom within each sheet. Use clean readable small-RTS art, stable scale, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork. Use transparent background, or a single flat #ff00ff magenta background if transparency is not available.
 
 Slot order:
-- Sheet 1 of 1: 4 by 4 grid
+- Grid: 4 by 4
   - row 1, column 1: oak forest canopy, trunks, and contact shadow, spring: fresh, recovering, greener look, full resource amount, abundant and untouched
   - row 1, column 2: oak forest canopy, trunks, and contact shadow, spring: fresh, recovering, greener look, mostly full resource amount, slightly reduced
   - row 1, column 3: oak forest canopy, trunks, and contact shadow, spring: fresh, recovering, greener look, mostly empty resource amount, sparse but still readable

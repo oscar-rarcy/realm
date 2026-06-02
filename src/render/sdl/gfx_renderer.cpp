@@ -317,9 +317,7 @@ void handleMobileHudButton(const std::string& id) {
             EntityType tt = mobileDefaultTrainType(sel->type);
             if (tt != E_NONE) {
                 Command command;
-                command.type = CommandType::Train;
-                command.selection = currentSelection();
-                command.entityType = tt;
+                command.payload = TrainCommand{ currentSelection(), tt };
                 dispatchCommand(g, command);
             }
         }
@@ -376,12 +374,15 @@ bool handleKeyHitAt(int px, int py) {
         if (!pointInRect(px, py, hit.r)) continue;
         bool globalShortcut = g.mode == M_NORMAL || g.mode == M_GAME_OVER || g.mode == M_PAUSED;
         if (globalShortcut && (hit.ch == 'v' || hit.ch == 'V')) {
-            saveGame("realm-save.txt");
+            Command command;
+            command.payload = SaveCommand{ 0 };
+            dispatchCommand(g, command);
         } else if (globalShortcut && (hit.ch == 'd' || hit.ch == 'D')) {
             g.diagnostics = !g.diagnostics;
         } else if (globalShortcut && (hit.ch == 'l' || hit.ch == 'L')) {
-            loadGame("realm-save.txt");
-            updateViewMetrics(true);
+            Command command;
+            command.payload = LoadCommand{ 0 };
+            if (dispatchCommand(g, command).status == CommandStatus::Accepted) updateViewMetrics(true);
         } else {
             handleInput(hit.ch);
         }
@@ -433,10 +434,7 @@ void mobileTapMap(int px, int py) {
             return;
         }
         Command command;
-        command.type = CommandType::Build;
-        command.selection = currentSelection();
-        command.targetTile = {mx, my};
-        command.entityType = s.mobileBuildType;
+        command.payload = BuildCommand{ currentSelection(), s.mobileBuildType, {mx, my} };
         dispatchCommand(g, command);
         s.mobileBuildType = E_NONE;
         g.mode = M_NORMAL;
@@ -451,8 +449,7 @@ void mobileTapMap(int px, int py) {
         dispatchCommand(g, resolveContextCommand(g, currentSelection(), {mx, my}));
     } else {
         Command command;
-        command.type = CommandType::Select;
-        command.targetTile = {mx, my};
+        command.payload = SelectCommand{ {mx, my} };
         dispatchCommand(g, command);
     }
 }
@@ -597,8 +594,7 @@ void gfxPollInput(bool& quitRequested) {
                 } else if (e.button.button == SDL_BUTTON_LEFT) {
                     if (e.button.clicks >= 2) {
                         Command command;
-                        command.type = CommandType::SelectAllOfTypeInView;
-                        command.targetTile = {mx, my};
+                        command.payload = SelectAllOfTypeInViewCommand{ {mx, my} };
                         dispatchCommand(g, command);
                     }
                     else {
@@ -649,14 +645,11 @@ void gfxPollInput(bool& quitRequested) {
                     bool moved = (std::abs(mx - s.dragStartX) + std::abs(my - s.dragStartY)) > 1;
                     if (moved) {
                         Command command;
-                        command.type = CommandType::BoxSelect;
-                        command.targetTile = {s.dragStartX, s.dragStartY};
-                        command.boxEnd = {mx, my};
+                        command.payload = BoxSelectCommand{ {s.dragStartX, s.dragStartY}, {mx, my} };
                         dispatchCommand(g, command);
                     } else {
                         Command command;
-                        command.type = CommandType::Select;
-                        command.targetTile = {mx, my};
+                        command.payload = SelectCommand{ {mx, my} };
                         dispatchCommand(g, command);
                     }
                 }
@@ -680,16 +673,16 @@ void gfxPollInput(bool& quitRequested) {
             }
             if (k >= SDLK_F5 && k <= SDLK_F8) {
                 int slot = (int)(k - SDLK_F5) + 1;
-                std::string path = "realm-slot" + std::to_string(slot) + ".sav";
-                if (saveGame(path)) setStatus("Saved to slot " + std::to_string(slot) + ".");
-                else setStatus("Save failed.");
+                Command command;
+                command.payload = SaveCommand{ slot };
+                dispatchCommand(g, command);
                 continue;
             }
             if (k >= SDLK_F9 && k <= SDLK_F12) {
                 int slot = (int)(k - SDLK_F9) + 1;
-                std::string path = "realm-slot" + std::to_string(slot) + ".sav";
-                if (loadGame(path)) { setStatus("Loaded slot " + std::to_string(slot) + "."); updateViewMetrics(true); }
-                else setStatus("Load failed.");
+                Command command;
+                command.payload = LoadCommand{ slot };
+                if (dispatchCommand(g, command).status == CommandStatus::Accepted) updateViewMetrics(true);
                 continue;
             }
             if (devCaptureEnabled() && k == SDLK_y) { captureIssueBundle(); continue; }

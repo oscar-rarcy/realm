@@ -101,7 +101,7 @@
       },
       {
         "enum": "T_CASTLE_FLOOR",
-        "name": "Castle floor",
+        "name": "Castle Floor",
         "slug": "castle_floor",
         "path": "grounds/castle_floor.json"
       }
@@ -127,7 +127,7 @@
       },
       {
         "enum": "T_DEAD_TREE",
-        "name": "Dead tree",
+        "name": "Dead Tree",
         "slug": "dead_tree",
         "path": "features/dead_tree.json"
       },
@@ -163,7 +163,7 @@
       },
       {
         "enum": "T_BERRY",
-        "name": "Berries",
+        "name": "Berry",
         "slug": "berry",
         "path": "features/berry.json"
       },
@@ -181,13 +181,13 @@
       },
       {
         "enum": "T_CASTLE_WALL",
-        "name": "Castle wall",
+        "name": "Castle Wall",
         "slug": "castle_wall",
         "path": "features/castle_wall.json"
       },
       {
         "enum": "T_CASTLE_GATE",
-        "name": "Castle gate",
+        "name": "Castle Gate",
         "slug": "castle_gate",
         "path": "features/castle_gate.json"
       }
@@ -195,7 +195,7 @@
     "decals": [
       {
         "enum": "T_TALL_GRASS",
-        "name": "Tall grass",
+        "name": "Tall Grass",
         "slug": "tall_grass",
         "path": "decals/tall_grass.json"
       },
@@ -232,10 +232,22 @@
         "path": "units/knight.json"
       },
       {
+        "enum": "E_SPEARMAN",
+        "name": "Spearman",
+        "slug": "spearman",
+        "path": "units/spearman.json"
+      },
+      {
         "enum": "E_CATAPULT",
         "name": "Catapult",
         "slug": "catapult",
         "path": "units/catapult.json"
+      },
+      {
+        "enum": "E_TREBUCHET",
+        "name": "Trebuchet",
+        "slug": "trebuchet",
+        "path": "units/trebuchet.json"
       },
       {
         "enum": "E_FISHING_BOAT",
@@ -384,6 +396,43 @@
         "name": "Dock",
         "slug": "dock",
         "path": "buildings/dock.json"
+      }
+    ],
+    "ammunition": [
+      {
+        "name": "Arrow",
+        "slug": "arrow",
+        "path": "ammunition/arrow.json"
+      },
+      {
+        "name": "Crossbow Bolt",
+        "slug": "crossbow_bolt",
+        "path": "ammunition/crossbow_bolt.json"
+      },
+      {
+        "name": "Flaming Arrow",
+        "slug": "flaming_arrow",
+        "path": "ammunition/flaming_arrow.json"
+      },
+      {
+        "name": "Tower Bolt",
+        "slug": "tower_bolt",
+        "path": "ammunition/tower_bolt.json"
+      },
+      {
+        "name": "Warship Arrow Volley",
+        "slug": "warship_arrow_volley",
+        "path": "ammunition/warship_arrow_volley.json"
+      },
+      {
+        "name": "Catapult Boulder",
+        "slug": "catapult_boulder",
+        "path": "ammunition/catapult_boulder.json"
+      },
+      {
+        "name": "Trebuchet Boulder",
+        "slug": "trebuchet_boulder",
+        "path": "ammunition/trebuchet_boulder.json"
       }
     ]
   }

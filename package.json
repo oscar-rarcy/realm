@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "validate": "bash scripts/validate.sh",
     "build:web": "bash scripts/build-web.sh",
     "test:web": "node tests/web-smoke.mjs",
     "test:web:render": "node tests/web-render-modes.mjs",

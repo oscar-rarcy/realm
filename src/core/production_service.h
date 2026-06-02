@@ -1,8 +1,11 @@
 #pragma once
 
 #include "realm.h"
+#include "core/service_result.h"
 
 // Canonical training rules and execution path shared by player commands and AI.
+
+struct WorldIndex;
 
 struct ProductionRule {
     EntityType producer;
@@ -26,3 +29,5 @@ CanTrainResult canTrain(const Game& game, int player, const Entity& producer, En
 // Emits a status message for the human player (owner 0). Returns true when the
 // unit was started or queued.
 bool startTraining(Game& game, int player, int producerId, EntityType unitType);
+ServiceResult startTrainingService(Game& game, int player, int producerId, EntityType unitType);
+ServiceResult startTrainingService(Game& game, const WorldIndex& world, int player, int producerId, EntityType unitType);

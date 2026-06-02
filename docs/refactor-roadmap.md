@@ -37,16 +37,26 @@ short working checklist and records the established conventions/safety net.
 - [x] Phase 5 (initial) `EntityId`/`PlayerId`, `GameContext`, `UiContext`, command dispatcher
       accepts `GameContext&` with a legacy `Game&` wrapper.
 - [x] Phase 6 (initial) `WorldIndex` with id/owner/tile/occupancy/resource indexes and parity tests.
+- [x] Phase 6/7 `WorldIndex` now drives AI idle resource targeting, including indexed fish
+      targets for boats.
+- [x] Phase 7 (initial) AI action helpers route build/train/research/gather/move/attack/garrison
+      through typed commands; architecture checks prevent direct AI order/service regressions.
 - [x] Phase 8 (initial) save version constant + supported-version gate + migration hook; v8 saves
       migrate into current v9 format.
+- [x] Phase 8 (split) save loading now separates parse, migrate/hydrate, and validation, preserving
+      the current game on failed load.
+- [x] Phase 9 (initial) structured validation issues distinguish recoverable repair cases from hard
+      invariants.
+- [x] Phase 10 (initial) renderer-neutral `RenderModel` builder for viewport tiles/entities with
+      derived visual states.
+- [x] Phase 11 (initial) map invariant validator runs across seed sweeps; mapgen clears stale
+      resources when terrain passes overwrite resource tiles.
 - [x] Phase 14 (initial) `scripts/check_architecture.py` + `make architecture-check` for migrated
-      command/domain boundaries.
-- [ ] Remaining structural work: finish input-intent split, route save/load and more UI actions
-      through commands, thread event sinks instead of using the global legacy sink, migrate hot
-      query paths and AI to `WorldIndex`, split AI combat/economy/planning, fully separate save
-      parse/migrate/hydrate/validate, consolidate render model consumers, replace empty wrapper
-      headers, remove legacy wrappers/global `g` use from migrated layers, and expand architecture
-      checks as each boundary is migrated.
+      command/domain boundaries, coordinate payloads, and AI command routing.
+- [ ] Remaining structural work: thread event sinks instead of using the global legacy sink, deepen
+      AI planner/evaluator decomposition, migrate more query paths to `WorldIndex`, make renderers
+      consume `RenderModel` directly, replace empty wrapper headers, remove legacy wrappers/global
+      `g` use from migrated layers, and continue expanding architecture checks as boundaries mature.
 
 ## Notes for continuation
 - Domain services live under `src/core/` (auto-globbed by both `Makefile` and

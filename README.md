@@ -149,13 +149,33 @@ Realm can be built for the browser with Emscripten:
 bash scripts/build-web.sh
 ```
 
-If Emscripten is not installed, this script can install the pinned SDK locally:
+If you already have a repo-local `./.emsdk`, the build script will activate it automatically.
+
+To install the pinned SDK locally on demand:
 
 ```sh
-REALM_INSTALL_EMSDK=1 bash scripts/build-web.sh
+bash scripts/setup-web.sh
+```
+
+Or, to install and build in one step:
+
+```sh
+bash scripts/build-web.sh --install-emsdk
 ```
 
 The web output is written to `dist/netlify/`.
+
+For the default validation flow:
+
+```sh
+bash scripts/validate.sh
+```
+
+That always runs the native architecture/test/GUI checks. It only runs the web build automatically when Emscripten is already available, or when you opt in with:
+
+```sh
+bash scripts/validate.sh --include-web --install-emsdk
+```
 
 To run the web output locally:
 
@@ -233,7 +253,7 @@ Common fixes:
 
 - If the build acts strange, run `mingw32-make clean` or `make clean`.
 - If Windows cannot find MSYS2, check that `C:\msys64` exists.
-- If the web build cannot find Emscripten, run `REALM_INSTALL_EMSDK=1 bash scripts/build-web.sh`.
+- If the web build cannot find Emscripten, run `bash scripts/setup-web.sh` or `bash scripts/build-web.sh --install-emsdk`.
 - If git shows files in `build/`, `bin/`, `logs/`, `dist/`, or `node_modules/`, they should normally be ignored generated files.
 
 ## Deeper Docs

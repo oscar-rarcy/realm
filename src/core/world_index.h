@@ -45,6 +45,8 @@ WorldIndex buildWorldIndex(const Game& game);
 
 Entity* entityById(Game& game, const WorldIndex& world, EntityId id);
 const Entity* entityById(const Game& game, const WorldIndex& world, EntityId id);
+Entity* entityByIdAny(Game& game, const WorldIndex& world, EntityId id);
+const Entity* entityByIdAny(const Game& game, const WorldIndex& world, EntityId id);
 
 std::vector<EntityId> entitiesAt(const WorldIndex& world, MapPos tile);
 EntityId topEntityAt(const Game& game, const WorldIndex& world, MapPos tile);

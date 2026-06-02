@@ -1,5 +1,7 @@
 #include "market_service.h"
+#include "core/entity_query.h"
 #include "core/game_events.h"
+#include "core/world_index.h"
 
 // Canonical exchange rates. These mirror the rates that were previously inline in
 // the input handler so the player-facing behavior is unchanged.
@@ -52,13 +54,22 @@ CanTradeResult canTrade(const Game& game, int player, const Entity& market, Mark
 }
 
 bool executeTrade(Game& game, int player, int marketId, MarketTradeType type) {
-    Entity* market = findEntity(marketId);
-    if (!market) return false;
+    return executeTradeService(game, player, marketId, type).ok;
+}
+
+ServiceResult executeTradeService(Game& game, int player, int marketId, MarketTradeType type) {
+    WorldIndex world = buildWorldIndex(game);
+    return executeTradeService(game, world, player, marketId, type);
+}
+
+ServiceResult executeTradeService(Game& game, const WorldIndex& world, int player, int marketId, MarketTradeType type) {
+    Entity* market = findEntity(game, world, marketId);
+    if (!market) return { false, "Market not found." };
 
     CanTradeResult result = canTrade(game, player, *market, type);
     if (!result.ok) {
         emitStatusEvent(player, result.reason, GameEventType::CommandRejected);
-        return false;
+        return { false, result.reason };
     }
 
     const MarketTradeDef* def = marketTradeDef(type);
@@ -66,5 +77,5 @@ bool executeTrade(Game& game, int player, int marketId, MarketTradeType type) {
     addResource(p, def->from, -def->fromAmount);
     addResource(p, def->to, def->toAmount);
     emitStatusEvent(player, def->successMessage);
-    return true;
+    return { true, nullptr };
 }

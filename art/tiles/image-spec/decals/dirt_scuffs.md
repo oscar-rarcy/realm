@@ -10,7 +10,6 @@ Generate Realm image sheets for **dirt scuffs decal**.
 - Projection: transparent low or flat overlay that sits on top of ground
 - Footprint: 1 by 1 tile
 - Directions: tile
-- Team colour required: no
 - Default state: `sparse`
 
 ## Image Output Contract
@@ -21,7 +20,6 @@ Generate Realm image sheets for **dirt scuffs decal**.
 - Gutters: keep clear separation between cells so each slot can be cropped or regenerated independently.
 - Consistency: keep the same asset identity, palette, lighting direction, scale, and outline weight across every slot in the file.
 - Margins: leave enough padding that no silhouette, weapon, tool, projectile, shadow, crop, corpse, decal, or effect touches a cell edge.
-- Team colour: Do not use team colour markers.
 - Negative prompt: no text, labels, numbers, arrows, UI chrome, watermarks, signatures, photo texture, heavy blur, cropped silhouettes, or extra unlisted states.
 
 ## States Or Variants To Generate
@@ -34,7 +32,7 @@ Use a top-down or very shallow map-overlay view, not an upright icon view.
 Keep the decal mostly inside the centre of the tile with soft edges so it can layer over many ground types.
 The decal must not imply an independent blocking object or a full terrain replacement.
 
-### Sheet 1 of 1
+### Sheet
 
 Use a **2 by 2** grid for this sheet.
 
@@ -51,10 +49,10 @@ Use a **2 by 2** grid for this sheet.
 
 ## Prompt
 
-Generate Realm dirt scuffs decal image sheets. Use transparent low/flat overlay decals that sit on the ground and do not imply an independent blocking object. Team colour is not required. Create one decal for each listed state or variant. The default state is sparse. If there are more than 16 items, split them across multiple images, each image using a 4 by 4 grid. Order items left to right and top to bottom within each sheet. Use clean readable small-RTS art, stable scale, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork. Use transparent background, or a single flat #ff00ff magenta background if transparency is not available.
+Generate Realm dirt scuffs decal image sheets. Use transparent low/flat overlay decals that sit on the ground and do not imply an independent blocking object. Create one decal for each of the 3 listed states or variants. The default state is sparse.  Order items left to right and top to bottom within each sheet. Use clean readable small-RTS art, stable scale, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork. Use transparent background, or a single flat #ff00ff magenta background if transparency is not available.
 
 Slot order:
-- Sheet 1 of 1: 2 by 2 grid
+- Grid: 2 by 2
   - row 1, column 1: sparse dirt scuffs
   - row 1, column 2: medium dirt scuffs
   - row 2, column 1: heavy dirt scuffs

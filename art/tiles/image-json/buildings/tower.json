@@ -12,8 +12,8 @@
       "range": 7,
       "speed": 0,
       "attack_speed_ticks": 7,
-      "cost_gold": 50,
-      "cost_wood": 100,
+      "cost_gold": 100,
+      "cost_wood": 0,
       "train_time_ticks": 70,
       "supply_provided": 0,
       "supply_used": 0,
@@ -38,6 +38,18 @@
     "team_color_slots": [
       "flag or shield plaque"
     ],
+    "recommended_player_colour": {
+      "name": "blue",
+      "hex": "#00AFFF"
+    },
+    "player_sigil": null,
+    "operated_by_person": false,
+    "operator_contract": "",
+    "ammunition": [
+      "tower_bolt"
+    ],
+    "research_visual_lines": [],
+    "research_visual_variants": [],
     "visual_design": "Stone watchtower, battlements, torch/readable height",
     "source_role": "defensive ranged, garrison 3, extra vision"
   },
@@ -86,7 +98,7 @@
   },
   "sources": [
     "include/realm.h",
-    "src/globals.cpp",
+    "src/core/entity_defs.cpp",
     "docs/tileset/realm_tileset_visual_audit.md"
   ]
 }

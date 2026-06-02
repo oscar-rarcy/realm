@@ -3,7 +3,7 @@
   "asset_type": "feature",
   "enum": "T_DEAD_TREE",
   "slug": "dead_tree",
-  "name": "Dead tree",
+  "name": "Dead Tree",
   "ui_name": "Dead Tree",
   "runtime": {
     "glyph": "t"
@@ -23,8 +23,8 @@
   },
   "sources": [
     "include/realm.h",
-    "src/entity.cpp",
-    "src/gfx_renderer.cpp",
+    "src/core/terrain_defs.cpp",
+    "src/render/sdl/display_glyphs.cpp",
     "docs/tileset/realm_tileset_visual_audit.md"
   ]
 }

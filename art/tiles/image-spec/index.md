@@ -4,14 +4,15 @@ This folder is the complete Realm image-generation specification for the current
 
 ## Generation Contract
 
-- Generate groups in this order: grounds, features, decals, units, animals, buildings, effects-ui.
+- Generate groups in this order: grounds, features, decals, units, animals, buildings, ammunition, effects-ui.
 - Generate one image sheet for each `Sheet` section in each prompt.
 - When a unit or animal prompt lists multiple directions, generate the full sheet set once per direction.
 - Treat these generated sheets as review contact sheets first; once a slot is accepted, generate or crop a standalone square production image for that slot.
 - For standalone production images, use transparent background where possible, or a single flat #ff00ff magenta key background for later cleanup.
 - Keep emoji, symbol, ASCII, and procedural fallbacks readable until replacement art exists.
 - Peasant idle is the only sprite lane assumed to already exist; every other prompt should be treated as needed art.
-- Ground prompts are top-down square tile art. Feature prompts are transparent anchored sprites. Decal prompts are transparent ground overlays. Effects/UI prompts are transparent overlays.
+- Ground prompts are top-down square tile art. Feature prompts are transparent anchored sprites. Decal prompts are transparent ground overlays. Ammunition and effects/UI prompts are transparent overlays.
+- Unit and building sheets may show ammunition only before release; released projectiles belong in the ammunition prompts.
 - Unit and animal `front` is a three-quarter screen-right RTS angle; `back` is the matching rear-right angle. Do not generate mirrored left-facing source art.
 - Do not add text labels, numbers, watermarks, cropped artwork, or baked UI chrome to generated image sheets.
 
@@ -85,7 +86,9 @@ This folder is the complete Realm image-generation specification for the current
 - [Militia](units/militia.md)
 - [Archer](units/archer.md)
 - [Knight](units/knight.md)
+- [Spearman](units/spearman.md)
 - [Catapult](units/catapult.md)
+- [Trebuchet](units/trebuchet.md)
 - [Fishing Boat](units/fishing_boat.md)
 - [Warship](units/warship.md)
 - [Transport](units/transport.md)
@@ -116,6 +119,16 @@ This folder is the complete Realm image-generation specification for the current
 - [Mining Camp](buildings/mining_camp.md)
 - [Mill](buildings/mill.md)
 - [Dock](buildings/dock.md)
+
+## Ammunition
+
+- [Arrow](ammunition/arrow.md)
+- [Crossbow Bolt](ammunition/crossbow_bolt.md)
+- [Flaming Arrow](ammunition/flaming_arrow.md)
+- [Tower Bolt](ammunition/tower_bolt.md)
+- [Warship Arrow Volley](ammunition/warship_arrow_volley.md)
+- [Catapult Boulder](ammunition/catapult_boulder.md)
+- [Trebuchet Boulder](ammunition/trebuchet_boulder.md)
 
 ## Effects-Ui
 

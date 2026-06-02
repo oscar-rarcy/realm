@@ -1,0 +1,11 @@
+# Regenerable exports from repo data.
+/image-spec/
+/image-json/
+
+# Local user/reference material.
+/reference/
+
+# Image-generation workspace and intermediate files.
+/source/
+/candidates/
+/workbench/

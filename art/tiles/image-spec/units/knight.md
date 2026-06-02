@@ -17,6 +17,19 @@ Generate one Realm sprite reference sheet per direction for **Knight**.
 - saddle cloth
 - pennant
 
+## Player Colour
+
+- Use blue (#00AFFF) for the player-colour areas listed above.
+- Add a white diagonal stripe running from top left to bottom right on the shield, and the pennant.
+
+## Research Visual Tiers
+
+Generate the complete state set for each equipment tier below.
+- Starting equipment (default, no research required): starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection.
+- After Plate Helm research: starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection.
+- After Iron Weapons research: upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection.
+- After Iron Weapons and Plate Helm research: upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection.
+
 ## Direction And Anchor Contract
 
 - `front` means a three-quarter RTS front angle, body or object turned about 30-45 degrees toward screen right. It is not a flat face-on mascot pose.
@@ -32,33 +45,53 @@ Generate one Realm sprite reference sheet per direction for **Knight**.
 - Gutters: keep clear separation between cells so each slot can be cropped or regenerated independently.
 - Consistency: keep the same asset identity, palette, lighting direction, scale, and outline weight across every slot in the file.
 - Margins: leave enough padding that no silhouette, weapon, tool, projectile, shadow, crop, corpse, decal, or effect touches a cell edge.
-- Team colour: Use team colour only in deliberate maskable areas such as banners, shields, cloth trim, pennants, sails, or painted markers. Keep skin, stone, wood, shadows, weapons, animals, and cargo out of team colour.
+- Team colour: Use the recommended preview player colour blue (#00AFFF) only in deliberate maskable areas such as banners, shields, cloth trim, pennants, sails, or painted markers. Keep skin, stone, wood, shadows, weapons, animals, and cargo out of team colour.
 - Negative prompt: no text, labels, numbers, arrows, UI chrome, watermarks, signatures, photo texture, heavy blur, cropped silhouettes, or extra unlisted states.
 
 ## Entity-Specific Art Notes
 
 - Keep the same unit identity, clothing, armour, hull, siege frame, weapon set, and carried-equipment scale across every state.
-- State changes should be literal and readable: attacks show the weapon or projectile setup, gathering shows the tool/resource, carrying shows the carried material, and death/decay keeps durable gear visible.
-- Do not add terrain patches, target enemies, resource nodes, UI badges, or extra helper characters inside the cell.
+- State changes should be literal and readable: attacks show the weapon setup before release or the follow-through after release, gathering shows the tool/resource, carrying shows the carried material, and death/decay keeps durable gear visible.
+- Do not add terrain patches, target enemies, resource nodes, UI badges, or unrelated helper characters inside the cell.
 
 ## States To Generate
 
-Generate **one frame for each state**. There are 10 state(s). Each image may contain at most **16 states** in a **4 by 4** grid.
+Generate **one frame for each state**. There are 24 state(s). Each image may contain at most **16 states** in a **4 by 4** grid.
 
-### Sheet 1 of 1
+### Sheet 1 of 2
 
-Use a **4 by 3** grid for this sheet.
+Use a **4 by 4** grid for this sheet.
 
-- row 1, column 1: `idle` - idle
-- row 1, column 2: `trot` - trot
-- row 1, column 3: `charge_strike` - charge/strike
-- row 1, column 4: `hit_alert` - hit/alert
-- row 2, column 1: `horse_gear` - horse gear
-- row 2, column 2: `and_weapon` - and weapon
-- row 2, column 3: `iron_weapons_overlay` - visible upgraded metal weapon treatment overlay for completed Iron Weapons research
-- row 2, column 4: `iron_weapons_action_variant` - full unit action variant with upgraded iron weapon treatment
-- row 3, column 1: `dead` - dead human body lying on the ground with clothing, armour, weapons, and equipment still intact
-- row 3, column 2: `decayed` - human skeleton remains, with armour, weapons, bows, shields, tools, and other equipment still intact and readable
+- row 1, column 1: `basic_weapons__open_helmet__idle` - Basic weapons + Open Helmet: idle; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection
+- row 1, column 2: `basic_weapons__open_helmet__trot` - Basic weapons + Open Helmet: trot; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection
+- row 1, column 3: `basic_weapons__open_helmet__charge_strike` - Basic weapons + Open Helmet: charge/strike; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection
+- row 1, column 4: `basic_weapons__open_helmet__hit_alert` - Basic weapons + Open Helmet: hit/alert; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection
+- row 2, column 1: `basic_weapons__open_helmet__dead` - Basic weapons + Open Helmet: dead human body lying on the ground with clothing, armour, weapons, and equipment still intact; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection
+- row 2, column 2: `basic_weapons__open_helmet__decayed` - Basic weapons + Open Helmet: human skeleton remains, with armour, weapons, and equipment still intact and readable; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection
+- row 2, column 3: `basic_weapons__plate_helm__idle` - Basic weapons + Plate Helm: idle; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection
+- row 2, column 4: `basic_weapons__plate_helm__trot` - Basic weapons + Plate Helm: trot; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection
+- row 3, column 1: `basic_weapons__plate_helm__charge_strike` - Basic weapons + Plate Helm: charge/strike; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection
+- row 3, column 2: `basic_weapons__plate_helm__hit_alert` - Basic weapons + Plate Helm: hit/alert; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection
+- row 3, column 3: `basic_weapons__plate_helm__dead` - Basic weapons + Plate Helm: dead human body lying on the ground with clothing, armour, weapons, and equipment still intact; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection
+- row 3, column 4: `basic_weapons__plate_helm__decayed` - Basic weapons + Plate Helm: human skeleton remains, with armour, weapons, and equipment still intact and readable; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection
+- row 4, column 1: `iron_weapons__open_helmet__idle` - Iron Weapons + Open Helmet: idle; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection
+- row 4, column 2: `iron_weapons__open_helmet__trot` - Iron Weapons + Open Helmet: trot; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection
+- row 4, column 3: `iron_weapons__open_helmet__charge_strike` - Iron Weapons + Open Helmet: charge/strike; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection
+- row 4, column 4: `iron_weapons__open_helmet__hit_alert` - Iron Weapons + Open Helmet: hit/alert; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection
+
+### Sheet 2 of 2
+
+Use a **4 by 4** grid for this sheet.
+Leave unused cells empty.
+
+- row 1, column 1: `iron_weapons__open_helmet__dead` - Iron Weapons + Open Helmet: dead human body lying on the ground with clothing, armour, weapons, and equipment still intact; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection
+- row 1, column 2: `iron_weapons__open_helmet__decayed` - Iron Weapons + Open Helmet: human skeleton remains, with armour, weapons, and equipment still intact and readable; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection
+- row 1, column 3: `iron_weapons__plate_helm__idle` - Iron Weapons + Plate Helm: idle; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection
+- row 1, column 4: `iron_weapons__plate_helm__trot` - Iron Weapons + Plate Helm: trot; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection
+- row 2, column 1: `iron_weapons__plate_helm__charge_strike` - Iron Weapons + Plate Helm: charge/strike; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection
+- row 2, column 2: `iron_weapons__plate_helm__hit_alert` - Iron Weapons + Plate Helm: hit/alert; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection
+- row 2, column 3: `iron_weapons__plate_helm__dead` - Iron Weapons + Plate Helm: dead human body lying on the ground with clothing, armour, weapons, and equipment still intact; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection
+- row 2, column 4: `iron_weapons__plate_helm__decayed` - Iron Weapons + Plate Helm: human skeleton remains, with armour, weapons, and equipment still intact and readable; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection
 
 ## Production Follow-Up
 
@@ -70,17 +103,32 @@ Use a **4 by 3** grid for this sheet.
 
 ## Prompt
 
-Generate sprites for my Realm Knight. The footprint is 1 by 1 tile(s). Team colour is required. Valid directions are front, back. Produce one sheet at a time for the requested direction, using the same state grid for each direction. Create one frame for each listed state. If there are more than 16 states, split them across multiple images, each image using a 4 by 4 grid. Order states left to right and top to bottom within each sheet. Keep the character or building consistent across every slot. Use transparent background, or a single flat #ff00ff magenta background if transparency is not available. Use clean readable small-RTS proportions, stable anchor, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork.
+Generate sprites for my Realm Knight. The footprint is 1 by 1 tile(s). Team colour is required and the recommended preview player colour is blue (#00AFFF). Valid directions are front, back. Produce one sheet at a time for the requested direction, using the same state grid for each direction. Create one frame for each of the 24 listed states. Since there are more than 16 states, split them across multiple images, each image using a 4 by 4 grid. Order states left to right and top to bottom within each sheet. Keep the character or building consistent across every slot. Use transparent background, or a single flat #ff00ff magenta background if transparency is not available. Use clean readable small-RTS proportions, stable anchor, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork.
 
 Slot order:
-- Sheet 1 of 1: 4 by 3 grid
-  - row 1, column 1: idle
-  - row 1, column 2: trot
-  - row 1, column 3: charge/strike
-  - row 1, column 4: hit/alert
-  - row 2, column 1: horse gear
-  - row 2, column 2: and weapon
-  - row 2, column 3: visible upgraded metal weapon treatment overlay for completed Iron Weapons research
-  - row 2, column 4: full unit action variant with upgraded iron weapon treatment
-  - row 3, column 1: dead human body lying on the ground with clothing, armour, weapons, and equipment still intact
-  - row 3, column 2: human skeleton remains, with armour, weapons, bows, shields, tools, and other equipment still intact and readable
+- Sheet 1 of 2: 4 by 4 grid
+  - row 1, column 1: Basic weapons + Open Helmet: idle; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection
+  - row 1, column 2: Basic weapons + Open Helmet: trot; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection
+  - row 1, column 3: Basic weapons + Open Helmet: charge/strike; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection
+  - row 1, column 4: Basic weapons + Open Helmet: hit/alert; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection
+  - row 2, column 1: Basic weapons + Open Helmet: dead human body lying on the ground with clothing, armour, weapons, and equipment still intact; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection
+  - row 2, column 2: Basic weapons + Open Helmet: human skeleton remains, with armour, weapons, and equipment still intact and readable; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection
+  - row 2, column 3: Basic weapons + Plate Helm: idle; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection
+  - row 2, column 4: Basic weapons + Plate Helm: trot; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection
+  - row 3, column 1: Basic weapons + Plate Helm: charge/strike; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection
+  - row 3, column 2: Basic weapons + Plate Helm: hit/alert; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection
+  - row 3, column 3: Basic weapons + Plate Helm: dead human body lying on the ground with clothing, armour, weapons, and equipment still intact; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection
+  - row 3, column 4: Basic weapons + Plate Helm: human skeleton remains, with armour, weapons, and equipment still intact and readable; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection
+  - row 4, column 1: Iron Weapons + Open Helmet: idle; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection
+  - row 4, column 2: Iron Weapons + Open Helmet: trot; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection
+  - row 4, column 3: Iron Weapons + Open Helmet: charge/strike; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection
+  - row 4, column 4: Iron Weapons + Open Helmet: hit/alert; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection
+- Sheet 2 of 2: 4 by 4 grid
+  - row 1, column 1: Iron Weapons + Open Helmet: dead human body lying on the ground with clothing, armour, weapons, and equipment still intact; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection
+  - row 1, column 2: Iron Weapons + Open Helmet: human skeleton remains, with armour, weapons, and equipment still intact and readable; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection
+  - row 1, column 3: Iron Weapons + Plate Helm: idle; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection
+  - row 1, column 4: Iron Weapons + Plate Helm: trot; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection
+  - row 2, column 1: Iron Weapons + Plate Helm: charge/strike; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection
+  - row 2, column 2: Iron Weapons + Plate Helm: hit/alert; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection
+  - row 2, column 3: Iron Weapons + Plate Helm: dead human body lying on the ground with clothing, armour, weapons, and equipment still intact; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection
+  - row 2, column 4: Iron Weapons + Plate Helm: human skeleton remains, with armour, weapons, and equipment still intact and readable; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection

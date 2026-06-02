@@ -3,8 +3,13 @@
 #include "core/build_service.h"
 #include "core/game_events.h"
 #include "core/production_service.h"
+#include "core/world_index.h"
 
 void orderMove(Entity& e, int tx, int ty) {
+    orderMove(g, e, tx, ty);
+}
+
+void orderMove(Game& game, Entity& e, int tx, int ty) {
     if (e.type == E_TREBUCHET && e.packed == 0) {
         emitStatusEvent(e.owner, "Pack the trebuchet first [D].", GameEventType::CommandRejected);
         return;
@@ -12,7 +17,7 @@ void orderMove(Entity& e, int tx, int ty) {
     e.state = S_MOVING; e.targetX = tx; e.targetY = ty; e.targetId = -1;
     e.stuckTicks = 0;
     e.attackMove = 0; e.holdPosition = 0;
-    e.path = findPath(e.x, e.y, tx, ty, 300, isNaval(e.type)); e.pathIdx = 0;
+    e.path = findPath(game, e.x, e.y, tx, ty, 300, isNaval(e.type)); e.pathIdx = 0;
     if (e.path.empty() && (e.x != tx || e.y != ty)) {
         e.state = S_IDLE;
         emitStatusEvent(e.owner, "Can't reach there.", GameEventType::CommandRejected);
@@ -27,7 +32,12 @@ static void orderAttackMove(Entity& e, int tx, int ty) {
 }
 
 void orderAttack(Entity& e, int tid) {
-    Entity* t = findEntity(tid);
+    WorldIndex world = buildWorldIndex(g);
+    orderAttack(g, world, e, tid);
+}
+
+void orderAttack(Game& game, const WorldIndex& world, Entity& e, int tid) {
+    Entity* t = findEntity(game, world, tid);
     if (!t) return;
     if (e.type == E_RAM && !isBuilding(t->type)) return; // rams demolish buildings only
     if (e.type == E_TREBUCHET && e.packed == 1) {
@@ -41,7 +51,13 @@ void orderAttack(Entity& e, int tid) {
 }
 
 void orderGather(Entity& e, int tx, int ty) {
-    Entity* carcass = corpseAt(tx, ty);
+    WorldIndex world = buildWorldIndex(g);
+    orderGather(g, world, e, tx, ty);
+}
+
+void orderGather(Game& game, const WorldIndex& world, Entity& e, int tx, int ty) {
+    if (!inBounds(tx, ty)) return;
+    Entity* carcass = corpseAt(game, world, tx, ty);
     if (carcass && isHarvestableCarcass(*carcass) && e.type == E_PEASANT && canGather(e.type)) {
         e.cargo.type = CR_FOOD;
         e.cargo.sourceX = tx;
@@ -55,16 +71,16 @@ void orderGather(Entity& e, int tx, int ty) {
         for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
             if (dx==0 && dy==0) continue;
             int nx = tx+dx, ny = ty+dy;
-            if (!inBounds(nx,ny) || !isPassable(nx,ny)) continue;
+            if (!inBounds(nx,ny) || !isPassable(game,nx,ny)) continue;
             int d = mdist(e.x, e.y, nx, ny);
             if (d < bestAD) { bestAD = d; bestAX = nx; bestAY = ny; }
         }
-        e.path = findPath(e.x, e.y, bestAX, bestAY, 300, false); e.pathIdx = 0;
+        e.path = findPath(game, e.x, e.y, bestAX, bestAY, 300, false); e.pathIdx = 0;
         e.gatherCd = 0; e.cargo.amount = 0;
         return;
     }
 
-    Terrain ter = g.map[ty][tx].terrain;
+    Terrain ter = game.map[ty][tx].terrain;
     CargoResource resource = resourceForTerrain(ter);
     // Workers gather land resources; naval gatherers fish.
     if (canGather(e.type) && !isNaval(e.type)) {
@@ -86,12 +102,12 @@ void orderGather(Entity& e, int tx, int ty) {
         if (dx==0 && dy==0) continue;
         int nx = tx+dx, ny = ty+dy;
         if (!inBounds(nx,ny)) continue;
-        bool ok = naval ? isPassableWater(nx,ny) : isPassable(nx,ny);
+        bool ok = naval ? isPassableWater(game,nx,ny) : isPassable(game,nx,ny);
         if (!ok) continue;
         int d = mdist(e.x, e.y, nx, ny);
         if (d < bestAD) { bestAD = d; bestAX = nx; bestAY = ny; }
     }
-    e.path = findPath(e.x, e.y, bestAX, bestAY, 300, naval); e.pathIdx = 0;
+    e.path = findPath(game, e.x, e.y, bestAX, bestAY, 300, naval); e.pathIdx = 0;
     e.gatherCd = 0; e.cargo.amount = 0;
 }
 
@@ -125,11 +141,11 @@ static int rolePriority(EntityType t) {
     }
 }
 
-static void groupMoveCore(const Selection& selection, int tx, int ty, bool attackMove) {
+static void groupMoveCore(const Selection& selection, int tx, int ty, bool attackMove, int owner) {
     std::vector<Entity*> units;
     for (int id : selection.ids) {
         Entity* e = findEntity(id);
-        if (e && e->alive && e->owner == 0 && isUnit(e->type))
+        if (e && e->alive && e->owner == owner && isUnit(e->type))
             units.push_back(e);
     }
     if (units.empty()) return;
@@ -165,17 +181,17 @@ static void groupMoveCore(const Selection& selection, int tx, int ty, bool attac
         if (attackMove) orderAttackMove(*units[i], slots[i].first, slots[i].second);
         else            orderMove(*units[i], slots[i].first, slots[i].second);
     }
-    emitStatusEvent(0, attackMove ? "Attack-move in formation!" : "Group moving in formation...");
+    emitStatusEvent(owner, attackMove ? "Attack-move in formation!" : "Group moving in formation...");
 }
 
-void orderGroupMove(const Selection& selection, int tx, int ty)        { groupMoveCore(selection, tx, ty, false); }
-void orderGroupAttackMove(const Selection& selection, int tx, int ty)  { groupMoveCore(selection, tx, ty, true); }
+void orderGroupMove(const Selection& selection, int tx, int ty, int owner)        { groupMoveCore(selection, tx, ty, false, owner); }
+void orderGroupAttackMove(const Selection& selection, int tx, int ty, int owner)  { groupMoveCore(selection, tx, ty, true, owner); }
 
-void orderGroupAttack(const Selection& selection, int tid) {
+void orderGroupAttack(const Selection& selection, int tid, int owner) {
     for (int id : selection.ids) {
         Entity* e = findEntity(id);
-        if (e && e->alive && e->owner == 0 && isUnit(e->type))
+        if (e && e->alive && e->owner == owner && isUnit(e->type))
             orderAttack(*e, tid);
     }
-    emitStatusEvent(0, "Group attacking!");
+    emitStatusEvent(owner, "Group attacking!");
 }

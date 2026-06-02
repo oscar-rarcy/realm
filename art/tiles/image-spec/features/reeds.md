@@ -10,7 +10,6 @@ Generate Realm image sheets for **reeds feature**.
 - Projection: transparent upright sprite anchored over a projected isometric map tile
 - Footprint: 1 by 1 tile
 - Directions: tile
-- Team colour required: no
 - Default state: `spring`
 
 ## Image Output Contract
@@ -21,7 +20,6 @@ Generate Realm image sheets for **reeds feature**.
 - Gutters: keep clear separation between cells so each slot can be cropped or regenerated independently.
 - Consistency: keep the same asset identity, palette, lighting direction, scale, and outline weight across every slot in the file.
 - Margins: leave enough padding that no silhouette, weapon, tool, projectile, shadow, crop, corpse, decal, or effect touches a cell edge.
-- Team colour: Do not use team colour markers.
 - Negative prompt: no text, labels, numbers, arrows, UI chrome, watermarks, signatures, photo texture, heavy blur, cropped silhouettes, or extra unlisted states.
 
 ## States Or Variants To Generate
@@ -36,7 +34,7 @@ Keep the bottom anchor stable: depletion, snow, rain, damage, or trample states 
 Concealing feature contract: define separate `back` and `front_occluder` layers so units can appear partly behind foliage or reeds.
 The `back` layer should contain trunks, rear foliage, stems, and contact details; the `front_occluder` layer should contain only the foreground coverage that can overlap units.
 
-### Sheet 1 of 1
+### Sheet
 
 Use a **3 by 3** grid for this sheet.
 
@@ -59,10 +57,10 @@ Use a **3 by 3** grid for this sheet.
 
 ## Prompt
 
-Generate Realm reeds feature image sheets. Use transparent-background anchored sprites with no full ground tile, consistent anchor position, and readable silhouette. Team colour is not required. Create one sprite for each listed state or variant. The default state is spring. If there are more than 16 items, split them across multiple images, each image using a 4 by 4 grid. Order items left to right and top to bottom within each sheet. Use clean readable small-RTS art, stable scale, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork. Use transparent background, or a single flat #ff00ff magenta background if transparency is not available.
+Generate Realm reeds feature image sheets. Use transparent-background anchored sprites with no full ground tile, consistent anchor position, and readable silhouette. Create one sprite for each of the 9 listed states or variants. The default state is spring.  Order items left to right and top to bottom within each sheet. Use clean readable small-RTS art, stable scale, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork. Use transparent background, or a single flat #ff00ff magenta background if transparency is not available.
 
 Slot order:
-- Sheet 1 of 1: 3 by 3 grid
+- Grid: 3 by 3
   - row 1, column 1: reed bed upright feature over wet ground, spring: fresh, recovering, greener look
   - row 1, column 2: reed bed upright feature over wet ground, summer: full growth or dry high-sun look
   - row 1, column 3: reed bed upright feature over wet ground, autumn: muted, yellowing, leaf-littered, or spent look

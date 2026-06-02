@@ -12,8 +12,8 @@
       "range": 5,
       "speed": 4,
       "attack_speed_ticks": 7,
-      "cost_gold": 150,
-      "cost_wood": 80,
+      "cost_gold": 80,
+      "cost_wood": 20,
       "train_time_ticks": 100,
       "supply_provided": 0,
       "supply_used": 3,
@@ -41,6 +41,21 @@
       "shields",
       "pennant"
     ],
+    "recommended_player_colour": {
+      "name": "red",
+      "hex": "#FF0000"
+    },
+    "player_sigil": {
+      "id": "player-sigil",
+      "description": "white diagonal stripe running from top left to bottom right"
+    },
+    "operated_by_person": false,
+    "operator_contract": "",
+    "ammunition": [
+      "warship_arrow_volley"
+    ],
+    "research_visual_lines": [],
+    "research_visual_variants": [],
     "visual_design": "Larger longboat/war galley silhouette, shielded sides",
     "source_role": "naval combat"
   },
@@ -96,7 +111,7 @@
   },
   "sources": [
     "include/realm.h",
-    "src/globals.cpp",
+    "src/core/entity_defs.cpp",
     "docs/tileset/realm_tileset_visual_audit.md"
   ]
 }

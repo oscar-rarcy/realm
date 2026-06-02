@@ -13,14 +13,39 @@ From WSL, Linux, or a shell with Emscripten available:
 bash scripts/build-web.sh
 ```
 
-If `em++` is not installed, allow the script to install the pinned SDK locally:
+If `./.emsdk` already exists, `build-web.sh` will activate it automatically.
+
+To install the pinned SDK locally without building yet:
 
 ```sh
-REALM_INSTALL_EMSDK=1 bash scripts/build-web.sh
+bash scripts/setup-web.sh
+```
+
+Or, to install and build in one step:
+
+```sh
+bash scripts/build-web.sh --install-emsdk
 ```
 
 The output is written to `dist/netlify/` and includes `index.html`, JavaScript,
 WebAssembly, Emscripten data assets, `_headers`, and `_redirects`.
+
+## Default validation
+
+```sh
+bash scripts/validate.sh
+```
+
+That always runs the architecture check plus native clean/test/GUI builds. It
+only runs the web build automatically when Emscripten is already available, or
+when you opt in with:
+
+```sh
+bash scripts/validate.sh --include-web --install-emsdk
+```
+
+If an AI assistant hits a missing-Emscripten error, it should ask before
+running the install step.
 
 The web build reads `REALM_VISUAL_MODE` from the shell, then `.env.local`, then
 `.env`. The committed default is `ascii-only`, which makes the normal web build

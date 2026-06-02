@@ -4,6 +4,43 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
+show_help() {
+  cat <<EOF
+Usage: bash scripts/build-web.sh [--install-emsdk] [--setup-only]
+
+Build Realm's web output in dist/netlify.
+
+Options:
+  --install-emsdk  Install the pinned emsdk locally in $ROOT_DIR/.emsdk if needed.
+  --setup-only     Ensure the web toolchain is ready, then exit without building.
+  -h, --help       Show this help text.
+EOF
+}
+
+INSTALL_EMSDK="${REALM_INSTALL_EMSDK:-0}"
+SETUP_ONLY=0
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --install-emsdk)
+      INSTALL_EMSDK=1
+      ;;
+    --setup-only)
+      SETUP_ONLY=1
+      ;;
+    -h|--help)
+      show_help
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1" >&2
+      show_help >&2
+      exit 2
+      ;;
+  esac
+  shift
+done
+
 read_env_value() {
   local file="$1"
   local key="$2"
@@ -44,18 +81,56 @@ ASSET_DIR="$BUILD_DIR/assets"
 FONT_DIR="$ASSET_DIR/fonts"
 EMSDK_DIR="${REALM_EMSDK_DIR:-$ROOT_DIR/.emsdk}"
 
-if ! command -v em++ >/dev/null 2>&1; then
-  if [[ "${REALM_INSTALL_EMSDK:-0}" != "1" ]]; then
-    echo "em++ was not found. Set REALM_INSTALL_EMSDK=1 to install pinned emsdk $EMSDK_VERSION into $EMSDK_DIR." >&2
-    exit 127
+activate_local_emsdk() {
+  [[ -f "$EMSDK_DIR/emsdk_env.sh" ]] || return 1
+  # shellcheck disable=SC1091
+  source "$EMSDK_DIR/emsdk_env.sh" >/dev/null 2>&1
+  command -v em++ >/dev/null 2>&1
+}
+
+install_local_emsdk() {
+  if [[ -e "$EMSDK_DIR" && ! -d "$EMSDK_DIR/.git" ]]; then
+    echo "Local emsdk path exists but is not a git checkout: $EMSDK_DIR" >&2
+    echo "Remove it or set REALM_EMSDK_DIR to a clean location before retrying." >&2
+    exit 1
   fi
+
   if [[ ! -d "$EMSDK_DIR/.git" ]]; then
     git clone https://github.com/emscripten-core/emsdk.git "$EMSDK_DIR"
   fi
   "$EMSDK_DIR/emsdk" install "$EMSDK_VERSION"
   "$EMSDK_DIR/emsdk" activate "$EMSDK_VERSION"
-  # shellcheck disable=SC1091
-  source "$EMSDK_DIR/emsdk_env.sh"
+  activate_local_emsdk || {
+    echo "Installed emsdk $EMSDK_VERSION but could not activate em++ from $EMSDK_DIR." >&2
+    exit 1
+  }
+}
+
+ensure_web_toolchain() {
+  if command -v em++ >/dev/null 2>&1; then
+    return 0
+  fi
+
+  if activate_local_emsdk; then
+    return 0
+  fi
+
+  if [[ "$INSTALL_EMSDK" == "1" ]]; then
+    install_local_emsdk
+    return 0
+  fi
+
+  echo "em++ was not found, and no usable local emsdk was activated from $EMSDK_DIR." >&2
+  echo "Install the pinned toolchain with 'bash scripts/setup-web.sh' or 'bash scripts/build-web.sh --install-emsdk'." >&2
+  echo "If you are an AI assistant, ask the user before running that install step." >&2
+  exit 127
+}
+
+ensure_web_toolchain
+
+if [[ "$SETUP_ONLY" == "1" ]]; then
+  echo "Realm web toolchain ready: $(command -v em++)"
+  exit 0
 fi
 
 mkdir -p "$BUILD_DIR" "$DIST_DIR" "$ASSET_DIR" "$FONT_DIR"
@@ -100,19 +175,29 @@ if [[ -f assets/app-icon.svg ]]; then
 fi
 
 COMMON_SOURCES=(
-  src/main_web.cpp
-  src/main.cpp
-  src/env_config.cpp
-  src/entity_animation.cpp
-  src/globals.cpp
-  src/mapgen.cpp
-  src/entity.cpp
-  src/orders.cpp
-  src/simulation.cpp
-  src/ai.cpp
-  src/input.cpp
-  src/display.cpp
-  src/gfx_renderer.cpp
+  src/platform/main_web.cpp
+  src/core/*.cpp
+  src/sim/*.cpp
+  src/sim/migrations/*.cpp
+  src/commands/*.cpp
+  src/ai/*.cpp
+  src/map/*.cpp
+  src/platform/app_config.cpp
+  src/platform/game_init.cpp
+  src/platform/view_state.cpp
+  src/render/visual_model.cpp
+  src/render/render_model.cpp
+  src/render/sdl/camera.cpp
+  src/render/sdl/display_glyphs.cpp
+  src/render/sdl/gfx_renderer.cpp
+  src/render/sdl/hud_renderer.cpp
+  src/render/sdl/issue_capture.cpp
+  src/render/sdl/map_renderer.cpp
+  src/render/sdl/mobile_hud.cpp
+  src/render/sdl/projection.cpp
+  src/render/sdl/sdl_context.cpp
+  src/render/sdl/splash_screen.cpp
+  src/render/sdl/terminal_frame_renderer.cpp
 )
 
 em++ "${COMMON_SOURCES[@]}" \
@@ -120,6 +205,7 @@ em++ "${COMMON_SOURCES[@]}" \
   -DREALM_WEB -DUSE_SDL_RENDERER \
   "-DREALM_VISUAL_MODE_DEFAULT=\"$REALM_VISUAL_MODE\"" \
   -Iinclude \
+  -Isrc \
   -sUSE_SDL=2 \
   -sUSE_SDL_TTF=2 \
   -sALLOW_MEMORY_GROWTH=1 \
