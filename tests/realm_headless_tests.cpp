@@ -161,12 +161,6 @@ static void testPlacementBoundsAndStateNames() {
         assert(std::string(stateName((EntityState)i)) != "Unknown");
     assert(std::string(stateName((EntityState)999)) == "Unknown");
     assert(validateGameState(nullptr));
-    int oldCursorX = g.cursorX;
-    g.cursorX = -1;
-    std::string err;
-    assert(!validateGameState(&err));
-    assert(!err.empty());
-    g.cursorX = oldCursorX;
 
     Entity* th = nullptr;
     Entity* peasant = nullptr;
@@ -384,12 +378,10 @@ static void testRecoverableValidation() {
     g.selectedId = g.nextId + 99;
     g.selectedIds.push_back(g.nextId + 100);
     g.controlGroups[0].push_back(g.nextId + 101);
-    g.cursorX = -5;
     tickSimulationOnce();
     assert(g.selectedId == -1);
     assert(g.selectedIds.empty());
     assert(g.controlGroups[0].empty());
-    assert(inBounds(g.cursorX, g.cursorY));
     assert(validateGameState(nullptr));
 }
 
@@ -463,6 +455,35 @@ static void testTownHallTrainInputFlow() {
     handleInput(27);
     assert(g.mode == M_NORMAL);
 }
+
+static void testHoldPositionInput() {
+    initGameWithSeed(1, 3277u, 0);
+    int id = spawnEntity(E_MILITIA, 0, 30, 30);
+    Entity* m = findEntity(id);
+    assert(m);
+    m->state = S_MOVING;
+    m->holdPosition = 0;
+    m->targetId = 7;
+    g.selectedId = id;
+    g.selectedIds.clear();
+    g.mode = M_NORMAL;
+
+    // 'X' must hold position during gameplay, not exit the application.
+    handleInput('X');
+    m = findEntity(id);
+    assert(m);
+    assert(m->state == S_IDLE);
+    assert(m->holdPosition == 1);
+    assert(m->targetId == -1);
+
+    // Lowercase 'x' behaves identically.
+    m->state = S_MOVING;
+    m->holdPosition = 0;
+    handleInput('x');
+    m = findEntity(id);
+    assert(m && m->state == S_IDLE && m->holdPosition == 1);
+}
+
 
 static void testBerryGatherAndDepletion() {
     initGameWithSeed(1, 3503u, 0);
@@ -741,6 +762,7 @@ int main() {
     testMatchResetAndDeterminism();
     testSupplyAndTownHallCost();
     testTownHallTrainInputFlow();
+    testHoldPositionInput();
     testBerryGatherAndDepletion();
     testMillFoodStockpile();
     testWinterPartialWaterFreeze();
