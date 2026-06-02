@@ -53,7 +53,7 @@ Selection currentSelection();
 Command resolveContextCommand(const Game& game, const Selection& selection, MapPos target);
 void dispatchCommand(Game& game, const Command& command);
 void cmdAtTileSingle(Entity* selected, int x, int y);
-void cmdAtTileGroup(int x, int y);
+void cmdAtTileGroup(const Selection& selection, int x, int y);
 void selectAtTile(Game& game, int x, int y);
 void boxSelect(Game& game, int x0, int y0, int x1, int y1);
 void selectAllOfTypeInView(Game& game, int x, int y);

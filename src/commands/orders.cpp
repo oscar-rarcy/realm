@@ -1,4 +1,7 @@
 #include "realm.h"
+#include "commands/command.h"
+#include "core/build_service.h"
+#include "core/production_service.h"
 
 void orderMove(Entity& e, int tx, int ty) {
     if (e.type == E_TREBUCHET && e.packed == 0) {
@@ -92,32 +95,7 @@ void orderGather(Entity& e, int tx, int ty) {
 }
 
 void orderBuild(Entity& e, EntityType bt, int bx, int by) {
-    if (!canBuild(e.type)) return;
-    Player& p = g.players[e.owner];
-    if (p.gold < STATS[bt].costGold || p.wood < STATS[bt].costWood) {
-        if (e.owner == 0) setStatus("Not enough resources!");
-        return;
-    }
-    if (!canPlace(bt, bx, by, e.owner)) {
-        if (e.owner == 0) setStatus("Can't build there!");
-        return;
-    }
-    p.gold -= STATS[bt].costGold; p.wood -= STATS[bt].costWood;
-    int bid = spawnEntity(bt, e.owner, bx, by, false);
-    if (e.owner == 0) addActionMarker(bx, by, '#');
-    e.state = S_BUILDING; e.targetId = bid; e.targetX = bx; e.targetY = by;
-    // Pick nearest passable tile adjacent to the building footprint
-    int bldW = STATS[bt].sizeW, bldH = STATS[bt].sizeH;
-    int bestAX = bx-1, bestAY = by, bestAD = 99999;
-    for (int dy = -1; dy <= bldH; dy++) for (int dx = -1; dx <= bldW; dx++) {
-        if (dx>=0 && dx<bldW && dy>=0 && dy<bldH) continue;
-        int nx = bx+dx, ny = by+dy;
-        if (inBounds(nx,ny) && isPassable(nx,ny)) {
-            int d = mdist(e.x, e.y, nx, ny);
-            if (d < bestAD) { bestAD = d; bestAX = nx; bestAY = ny; }
-        }
-    }
-    e.path = findPath(e.x, e.y, bestAX, bestAY, 300, isNaval(e.type)); e.pathIdx = 0;
+    startBuild(g, e.owner, e.id, bt, { bx, by });
 }
 
 // Place a straight line of identical buildings (used for wall lines) using the
@@ -126,82 +104,11 @@ void orderBuild(Entity& e, EntityType bt, int bx, int by) {
 // the whole affordable line, nothing is placed. The builder is then ordered to
 // help-complete the first placed segment.
 void orderBuildLine(Entity& e, EntityType bt, int x0, int y0, int x1, int y1) {
-    if (!canBuild(e.type)) return;
-    Player& p = g.players[e.owner];
-
-    std::vector<std::pair<int,int>> tiles;
-    int cx = x0, cy = y0;
-    int dx = std::abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
-    int dy = -std::abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
-    int err = dx + dy;
-    while (true) {
-        if (canPlace(bt, cx, cy, e.owner)) tiles.push_back({cx, cy});
-        if (cx == x1 && cy == y1) break;
-        int e2 = 2 * err;
-        if (e2 >= dy) { err += dy; cx += sx; }
-        if (e2 <= dx) { err += dx; cy += sy; }
-    }
-
-    if (tiles.empty()) {
-        if (e.owner == 0) setStatus("Can't build there!");
-        return;
-    }
-    int count = (int)tiles.size();
-    int totalGold = count * STATS[bt].costGold;
-    int totalWood = count * STATS[bt].costWood;
-    if (p.gold < totalGold || p.wood < totalWood) {
-        if (e.owner == 0) setStatus("Not enough resources!");
-        return;
-    }
-    p.gold -= totalGold; p.wood -= totalWood;
-    int firstId = -1;
-    for (auto& t : tiles) {
-        int wid = spawnEntity(bt, e.owner, t.first, t.second, false);
-        if (firstId < 0) firstId = wid;
-    }
-    if (firstId >= 0) {
-        orderHelp(e, firstId);
-        if (e.owner == 0) {
-            addActionMarker(x0, y0, '#');
-            setStatus("Building walls...");
-        }
-    }
+    startBuildLine(g, e.owner, e.id, bt, { x0, y0 }, { x1, y1 });
 }
 
 void orderTrain(Entity& bld, EntityType ut) {
-    if (!isBuilding(bld.type) || bld.underConstruction) return;
-    bool allowed = false;
-    if (bld.type == E_TOWNHALL) allowed = (ut == E_PEASANT);
-    else if (bld.type == E_BARRACKS) allowed = (ut == E_MILITIA || ut == E_ARCHER || ut == E_SPEARMAN || ut == E_CATAPULT || ut == E_RAM);
-    else if (bld.type == E_STABLE) allowed = (ut == E_KNIGHT);
-    else if (bld.type == E_CASTLE) allowed = (ut == E_PEASANT || ut == E_TREBUCHET);
-    else if (bld.type == E_DOCK) allowed = (ut == E_FISHING_BOAT || ut == E_WARSHIP || ut == E_TRANSPORT);
-    if (!allowed) return;
-    // Queue if busy; reject only when queue is full.
-    if (bld.producing != E_NONE && (int)bld.queue.size() >= 5) {
-        if (bld.owner==0) setStatus("Queue full!");
-        return;
-    }
-    Player& p = g.players[bld.owner];
-    if (p.gold < STATS[ut].costGold || p.wood < STATS[ut].costWood) {
-        if (bld.owner==0) setStatus("Not enough resources!");
-        return;
-    }
-    if (reservedSupply(bld.owner) + STATS[ut].supplyUsed > p.supplyMax) {
-        if (bld.owner==0) setStatus("Need more houses!");
-        return;
-    }
-    int foodCost = STATS[ut].costFood;
-    if (p.food < foodCost) { if (bld.owner==0) setStatus("Need more food!"); return; }
-    spendPlayerFood(bld.owner, foodCost);
-    p.gold -= STATS[ut].costGold; p.wood -= STATS[ut].costWood;
-    if (bld.producing == E_NONE) {
-        bld.producing = ut; bld.trainProgress = 0; bld.trainTime = STATS[ut].trainTime;
-        bld.state = S_TRAINING;
-    } else {
-        bld.queue.push_back((int)ut);
-        if (bld.owner == 0) setStatus("Queued.");
-    }
+    startTraining(g, bld.owner, bld.id, ut);
 }
 
 static int rolePriority(EntityType t) {
@@ -217,9 +124,9 @@ static int rolePriority(EntityType t) {
     }
 }
 
-static void groupMoveCore(int tx, int ty, bool attackMove) {
+static void groupMoveCore(const Selection& selection, int tx, int ty, bool attackMove) {
     std::vector<Entity*> units;
-    for (int id : g.selectedIds) {
+    for (int id : selection.ids) {
         Entity* e = findEntity(id);
         if (e && e->alive && e->owner == 0 && isUnit(e->type))
             units.push_back(e);
@@ -260,11 +167,11 @@ static void groupMoveCore(int tx, int ty, bool attackMove) {
     setStatus(attackMove ? "Attack-move in formation!" : "Group moving in formation...");
 }
 
-void orderGroupMove(int tx, int ty)        { groupMoveCore(tx, ty, false); }
-void orderGroupAttackMove(int tx, int ty)  { groupMoveCore(tx, ty, true); }
+void orderGroupMove(const Selection& selection, int tx, int ty)        { groupMoveCore(selection, tx, ty, false); }
+void orderGroupAttackMove(const Selection& selection, int tx, int ty)  { groupMoveCore(selection, tx, ty, true); }
 
-void orderGroupAttack(int tid) {
-    for (int id : g.selectedIds) {
+void orderGroupAttack(const Selection& selection, int tid) {
+    for (int id : selection.ids) {
         Entity* e = findEntity(id);
         if (e && e->alive && e->owner == 0 && isUnit(e->type))
             orderAttack(*e, tid);

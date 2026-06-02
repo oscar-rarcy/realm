@@ -1,5 +1,8 @@
 #include "realm.h"
 #include "entity_animation.h"
+#include "commands/command.h"
+#include "core/build_service.h"
+#include "core/production_service.h"
 #include "core/research_service.h"
 #include "core/market_service.h"
 
@@ -704,6 +707,147 @@ static void testMarketTradeService() {
     assert(validateGameState(nullptr));
 }
 
+static void testCommandSelectionDriftProtection() {
+    initGameWithSeed(1, 4801u, 0);
+    for (int y = 28; y <= 34; y++) for (int x = 28; x <= 36; x++) {
+        g.map[y][x].terrain = T_GRASS;
+        g.map[y][x].resources = 0;
+    }
+    int aid = spawnEntity(E_MILITIA, 0, 30, 30);
+    int bid = spawnEntity(E_MILITIA, 0, 31, 30);
+    Entity* a = findEntity(aid);
+    Entity* b = findEntity(bid);
+    assert(a && b);
+
+    Command move;
+    move.type = CommandType::Move;
+    move.selection.primaryId = aid;
+    move.selection.ids = { aid };
+    move.targetTile = { 35, 30 };
+
+    // Change the global UI selection after the command is created. Dispatch must
+    // use the command payload, not the current UI selection.
+    g.selectedId = bid;
+    g.selectedIds = { bid };
+    dispatchCommand(g, move);
+
+    a = findEntity(aid);
+    b = findEntity(bid);
+    assert(a && b);
+    assert(a->targetX == 35 && a->targetY == 30);
+    assert(!(b->targetX == 35 && b->targetY == 30));
+
+    b->state = S_MOVING;
+    b->attackMove = 1;
+    b->holdPosition = 0;
+    a->state = S_MOVING;
+    a->attackMove = 1;
+    a->holdPosition = 0;
+    Command hold;
+    hold.type = CommandType::HoldPosition;
+    hold.selection.primaryId = aid;
+    hold.selection.ids = { aid };
+    dispatchCommand(g, hold);
+
+    assert(a->state == S_IDLE && a->holdPosition == 1 && a->attackMove == 0);
+    assert(b->state == S_MOVING && b->holdPosition == 0 && b->attackMove == 1);
+    assert(validateGameState(nullptr));
+}
+
+static void testProductionService() {
+    initGameWithSeed(1, 4901u, 0);
+    int bid = spawnEntity(E_BARRACKS, 0, 30, 30);
+    Entity* bar = findEntity(bid);
+    assert(bar && !bar->underConstruction);
+    assert(canProducerTrain(E_BARRACKS, E_MILITIA));
+    assert(canProducerTrain(E_BARRACKS, E_RAM));
+    assert(!canProducerTrain(E_STABLE, E_ARCHER));
+
+    g.players[0].gold = 999;
+    g.players[0].wood = 999;
+    g.players[0].food = 999;
+    g.players[0].supplyMax = 100;
+    int goldBefore = g.players[0].gold;
+    int woodBefore = g.players[0].wood;
+    int foodBefore = g.players[0].food;
+    assert(startTraining(g, 0, bar->id, E_MILITIA));
+    assert(bar->producing == E_MILITIA);
+    assert(bar->trainTime == STATS[E_MILITIA].trainTime);
+    assert(g.players[0].gold == goldBefore - STATS[E_MILITIA].costGold);
+    assert(g.players[0].wood == woodBefore - STATS[E_MILITIA].costWood);
+    assert(g.players[0].food == foodBefore - STATS[E_MILITIA].costFood);
+
+    // Busy producers may queue up to five units, then reject without charging.
+    for (int i = 0; i < 5; i++) assert(startTraining(g, 0, bar->id, E_ARCHER));
+    assert((int)bar->queue.size() == 5);
+    goldBefore = g.players[0].gold;
+    assert(!startTraining(g, 0, bar->id, E_ARCHER));
+    assert(g.players[0].gold == goldBefore);
+
+    int sid = spawnEntity(E_STABLE, 0, 40, 30);
+    Entity* stable = findEntity(sid);
+    assert(stable);
+    goldBefore = g.players[0].gold;
+    assert(!startTraining(g, 0, stable->id, E_ARCHER));
+    assert(g.players[0].gold == goldBefore);
+
+    int bid2 = spawnEntity(E_BARRACKS, 0, 45, 30);
+    Entity* poorBar = findEntity(bid2);
+    assert(poorBar);
+    g.players[0].gold = 999;
+    g.players[0].wood = 999;
+    g.players[0].food = 0;
+    assert(!startTraining(g, 0, poorBar->id, E_MILITIA));
+    assert(poorBar->producing == E_NONE);
+    assert(validateGameState(nullptr));
+}
+
+static void testBuildService() {
+    initGameWithSeed(1, 5001u, 0);
+    for (int y = 30; y <= 36; y++) for (int x = 30; x <= 40; x++) {
+        g.map[y][x].terrain = T_GRASS;
+        g.map[y][x].resources = 0;
+    }
+    int pid = spawnEntity(E_PEASANT, 0, 30, 30);
+    Entity* peasant = findEntity(pid);
+    assert(peasant);
+    g.players[0].gold = STATS[E_HOUSE].costGold;
+    g.players[0].wood = STATS[E_HOUSE].costWood;
+    assert(startBuild(g, 0, peasant->id, E_HOUSE, { 34, 34 }));
+    assert(g.players[0].gold == 0 && g.players[0].wood == 0);
+    assert(peasant->state == S_BUILDING);
+    Entity* house = findEntity(peasant->targetId);
+    assert(house && house->type == E_HOUSE && house->owner == 0 && house->underConstruction);
+
+    // Insufficient resources reject without spawning.
+    initGameWithSeed(1, 5002u, 0);
+    for (int y = 30; y <= 36; y++) for (int x = 30; x <= 40; x++) {
+        g.map[y][x].terrain = T_GRASS;
+        g.map[y][x].resources = 0;
+    }
+    int pid2 = spawnEntity(E_PEASANT, 0, 30, 30);
+    Entity* peasant2 = findEntity(pid2);
+    assert(peasant2);
+    g.players[0].gold = 0;
+    g.players[0].wood = 0;
+    int housesBefore = countTypeOwner(E_HOUSE, 0);
+    assert(!startBuild(g, 0, peasant2->id, E_HOUSE, { 34, 34 }));
+    assert(countTypeOwner(E_HOUSE, 0) == housesBefore);
+
+    // Non-builders are rejected.
+    int mid = spawnEntity(E_MILITIA, 0, 31, 30);
+    Entity* militia = findEntity(mid);
+    assert(militia);
+    g.players[0].gold = 999;
+    g.players[0].wood = 999;
+    assert(!startBuild(g, 0, militia->id, E_HOUSE, { 36, 34 }));
+
+    // Invalid terrain is rejected.
+    g.map[34][36].terrain = T_WATER;
+    assert(!startBuild(g, 0, peasant2->id, E_HOUSE, { 36, 34 }));
+    assert(validateGameState(nullptr));
+}
+
 static void testBerryGatherAndDepletion() {
     initGameWithSeed(1, 3503u, 0);
     Entity* peasant = nullptr;
@@ -986,6 +1130,9 @@ int main() {
     testResearchService();
     testUnitFoodCostTable();
     testMarketTradeService();
+    testCommandSelectionDriftProtection();
+    testProductionService();
+    testBuildService();
     testBerryGatherAndDepletion();
     testMillFoodStockpile();
     testWinterPartialWaterFreeze();
