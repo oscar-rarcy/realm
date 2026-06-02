@@ -1,39 +1,4 @@
 #pragma once
-#ifndef USE_SDL_RENDERER
-#include <ncurses.h>
-#else
-// Minimal input constants/stubs for the SDL renderer build. This lets the
-// graphical target share input.cpp command logic without depending on ncurses.
-constexpr int ERR = -1;
-constexpr int OK = 0;
-constexpr int KEY_DOWN = 1001;
-constexpr int KEY_UP = 1002;
-constexpr int KEY_LEFT = 1003;
-constexpr int KEY_RIGHT = 1004;
-constexpr int KEY_HOME = 1005;
-constexpr int KEY_END = 1006;
-constexpr int KEY_NPAGE = 1007;
-constexpr int KEY_PPAGE = 1008;
-constexpr int KEY_ENTER = 1009;
-constexpr int KEY_MOUSE = 1010;
-constexpr int KEY_SR = 1011;
-constexpr int KEY_SF = 1012;
-constexpr int KEY_SLEFT = 1013;
-constexpr int KEY_SRIGHT = 1014;
-constexpr int KEY_F0 = 1100;
-constexpr int KEY_F(int n) { return KEY_F0 + n; }
-struct MEVENT { int x = 0; int y = 0; unsigned long bstate = 0; };
-constexpr unsigned long BUTTON1_PRESSED      = 1ul << 0;
-constexpr unsigned long BUTTON1_RELEASED     = 1ul << 1;
-constexpr unsigned long BUTTON1_CLICKED      = 1ul << 2;
-constexpr unsigned long BUTTON1_DOUBLE_CLICKED = 1ul << 3;
-constexpr unsigned long BUTTON3_PRESSED      = 1ul << 4;
-constexpr unsigned long BUTTON3_CLICKED      = 1ul << 5;
-inline int getmouse(MEVENT*) { return ERR; }
-inline void endwin() {}
-inline void* stdscr = nullptr;
-inline void getmaxyx(void*, int& y, int& x) { y = 0; x = 0; }
-#endif
 #include <vector>
 #include <queue>
 #include <deque>
@@ -78,7 +43,8 @@ enum Terrain {
     T_WHEAT, T_BERRY, T_FISH,
     T_RUINS, T_GRAVEL,
     T_LAVA, T_ASH,
-    T_CASTLE_WALL, T_CASTLE_FLOOR, T_CASTLE_GATE
+    T_CASTLE_WALL, T_CASTLE_FLOOR, T_CASTLE_GATE,
+    TERRAIN_COUNT
 };
 
 enum EntityType {
@@ -88,7 +54,8 @@ enum EntityType {
     E_TOWNHALL, E_HOUSE, E_BARRACKS, E_STABLE, E_TOWER,
     E_FARM, E_BLACKSMITH, E_CHURCH, E_MARKET, E_WALL, E_GATE, E_CASTLE,
     E_LUMBER_CAMP, E_MINING_CAMP, E_MILL, E_DOCK,
-    E_DEER, E_WOLF, E_SHEEP, E_BOAR
+    E_DEER, E_WOLF, E_SHEEP, E_BOAR,
+    E_TYPE_COUNT
 };
 
 enum EntityState {
@@ -204,7 +171,7 @@ enum EntityTrait : uint32_t {
 };
 
 // ============================================================
-// COLOR PAIR IDS  (used in both entity.cpp and render.cpp)
+// COLOR PAIR IDS  (shared by renderers and gameplay markers)
 // ============================================================
 enum {
     CP_GRASS = 1, CP_GRASS_LIGHT, CP_GRASS_DRY, CP_TALL_GRASS,
@@ -255,7 +222,25 @@ struct EntityStats {
     int sizeW, sizeH, supplyProvided, supplyUsed; bool isBuilding;
     uint32_t traits;
 };
-extern const EntityStats STATS[];
+extern const EntityStats STATS[E_TYPE_COUNT];
+
+using EntityDefinition = EntityStats;
+const EntityDefinition& entityDef(EntityType type);
+
+struct TerrainDefinition {
+    Terrain type;
+    const char* name;
+    CargoResource resource;
+    bool passableLand;
+    bool passableWater;
+    bool buildable;
+    bool conceals;
+    int movementPenalty;
+    GroundType ground;
+    FeatureType feature;
+};
+extern const TerrainDefinition TERRAIN_DEFS[TERRAIN_COUNT];
+const TerrainDefinition& terrainDef(Terrain type);
 
 inline bool isUnit(EntityType t)     { return (t>=E_PEASANT&&t<=E_RAM)||(t>=E_DEER&&t<=E_BOAR); }
 inline bool isBuilding(EntityType t) { return t>=E_TOWNHALL&&t<=E_DOCK; }
@@ -307,6 +292,11 @@ struct Tile {
     bool visible[MAX_PLAYERS], explored[MAX_PLAYERS]; Biome biome;
     Terrain preWinterTerrain; // snapshot taken when winter arrives; restored during spring thaw
     int wear;        // 0-100: traffic + creep. Drives dirt/road transitions and decay.
+};
+
+struct MapPos {
+    int x;
+    int y;
 };
 
 struct VisualTileParts {
@@ -362,14 +352,13 @@ struct Game {
     std::deque<Entity> entities;
     std::vector<Projectile> projectiles;
     int nextId; Player players[MAX_PLAYERS + 1]; int tick;
-    GameMode mode; int cursorX, cursorY, viewX, viewY, viewW, viewH;
+    GameMode mode;
     int selectedId;
     std::vector<int> selectedIds;
     std::vector<int> controlGroups[9];
     bool groupAssignPending;
-    bool dragging; int dragStartX, dragStartY;
     std::string statusMsg; int statusTimer;
-    EntityType buildPending; int wallDragX, wallDragY;
+    EntityType buildPending;
     int winner, aiTimer, farmTimer, animalTimer;
     float dayPhase, seasonPhase;
     int prevSeason; // for detecting season transitions
@@ -394,12 +383,24 @@ extern Game g;
 // FUNCTION PROTOTYPES
 // ============================================================
 
-// mapgen.cpp
+// map generation
 void generateMap();
 void clearStartArea(int cx,int cy,int radius);
 void placeGoldCluster(int cx,int cy,int count);
+float sampleNoise(float fx,float fy);
+void placeCastleRuin(int cx,int cy,int size);
+void assignBiomesAndPaintBaseTerrain();
+void addMountains();
+void addWater();
+void addFish();
+void addGold();
+void addStone();
+void addRoads();
+void addPointsOfInterest();
+void addFoodPatches();
+void snapshotPreWinterTerrain();
 
-// entity.cpp — time
+// time
 float       getBrightness();
 Season      getSeason();
 float       getSeasonProgress();
@@ -409,7 +410,7 @@ bool        isNight();
 bool        isDusk();
 bool        isDawn();
 
-// entity.cpp — helpers
+// core helpers
 void    realmSrand(unsigned seed);
 int     realmRand();
 int     dist(int x1,int y1,int x2,int y2);
@@ -422,6 +423,8 @@ const char* modeName(GameMode m);
 const char* cargoResourceName(CargoResource r);
 CargoResource resourceForTerrain(Terrain t);
 bool    terrainMatchesResource(Terrain t,CargoResource r);
+Cargo   emptyCargo();
+int     carcassFoodForAnimal(EntityType type);
 const char* groundTypeName(GroundType g);
 const char* featureTypeName(FeatureType f);
 const char* featureStateName(FeatureState s);
@@ -462,17 +465,23 @@ void    updateSupply(int owner);
 int     reservedSupply(int owner);
 int     spawnEntity(EntityType type,int owner,int x,int y,bool built=true);
 
-// entity.cpp — projectiles / pathfinding
+// projectiles / pathfinding
 void spawnProjectile(int sx,int sy,int tx,int ty,char gl,int col);
 void tickProjectiles();
 std::vector<std::pair<int,int>> findPath(int sx,int sy,int tx,int ty,int maxSteps=300,bool naval=false);
+std::vector<std::pair<int,int>> findPathFor(Entity& e,int tx,int ty);
 
-// entity.cpp — orders
+// orders
 Entity* findNearestEnemy(Entity& e,int range);
+int unitAtk(const Entity& e);
+int unitRange(const Entity& e);
+int damageVs(EntityType attacker,EntityType target,int rawDmg,int targetOwner=-1);
+void killEntity(Entity& target);
 void orderMove(Entity& e,int tx,int ty);
 void orderAttack(Entity& e,int tid);
 void orderGather(Entity& e,int tx,int ty);
 void orderBuild(Entity& e,EntityType bt,int bx,int by);
+void orderBuildLine(Entity& e,EntityType bt,int x0,int y0,int x1,int y1);
 void orderTrain(Entity& bld,EntityType ut);
 void orderGroupMove(int tx,int ty);
 void orderGroupAttack(int tid);
@@ -480,17 +489,20 @@ void orderGroupAttackMove(int tx,int ty);
 void orderHelp(Entity& e,int buildingId);
 void orderGarrison(Entity& e,int buildingId);
 void moveAlongPath(Entity& e);
+bool findNearbyResource(Entity& e);
 
-// entity.cpp — garrison
+// garrison
 bool canGarrisonIn(EntityType bt);
 int  garrisonCap(EntityType bt);
 void ejectGarrison(Entity& bld);
 
-// entity.cpp — state management
+// state management
 void resetDetectMapCache();
 
-// entity.cpp — tick / game logic
+// tick / game logic
 void tickEntity(Entity& e);
+void tickProduction(Entity& e);
+void tickResearch(Entity& e);
 void tickTowers();
 void tickGates();
 void tickFarms();
@@ -509,7 +521,7 @@ bool saveGame(const std::string& path);
 bool loadGame(const std::string& path);
 int  dumpMissingTilesetAssets();
 
-// entity.cpp — AI
+// AI
 int     aiCount(int owner,EntityType t);
 int     aiCountAll(int owner,EntityType t);
 Entity* aiIdle(int owner,EntityType t);
@@ -518,21 +530,23 @@ void    aiGather(int owner);
 void    aiBuildSpot(int owner,EntityType bt,int& ox,int& oy);
 void    tickAI();
 
-// render.cpp
+// ASCII renderer
 void initColors();
 void render();
+void renderMap();
+void renderUI();
+void getTerrainVisual(Terrain t,int x,int y,char& ch,int& cp);
+int ownerColorPair(int owner,bool night);
 
-// input.cpp
+// input
 void handleInput(int ch);
-void rendererCommandAtTile(int x, int y);
-void rendererSelectAtTile(int x, int y);
-void rendererBoxSelect(int x0, int y0, int x1, int y1);
-void rendererSelectAllOfTypeInView(int x, int y);
 
 // frontend/shared
 void forceUtf8Locale();
+int envInt(const char* name,int fallback);
+unsigned envUnsigned(const char* name,unsigned fallback);
 
-// main.cpp
+// game initialization
 void initGame(int numAIs);
 void initGameWithSeed(int numAIs,unsigned seed,int humanCorner);
 void tickSimulationOnce();

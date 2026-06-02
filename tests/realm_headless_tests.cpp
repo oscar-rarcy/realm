@@ -485,6 +485,62 @@ static void testHoldPositionInput() {
 }
 
 
+static void testWallLineBuild() {
+    // Owner-aware, canonical-cost, validated wall-line placement.
+    initGameWithSeed(1, 3377u, 0);
+    // Carve a clear buildable strip so every segment is placeable.
+    for (int x = 40; x <= 46; x++) {
+        g.map[40][x].terrain = T_GRASS;
+        g.map[40][x].resources = 0;
+    }
+    int pid = spawnEntity(E_PEASANT, 0, 39, 40);
+    Entity* peasant = findEntity(pid);
+    assert(peasant);
+
+    int wallCost = STATS[E_WALL].costWood;
+    assert(wallCost > 0);
+    int segments = 5; // x = 41..45 inclusive (avoid the peasant's own tile at 39/40)
+    g.players[0].wood = wallCost * segments;
+    g.players[0].gold = 500;
+    int woodBefore = g.players[0].wood;
+
+    orderBuildLine(*peasant, E_WALL, 41, 40, 45, 40);
+    int wallsBuilt = countTypeOwner(E_WALL, 0);
+    assert(wallsBuilt == segments);
+    assert(g.players[0].wood == woodBefore - wallCost * segments);
+    assert(g.players[0].wood == 0);
+    // All walls belong to the builder's owner, not a hardcoded player 0 path.
+    for (auto& e : g.entities)
+        if (e.alive && e.type == E_WALL) assert(e.owner == peasant->owner);
+
+    // Unaffordable line is rejected entirely (pre-calculated cost).
+    initGameWithSeed(1, 3378u, 0);
+    for (int x = 40; x <= 46; x++) { g.map[40][x].terrain = T_GRASS; g.map[40][x].resources = 0; }
+    int pid2 = spawnEntity(E_PEASANT, 0, 39, 40);
+    Entity* peasant2 = findEntity(pid2);
+    assert(peasant2);
+    g.players[0].wood = STATS[E_WALL].costWood; // only enough for 1 of 5
+    int woodBefore2 = g.players[0].wood;
+    orderBuildLine(*peasant2, E_WALL, 41, 40, 45, 40);
+    assert(countTypeOwner(E_WALL, 0) == 0);
+    assert(g.players[0].wood == woodBefore2);
+
+    // Non-human builder spends that player's resources, owner-aware.
+    initGameWithSeed(1, 3379u, 0);
+    for (int x = 40; x <= 46; x++) { g.map[40][x].terrain = T_GRASS; g.map[40][x].resources = 0; }
+    int aid = spawnEntity(E_PEASANT, 1, 39, 40);
+    Entity* aiPeasant = findEntity(aid);
+    assert(aiPeasant);
+    g.players[1].wood = STATS[E_WALL].costWood * 3;
+    g.players[0].wood = 999;
+    int p0WoodBefore = g.players[0].wood;
+    orderBuildLine(*aiPeasant, E_WALL, 41, 40, 43, 40);
+    assert(countTypeOwner(E_WALL, 1) == 3);
+    assert(g.players[1].wood == 0);
+    assert(g.players[0].wood == p0WoodBefore); // human resources untouched
+    assert(validateGameState(nullptr));
+}
+
 static void testBerryGatherAndDepletion() {
     initGameWithSeed(1, 3503u, 0);
     Entity* peasant = nullptr;
@@ -763,6 +819,7 @@ int main() {
     testSupplyAndTownHallCost();
     testTownHallTrainInputFlow();
     testHoldPositionInput();
+    testWallLineBuild();
     testBerryGatherAndDepletion();
     testMillFoodStockpile();
     testWinterPartialWaterFreeze();

@@ -8,11 +8,15 @@
 
 static void dispatchBuildCommand(EntityType type, int x, int y, int endX = -1, int endY = -1) {
     Command command;
-    command.type = CommandType::Build;
     command.selection = currentSelection();
     command.targetTile = {x, y};
     command.entityType = type;
-    if (endX >= 0 && endY >= 0) command.groupIndex = (endX << 16) | (endY & 0xffff);
+    if (endX >= 0 && endY >= 0) {
+        command.type = CommandType::BuildLine;
+        command.lineEnd = {endX, endY};
+    } else {
+        command.type = CommandType::Build;
+    }
     dispatchCommand(g, command);
 }
 
