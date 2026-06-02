@@ -5,7 +5,9 @@
 #include "core/research_service.h"
 #include "core/market_service.h"
 
-void dispatchCommand(Game& game, const Command& command) {
+void dispatchCommand(GameContext& context, const Command& command) {
+    Game& game = context.game;
+    (void)context;
     switch (command.type) {
     case CommandType::Context:
         if (!inBounds(command.targetTile.x, command.targetTile.y)) return;
@@ -162,4 +164,9 @@ void dispatchCommand(Game& game, const Command& command) {
     case CommandType::Resign:
         break;
     }
+}
+
+void dispatchCommand(Game& game, const Command& command) {
+    GameContext context = legacyGameContext(game);
+    dispatchCommand(context, command);
 }

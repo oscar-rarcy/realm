@@ -1,6 +1,7 @@
 #pragma once
 
 #include "realm.h"
+#include "core/game_context.h"
 #include "core/research_defs.h"
 #include "core/market_service.h"
 
@@ -52,6 +53,7 @@ struct Command {
 Selection currentSelection();
 Command resolveContextCommand(const Game& game, const Selection& selection, MapPos target);
 void dispatchCommand(Game& game, const Command& command);
+void dispatchCommand(GameContext& context, const Command& command);
 void cmdAtTileSingle(Entity* selected, int x, int y);
 void cmdAtTileGroup(const Selection& selection, int x, int y);
 void selectAtTile(Game& game, int x, int y);
