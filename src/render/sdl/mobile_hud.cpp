@@ -1,5 +1,7 @@
 #include "render/sdl/sdl_hud.h"
 #include "realm.h"
+#include "core/world_index.h"
+#include "view_state.h"
 
 int mobileButtonH() {
     return std::max(44, (int)std::lround(48.0f * s.mobileUiScale));
@@ -52,11 +54,11 @@ void addGridButtons(std::vector<MobileButton>& out, int x, int y, int w,
     }
 }
 
-std::string mobileSelectionSummary() {
+std::string mobileSelectionSummary(const WorldIndex& world) {
     if (!g.selectedIds.empty()) {
         int idle = 0, gathering = 0, military = 0;
         for (int id : g.selectedIds) {
-            Entity* e = sdlFindEntity(id);
+            Entity* e = renderFindEntity(g, world, id);
             if (!e || !e->alive) continue;
             if (e->state == S_IDLE) idle++;
             if (e->state == S_GATHERING) gathering++;
@@ -67,7 +69,7 @@ std::string mobileSelectionSummary() {
         if (idle || gathering || military) ss << "  " << idle << " idle  " << gathering << " gathering";
         return ss.str();
     }
-    Entity* sel = sdlFindEntity(g.selectedId);
+    Entity* sel = renderFindEntity(g, world, g.selectedId);
     if (!sel) return "No selection";
     std::ostringstream ss;
     ss << STATS[sel->type].name << "  HP " << sel->hp << "/" << sel->maxHp;
@@ -84,27 +86,27 @@ std::string mobileSelectionSummary() {
     return ss.str();
 }
 
-bool mobileHasSelectedWorker() {
+bool mobileHasSelectedWorker(const WorldIndex& world) {
     if (!g.selectedIds.empty()) {
         for (int id : g.selectedIds) {
-            Entity* e = sdlFindEntity(id);
+            Entity* e = renderFindEntity(g, world, id);
             if (e && e->alive && e->owner == 0 && canBuild(e->type)) return true;
         }
         return false;
     }
-    Entity* e = sdlFindEntity(g.selectedId);
+    Entity* e = renderFindEntity(g, world, g.selectedId);
     return e && e->alive && e->owner == 0 && canBuild(e->type);
 }
 
-bool mobileHasSelectedMilitary() {
+bool mobileHasSelectedMilitary(const WorldIndex& world) {
     if (!g.selectedIds.empty()) {
         for (int id : g.selectedIds) {
-            Entity* e = sdlFindEntity(id);
+            Entity* e = renderFindEntity(g, world, id);
             if (e && e->alive && e->owner == 0 && isMilitary(e->type)) return true;
         }
         return false;
     }
-    Entity* e = sdlFindEntity(g.selectedId);
+    Entity* e = renderFindEntity(g, world, g.selectedId);
     return e && e->alive && e->owner == 0 && isMilitary(e->type);
 }
 
@@ -119,7 +121,7 @@ EntityType mobileDefaultTrainType(EntityType producer) {
     }
 }
 
-std::vector<MobileButton> mobileHudButtons() {
+std::vector<MobileButton> mobileHudButtons(const WorldIndex& world) {
     std::vector<MobileButton> buttons;
     SDL_Rect pr = panelRect();
     SDL_Rect mm = miniMapRect();
@@ -153,10 +155,10 @@ std::vector<MobileButton> mobileHudButtons() {
                    {"build:mill", "Mill"}, {"build:dock", "Dock"}, {"buildback", "Back"}};
         }
     } else {
-        Entity* sel = sdlFindEntity(g.selectedId);
-        if (mobileHasSelectedWorker()) {
+        Entity* sel = renderFindEntity(g, world, g.selectedId);
+        if (mobileHasSelectedWorker(world)) {
             cmd = {{"move", "Move"}, {"gather", "Gather"}, {"build", "Build"}, {"stop", "Stop"}};
-        } else if (mobileHasSelectedMilitary()) {
+        } else if (mobileHasSelectedMilitary(world)) {
             cmd = {{"move", "Move"}, {"attack", "Attack"}, {"attackmove", "Attack Move"}, {"stop", "Stop"}};
         } else if (sel && sel->owner == 0 && isBuilding(sel->type) && !sel->underConstruction) {
             if (isTrainProducer(sel->type)) {
@@ -184,7 +186,7 @@ std::vector<MobileButton> mobileHudButtons() {
     return buttons;
 }
 
-void drawMobileHud() {
+void drawMobileHud(const WorldIndex& world) {
     SDL_Rect pr = panelRect();
     int pad = mobileSafePad();
     setDraw(rgb(8,10,14)); SDL_RenderFillRect(s.ren, &pr);
@@ -194,19 +196,19 @@ void drawMobileHud() {
     int summaryY = pr.y + pad + 28;
     SDL_Rect mm = miniMapRect();
     int summaryW = mobilePortrait() ? std::max(1, mm.x - (pr.x + pad) - 10) : std::max(1, pr.w - pad * 2);
-    drawTextFit(pr.x + pad, summaryY, mobileSelectionSummary(), rgb(255,230,135), summaryW);
+    drawTextFit(pr.x + pad, summaryY, mobileSelectionSummary(world), rgb(255,230,135), summaryW);
     if (s.mobileBuildType != E_NONE) {
         drawTextFit(pr.x + pad, summaryY + 22,
                     std::string("Placing ") + STATS[s.mobileBuildType].name + " - tap a valid tile",
                     rgb(145,220,245), summaryW);
     } else if (g.mode == M_RALLY_SET || g.mode == M_ATTACK_MOVE || g.mode == M_BUILD_SELECT || g.mode == M_MARKET_TRADE) {
         drawTextFit(pr.x + pad, summaryY + 22, modeName(g.mode), rgb(145,220,245), summaryW);
-    } else if (g.statusTimer > 0) {
-        drawTextFit(pr.x + pad, summaryY + 22, g.statusMsg, rgb(255,230,120), summaryW);
+    } else if (ui.statusTimer > 0) {
+        drawTextFit(pr.x + pad, summaryY + 22, ui.statusMsg, rgb(255,230,120), summaryW);
     }
 
-    drawMiniMap(mm.x, mm.y, mm.w, mm.h);
-    for (const MobileButton& b : mobileHudButtons()) {
+    drawMiniMap(world, mm.x, mm.y, mm.w, mm.h);
+    for (const MobileButton& b : mobileHudButtons(world)) {
         bool active = (b.id == "build" && g.mode == M_BUILD_SELECT)
                    || (b.id == "attack" && g.mode == M_ATTACK_MOVE)
                    || (b.id == "rally" && g.mode == M_RALLY_SET);

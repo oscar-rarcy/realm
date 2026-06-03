@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 enum class InputIntent {
     None,
     Cancel,
@@ -18,7 +20,6 @@ enum class InputIntent {
     Save,
     Load,
     Select,
-    Context,
     BuildMenu,
     TrainMenu,
     RallyResearchTradeMenu,
@@ -36,9 +37,26 @@ enum class InputIntent {
     Mouse
 };
 
+struct CommandHelpBinding {
+    const char* id;
+    const char* label;
+    const char* keys;
+    const char* modes;
+    const char* help;
+    InputIntent intent = InputIntent::None;
+    int slot = -1;
+    int keyCount = 0;
+    int keyCodes[4] = { 0, 0, 0, 0 };
+    int rangeStart = 0;
+    int rangeEnd = 0;
+    int rangeSlotOffset = 0;
+};
+
 struct InputIntentResult {
     InputIntent intent = InputIntent::None;
     int slot = -1;
 };
 
 InputIntentResult inputIntentFromKey(int ch);
+const CommandHelpBinding* gameplayHelpBindings(int& count);
+std::string commandHelpLine();

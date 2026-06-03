@@ -16,39 +16,6 @@ struct Selection {
     std::vector<int> ids;
 };
 
-enum class CommandType {
-    None,
-    Context,
-    Move,
-    Attack,
-    AttackMove,
-    Gather,
-    Build,
-    BuildLine,
-    Train,
-    Research,
-    MarketTrade,
-    Help,
-    Garrison,
-    EjectGarrison,
-    SetRally,
-    HoldPosition,
-    Stop,
-    Select,
-    BoxSelect,
-    SelectAllOfTypeInView,
-    AssignControlGroup,
-    RecallControlGroup,
-    TogglePause,
-    Save,
-    Load,
-    Resign,
-    ToggleGate,
-    ToggleTrebuchetPacked,
-    ToggleDiagnostics,
-    RevealMapDebug
-};
-
 enum class CommandStatus {
     Accepted,
     Rejected,
@@ -127,54 +94,63 @@ using CommandPayload = std::variant<
 struct Command {
     PlayerId issuer = 0;
     CommandPayload payload{};
-
-    CommandType type() const {
-        return std::visit([](const auto& p) -> CommandType {
-            using T = std::decay_t<decltype(p)>;
-            if constexpr (std::is_same_v<T, std::monostate>) return CommandType::None;
-            else if constexpr (std::is_same_v<T, ContextCommand>) return CommandType::Context;
-            else if constexpr (std::is_same_v<T, MoveCommand>) return CommandType::Move;
-            else if constexpr (std::is_same_v<T, AttackCommand>) return CommandType::Attack;
-            else if constexpr (std::is_same_v<T, AttackMoveCommand>) return CommandType::AttackMove;
-            else if constexpr (std::is_same_v<T, GatherCommand>) return CommandType::Gather;
-            else if constexpr (std::is_same_v<T, BuildCommand>) return CommandType::Build;
-            else if constexpr (std::is_same_v<T, BuildLineCommand>) return CommandType::BuildLine;
-            else if constexpr (std::is_same_v<T, TrainCommand>) return CommandType::Train;
-            else if constexpr (std::is_same_v<T, ResearchCommand>) return CommandType::Research;
-            else if constexpr (std::is_same_v<T, MarketTradeCommand>) return CommandType::MarketTrade;
-            else if constexpr (std::is_same_v<T, HelpCommand>) return CommandType::Help;
-            else if constexpr (std::is_same_v<T, GarrisonCommand>) return CommandType::Garrison;
-            else if constexpr (std::is_same_v<T, EjectGarrisonCommand>) return CommandType::EjectGarrison;
-            else if constexpr (std::is_same_v<T, SetRallyCommand>) return CommandType::SetRally;
-            else if constexpr (std::is_same_v<T, HoldPositionCommand>) return CommandType::HoldPosition;
-            else if constexpr (std::is_same_v<T, StopCommand>) return CommandType::Stop;
-            else if constexpr (std::is_same_v<T, SelectCommand>) return CommandType::Select;
-            else if constexpr (std::is_same_v<T, BoxSelectCommand>) return CommandType::BoxSelect;
-            else if constexpr (std::is_same_v<T, SelectAllOfTypeInViewCommand>) return CommandType::SelectAllOfTypeInView;
-            else if constexpr (std::is_same_v<T, AssignControlGroupCommand>) return CommandType::AssignControlGroup;
-            else if constexpr (std::is_same_v<T, RecallControlGroupCommand>) return CommandType::RecallControlGroup;
-            else if constexpr (std::is_same_v<T, TogglePauseCommand>) return CommandType::TogglePause;
-            else if constexpr (std::is_same_v<T, SaveCommand>) return CommandType::Save;
-            else if constexpr (std::is_same_v<T, LoadCommand>) return CommandType::Load;
-            else if constexpr (std::is_same_v<T, ResignCommand>) return CommandType::Resign;
-            else if constexpr (std::is_same_v<T, ToggleGateCommand>) return CommandType::ToggleGate;
-            else if constexpr (std::is_same_v<T, ToggleTrebuchetPackedCommand>) return CommandType::ToggleTrebuchetPacked;
-            else if constexpr (std::is_same_v<T, ToggleDiagnosticsCommand>) return CommandType::ToggleDiagnostics;
-            else if constexpr (std::is_same_v<T, RevealMapDebugCommand>) return CommandType::RevealMapDebug;
-        }, payload);
-    }
 };
+
+template <typename Payload>
+inline bool commandHasPayload(const Command& command) {
+    return std::holds_alternative<Payload>(command.payload);
+}
+
+inline bool commandIsEmpty(const Command& command) {
+    return commandHasPayload<std::monostate>(command);
+}
+
+inline bool commandIsContext(const Command& command) {
+    return commandHasPayload<ContextCommand>(command);
+}
+
+inline const char* commandPayloadName(const Command& command) {
+    return std::visit([](const auto& p) -> const char* {
+        using T = std::decay_t<decltype(p)>;
+        if constexpr (std::is_same_v<T, std::monostate>) return "None";
+        else if constexpr (std::is_same_v<T, ContextCommand>) return "Context";
+        else if constexpr (std::is_same_v<T, MoveCommand>) return "Move";
+        else if constexpr (std::is_same_v<T, AttackCommand>) return "Attack";
+        else if constexpr (std::is_same_v<T, AttackMoveCommand>) return "AttackMove";
+        else if constexpr (std::is_same_v<T, GatherCommand>) return "Gather";
+        else if constexpr (std::is_same_v<T, BuildCommand>) return "Build";
+        else if constexpr (std::is_same_v<T, BuildLineCommand>) return "BuildLine";
+        else if constexpr (std::is_same_v<T, TrainCommand>) return "Train";
+        else if constexpr (std::is_same_v<T, ResearchCommand>) return "Research";
+        else if constexpr (std::is_same_v<T, MarketTradeCommand>) return "MarketTrade";
+        else if constexpr (std::is_same_v<T, HelpCommand>) return "Help";
+        else if constexpr (std::is_same_v<T, GarrisonCommand>) return "Garrison";
+        else if constexpr (std::is_same_v<T, EjectGarrisonCommand>) return "EjectGarrison";
+        else if constexpr (std::is_same_v<T, SetRallyCommand>) return "SetRally";
+        else if constexpr (std::is_same_v<T, HoldPositionCommand>) return "HoldPosition";
+        else if constexpr (std::is_same_v<T, StopCommand>) return "Stop";
+        else if constexpr (std::is_same_v<T, SelectCommand>) return "Select";
+        else if constexpr (std::is_same_v<T, BoxSelectCommand>) return "BoxSelect";
+        else if constexpr (std::is_same_v<T, SelectAllOfTypeInViewCommand>) return "SelectAllOfTypeInView";
+        else if constexpr (std::is_same_v<T, AssignControlGroupCommand>) return "AssignControlGroup";
+        else if constexpr (std::is_same_v<T, RecallControlGroupCommand>) return "RecallControlGroup";
+        else if constexpr (std::is_same_v<T, TogglePauseCommand>) return "TogglePause";
+        else if constexpr (std::is_same_v<T, SaveCommand>) return "Save";
+        else if constexpr (std::is_same_v<T, LoadCommand>) return "Load";
+        else if constexpr (std::is_same_v<T, ResignCommand>) return "Resign";
+        else if constexpr (std::is_same_v<T, ToggleGateCommand>) return "ToggleGate";
+        else if constexpr (std::is_same_v<T, ToggleTrebuchetPackedCommand>) return "ToggleTrebuchetPacked";
+        else if constexpr (std::is_same_v<T, ToggleDiagnosticsCommand>) return "ToggleDiagnostics";
+        else if constexpr (std::is_same_v<T, RevealMapDebugCommand>) return "RevealMapDebug";
+    }, command.payload);
+}
 
 Selection currentSelection(const Game& game);
 Command resolveContextCommand(const Game& game, const WorldIndex& world, PlayerId issuer, const Selection& selection, MapPos target);
 CommandResult dispatchCommand(GameContext& context, const Command& command);
-void selectAtTile(Game& game, int x, int y);
-void selectAtTile(Game& game, const WorldIndex& world, PlayerId issuer, int x, int y);
-void boxSelect(Game& game, int x0, int y0, int x1, int y1);
-void boxSelect(Game& game, const WorldIndex& world, PlayerId issuer, int x0, int y0, int x1, int y1);
-void boxSelect(Game& game, PlayerId issuer, int x0, int y0, int x1, int y1);
-void selectAllOfTypeInView(Game& game, int x, int y);
-void selectAllOfTypeInView(Game& game, const WorldIndex& world, PlayerId issuer, int x, int y);
+void selectAtTile(Game& game, const WorldIndex& world, EventSink& events, PlayerId issuer, int x, int y);
+void boxSelect(Game& game, const WorldIndex& world, EventSink& events, PlayerId issuer, int x0, int y0, int x1, int y1);
+void selectAllOfTypeInView(Game& game, const WorldIndex& world, EventSink& events, PlayerId issuer, int x, int y);
 Entity* selectNextIdleWorker(Game& game, const WorldIndex& world, PlayerId issuer, EntityId afterId);
 Entity* selectNextUnit(Game& game, const WorldIndex& world, PlayerId issuer, EntityId afterId);
 Entity* selectHomeBase(Game& game, const WorldIndex& world, PlayerId issuer);

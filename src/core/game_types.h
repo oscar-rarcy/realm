@@ -224,15 +224,21 @@ struct TerrainDefinition {
     int movementPenalty;
     GroundType ground;
     FeatureType feature;
+    char asciiGlyph;
 };
 
-struct OccupancyGrid {
+struct WorldOccupancyGrid {
     bool occupied[MAP_H][MAP_W];
 };
 
 struct MapPos {
     int x;
     int y;
+};
+
+struct ActionMarker {
+    int x, y, ticks;
+    char glyph;
 };
 
 struct VisualTileParts {

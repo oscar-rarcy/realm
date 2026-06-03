@@ -1,9 +1,9 @@
 #include "realm.h"
-#include "render/visual_model.h"
+#include "render/render_model.h"
 #include "view_state.h"
 #include "input_keys.h"
 
-void renderMap() {
+void renderMap(const WorldIndex& world) {
     int maxY, maxX; getmaxyx(stdscr, maxY, maxX);
     int panelW = 24; view.viewW = maxX - panelW - 1; view.viewH = maxY - 4;
     if (view.viewW < 30) view.viewW = maxX;
@@ -17,8 +17,7 @@ void renderMap() {
     view.viewX = std::max(0, std::min(view.viewX, MAP_W - view.viewW));
     view.viewY = std::max(0, std::min(view.viewY, MAP_H - view.viewH));
 
-    RenderModel model = buildRenderModel(g, 0, view.viewX, view.viewY, view.viewW, view.viewH);
-    WorldIndex world = buildWorldIndex(g);
+    RenderModel model = buildRenderModel(g, ui.actionMarkers, 0, view.viewX, view.viewY, view.viewW, view.viewH);
     std::vector<const TileRenderInfo*> tileInfos(view.viewW * view.viewH, nullptr);
     for (const TileRenderInfo& tileInfo : model.tiles) {
         int sx = tileInfo.x - view.viewX;

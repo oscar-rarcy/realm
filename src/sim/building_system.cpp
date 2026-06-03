@@ -1,11 +1,20 @@
 #include "realm.h"
 #include "core/game_events.h"
+#include "core/order_service.h"
 #include "core/world_index.h"
+
+namespace {
+
+void emitStatus(EventSink& events, int player, const std::string& message, GameEventType type = GameEventType::StatusMessage) {
+    events.emit({ type, player, -1, { -1, -1 }, message, 0 });
+}
+
+} // namespace
 
 // ============================================================
 // PASSIVE BUILDING TICKS
 // ============================================================
-void tickTowers(Game& game) {
+void tickTowers(Game& game, EventSink& events) {
     // Towers always defend. Town Hall/Castle/House defend only when garrisoned.
     // Garrisoned archers add ranged punch; militia/knights add a smaller bonus.
     WorldIndex world = buildWorldIndex(game);
@@ -32,7 +41,7 @@ void tickTowers(Game& game) {
                 en->hp -= dmg;
                 en->alertTicks = 12;
                 spawnProjectile(game, sx, sy, en->x, en->y, '-', CP_PROJ_TOWER);
-                if (en->hp <= 0) killEntity(game, *en);
+                if (en->hp <= 0) killEntity(game, events, *en);
                 fired++;
             }
             if (fired > 0) e.atkCd = 6;
@@ -69,7 +78,7 @@ void tickTowers(Game& game) {
                 en->alertTicks = 12;
                 // Bolt-style projectile so tower fire reads as arrows instead of stars.
                 spawnProjectile(game, sx, sy, en->x, en->y, '-', CP_PROJ_TOWER);
-                if (en->hp <= 0) killEntity(game, *en);
+                if (en->hp <= 0) killEntity(game, events, *en);
             } else e.atkCd--;
         } else if (e.atkCd > 0) e.atkCd--;
     }
@@ -88,7 +97,7 @@ void tickGates(Game& game) {
     }
 }
 
-void tickFarms(Game& game) {
+void tickFarms(Game& game, EventSink& events) {
     game.farmTimer++;
     if (game.farmTimer < 40) return;
     game.farmTimer = 0;
@@ -96,7 +105,7 @@ void tickFarms(Game& game) {
     // Wheat dies at the onset of winter
     if (getSeason(game) == WINTER) {
         for (auto& e : game.entities)
-            if (e.alive && e.type == E_FARM) killEntity(game, e);
+            if (e.alive && e.type == E_FARM) killEntity(game, events, e);
         return;
     }
 
@@ -142,7 +151,7 @@ void tickFarms(Game& game) {
                         if (d <= 12 && d < bestD) { bestD = d; best = &u; }
                     }
                     if (best) {
-                        orderHelp(game, world, *best, farm.id);
+                        startHelp(game, world, events, best->owner, Selection{ best->id, { best->id } }, farm.id);
                     }
                 }
             }
@@ -159,7 +168,7 @@ void tickMarkets(Game& game) {
     }
 }
 
-void tickChurches(Game& game) {
+void tickChurches(Game& game, EventSink& events) {
     for (auto& e : game.entities) {
         if (!e.alive || e.type!=E_CHURCH || e.underConstruction) continue;
         for (auto& u : game.entities) {
@@ -182,8 +191,8 @@ void tickChurches(Game& game) {
                     u.pathIdx = 0;
                     updateSupply(game, oldOwner);
                     updateSupply(game, u.owner);
-                    if (oldOwner == 0) emitStatusEvent(oldOwner, std::string(STATS[u.type].name) + " was converted.");
-                    else if (u.owner == 0) emitStatusEvent(u.owner, std::string(STATS[u.type].name) + " converted.");
+                    if (oldOwner == 0) emitStatus(events, oldOwner, std::string(STATS[u.type].name) + " was converted.");
+                    else if (u.owner == 0) emitStatus(events, u.owner, std::string(STATS[u.type].name) + " converted.");
                 }
             } else if (u.convertTicks > 0 && game.tick % 8 == 0) {
                 u.convertTicks--;

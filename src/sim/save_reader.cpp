@@ -130,15 +130,15 @@ bool parseSaveStream(std::istream& is, Game& ng, int& version) {
         ng.projectiles.push_back(p);
     }
     if (!(is >> tag >> n) || tag != "MARKERS") return false;
-    ng.actionMarkers.clear();
-    ng.actionMarkers.reserve(n);
     for (size_t i = 0; i < n; i++) {
         if (!(is >> tag) || tag != "MARKER") return false;
-        ActionMarker m{};
+        int markerX = 0, markerY = 0, markerTicks = 0;
         int glyph = 0;
-        if (!(is >> m.x >> m.y >> m.ticks >> glyph)) return false;
-        m.glyph = (char)glyph;
-        ng.actionMarkers.push_back(m);
+        if (!(is >> markerX >> markerY >> markerTicks >> glyph)) return false;
+        (void)markerX;
+        (void)markerY;
+        (void)markerTicks;
+        (void)glyph;
     }
     return true;
 }

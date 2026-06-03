@@ -100,8 +100,6 @@ std::vector<ValidationIssue> validateGameStateIssues(const Game& game) {
         for (int gid : e.garrison)
             if (gid <= 0 || gid >= game.nextId || !findEntityIn(game, gid)) recoverable("garrison id outside valid range", e.id, entityTile);
     }
-    for (const auto& m : game.actionMarkers)
-        if (!inBounds(m.x, m.y) || m.ticks < 0) recoverable("action marker outside valid range", -1, { m.x, m.y });
     for (const auto& p : game.projectiles) {
         if (p.life < 0) recoverable("projectile life below zero");
         if (!std::isfinite(p.x) || !std::isfinite(p.y) || !std::isfinite(p.tx) || !std::isfinite(p.ty))
@@ -167,9 +165,6 @@ RecoveryResult recoverGameState(Game& game, const std::vector<ValidationIssue>& 
         pruneInvalidEntityIds(game, entity.garrison);
     }
 
-    game.actionMarkers.erase(std::remove_if(game.actionMarkers.begin(), game.actionMarkers.end(),
-        [](const ActionMarker& marker){ return !inBounds(marker.x, marker.y) || marker.ticks < 0; }),
-        game.actionMarkers.end());
     for (auto& projectile : game.projectiles) {
         if (!std::isfinite(projectile.x) || !std::isfinite(projectile.y)
             || !std::isfinite(projectile.tx) || !std::isfinite(projectile.ty)
@@ -197,17 +192,12 @@ bool validateGameState(const Game& game, std::string* error) {
 
 bool isPassable(const Game& game, int x, int y) {
     if (!inBounds(x, y)) return false;
-    Terrain t = game.map[y][x].terrain;
-    // Land units can wade through shallows and reeds (slow, see moveAlongPath), but
-    // deep water and fish shoals block them. Winter freezes water → T_ICE which is
-    // passable everywhere as a slick. Mountains/stone/walls always block.
-    return t != T_MOUNTAIN && t != T_WATER && t != T_STONE && t != T_CASTLE_WALL
-        && t != T_FISH && t != T_LAVA;
+    // Land passability is centralized in TerrainDefinition.
+    return terrainDef(game.map[y][x].terrain).passableLand;
 }
 
 bool isPassableWater(const Game& game, int x, int y) {
     if (!inBounds(x, y)) return false;
-    Terrain t = game.map[y][x].terrain;
-    // Boats float on open water and shallows, glide through reeds. Marsh and ice block them.
-    return t == T_WATER || t == T_SHALLOWS || t == T_REEDS || t == T_FISH;
+    // Water passability is centralized in TerrainDefinition.
+    return terrainDef(game.map[y][x].terrain).passableWater;
 }

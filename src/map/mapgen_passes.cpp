@@ -1,12 +1,12 @@
 #include "realm.h"
 
-void assignBiomesAndPaintBaseTerrain(Game& game) {
+void assignBiomesAndPaintBaseTerrain(Game& game, const MapNoise& noise) {
     for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
-        float n1 = sampleNoise(x*0.028f, y*0.028f), n2 = sampleNoise(x*0.020f+10, y*0.020f+10);
+        float n1 = sampleNoise(noise, x*0.028f, y*0.028f), n2 = sampleNoise(noise, x*0.020f+10, y*0.020f+10);
         Biome b = B_TEMPERATE;
         if (game.biomeChoice >= 0) {
             b = (Biome)game.biomeChoice;
-            float patch = sampleNoise(x*0.06f+30, y*0.06f+30);
+            float patch = sampleNoise(noise, x*0.06f+30, y*0.06f+30);
             if (patch > 0.78f) {
                 if      (b == B_TEMPERATE) b = (n2 > 0.5f) ? B_FOREST : B_DESERT;
                 else if (b == B_FOREST)    b = (n2 > 0.5f) ? B_TEMPERATE : B_SWAMP;
@@ -77,9 +77,9 @@ void assignBiomesAndPaintBaseTerrain(Game& game) {
     }
 }
 
-void addMountains(Game& game) {
+void addMountains(Game& game, const MapNoise& noise) {
     for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
-        float n = sampleNoise(x*0.12f+5, y*0.12f+5);
+        float n = sampleNoise(noise, x*0.12f+5, y*0.12f+5);
         if (n > 0.78f) { game.map[y][x].terrain = T_MOUNTAIN; game.map[y][x].resources = 0; }
         else if (n > 0.72f && game.map[y][x].biome != B_DESERT)
             if (realmRand(game) % 3 == 0) { game.map[y][x].terrain = T_HILLS; game.map[y][x].resources = 0; }
@@ -190,7 +190,7 @@ void addStone(Game& game) {
     }
 }
 
-void addRoads(Game& game) {
+void addRoads(Game& game, const MapNoise& noise) {
     int midX = MAP_W/2, midY = MAP_H/2;
     auto makeRoad = [&](int sx, int sy, int ex, int ey) {
         int cx = sx, cy = sy;
@@ -218,10 +218,10 @@ void addRoads(Game& game) {
         int gapX  = MAP_W/4 + realmRand(game) % (MAP_W/2);
         for (int x = 5; x < MAP_W - 5; x++) {
             if (std::abs(x - gapX) < 3) continue;
-            float n = sampleNoise(x*0.3f, passY*0.3f + 99);
+            float n = sampleNoise(noise, x*0.3f, passY*0.3f + 99);
             int thickness = 1 + (n > 0.5f ? 1 : 0);
             for (int dy = -thickness; dy <= thickness; dy++) {
-                int ny = passY + dy + (int)(sampleNoise(x*0.4f, 88)*3) - 1;
+                int ny = passY + dy + (int)(sampleNoise(noise, x*0.4f, 88)*3) - 1;
                 if (inBounds(x, ny) && game.map[ny][x].terrain != T_WATER
                     && game.map[ny][x].terrain != T_GOLD)
                     { game.map[ny][x].terrain = T_MOUNTAIN; game.map[ny][x].resources = 0; }

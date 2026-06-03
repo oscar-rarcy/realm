@@ -31,11 +31,3 @@ const char* cargoResourceName(CargoResource r) {
     }
     return "unknown";
 }
-
-CargoResource resourceForTerrain(Terrain t) {
-    return terrainDef(t).resource;
-}
-
-bool terrainMatchesResource(Terrain t, CargoResource r) {
-    return resourceForTerrain(t) == r;
-}

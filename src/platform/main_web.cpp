@@ -3,7 +3,8 @@
 #include "gfx_renderer.h"
 #include "env_config.h"
 #include "commands/command.h"
-#include "core/game_context.h"
+#include "commands/command_runner.h"
+#include "core/game_events.h"
 
 #include <emscripten/emscripten.h>
 #include <SDL.h>
@@ -29,12 +30,6 @@ enum WebScreen {
 };
 
 WebScreen webScreen = WEB_MENU;
-
-CommandResult dispatchPlatformCommand(Command& command) {
-    WorldIndex world = buildWorldIndex(g);
-    GameContext context{ g, world, gameEvents() };
-    return dispatchCommand(context, command);
-}
 
 int envIntOnly(const char* name, int fallback) {
     const char* v = std::getenv(name);
@@ -155,7 +150,7 @@ void startMatch(int numAIs, bool deterministic) {
     if (gfxConsumeLoadGameRequest()) {
         Command command;
         command.payload = LoadCommand{ 0 };
-        if (dispatchPlatformCommand(command).status == CommandStatus::Accepted) {
+        if (dispatchCommandForLocalGame(g, gameEvents(), command).status == CommandStatus::Accepted) {
             std::cerr << "realm: loaded realm-save.txt from web menu\n";
         } else {
             std::cerr << "realm: web menu load failed; continuing new game\n";
@@ -163,7 +158,7 @@ void startMatch(int numAIs, bool deterministic) {
     }
 
     gfxOnNewGame();
-    setStatus("Browser build ready. Select peasants with click/tap and command with right click or keyboard.");
+    emitUiStatusEvent(-1, "Browser build ready. Select peasants with click/tap and command with right click or keyboard.");
     webScreen = WEB_MATCH;
     nextTickMs = emscripten_get_now() + TICK_MS;
     std::cerr << "realm: web initialized tick=" << g.tick
@@ -193,7 +188,7 @@ void frame() {
         }
         if (result < 0) {
             webScreen = WEB_EXITED;
-            setStatus("Realm exited.");
+            emitUiStatusEvent(-1, "Realm exited.");
             std::cerr << "realm: web exited from main menu\n";
         } else if (result > 0) {
             startMatch(menuAIs, false);
@@ -209,7 +204,7 @@ void frame() {
     }
     if (quit) {
         webScreen = WEB_EXITED;
-        setStatus("Realm exited.");
+        emitUiStatusEvent(-1, "Realm exited.");
         std::cerr << "realm: web exited from match\n";
         return;
     }
@@ -223,7 +218,8 @@ void frame() {
     while (now >= nextTickMs && safety < 4) {
         nextTickMs += TICK_MS;
         if (g.mode != M_PAUSED && g.mode != M_GAME_OVER) {
-            tickSimulationOnce(g, true);
+            tickSimulationOnce(g, gameEvents(), true);
+            tickUiState(ui);
         }
         safety++;
     }

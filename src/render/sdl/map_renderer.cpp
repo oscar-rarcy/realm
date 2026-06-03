@@ -1,44 +1,37 @@
 #include "render/sdl/sdl_map.h"
 #include "realm.h"
+#include "core/game_events.h"
 #include "core/world_index.h"
-#include "render/visual_model.h"
+#include "render/render_model.h"
 #include "view_state.h"
 
-static const RenderModel* activeRenderModel = nullptr;
-
-Entity* sdlFindEntity(int id) {
-    WorldIndex world = buildWorldIndex(g);
-    return findEntity(g, world, id);
+Entity* renderFindEntity(Game& game, const WorldIndex& world, int id) {
+    return findEntity(game, world, id);
 }
 
-Entity* sdlEntityAt(int x, int y) {
-    WorldIndex world = buildWorldIndex(g);
-    return entityAt(g, world, x, y);
+Entity* renderEntityAt(Game& game, const WorldIndex& world, int x, int y) {
+    return entityAt(game, world, x, y);
 }
 
-Entity* sdlCorpseAt(int x, int y) {
-    WorldIndex world = buildWorldIndex(g);
-    return corpseAt(g, world, x, y);
+static Entity* renderCorpseAt(Game& game, const WorldIndex& world, int x, int y) {
+    return corpseAt(game, world, x, y);
 }
 
-bool sdlCanPlace(EntityType type, int x, int y, int owner) {
-    WorldIndex world = buildWorldIndex(g);
-    return canPlace(g, world, type, x, y, owner);
+bool renderCanPlace(Game& game, const WorldIndex& world, EntityType type, int x, int y, int owner) {
+    return canPlace(game, world, type, x, y, owner);
 }
 
-static const TileRenderInfo* activeTileInfoAt(int mx, int my) {
-    if (!activeRenderModel) return nullptr;
-    int sx = mx - activeRenderModel->viewX;
-    int sy = my - activeRenderModel->viewY;
-    if (sx < 0 || sy < 0 || sx >= activeRenderModel->viewW || sy >= activeRenderModel->viewH) return nullptr;
-    size_t index = (size_t)sy * (size_t)activeRenderModel->viewW + (size_t)sx;
-    if (index >= activeRenderModel->tiles.size()) return nullptr;
-    return &activeRenderModel->tiles[index];
+static const TileRenderInfo* tileInfoAt(const RenderModel& model, int mx, int my) {
+    int sx = mx - model.viewX;
+    int sy = my - model.viewY;
+    if (sx < 0 || sy < 0 || sx >= model.viewW || sy >= model.viewH) return nullptr;
+    size_t index = (size_t)sy * (size_t)model.viewW + (size_t)sx;
+    if (index >= model.tiles.size()) return nullptr;
+    return &model.tiles[index];
 }
 
-static const ActionMarkerRenderInfo* activeActionMarkerAt(int mx, int my) {
-    if (!activeRenderModel) return nullptr;
-    for (const ActionMarkerRenderInfo& marker : activeRenderModel->actionMarkers) {
+static const ActionMarkerRenderInfo* actionMarkerAt(const RenderModel& model, int mx, int my) {
+    for (const ActionMarkerRenderInfo& marker : model.actionMarkers) {
         if (marker.x == mx && marker.y == my) return &marker;
     }
     return nullptr;
@@ -138,16 +131,16 @@ struct TileVisual {
     bool tint = false;
 };
 
-TileVisual makeTileVisual(int mx, int my) {
+TileVisual makeTileVisual(Game& game, const WorldIndex& world, const RenderModel& model, int mx, int my) {
     TileVisual v;
-    const Tile& tile = g.map[my][mx];
-    const TileRenderInfo* tileInfo = activeTileInfoAt(mx, my);
+    const Tile& tile = game.map[my][mx];
+    const TileRenderInfo* tileInfo = tileInfoAt(model, mx, my);
     v.visible = tileInfo ? tileInfo->visible : tile.visible[0];
     v.explored = tileInfo ? tileInfo->explored : tile.explored[0];
     if (!v.explored) { v.bg = rgb(8,9,12); return v; }
 
-    v.ent = v.visible ? sdlEntityAt(mx,my) : nullptr;
-    if (!v.ent && v.visible) v.ent = sdlCorpseAt(mx, my);
+    v.ent = v.visible ? renderEntityAt(game, world, mx, my) : nullptr;
+    if (!v.ent && v.visible) v.ent = renderCorpseAt(game, world, mx, my);
     v.cursor = (mx == view.cursorX && my == view.cursorY);
     v.bg = terrainBg(tile, mx, my);
 
@@ -166,19 +159,19 @@ TileVisual makeTileVisual(int mx, int my) {
             v.glyph.assign(1, v.ent->deathTicks >= DEATH_DECAY_TICKS ? '*' : '%');
             v.fg = rgb(180,180,170);
         } else if (v.visible) {
-            v.glyph.assign(1, terrainAscii(tile.terrain));
+            v.glyph.assign(1, terrainAsciiGlyph(tile.terrain));
         } else {
             v.glyph = "."; v.fg = rgb(95,95,105,150);
         }
     } else if (v.visible && v.ent && v.ent->alive) {
         bool usesSymbolFont = false;
-        v.glyph = tilesetEntityVisual(*v.ent, usesSymbolFont);
+        v.glyph = tilesetEntityVisual(game, world, *v.ent, usesSymbolFont);
         v.emoji = usesSymbolFont;
         v.fg = (v.ent->owner == OWNER_NATURE) ? rgb(245,245,235) : rgb(255,255,255);
         v.tint = usesSymbolFont;
     } else if (v.visible && v.ent && v.ent->state == S_DEAD) {
         bool usesSymbolFont = false;
-        v.glyph = tilesetEntityVisual(*v.ent, usesSymbolFont);
+        v.glyph = tilesetEntityVisual(game, world, *v.ent, usesSymbolFont);
         v.emoji = usesSymbolFont;
         v.fg = rgb(190,190,180);
         v.tint = false;
@@ -195,7 +188,7 @@ TileVisual makeTileVisual(int mx, int my) {
 
     v.selected = (v.visible && v.ent && isSelected(v.ent));
     if (v.visible && !v.ent) {
-        const ActionMarkerRenderInfo* marker = activeActionMarkerAt(mx, my);
+        const ActionMarkerRenderInfo* marker = actionMarkerAt(model, mx, my);
         if (marker && marker->ticks > 0 && (g.tick % 6) < 4) {
             v.glyph = (marker->glyph == '#') ? u8"■" : (marker->glyph == '!') ? "!" : u8"×";
             v.emoji = false;
@@ -206,9 +199,9 @@ TileVisual makeTileVisual(int mx, int my) {
     return v;
 }
 
-void drawTile(int mx, int my, SDL_Rect r) {
-    const Tile& tile = g.map[my][mx];
-    TileVisual v = makeTileVisual(mx, my);
+void drawTile(Game& game, const WorldIndex& world, const RenderModel& model, int mx, int my, SDL_Rect r) {
+    const Tile& tile = game.map[my][mx];
+    TileVisual v = makeTileVisual(game, world, model, mx, my);
 
     if (!v.explored) {
         setDraw(v.bg); SDL_RenderFillRect(s.ren, &r);
@@ -221,7 +214,7 @@ void drawTile(int mx, int my, SDL_Rect r) {
     applyTerrainTexture(r, tile, mx, my);
 
     if (!v.glyph.empty()) drawCentered(v.glyph, r, v.fg, v.emoji, v.tint);
-    drawFeatureOccluderIfNeeded(mx, my, r);
+    drawFeatureOccluderIfNeeded(game, world, mx, my, r);
 
     // HP sliver for damaged visible entities.
     if (v.visible && v.ent && v.ent->alive && v.ent->hp < v.ent->maxHp) {
@@ -263,15 +256,15 @@ void toggleFullscreen() {
     }
     SDL_GetWindowSize(s.win, &s.winW, &s.winH);
     updateViewMetrics(true);
-    setStatus(s.fullscreen ? "Fullscreen." : "Windowed.");
+    emitUiStatusEvent(-1, s.fullscreen ? "Fullscreen." : "Windowed.");
 #endif
 }
 
-void drawMobileBuildPreviewTopDown() {
+void drawMobileBuildPreviewTopDown(const WorldIndex& world) {
     if (!isMobileGui() || s.mobileBuildType == E_NONE) return;
     SDL_Rect mr = mapRect();
     EntityType bt = s.mobileBuildType;
-    bool ok = sdlCanPlace(bt, view.cursorX, view.cursorY, 0);
+    bool ok = renderCanPlace(g, world, bt, view.cursorX, view.cursorY, 0);
     SDL_SetRenderDrawBlendMode(s.ren, SDL_BLENDMODE_BLEND);
     Color fill = ok ? rgb(70,210,120,72) : rgb(230,65,65,78);
     Color edge = ok ? rgb(130,255,170,220) : rgb(255,120,110,230);
@@ -288,10 +281,10 @@ void drawMobileBuildPreviewTopDown() {
     }
 }
 
-void drawMobileBuildPreviewIso() {
+void drawMobileBuildPreviewIso(const WorldIndex& world) {
     if (!isMobileGui() || s.mobileBuildType == E_NONE) return;
     EntityType bt = s.mobileBuildType;
-    bool ok = sdlCanPlace(bt, view.cursorX, view.cursorY, 0);
+    bool ok = renderCanPlace(g, world, bt, view.cursorX, view.cursorY, 0);
     Color fill = ok ? rgb(70,210,120,72) : rgb(230,65,65,78);
     Color edge = ok ? rgb(130,255,170,220) : rgb(255,120,110,230);
     for (int dy = 0; dy < STATS[bt].sizeH; ++dy) {
@@ -305,22 +298,22 @@ void drawMobileBuildPreviewIso() {
     }
 }
 
-void drawIsoTileBase(int mx, int my) {
+void drawIsoTileBase(Game& game, const WorldIndex& world, const RenderModel& model, int mx, int my) {
     int sx = mx - view.viewX, sy = my - view.viewY;
     int cx, cy; isoTileCenterFromScreenOffset(sx, sy, cx, cy);
     int hw = isoHalfW(), hh = isoHalfH();
-    const Tile& tile = g.map[my][mx];
-    TileVisual v = makeTileVisual(mx, my);
+    const Tile& tile = game.map[my][mx];
+    TileVisual v = makeTileVisual(game, world, model, mx, my);
     fillDiamond(cx, cy, hw, hh, v.bg);
     if (v.explored) applyTerrainTextureIso(cx, cy, hw, hh, tile, mx, my);
     if (!v.explored) drawDiamondOutline(cx, cy, hw, hh, rgb(20,22,26,160));
 }
 
-void drawIsoTileForeground(int mx, int my) {
+void drawIsoTileForeground(Game& game, const WorldIndex& world, const RenderModel& model, int mx, int my) {
     int sx = mx - view.viewX, sy = my - view.viewY;
     int cx, cy; isoTileCenterFromScreenOffset(sx, sy, cx, cy);
     int hw = isoHalfW(), hh = isoHalfH();
-    TileVisual v = makeTileVisual(mx, my);
+    TileVisual v = makeTileVisual(game, world, model, mx, my);
 
     if (!v.glyph.empty()) {
         // Upright sprite/glyph over the flat isometric board.  The diamond is
@@ -333,12 +326,12 @@ void drawIsoTileForeground(int mx, int my) {
         bool drewImage = false;
         if (v.visible && v.ent) {
             Color mod = applyVisionToGlyph(rgb(255,255,255), mx, my);
-            drewImage = drawEntityImageTile(*v.ent, gr, mod);
+            drewImage = drawEntityImageTile(game, world, *v.ent, gr, mod);
         }
         if (!drewImage) {
             drawCentered(v.glyph, gr, v.visible ? v.fg : scale(v.fg, 0.55f), v.emoji, v.tint);
         }
-        drawFeatureOccluderIfNeeded(mx, my, gr);
+        drawFeatureOccluderIfNeeded(game, world, mx, my, gr);
     }
 
     if (v.visible && v.ent && v.ent->alive && v.ent->hp < v.ent->maxHp) {
@@ -360,13 +353,12 @@ void drawIsoTileForeground(int mx, int my) {
     }
 }
 
-void drawMapIso() {
+void drawMapIso(const WorldIndex& world) {
     SDL_Rect mr = mapRect();
     setDraw(rgb(4,6,8)); SDL_RenderFillRect(s.ren, &mr);
     updateViewMetrics(!s.middleDown);
     SDL_RenderSetClipRect(s.ren, &mr);
-    RenderModel model = buildRenderModel(g, 0, view.viewX, view.viewY, view.viewW, view.viewH);
-    activeRenderModel = &model;
+    RenderModel model = buildRenderModel(g, ui.actionMarkers, 0, view.viewX, view.viewY, view.viewW, view.viewH);
 
     IsoOffsetBounds b = isoVisibleOffsetBounds();
     int minSum = b.minSx + b.minSy;
@@ -377,7 +369,7 @@ void drawMapIso() {
             if (sx < b.minSx || sx > b.maxSx) continue;
             int mx = view.viewX + sx, my = view.viewY + sy;
             if (!inBounds(mx, my)) continue;
-            drawIsoTileBase(mx, my);
+            drawIsoTileBase(g, world, model, mx, my);
         }
     }
     for (int sum = minSum; sum <= maxSum; ++sum) {
@@ -386,7 +378,7 @@ void drawMapIso() {
             if (sx < b.minSx || sx > b.maxSx) continue;
             int mx = view.viewX + sx, my = view.viewY + sy;
             if (!inBounds(mx, my)) continue;
-            drawIsoTileForeground(mx, my);
+            drawIsoTileForeground(g, world, model, mx, my);
         }
     }
 
@@ -403,26 +395,24 @@ void drawMapIso() {
             }
         }
     }
-    drawMobileBuildPreviewIso();
-    activeRenderModel = nullptr;
+    drawMobileBuildPreviewIso(world);
     SDL_RenderSetClipRect(s.ren, nullptr);
 }
 
-void drawMap() {
-    if (s.isometric) { drawMapIso(); return; }
+void drawMap(const WorldIndex& world) {
+    if (s.isometric) { drawMapIso(world); return; }
     SDL_Rect mr = mapRect();
     setDraw(rgb(4,6,8)); SDL_RenderFillRect(s.ren, &mr);
     updateViewMetrics(!s.middleDown);
     SDL_RenderSetClipRect(s.ren, &mr);
-    RenderModel model = buildRenderModel(g, 0, view.viewX, view.viewY, view.viewW, view.viewH);
-    activeRenderModel = &model;
+    RenderModel model = buildRenderModel(g, ui.actionMarkers, 0, view.viewX, view.viewY, view.viewW, view.viewH);
 
     for (int sy=0; sy<view.viewH; ++sy) {
         for (int sx=0; sx<view.viewW; ++sx) {
             int mx = view.viewX + sx, my = view.viewY + sy;
             if (!inBounds(mx, my)) continue;
             SDL_Rect r{mr.x + sx*s.tile, mr.y + sy*s.tile, s.tile, s.tile};
-            drawTile(mx,my,r);
+            drawTile(g, world, model, mx, my, r);
         }
     }
 
@@ -439,7 +429,6 @@ void drawMap() {
         setDraw(rgb(255,255,255,70)); SDL_RenderFillRect(s.ren, &sel);
         setDraw(rgb(255,255,255,190)); SDL_RenderDrawRect(s.ren, &sel);
     }
-    drawMobileBuildPreviewTopDown();
-    activeRenderModel = nullptr;
+    drawMobileBuildPreviewTopDown(world);
     SDL_RenderSetClipRect(s.ren, nullptr);
 }

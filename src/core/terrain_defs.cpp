@@ -1,39 +1,39 @@
 #include "realm.h"
 
 const TerrainDefinition TERRAIN_DEFS[TERRAIN_COUNT] = {
-    {T_GRASS, "grass", CR_NONE, true, false, true, false, 0, G_GRASS, F_NONE},
-    {T_TALL_GRASS, "tall grass", CR_NONE, true, false, true, true, 0, G_GRASS, F_NONE},
-    {T_FLOWERS, "flowers", CR_NONE, true, false, true, false, 0, G_GRASS, F_NONE},
-    {T_MEADOW, "meadow", CR_NONE, true, false, true, false, 0, G_MEADOW, F_NONE},
-    {T_FOREST, "forest", CR_WOOD, true, false, false, true, 1, G_GRASS, F_FOREST},
-    {T_PINE, "pine forest", CR_WOOD, true, false, false, true, 1, G_GRASS, F_PINE},
-    {T_PALM, "palm grove", CR_WOOD, true, false, false, true, 1, G_SAND, F_PALM},
-    {T_DEAD_TREE, "dead trees", CR_WOOD, true, false, false, true, 1, G_ASH, F_DEAD_TREE},
-    {T_MOUNTAIN, "mountain", CR_NONE, false, false, false, false, 0, G_ROCKY, F_MOUNTAIN_PEAK},
-    {T_HILLS, "hills", CR_NONE, true, false, false, false, 0, G_HILLS, F_NONE},
-    {T_STONE, "stone", CR_NONE, false, false, false, false, 0, G_ROCKY, F_STONE_BOULDERS},
-    {T_WATER, "water", CR_NONE, false, true, false, false, 0, G_WATER, F_NONE},
-    {T_SHALLOWS, "shallows", CR_NONE, true, true, false, false, 0, G_SHALLOWS, F_NONE},
-    {T_MARSH, "marsh", CR_NONE, true, false, false, false, 0, G_MARSH, F_NONE},
-    {T_REEDS, "reeds", CR_NONE, true, false, false, true, 1, G_MARSH, F_REEDS},
-    {T_GOLD, "gold", CR_GOLD, true, false, false, false, 0, G_GRAVEL, F_GOLD_DEPOSIT},
-    {T_SAND, "sand", CR_NONE, true, false, true, false, 0, G_SAND, F_NONE},
-    {T_DUNES, "dunes", CR_NONE, true, false, true, false, 0, G_DUNES, F_NONE},
-    {T_SNOW, "snow", CR_NONE, true, false, true, false, 0, G_TUNDRA, F_NONE},
-    {T_ICE, "ice", CR_NONE, true, false, false, false, 0, G_ICE, F_NONE},
-    {T_DIRT, "dirt", CR_NONE, true, false, true, false, 0, G_DIRT, F_NONE},
-    {T_ROAD, "road", CR_NONE, true, false, true, false, 0, G_ROAD, F_NONE},
-    {T_MUD, "mud", CR_NONE, true, false, false, false, 0, G_MUD, F_NONE},
-    {T_WHEAT, "wheat", CR_FOOD, true, false, true, false, 0, G_MEADOW, F_WHEAT_CROP},
-    {T_BERRY, "berry", CR_FOOD, true, false, false, false, 0, G_GRASS, F_BERRY_BUSH},
-    {T_FISH, "fish", CR_FISH, false, true, false, false, 0, G_WATER, F_FISH_SHOAL},
-    {T_RUINS, "ruins", CR_NONE, true, false, false, false, 0, G_GRAVEL, F_RUINS},
-    {T_GRAVEL, "gravel", CR_NONE, true, false, true, false, 0, G_GRAVEL, F_NONE},
-    {T_LAVA, "lava", CR_NONE, false, false, false, false, 0, G_LAVA, F_NONE},
-    {T_ASH, "ash", CR_NONE, true, false, true, false, 0, G_ASH, F_NONE},
-    {T_CASTLE_WALL, "castle wall", CR_NONE, false, false, false, false, 0, G_CASTLE_FLOOR, F_CASTLE_WALL},
-    {T_CASTLE_FLOOR, "castle floor", CR_NONE, true, false, true, false, 0, G_CASTLE_FLOOR, F_NONE},
-    {T_CASTLE_GATE, "castle gate", CR_NONE, true, false, false, false, 0, G_CASTLE_FLOOR, F_CASTLE_GATE},
+    {T_GRASS, "grass", CR_NONE, true, false, true, false, 0, G_GRASS, F_NONE, '.'},
+    {T_TALL_GRASS, "tall grass", CR_NONE, true, false, true, true, 0, G_GRASS, F_NONE, '"'},
+    {T_FLOWERS, "flowers", CR_NONE, true, false, true, false, 0, G_GRASS, F_NONE, '*'},
+    {T_MEADOW, "meadow", CR_NONE, true, false, true, false, 0, G_MEADOW, F_NONE, ','},
+    {T_FOREST, "forest", CR_WOOD, true, false, false, true, 1, G_GRASS, F_FOREST, 'T'},
+    {T_PINE, "pine forest", CR_WOOD, true, false, false, true, 1, G_GRASS, F_PINE, 'Y'},
+    {T_PALM, "palm grove", CR_WOOD, true, false, false, true, 1, G_SAND, F_PALM, 'y'},
+    {T_DEAD_TREE, "dead trees", CR_WOOD, true, false, false, true, 1, G_ASH, F_DEAD_TREE, 't'},
+    {T_MOUNTAIN, "mountain", CR_NONE, false, false, false, false, 0, G_ROCKY, F_MOUNTAIN_PEAK, '^'},
+    {T_HILLS, "hills", CR_NONE, true, false, false, false, 0, G_HILLS, F_NONE, 'n'},
+    {T_STONE, "stone", CR_NONE, false, false, false, false, 0, G_ROCKY, F_STONE_BOULDERS, 'o'},
+    {T_WATER, "water", CR_NONE, false, true, false, false, 0, G_WATER, F_NONE, '~'},
+    {T_SHALLOWS, "shallows", CR_NONE, true, true, false, false, 0, G_SHALLOWS, F_NONE, '~'},
+    {T_MARSH, "marsh", CR_NONE, true, false, false, false, 0, G_MARSH, F_NONE, '='},
+    {T_REEDS, "reeds", CR_NONE, true, false, false, true, 1, G_MARSH, F_REEDS, '|'},
+    {T_GOLD, "gold", CR_GOLD, true, false, false, false, 0, G_GRAVEL, F_GOLD_DEPOSIT, '$'},
+    {T_SAND, "sand", CR_NONE, true, false, true, false, 0, G_SAND, F_NONE, '.'},
+    {T_DUNES, "dunes", CR_NONE, true, false, true, false, 0, G_DUNES, F_NONE, '~'},
+    {T_SNOW, "snow", CR_NONE, true, false, true, false, 0, G_TUNDRA, F_NONE, '.'},
+    {T_ICE, "ice", CR_NONE, true, false, false, false, 0, G_ICE, F_NONE, '='},
+    {T_DIRT, "dirt", CR_NONE, true, false, true, false, 0, G_DIRT, F_NONE, '.'},
+    {T_ROAD, "road", CR_NONE, true, false, true, false, 0, G_ROAD, F_NONE, '#'},
+    {T_MUD, "mud", CR_NONE, true, false, false, false, 0, G_MUD, F_NONE, ','},
+    {T_WHEAT, "wheat", CR_FOOD, true, false, true, false, 0, G_MEADOW, F_WHEAT_CROP, '%'},
+    {T_BERRY, "berry", CR_FOOD, true, false, false, false, 0, G_GRASS, F_BERRY_BUSH, ':'},
+    {T_FISH, "fish", CR_FISH, false, true, false, false, 0, G_WATER, F_FISH_SHOAL, '~'},
+    {T_RUINS, "ruins", CR_NONE, true, false, false, false, 0, G_GRAVEL, F_RUINS, '&'},
+    {T_GRAVEL, "gravel", CR_NONE, true, false, true, false, 0, G_GRAVEL, F_NONE, ':'},
+    {T_LAVA, "lava", CR_NONE, false, false, false, false, 0, G_LAVA, F_NONE, '~'},
+    {T_ASH, "ash", CR_NONE, true, false, true, false, 0, G_ASH, F_NONE, '.'},
+    {T_CASTLE_WALL, "castle wall", CR_NONE, false, false, false, false, 0, G_CASTLE_FLOOR, F_CASTLE_WALL, '#'},
+    {T_CASTLE_FLOOR, "castle floor", CR_NONE, true, false, true, false, 0, G_CASTLE_FLOOR, F_NONE, '.'},
+    {T_CASTLE_GATE, "castle gate", CR_NONE, true, false, false, false, 0, G_CASTLE_FLOOR, F_CASTLE_GATE, '='},
 };
 
 static_assert(sizeof(TERRAIN_DEFS) / sizeof(TERRAIN_DEFS[0]) == TERRAIN_COUNT, "TERRAIN_DEFS must match Terrain");
@@ -41,6 +41,41 @@ static_assert(sizeof(TERRAIN_DEFS) / sizeof(TERRAIN_DEFS[0]) == TERRAIN_COUNT, "
 const TerrainDefinition& terrainDef(Terrain type) {
     if (type < T_GRASS || type >= TERRAIN_COUNT) return TERRAIN_DEFS[T_GRASS];
     return TERRAIN_DEFS[type];
+}
+
+CargoResource resourceForTerrain(Terrain terrain) {
+    return terrainDef(terrain).resource;
+}
+
+bool terrainMatchesResource(Terrain terrain, CargoResource resource) {
+    return resourceForTerrain(terrain) == resource;
+}
+
+bool terrainHasDirectGatherResource(Terrain terrain) {
+    switch (terrain) {
+        case T_GOLD:
+        case T_FOREST:
+        case T_PINE:
+        case T_PALM:
+        case T_DEAD_TREE:
+        case T_BERRY:
+        case T_FISH:
+            return true;
+        default:
+            return false;
+    }
+}
+
+Terrain depletedTerrainForResource(Terrain terrain) {
+    switch (terrain) {
+        case T_FISH: return T_WATER;
+        case T_BERRY: return T_GRASS;
+        default: return T_DIRT;
+    }
+}
+
+char terrainAsciiGlyph(Terrain terrain) {
+    return terrainDef(terrain).asciiGlyph;
 }
 
 static GroundType defaultGroundForBiome(Biome biome) {

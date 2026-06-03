@@ -61,3 +61,7 @@ ask before running `bash scripts/setup-web.sh`.
 - Keep `assets/tiles/` runtime-only; put generation material under `art/tiles/`.
 - After frontend/web changes, run or at least document the relevant browser smoke path.
 - After native/runtime changes, prefer real build/test proof over inspection only.
+- Run the smallest test slice that validates the changes. Only run bigger tests before committing or pushing.
+- When adding tests document when the test needs to be run.
+
+

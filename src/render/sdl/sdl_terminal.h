@@ -8,6 +8,8 @@ struct TerminalCell {
     Color bg;
 };
 
+struct WorldIndex;
+
 struct TerminalFrame {
     int cols = 0;
     int rows = 0;
@@ -25,8 +27,8 @@ struct TerminalFrame {
 };
 
 TerminalFrame makeBlankTerminalFrame();
-TerminalFrame buildAsciiTerminalFrame();
-TerminalCell terminalMapCell(int mx, int my);
+TerminalFrame buildAsciiTerminalFrame(const WorldIndex& world);
+TerminalCell terminalMapCell(const WorldIndex& world, int mx, int my);
 Color termBg();
 Color termFg();
 Color termDim();
@@ -37,6 +39,6 @@ SDL_Rect terminalMapPixelRect(const TerminalFrame& frame);
 void clampTerminalView();
 void updateTerminalCamera(int cols, int rows, bool keepCursor = true);
 void registerTerminalKeyTokens(const TerminalFrame& frame);
-void drawAsciiTerminalFrame(bool present);
-void drawAsciiMobileFrame(bool present);
+void drawAsciiTerminalFrame(const WorldIndex& world, bool present);
+void drawAsciiMobileFrame(const WorldIndex& world, bool present);
 bool gfxSaveAsciiTerminalText(const std::string& path);

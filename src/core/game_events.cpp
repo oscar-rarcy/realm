@@ -1,5 +1,6 @@
 #include "game_events.h"
 #include "realm.h"
+#include "view_state.h"
 
 namespace {
 
@@ -21,7 +22,7 @@ bool visibleToViewer(const GameEvent& event, int viewerPlayer) {
     return viewerPlayer < 0 || event.player < 0 || event.player == viewerPlayer;
 }
 
-void applyGameEventToUi(Game& game, const GameEvent& event) {
+void applyGameEventToUi(UiState& uiState, const GameEvent& event) {
     switch (event.type) {
         case GameEventType::StatusMessage:
         case GameEventType::CommandAccepted:
@@ -39,14 +40,14 @@ void applyGameEventToUi(Game& game, const GameEvent& event) {
         case GameEventType::SaveCompleted:
         case GameEventType::LoadCompleted:
             if (!event.message.empty()) {
-                game.statusMsg = event.message;
-                game.statusTimer = 35;
+                uiState.statusMsg = event.message;
+                uiState.statusTimer = 35;
             }
             break;
         case GameEventType::ActionMarker:
             if (event.markerGlyph && inBounds(event.tile.x, event.tile.y)) {
-                game.actionMarkers.push_back({ event.tile.x, event.tile.y, 18, event.markerGlyph });
-                if (game.actionMarkers.size() > 32) game.actionMarkers.erase(game.actionMarkers.begin());
+                uiState.actionMarkers.push_back({ event.tile.x, event.tile.y, 18, event.markerGlyph });
+                if (uiState.actionMarkers.size() > 32) uiState.actionMarkers.erase(uiState.actionMarkers.begin());
             }
             break;
     }
@@ -64,9 +65,9 @@ std::vector<GameEvent> drainGameEvents() {
     return events;
 }
 
-void flushGameEventsToUi(Game& game, int viewerPlayer) {
+void flushGameEventsToUi(UiState& uiState, int viewerPlayer) {
     for (const GameEvent& event : drainGameEvents()) {
-        if (visibleToViewer(event, viewerPlayer)) applyGameEventToUi(game, event);
+        if (visibleToViewer(event, viewerPlayer)) applyGameEventToUi(uiState, event);
     }
 }
 
@@ -74,10 +75,6 @@ void emitGameEvent(const GameEvent& event) {
     gameEvents().emit(event);
 }
 
-void emitStatusEvent(int player, const std::string& message, GameEventType type) {
+void emitUiStatusEvent(int player, const std::string& message, GameEventType type) {
     emitGameEvent({ type, player, -1, { -1, -1 }, message, 0 });
-}
-
-void emitActionMarkerEvent(int player, MapPos tile, char glyph) {
-    emitGameEvent({ GameEventType::ActionMarker, player, -1, tile, "", glyph });
 }

@@ -1,6 +1,8 @@
 #include "realm.h"
 #include "core/game_events.h"
+#include "core/world_index.h"
 #include "input_keys.h"
+#include "view_state.h"
 
 static void renderHelpOverlay() {
     if (!g.helpOverlay) return;
@@ -27,7 +29,7 @@ static void renderHelpOverlay() {
     mvprintw(row++, x + 2, "Realm Help");
     attroff(COLOR_PAIR(CP_UI_HIGH)|A_BOLD);
     int n = 0;
-    const CommandBinding* commands = gameplayCommands(n);
+    const CommandHelpBinding* commands = gameplayHelpBindings(n);
     attron(COLOR_PAIR(CP_UI_TEXT));
     for (int i = 0; i < n && row < y + h - 6; i++)
         mvprintw(row++, x + 2, "%-16s %-14s %.36s", commands[i].keys, commands[i].label, commands[i].help);
@@ -42,4 +44,12 @@ static void renderHelpOverlay() {
     attroff(COLOR_PAIR(CP_UI_HIGH));
 }
 
-void render() { flushGameEventsToUi(g, 0); erase(); renderMap(); renderUI(); renderHelpOverlay(); refresh(); }
+void render() {
+    flushGameEventsToUi(ui, 0);
+    WorldIndex world = buildWorldIndex(g);
+    erase();
+    renderMap(world);
+    renderUI(world);
+    renderHelpOverlay();
+    refresh();
+}

@@ -39,14 +39,17 @@ struct WorldIndex {
     std::array<std::vector<EntityId>, MAX_PLAYERS + 1> unitsByOwner;
     std::array<std::vector<EntityId>, MAX_PLAYERS + 1> buildingsByOwner;
     std::unordered_map<int, std::vector<EntityId>> entitiesByTile;
-    OccupancyGrid unitOccupancy{};
-    OccupancyGrid buildingOccupancy{};
+    WorldOccupancyGrid unitOccupancy{};
+    WorldOccupancyGrid buildingOccupancy{};
     ResourceIndex resources;
 };
 
 WorldIndex buildWorldIndex(const Game& game);
+
+#ifdef REALM_ENABLE_WORLD_INDEX_STATS
 void resetWorldIndexBuildCount();
 int worldIndexBuildCount();
+#endif
 
 Entity* entityById(Game& game, const WorldIndex& world, EntityId id);
 const Entity* entityById(const Game& game, const WorldIndex& world, EntityId id);

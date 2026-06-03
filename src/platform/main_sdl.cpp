@@ -4,7 +4,8 @@
 #include "env_config.h"
 #include "entity_animation.h"
 #include "commands/command.h"
-#include "core/game_context.h"
+#include "commands/command_runner.h"
+#include "core/game_events.h"
 
 #include <SDL.h>
 
@@ -20,12 +21,6 @@ static Entity* firstOwned(EntityType type, int owner) {
     for (auto& e : g.entities)
         if (e.alive && e.owner == owner && e.type == type) return &e;
     return nullptr;
-}
-
-static CommandResult dispatchPlatformCommand(Command& command) {
-    WorldIndex world = buildWorldIndex(g);
-    GameContext context{ g, world, gameEvents() };
-    return dispatchCommand(context, command);
 }
 
 static int envIntLocal(const char* name, int fallback) {
@@ -71,7 +66,7 @@ static int runAsciiCompareMode() {
     g.biomeChoice = envIntLocal("REALM_BIOME", B_TEMPERATE);
     initGameWithSeed(1, (unsigned)envIntLocal("REALM_SEED", 2468), envIntLocal("REALM_HUMAN_CORNER", 1));
     gfxOnNewGame();
-    g.statusTimer = 0;
+    ui.statusTimer = 0;
 
     bool ok = true;
     ok = captureAsciiComparePair(outDir, "01-overview") && ok;
@@ -81,7 +76,7 @@ static int runAsciiCompareMode() {
         g.selectedIds.clear();
         view.cursorX = peasant->x;
         view.cursorY = peasant->y;
-        g.statusTimer = 0;
+        ui.statusTimer = 0;
         ok = captureAsciiComparePair(outDir, "02-selected-peasant") && ok;
     }
 
@@ -91,7 +86,7 @@ static int runAsciiCompareMode() {
         view.cursorX = townHall->x;
         view.cursorY = townHall->y;
         g.diagnostics = true;
-        g.statusTimer = 0;
+        ui.statusTimer = 0;
         ok = captureAsciiComparePair(outDir, "03-selected-townhall-diagnostics") && ok;
         g.diagnostics = false;
     }
@@ -116,7 +111,7 @@ static int runUiTestMode() {
     initGameWithSeed(1, (unsigned)envIntLocal("REALM_SEED", 2468), envIntLocal("REALM_HUMAN_CORNER", 1));
     gfxSetZoomForTest(envIntLocal("REALM_UI_TEST_ZOOM", 20));
     gfxOnNewGame();
-    g.statusTimer = 0;
+    ui.statusTimer = 0;
 
     bool ok = true;
     gfxSetProjection(false);
@@ -132,7 +127,7 @@ static int runUiTestMode() {
         g.selectedIds.clear();
         view.cursorX = peasant->x;
         view.cursorY = peasant->y;
-        setStatus("UI test: peasant selected");
+        emitUiStatusEvent(-1, "UI test: peasant selected");
         ok = captureUiFrame((outDir / "03-selected-peasant.bmp").string()) && ok;
 
         peasant->state = S_IDLE;
@@ -161,7 +156,7 @@ static int runUiTestMode() {
         g.tick = 0;
 
         g.mode = M_BUILD_SELECT;
-        g.statusTimer = 0;
+        ui.statusTimer = 0;
         ok = captureUiFrame((outDir / "04-build-menu.bmp").string()) && ok;
         g.mode = M_NORMAL;
     }
@@ -180,14 +175,14 @@ static int runUiTestMode() {
     ok = captureUiFrame((outDir / "06-help-overlay.bmp").string()) && ok;
     g.helpOverlay = false;
 
-    for (int i = 0; i < 60; i++) tickSimulationOnce(g, true);
+    for (int i = 0; i < 60; i++) tickSimulationOnce(g, gameEvents(), true);
     ok = captureUiFrame((outDir / "07-after-60-ticks.bmp").string()) && ok;
 
     g.selectedId = -1;
     g.selectedIds.clear();
     view.cursorX = MAP_W / 2;
     view.cursorY = MAP_H / 2;
-    g.statusTimer = 0;
+    ui.statusTimer = 0;
     gfxSetProjection(false);
     gfxOnNewGame();
     ok = captureUiFrame((outDir / "08-center-topdown.bmp").string()) && ok;
@@ -204,11 +199,11 @@ static int runUiTestMode() {
 
     g.map[0][MAP_W - 1].visible[0] = true;
     g.map[0][MAP_W - 1].explored[0] = true;
-    g.actionMarkers.push_back({MAP_W - 1, 0, 120, 'x'});
+    ui.actionMarkers.push_back({MAP_W - 1, 0, 120, 'x'});
     gfxSetZoomForTest(38);
     gfxOnNewGame();
     ok = captureUiFrame((outDir / "10b-top-right-isometric-38px.bmp").string()) && ok;
-    g.actionMarkers.clear();
+    ui.actionMarkers.clear();
     gfxSetZoomForTest(envIntLocal("REALM_UI_TEST_ZOOM", 20));
 
     view.cursorX = MAP_W - 1;
@@ -491,7 +486,7 @@ int main(int argc, char** argv) {
         if (gfxConsumeLoadGameRequest()) {
             Command command;
             command.payload = LoadCommand{ 0 };
-            if (dispatchPlatformCommand(command).status == CommandStatus::Accepted) {
+            if (dispatchCommandForLocalGame(g, gameEvents(), command).status == CommandStatus::Accepted) {
                 std::cerr << "realm: loaded realm-save.txt from GUI menu\n";
             } else {
                 std::cerr << "realm: GUI menu load failed; continuing new game\n";
@@ -499,12 +494,13 @@ int main(int argc, char** argv) {
         }
         std::cerr << "realm: game initialized\n";
         gfxOnNewGame();
-        setStatus("Dawn breaks over the realm. Select peasants [Space/click] and gather [Enter/R-click].");
+        emitUiStatusEvent(-1, "Dawn breaks over the realm. Select peasants [Space/click] and gather [Enter/R-click].");
 
         const char* smoke = std::getenv("REALM_SMOKE_TEST");
         if (smoke && std::string(smoke) == "match") {
             for (int i = 0; i < 60; i++) {
-                tickSimulationOnce(g, true);
+                tickSimulationOnce(g, gameEvents(), true);
+                tickUiState(ui);
                 gfxRender();
                 gfxDelay(1);
             }
@@ -525,7 +521,8 @@ int main(int argc, char** argv) {
             if (Clock::now() >= nextTick) {
                 nextTick += Ms(TICK_MS);
                 if (g.mode != M_PAUSED && g.mode != M_GAME_OVER) {
-                    tickSimulationOnce(g, true);
+                    tickSimulationOnce(g, gameEvents(), true);
+                    tickUiState(ui);
                 }
                 ticked = true;
             }

@@ -1,46 +1,7 @@
 #include "render/sdl/sdl_map.h"
 #include "realm.h"
 #include "core/world_index.h"
-
-char terrainAscii(Terrain t) {
-    switch (t) {
-        case T_GRASS: return '.';
-        case T_TALL_GRASS: return '"';
-        case T_FLOWERS: return '*';
-        case T_MEADOW: return ',';
-        case T_FOREST: return 'T';
-        case T_PINE: return 'Y';
-        case T_PALM: return 'y';
-        case T_DEAD_TREE: return 't';
-        case T_MOUNTAIN: return '^';
-        case T_HILLS: return 'n';
-        case T_STONE: return 'o';
-        case T_WATER: return '~';
-        case T_SHALLOWS: return '~';
-        case T_MARSH: return '=';
-        case T_REEDS: return '|';
-        case T_GOLD: return '$';
-        case T_SAND: return '.';
-        case T_DUNES: return ',';
-        case T_SNOW: return '*';
-        case T_ICE: return '=';
-        case T_DIRT: return '.';
-        case T_ROAD: return '#';
-        case T_MUD: return ',';
-        case T_WHEAT: return '%';
-        case T_BERRY: return ':';
-        case T_FISH: return '~';
-        case T_RUINS: return '&';
-        case T_GRAVEL: return ':';
-        case T_LAVA: return '~';
-        case T_ASH: return '.';
-        case T_CASTLE_WALL: return '#';
-        case T_CASTLE_FLOOR: return '.';
-        case T_CASTLE_GATE: return '|';
-        case TERRAIN_COUNT: break;
-    }
-    return '?';
-}
+#include "render/entity_visual_defs.h"
 
 const char* terrainGlyph(const Tile& t, int x, int y) {
     unsigned h = hash2(x, y, 1200u + (unsigned)g.tick/16u);
@@ -100,43 +61,11 @@ const char* peasantGlyph(const Entity& e) {
 }
 
 const char* tilesetEntityGlyph(const Entity& e, bool& hasTile) {
-    hasTile = true;
-    switch (e.type) {
-        case E_PEASANT: return peasantGlyph(e);
-        case E_MILITIA: return u8"🤺";
-        case E_ARCHER: return u8"🏹";
-        case E_KNIGHT: return u8"🐎";
-        case E_SPEARMAN: return u8"🗡";
-        case E_CATAPULT: return u8"🛞";
-        case E_TREBUCHET: return u8"🎯";
-        case E_FISHING_BOAT: return u8"🛶";
-        case E_WARSHIP: return u8"🚢";
-        case E_TRANSPORT: return u8"⛴";
-        case E_RAM: return u8"🪵";
-        case E_TOWNHALL: return u8"🏛";
-        case E_HOUSE: return u8"🏠";
-        case E_BARRACKS: return u8"🏕";
-        case E_STABLE: return u8"🐴";
-        case E_TOWER: return u8"🗼";
-        case E_FARM: return u8"🌾";
-        case E_BLACKSMITH: return u8"⚒";
-        case E_CHURCH: return u8"⛪";
-        case E_MARKET: return u8"🏪";
-        case E_WALL: return u8"🧱";
-        case E_GATE: return e.gateOpen ? u8"🚪" : u8"🧱";
-        case E_CASTLE: return u8"🏰";
-        case E_LUMBER_CAMP: return u8"🪵";
-        case E_MINING_CAMP: return u8"⛏";
-        case E_MILL: return u8"⚙";
-        case E_DOCK: return u8"⚓";
-        case E_DEER: return u8"🦌";
-        case E_WOLF: return u8"🐺";
-        case E_SHEEP: return u8"🐑";
-        case E_BOAR: return u8"🐗";
-        default: break;
-    }
-    hasTile = false;
-    return nullptr;
+    const char* glyph = e.type == E_PEASANT ? peasantGlyph(e)
+        : e.type == E_GATE && e.gateOpen ? u8"🚪"
+        : entitySdlGlyph(e.type);
+    hasTile = glyph != nullptr;
+    return glyph;
 }
 
 struct EntitySpriteSpec {
@@ -158,12 +87,11 @@ int displayFrameMs(const EntityActionAnimationSpec& anim) {
     return anim.transitionAfterMs > 0 ? anim.transitionAfterMs : 250;
 }
 
-EntitySpriteSpec entitySpriteSpec(const Entity& e) {
+EntitySpriteSpec entitySpriteSpec(const Game& game, const WorldIndex& world, const Entity& e) {
     EntitySpriteSpec spec;
     std::string name = STATS[e.type].name ? STATS[e.type].name : "Unknown";
-    std::string slug = lowerSlug(name);
-    WorldIndex world = buildWorldIndex(g);
-    if (const EntityActionAnimationSpec* anim = entityActionAnimationSpecFor(g, world, e)) {
+    std::string slug = entityAssetSlug(e.type);
+    if (const EntityActionAnimationSpec* anim = entityActionAnimationSpecFor(game, world, e)) {
         std::string action = anim->action;
         std::string direction = entityAnimationDirectionBucket(e);
         spec.frameMs = displayFrameMs(*anim);
@@ -202,7 +130,7 @@ std::string terrainAssetKey(Terrain terrain) {
 }
 
 std::string entityAssetKey(EntityType type) {
-    return std::string("entity.") + lowerSlug(STATS[type].name ? STATS[type].name : "unknown");
+    return std::string("entity.") + entityAssetSlug(type);
 }
 
 std::string effectAssetKey(const std::string& effectName) {
@@ -228,9 +156,9 @@ bool hasTerrainImageTile(Terrain terrain) {
 #endif
 }
 
-void logMissingEntityImageTile(const Entity& e) {
+void logMissingEntityImageTile(const Game& game, const WorldIndex& world, const Entity& e) {
     if (hasEntityImageTile(e.type)) return;
-    EntitySpriteSpec spec = entitySpriteSpec(e);
+    EntitySpriteSpec spec = entitySpriteSpec(game, world, e);
     logMissingTile("entity", entityAssetKey(e.type) + "." + spec.key, spec.displayName,
                    std::string(1, STATS[e.type].glyph),
                    spec.suggestedAsset);
@@ -248,7 +176,7 @@ void logMissingTerrainImageTile(Terrain t) {
         ? "assets/tiles/grounds/" + std::string(groundTypeName(parts.ground)) + ".png"
         : "assets/tiles/features/" + std::string(featureTypeName(parts.feature)) + "/manifest.json";
     logMissingTile("terrain", terrainAssetKey(t), name,
-                   std::string(1, terrainAscii(t)),
+                   std::string(1, terrainAsciiGlyph(t)),
                    suggested);
 }
 
@@ -256,7 +184,7 @@ void logMissingVisualTileParts(const Tile& tile) {
     VisualTileParts parts = visualPartsForTile(tile);
     std::string ground = groundTypeName(parts.ground);
     logMissingTile("ground", std::string("ground.") + ground, ground,
-                   std::string(1, terrainAscii(tile.terrain)),
+                   std::string(1, terrainAsciiGlyph(tile.terrain)),
                    "assets/tiles/grounds/" + ground + ".png");
     if (parts.feature != F_NONE) {
         std::string feature = featureTypeName(parts.feature);
@@ -280,11 +208,11 @@ const char* featureOccluderGlyph(FeatureType feature) {
     }
 }
 
-void drawFeatureOccluderIfNeeded(int mx, int my, SDL_Rect rect) {
-    if (!inBounds(mx, my) || !g.map[my][mx].visible[0]) return;
-    Entity* ent = sdlEntityAt(mx, my);
+void drawFeatureOccluderIfNeeded(Game& game, const WorldIndex& world, int mx, int my, SDL_Rect rect) {
+    if (!inBounds(mx, my) || !game.map[my][mx].visible[0]) return;
+    Entity* ent = renderEntityAt(game, world, mx, my);
     if (!ent || !ent->alive || isBuilding(ent->type)) return;
-    VisualTileParts parts = visualPartsForTile(g.map[my][mx]);
+    VisualTileParts parts = visualPartsForTile(game.map[my][mx]);
     if (!featureConceals(parts.feature)) return;
     const char* glyph = featureOccluderGlyph(parts.feature);
     if (!glyph || !*glyph) return;
@@ -293,7 +221,7 @@ void drawFeatureOccluderIfNeeded(int mx, int my, SDL_Rect rect) {
     drawCentered(glyph, top, col, false, false);
 }
 
-std::string tilesetEntityVisual(const Entity& e, bool& usesSymbolFont) {
+std::string tilesetEntityVisual(const Game& game, const WorldIndex& world, const Entity& e, bool& usesSymbolFont) {
     if (!e.alive || e.state == S_DEAD) {
         usesSymbolFont = true;
         if (e.type == E_DEER || e.type == E_SHEEP || e.type == E_BOAR || e.type == E_WOLF) {
@@ -307,7 +235,7 @@ std::string tilesetEntityVisual(const Entity& e, bool& usesSymbolFont) {
         }
         return e.deathTicks >= DEATH_DECAY_TICKS ? u8"☠" : u8"†";
     }
-    logMissingEntityImageTile(e);
+    logMissingEntityImageTile(game, world, e);
     bool hasTile = false;
     const char* glyph = tilesetEntityGlyph(e, hasTile);
     if (hasTile && glyph) {
@@ -352,14 +280,14 @@ int animationFrameFor(const EntityActionAnimationSpec* anim, int explicitFrame =
     return animationFrameFor(anim);
 }
 
-bool drawEntityImageTile(const Entity& e, SDL_Rect dst, Color modulation,
+bool drawEntityImageTile(const Game& game, const WorldIndex& world, const Entity& e, SDL_Rect dst, Color modulation,
                                 const char* forcedAction,
                                 const char* forcedDirection,
                                 int explicitFrame,
                                 SDL_Color teamColor,
                                 TilesetAssetFrame* outFrame) {
 #if defined(REALM_WEB)
-    (void)e; (void)dst; (void)modulation; (void)forcedAction; (void)forcedDirection;
+    (void)game; (void)world; (void)e; (void)dst; (void)modulation; (void)forcedAction; (void)forcedDirection;
     (void)explicitFrame; (void)teamColor; (void)outFrame;
     return false;
 #else
@@ -369,8 +297,7 @@ bool drawEntityImageTile(const Entity& e, SDL_Rect dst, Color modulation,
     if (action && *action) {
         anim = findEntityActionAnimationSpec(e.type, action);
     } else {
-        WorldIndex world = buildWorldIndex(g);
-        anim = entityActionAnimationSpecFor(g, world, e);
+        anim = entityActionAnimationSpecFor(game, world, e);
         action = anim ? anim->action : "idle";
     }
     const char* direction = (forcedDirection && *forcedDirection) ? forcedDirection : entityAnimationDirectionBucket(e);

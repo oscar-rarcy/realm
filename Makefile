@@ -37,7 +37,7 @@ MAP_SRCS := $(wildcard $(SRC_DIR)/map/*.cpp)
 PLATFORM_COMMON_SRCS := $(SRC_DIR)/platform/app_config.cpp $(SRC_DIR)/platform/game_init.cpp $(SRC_DIR)/platform/view_state.cpp
 GAME_SRCS := $(CORE_SRCS) $(SIM_SRCS) $(COMMAND_SRCS) $(AI_SRCS) $(MAP_SRCS) $(PLATFORM_COMMON_SRCS)
 
-RENDER_MODEL_SRCS := $(SRC_DIR)/render/visual_model.cpp $(SRC_DIR)/render/render_model.cpp
+RENDER_MODEL_SRCS := $(SRC_DIR)/render/display_model.cpp $(SRC_DIR)/render/entity_visual_defs.cpp $(SRC_DIR)/render/render_model.cpp
 ASCII_RENDER_SRCS := $(RENDER_MODEL_SRCS) $(wildcard $(SRC_DIR)/render/ascii/*.cpp)
 SDL_RENDER_SRCS := $(RENDER_MODEL_SRCS) $(wildcard $(SRC_DIR)/render/sdl/*.cpp)
 
@@ -176,7 +176,7 @@ $(OBJ_DIR)/lab/%.o: %.cpp | $(OBJ_DIR)
 
 $(OBJ_DIR)/test/%.o: %.cpp | $(OBJ_DIR)
 	@mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) $(DEFAULT_INCLUDES) -c -o $@ $<
+	$(CXX) $(CXXFLAGS) -DREALM_ENABLE_WORLD_INDEX_STATS $(DEFAULT_INCLUDES) -c -o $@ $<
 
 test: $(TEST_TARGET)
 	./$(TEST_TARGET)

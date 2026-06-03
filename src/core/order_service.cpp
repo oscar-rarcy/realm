@@ -14,6 +14,14 @@ ServiceResult fail(const char* reason) {
     return { false, reason };
 }
 
+void emitStatus(EventSink& events, int player, const std::string& message, GameEventType type = GameEventType::StatusMessage) {
+    events.emit({ type, player, -1, { -1, -1 }, message, 0 });
+}
+
+void emitActionMarker(EventSink& events, int player, MapPos tile, char glyph) {
+    events.emit({ GameEventType::ActionMarker, player, -1, tile, "", glyph });
+}
+
 Entity* entityIn(Game& game, const WorldIndex& world, EntityId id) {
     return entityById(game, world, id);
 }
@@ -30,6 +38,19 @@ bool ownedUnit(const Entity* entity, PlayerId issuer) {
     return entity && entity->alive && entity->owner == issuer && isUnit(entity->type);
 }
 
+int rolePriority(EntityType type) {
+    switch (type) {
+        case E_KNIGHT:    return 0;
+        case E_MILITIA:   return 1;
+        case E_SPEARMAN:  return 1;
+        case E_PEASANT:   return 2;
+        case E_ARCHER:    return 3;
+        case E_CATAPULT:  return 4;
+        case E_TREBUCHET: return 4;
+        default:          return 5;
+    }
+}
+
 std::vector<Entity*> selectedOwnedUnits(Game& game, const WorldIndex& world, const Selection& selection, PlayerId issuer) {
     std::vector<Entity*> units;
     for (int id : selection.ids) {
@@ -37,6 +58,206 @@ std::vector<Entity*> selectedOwnedUnits(Game& game, const WorldIndex& world, con
         if (ownedUnit(entity, issuer)) units.push_back(entity);
     }
     return units;
+}
+
+ServiceResult startSingleMove(Game& game, const WorldIndex& world, EventSink& events, Entity& unit, MapPos target, bool attackMove) {
+    if (unit.type == E_TREBUCHET && unit.packed == 0)
+        return fail("Pack the trebuchet first [D].");
+    unit.state = S_MOVING;
+    unit.targetX = target.x;
+    unit.targetY = target.y;
+    unit.targetId = -1;
+    unit.stuckTicks = 0;
+    unit.attackMove = attackMove ? 1 : 0;
+    unit.holdPosition = 0;
+    unit.path = findPath(game, world, unit.x, unit.y, target.x, target.y, 300, isNaval(unit.type));
+    unit.pathIdx = 0;
+    if (unit.path.empty() && (unit.x != target.x || unit.y != target.y)) {
+        unit.state = S_IDLE;
+        return fail("Can't reach there.");
+    }
+    emitActionMarker(events, unit.owner, target, 'x');
+    return ok();
+}
+
+ServiceResult startGroupMove(Game& game, const WorldIndex& world, EventSink& events, const Selection& selection, MapPos target, bool attackMove, PlayerId issuer) {
+    std::vector<Entity*> units = selectedOwnedUnits(game, world, selection, issuer);
+    if (units.empty()) return fail(attackMove ? "Selected unit cannot attack-move." : "Selected unit cannot move.");
+    std::sort(units.begin(), units.end(), [](Entity* a, Entity* b) {
+        return rolePriority(a->type) < rolePriority(b->type);
+    });
+    int unitCount = (int)units.size();
+    int cols = std::max(1, (int)std::ceil(std::sqrt((double)unitCount)));
+    int rows = (unitCount + cols - 1) / cols;
+    int half = (cols - 1) / 2;
+    int cx = 0, cy = 0;
+    for (Entity* unit : units) {
+        cx += unit->x;
+        cy += unit->y;
+    }
+    cx /= unitCount;
+    cy /= unitCount;
+    int dx = target.x - cx;
+    int dy = target.y - cy;
+    bool horizontal = std::abs(dx) >= std::abs(dy);
+    int sx = (dx > 0) ? 1 : (dx < 0 ? -1 : 1);
+    int sy = (dy > 0) ? 1 : (dy < 0 ? -1 : 1);
+
+    std::vector<MapPos> slots;
+    slots.reserve(unitCount);
+    for (int r = 0; r < rows && (int)slots.size() < unitCount; r++) {
+        for (int c = 0; c < cols && (int)slots.size() < unitCount; c++) {
+            int slotX = horizontal ? target.x - sx * r : target.x + (c - half);
+            int slotY = horizontal ? target.y + (c - half) : target.y - sy * r;
+            slots.push_back({
+                std::max(0, std::min(slotX, MAP_W - 1)),
+                std::max(0, std::min(slotY, MAP_H - 1)),
+            });
+        }
+    }
+
+    bool ordered = false;
+    const char* firstFailure = nullptr;
+    for (int i = 0; i < unitCount && i < (int)slots.size(); i++) {
+        ServiceResult moved = startSingleMove(game, world, events, *units[i], slots[i], attackMove);
+        if (moved.ok) ordered = true;
+        else if (!firstFailure) firstFailure = moved.reason;
+    }
+    if (!ordered) return fail(firstFailure ? firstFailure : "Selected unit cannot move.");
+    emitStatus(events, issuer, attackMove ? "Attack-move in formation!" : "Group moving in formation...");
+    return ok();
+}
+
+ServiceResult startSingleAttack(Game& game, const WorldIndex& world, EventSink& events, Entity& unit, EntityId targetId) {
+    Entity* target = findEntity(game, world, targetId);
+    if (!target) return fail("Attack target is invalid.");
+    if (unit.type == E_RAM && !isBuilding(target->type)) return fail("Rams can only attack buildings.");
+    if (unit.type == E_TREBUCHET && unit.packed == 1) return fail("Deploy the trebuchet first [D].");
+    if (unit.type == E_TREBUCHET && unit.packTicks > 0) return fail("Trebuchet is already changing stance.");
+    unit.holdPosition = 0;
+    unit.state = S_ATTACKING;
+    unit.targetId = targetId;
+    emitActionMarker(events, unit.owner, { target->x, target->y }, '!');
+    return ok();
+}
+
+ServiceResult startSingleGather(Game& game, const WorldIndex& world, EventSink& events, Entity& unit, MapPos target) {
+    if (!inBounds(target.x, target.y)) return fail("Gather target is out of bounds.");
+    Entity* carcass = corpseAt(game, world, target.x, target.y);
+    if (carcass && isHarvestableCarcass(*carcass) && unit.type == E_PEASANT && canGather(unit.type)) {
+        unit.cargo.type = CR_FOOD;
+        unit.cargo.sourceX = target.x;
+        unit.cargo.sourceY = target.y;
+        unit.resourceX = target.x;
+        unit.resourceY = target.y;
+        unit.state = S_GATHERING;
+        unit.targetX = target.x;
+        unit.targetY = target.y;
+        unit.targetId = -1;
+        emitActionMarker(events, unit.owner, target, '+');
+        int bestAX = target.x, bestAY = target.y, bestAD = 99999;
+        for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
+            if (dx == 0 && dy == 0) continue;
+            int nx = target.x + dx, ny = target.y + dy;
+            if (!inBounds(nx, ny) || !isPassable(game, nx, ny)) continue;
+            int d = mdist(unit.x, unit.y, nx, ny);
+            if (d < bestAD) { bestAD = d; bestAX = nx; bestAY = ny; }
+        }
+        unit.path = findPath(game, world, unit.x, unit.y, bestAX, bestAY, 300, false);
+        unit.pathIdx = 0;
+        unit.gatherCd = 0;
+        unit.cargo.amount = 0;
+        return ok();
+    }
+
+    Terrain terrain = game.map[target.y][target.x].terrain;
+    CargoResource resource = resourceForTerrain(terrain);
+    if (canGather(unit.type) && !isNaval(unit.type)) {
+        if (resource != CR_GOLD && resource != CR_WOOD && resource != CR_FOOD)
+            return fail("Gather target has no compatible resource.");
+    } else if (canGather(unit.type) && isNaval(unit.type)) {
+        if (resource != CR_FISH) return fail("Gather target has no compatible resource.");
+    } else {
+        return fail("Selected unit cannot gather.");
+    }
+
+    unit.cargo.type = resource;
+    unit.cargo.sourceX = target.x;
+    unit.cargo.sourceY = target.y;
+    unit.resourceX = target.x;
+    unit.resourceY = target.y;
+    unit.state = S_GATHERING;
+    unit.targetX = target.x;
+    unit.targetY = target.y;
+    emitActionMarker(events, unit.owner, target, '+');
+    bool naval = isNaval(unit.type);
+    int bestAX = target.x, bestAY = target.y, bestAD = 99999;
+    for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
+        if (dx == 0 && dy == 0) continue;
+        int nx = target.x + dx, ny = target.y + dy;
+        if (!inBounds(nx, ny)) continue;
+        bool passable = naval ? isPassableWater(game, nx, ny) : isPassable(game, nx, ny);
+        if (!passable) continue;
+        int d = mdist(unit.x, unit.y, nx, ny);
+        if (d < bestAD) { bestAD = d; bestAX = nx; bestAY = ny; }
+    }
+    unit.path = findPath(game, world, unit.x, unit.y, bestAX, bestAY, 300, naval);
+    unit.pathIdx = 0;
+    unit.gatherCd = 0;
+    unit.cargo.amount = 0;
+    return ok();
+}
+
+ServiceResult startSingleHelp(Game& game, const WorldIndex& world, Entity& unit, EntityId targetId) {
+    if (!canBuild(unit.type)) return fail("Selected unit cannot help.");
+    Entity* target = findEntity(game, world, targetId);
+    if (!target || !target->alive) return fail("Help target is invalid.");
+    if (!target->underConstruction && target->type != E_FARM) return fail("Help target is invalid.");
+    unit.state = S_BUILDING;
+    unit.targetId = targetId;
+    unit.targetX = target->x;
+    unit.targetY = target->y;
+    int targetW = STATS[target->type].sizeW;
+    int targetH = STATS[target->type].sizeH;
+    int bestAX = target->x - 1, bestAY = target->y, bestAD = 99999;
+    for (int dy = -1; dy <= targetH; dy++) for (int dx = -1; dx <= targetW; dx++) {
+        if (dx >= 0 && dx < targetW && dy >= 0 && dy < targetH) continue;
+        int nx = target->x + dx, ny = target->y + dy;
+        if (inBounds(nx, ny) && isPassable(game, nx, ny)) {
+            int d = mdist(unit.x, unit.y, nx, ny);
+            if (d < bestAD) { bestAD = d; bestAX = nx; bestAY = ny; }
+        }
+    }
+    unit.path = findPath(game, world, unit.x, unit.y, bestAX, bestAY, 300, isNaval(unit.type));
+    unit.pathIdx = 0;
+    return ok();
+}
+
+ServiceResult startSingleGarrison(Game& game, const WorldIndex& world, Entity& unit, EntityId targetId) {
+    Entity* target = findEntity(game, world, targetId);
+    if (!target || !target->alive || target->underConstruction) return fail("Garrison target is invalid.");
+    if (target->owner != unit.owner || !canGarrisonIn(target->type)) return fail("Garrison target is invalid.");
+    if (!isUnit(unit.type) || isSiege(unit.type) || isNaval(unit.type)) return fail("Selected unit cannot garrison.");
+    if ((int)target->garrison.size() >= garrisonCap(target->type)) return fail("Garrison target is full.");
+    unit.state = S_ENTERING;
+    unit.targetId = targetId;
+    unit.targetX = target->x;
+    unit.targetY = target->y;
+    unit.stuckTicks = 0;
+    int targetW = STATS[target->type].sizeW;
+    int targetH = STATS[target->type].sizeH;
+    int bestAX = target->x - 1, bestAY = target->y, bestAD = 99999;
+    for (int dy = -1; dy <= targetH; dy++) for (int dx = -1; dx <= targetW; dx++) {
+        if (dx >= 0 && dx < targetW && dy >= 0 && dy < targetH) continue;
+        int nx = target->x + dx, ny = target->y + dy;
+        if (inBounds(nx, ny) && isPassable(game, nx, ny)) {
+            int d = mdist(unit.x, unit.y, nx, ny);
+            if (d < bestAD) { bestAD = d; bestAX = nx; bestAY = ny; }
+        }
+    }
+    unit.path = findPath(game, world, unit.x, unit.y, bestAX, bestAY, 300, isNaval(unit.type));
+    unit.pathIdx = 0;
+    return ok();
 }
 
 } // namespace
@@ -50,33 +271,30 @@ ServiceResult canMove(const Game& game, const WorldIndex& world, PlayerId issuer
     return ok();
 }
 
-ServiceResult startMove(Game& game, const WorldIndex& world, PlayerId issuer, const Selection& selection, MapPos target) {
+ServiceResult startMove(Game& game, const WorldIndex& world, EventSink& events, PlayerId issuer, const Selection& selection, MapPos target) {
     if (!inBounds(target.x, target.y)) return fail("Move target is out of bounds.");
     std::vector<Entity*> units = selectedOwnedUnits(game, world, selection, issuer);
     if (units.empty()) return fail("Selected unit cannot move.");
     if (selection.ids.size() > 1) {
-        orderGroupMove(game, world, selection, target.x, target.y, issuer);
-        return ok();
+        return startGroupMove(game, world, events, selection, target, false, issuer);
     }
     ServiceResult allowed = canMove(game, world, issuer, selection.primaryId, target);
     if (!allowed.ok) return allowed;
-    orderMove(game, *units.front(), target.x, target.y);
-    return ok();
+    return startSingleMove(game, world, events, *units.front(), target, false);
 }
 
-ServiceResult startAttackMove(Game& game, const WorldIndex& world, PlayerId issuer, const Selection& selection, MapPos target) {
+ServiceResult startAttackMove(Game& game, const WorldIndex& world, EventSink& events, PlayerId issuer, const Selection& selection, MapPos target) {
     if (!inBounds(target.x, target.y)) return fail("Attack-move target is out of bounds.");
     std::vector<Entity*> units = selectedOwnedUnits(game, world, selection, issuer);
     if (units.empty()) return fail("Selected unit cannot attack-move.");
     if (selection.ids.size() > 1) {
-        orderGroupAttackMove(game, world, selection, target.x, target.y, issuer);
-        return ok();
+        return startGroupMove(game, world, events, selection, target, true, issuer);
     }
     ServiceResult moved = canMove(game, world, issuer, selection.primaryId, target);
     if (!moved.ok) return fail("Selected unit cannot attack-move.");
-    orderMove(game, *units.front(), target.x, target.y);
-    units.front()->attackMove = 1;
-    emitStatusEvent(issuer, "Attack-moving.");
+    ServiceResult ordered = startSingleMove(game, world, events, *units.front(), target, true);
+    if (!ordered.ok) return ordered;
+    emitStatus(events, issuer, "Attack-moving.");
     return ok();
 }
 
@@ -91,19 +309,23 @@ ServiceResult canAttack(const Game& game, const WorldIndex& world, PlayerId issu
     return ok();
 }
 
-ServiceResult startAttack(Game& game, const WorldIndex& world, PlayerId issuer, const Selection& selection, EntityId targetId) {
+ServiceResult startAttack(Game& game, const WorldIndex& world, EventSink& events, PlayerId issuer, const Selection& selection, EntityId targetId) {
     const Entity* target = entityIn(game, world, targetId);
     if (!target) return fail("Attack target is invalid.");
     std::vector<Entity*> units = selectedOwnedUnits(game, world, selection, issuer);
     if (units.empty()) return fail("Selected unit cannot attack.");
     if (selection.ids.size() > 1) {
-        orderGroupAttack(game, world, selection, targetId, issuer);
-        return ok();
+        bool ordered = false;
+        for (Entity* unit : units) {
+            ServiceResult attacked = startSingleAttack(game, world, events, *unit, targetId);
+            ordered = ordered || attacked.ok;
+        }
+        if (ordered) emitStatus(events, issuer, "Group attacking!");
+        return ordered ? ok() : fail("No selected units can attack that target.");
     }
     ServiceResult allowed = canAttack(game, world, issuer, selection.primaryId, targetId);
     if (!allowed.ok) return allowed;
-    orderAttack(game, world, *units.front(), targetId);
-    return ok();
+    return startSingleAttack(game, world, events, *units.front(), targetId);
 }
 
 ServiceResult canGatherAt(Game& game, const WorldIndex& world, PlayerId issuer, EntityId unitId, MapPos target) {
@@ -119,12 +341,11 @@ ServiceResult canGatherAt(Game& game, const WorldIndex& world, PlayerId issuer, 
     return fail("Gather target has no compatible resource.");
 }
 
-ServiceResult startGather(Game& game, const WorldIndex& world, PlayerId issuer, const Selection& selection, MapPos target) {
+ServiceResult startGather(Game& game, const WorldIndex& world, EventSink& events, PlayerId issuer, const Selection& selection, MapPos target) {
     ServiceResult allowed = canGatherAt(game, world, issuer, selection.primaryId, target);
     if (!allowed.ok) return allowed;
     Entity* unit = selectedEntity(game, world, selection);
-    orderGather(game, world, *unit, target.x, target.y);
-    return ok();
+    return startSingleGather(game, world, events, *unit, target);
 }
 
 ServiceResult canHelp(Game& game, const WorldIndex& world, PlayerId issuer, EntityId unitId, EntityId targetId) {
@@ -137,7 +358,7 @@ ServiceResult canHelp(Game& game, const WorldIndex& world, PlayerId issuer, Enti
     return fail("Help target is invalid.");
 }
 
-ServiceResult startHelp(Game& game, const WorldIndex& world, PlayerId issuer, const Selection& selection, EntityId targetId) {
+ServiceResult startHelp(Game& game, const WorldIndex& world, EventSink& events, PlayerId issuer, const Selection& selection, EntityId targetId) {
     const Entity* target = entityIn(game, world, targetId);
     if (!target || !target->alive || target->owner != issuer) return fail("Help target is invalid.");
     bool ordered = false;
@@ -145,11 +366,11 @@ ServiceResult startHelp(Game& game, const WorldIndex& world, PlayerId issuer, co
         ServiceResult allowed = canHelp(game, world, issuer, id, targetId);
         if (!allowed.ok) continue;
         Entity* unit = entityIn(game, world, id);
-        orderHelp(game, world, *unit, targetId);
+        if (!startSingleHelp(game, world, *unit, targetId).ok) continue;
         ordered = true;
     }
     if (!ordered) return fail("No selected units can help.");
-    emitStatusEvent(issuer, target->underConstruction ? "Helping build..." : "Tending farm...");
+    emitStatus(events, issuer, target->underConstruction ? "Helping build..." : "Tending farm...");
     return ok();
 }
 
@@ -164,7 +385,7 @@ ServiceResult canGarrison(const Game& game, const WorldIndex& world, PlayerId is
     return ok();
 }
 
-ServiceResult startGarrison(Game& game, const WorldIndex& world, PlayerId issuer, const Selection& selection, EntityId targetId) {
+ServiceResult startGarrison(Game& game, const WorldIndex& world, EventSink&, PlayerId issuer, const Selection& selection, EntityId targetId) {
     const Entity* target = entityIn(game, world, targetId);
     if (!target || target->owner != issuer || target->underConstruction || !canGarrisonIn(target->type))
         return fail("Garrison target is invalid.");
@@ -173,35 +394,35 @@ ServiceResult startGarrison(Game& game, const WorldIndex& world, PlayerId issuer
         ServiceResult allowed = canGarrison(game, world, issuer, id, targetId);
         if (!allowed.ok) continue;
         Entity* unit = entityIn(game, world, id);
-        orderGarrison(game, world, *unit, targetId);
+        if (!startSingleGarrison(game, world, *unit, targetId).ok) continue;
         ordered = true;
     }
     return ordered ? ok() : fail("No selected units can garrison.");
 }
 
-ServiceResult ejectGarrisonService(Game& game, const WorldIndex& world, PlayerId issuer, const Selection& selection) {
+ServiceResult ejectGarrisonService(Game& game, const WorldIndex& world, EventSink& events, PlayerId issuer, const Selection& selection) {
     Entity* selected = selectedEntity(game, world, selection);
     if (!selected || selected->owner != issuer || !canGarrisonIn(selected->type))
         return fail("Selected building cannot eject a garrison.");
     if (selected->garrison.empty()) return fail("No garrison to eject.");
     int n = (int)selected->garrison.size();
     ejectGarrison(game, *selected);
-    emitStatusEvent(issuer, std::to_string(n) + " unit(s) ejected");
+    emitStatus(events, issuer, std::to_string(n) + " unit(s) ejected");
     return ok();
 }
 
-ServiceResult setRallyPoint(Game& game, const WorldIndex& world, PlayerId issuer, const Selection& selection, MapPos target) {
+ServiceResult setRallyPoint(Game& game, const WorldIndex& world, EventSink& events, PlayerId issuer, const Selection& selection, MapPos target) {
     if (!inBounds(target.x, target.y)) return fail("Rally target is out of bounds.");
     Entity* selected = selectedEntity(game, world, selection);
     if (!selected || selected->owner != issuer) return fail("Rally building is not owned by issuer.");
     selected->rallyX = target.x;
     selected->rallyY = target.y;
     selected->rallySet = 1;
-    emitStatusEvent(issuer, "Rally point set.");
+    emitStatus(events, issuer, "Rally point set.");
     return ok();
 }
 
-ServiceResult holdPosition(Game& game, const WorldIndex& world, PlayerId issuer, const Selection& selection) {
+ServiceResult holdPosition(Game& game, const WorldIndex& world, EventSink& events, PlayerId issuer, const Selection& selection) {
     bool changed = false;
     for (Entity* unit : selectedOwnedUnits(game, world, selection, issuer)) {
         unit->state = S_IDLE;
@@ -212,11 +433,11 @@ ServiceResult holdPosition(Game& game, const WorldIndex& world, PlayerId issuer,
         unit->targetId = -1;
         changed = true;
     }
-    if (changed) emitStatusEvent(issuer, "Hold position.");
+    if (changed) emitStatus(events, issuer, "Hold position.");
     return changed ? ok() : fail("No selected units can hold position.");
 }
 
-ServiceResult stopUnits(Game& game, const WorldIndex& world, PlayerId issuer, const Selection& selection) {
+ServiceResult stopUnits(Game& game, const WorldIndex& world, EventSink&, PlayerId issuer, const Selection& selection) {
     bool changed = false;
     for (Entity* unit : selectedOwnedUnits(game, world, selection, issuer)) {
         unit->state = S_IDLE;
@@ -230,25 +451,25 @@ ServiceResult stopUnits(Game& game, const WorldIndex& world, PlayerId issuer, co
     return changed ? ok() : fail("No selected units can stop.");
 }
 
-ServiceResult toggleGateMode(Game& game, const WorldIndex& world, PlayerId issuer, const Selection& selection) {
+ServiceResult toggleGateMode(Game& game, const WorldIndex& world, EventSink& events, PlayerId issuer, const Selection& selection) {
     Entity* selected = selectedEntity(game, world, selection);
     if (!selected || selected->owner != issuer || selected->type != E_GATE || selected->underConstruction)
         return fail("Selected entity is not an owned gate.");
     if (!selected->gateLocked) {
         selected->gateLocked = true;
         selected->gateOpen = true;
-        emitStatusEvent(issuer, "Gate locked open");
+        emitStatus(events, issuer, "Gate locked open");
     } else if (selected->gateOpen) {
         selected->gateOpen = false;
-        emitStatusEvent(issuer, "Gate locked closed");
+        emitStatus(events, issuer, "Gate locked closed");
     } else {
         selected->gateLocked = false;
-        emitStatusEvent(issuer, "Gate auto");
+        emitStatus(events, issuer, "Gate auto");
     }
     return ok();
 }
 
-ServiceResult toggleTrebuchetPacked(Game& game, const WorldIndex& world, PlayerId issuer, const Selection& selection) {
+ServiceResult toggleTrebuchetPacked(Game& game, const WorldIndex& world, EventSink& events, PlayerId issuer, const Selection& selection) {
     Entity* selected = selectedEntity(game, world, selection);
     if (!selected || selected->owner != issuer || selected->type != E_TREBUCHET)
         return fail("Selected entity is not an owned trebuchet.");
@@ -260,6 +481,6 @@ ServiceResult toggleTrebuchetPacked(Game& game, const WorldIndex& world, PlayerI
     selected->targetId = -1;
     selected->path.clear();
     selected->pathIdx = 0;
-    emitStatusEvent(issuer, selected->packed ? "Packing trebuchet..." : "Deploying trebuchet...");
+    emitStatus(events, issuer, selected->packed ? "Packing trebuchet..." : "Deploying trebuchet...");
     return ok();
 }

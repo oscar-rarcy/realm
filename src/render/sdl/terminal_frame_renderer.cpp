@@ -1,5 +1,6 @@
 #include "render/sdl/sdl_terminal.h"
 #include "realm.h"
+#include "core/world_index.h"
 #include "view_state.h"
 
 Color termBg() { return rgb(3, 5, 8); }
@@ -119,23 +120,23 @@ void updateTerminalCamera(int cols, int rows, bool keepCursor) {
     clampTerminalView();
 }
 
-TerminalCell terminalMapCell(int mx, int my) {
+TerminalCell terminalMapCell(const WorldIndex& world, int mx, int my) {
     const Tile& tile = g.map[my][mx];
     TerminalCell cell{' ', termDim(), termBg()};
     if (!tile.explored[0]) return cell;
 
-    cell.ch = tile.visible[0] ? terrainAscii(tile.terrain) : '.';
+    cell.ch = tile.visible[0] ? terrainAsciiGlyph(tile.terrain) : '.';
     cell.fg = tile.visible[0] ? glyphColorForTerrain(tile, mx, my) : rgb(95, 95, 105);
     cell.bg = tile.visible[0] ? scale(terrainBg(tile, mx, my), 0.35f) : rgb(8, 9, 12);
 
-    Entity* ent = tile.visible[0] ? sdlEntityAt(mx, my) : nullptr;
+    Entity* ent = tile.visible[0] ? renderEntityAt(g, world, mx, my) : nullptr;
     if (ent && ent->alive) {
         cell.ch = STATS[ent->type].glyph;
         cell.fg = ownerTermFg(ent->owner);
         if (ent->owner != OWNER_NATURE) cell.bg = scale(ownerBg(ent->owner), 0.55f);
     }
 
-    for (const auto& m : g.actionMarkers) {
+    for (const auto& m : ui.actionMarkers) {
         if (m.x == mx && m.y == my && m.ticks > 0 && (g.tick % 6) < 4) {
             cell.ch = m.glyph;
             cell.fg = termHigh();
@@ -207,7 +208,7 @@ void terminalDrawTerrainBar(TerminalFrame& frame) {
     termPutString(frame, 1, 1, termTrunc(ss.str(), std::max(0, w - 2)), termFg(), termBg());
 }
 
-[[maybe_unused]] static void terminalDrawMap(TerminalFrame& frame) {
+[[maybe_unused]] static void terminalDrawMap(TerminalFrame& frame, const WorldIndex& world) {
     for (int sy = 0; sy < view.viewH; ++sy) {
         int my = view.viewY + sy;
         int row = sy + 2;
@@ -215,13 +216,13 @@ void terminalDrawTerrainBar(TerminalFrame& frame) {
         for (int sx = 0; sx < view.viewW; ++sx) {
             int mx = view.viewX + sx;
             if (!inBounds(mx, my) || sx >= frame.cols) continue;
-            TerminalCell cell = terminalMapCell(mx, my);
+            TerminalCell cell = terminalMapCell(world, mx, my);
             termPut(frame, sx, row, cell.ch, cell.fg, cell.bg);
         }
     }
 }
 
-void terminalDrawMinimap(TerminalFrame& frame, int panelX, int panelW) {
+void terminalDrawMinimap(TerminalFrame& frame, const WorldIndex& world, int panelX, int panelW) {
     termPutString(frame, panelX + 1, 0, "Map", termAccent(), termBar());
     int mmW = panelW - 2;
     int mmH = std::min(view.viewH / 3, 14);
@@ -234,14 +235,15 @@ void terminalDrawMinimap(TerminalFrame& frame, int panelX, int panelW) {
             Color fg = termDim();
             if (g.map[mapY][mapX].explored[0]) {
                 Terrain t = g.map[mapY][mapX].terrain;
-                if (t == T_WATER || t == T_SHALLOWS) { ch = '~'; fg = rgb(90, 150, 220); }
-                else if (t == T_MOUNTAIN || t == T_STONE) { ch = '^'; fg = rgb(150, 150, 150); }
-                else if (t == T_GOLD) { ch = '$'; fg = rgb(235, 210, 70); }
-                else if (t == T_CASTLE_WALL || t == T_CASTLE_GATE) { ch = '#'; fg = rgb(190, 190, 190); }
-                else { ch = '.'; fg = rgb(90, 135, 90); }
+                ch = terrainAsciiGlyph(t);
+                if (t == T_WATER || t == T_SHALLOWS) { fg = rgb(90, 150, 220); }
+                else if (t == T_MOUNTAIN || t == T_STONE) { fg = rgb(150, 150, 150); }
+                else if (t == T_GOLD) { fg = rgb(235, 210, 70); }
+                else if (t == T_CASTLE_WALL || t == T_CASTLE_GATE) { fg = rgb(190, 190, 190); }
+                else { fg = rgb(90, 135, 90); }
             }
             if (g.map[mapY][mapX].visible[0]) {
-                Entity* ent = sdlEntityAt(mapX, mapY);
+                Entity* ent = renderEntityAt(g, world, mapX, mapY);
                 if (ent && ent->alive) {
                     ch = isBuilding(ent->type) ? '#' : '*';
                     fg = ownerTermFg(ent->owner);
@@ -252,7 +254,7 @@ void terminalDrawMinimap(TerminalFrame& frame, int panelX, int panelW) {
     }
 }
 
-void terminalDrawSelection(TerminalFrame& frame, int panelX, int panelW, int startY) {
+void terminalDrawSelection(TerminalFrame& frame, const WorldIndex& world, int panelX, int panelW, int startY) {
     int y = startY;
     auto line = [&](const std::string& text, Color fg = termFg()) {
         if (y >= frame.rows - 2) return;
@@ -305,7 +307,7 @@ void terminalDrawSelection(TerminalFrame& frame, int panelX, int panelW, int sta
         return;
     }
 
-    Entity* sel = sdlFindEntity(g.selectedId);
+    Entity* sel = renderFindEntity(g, world, g.selectedId);
     if (!sel) {
         line("No selection", termDim());
         y++;
@@ -378,19 +380,19 @@ void terminalDrawSelection(TerminalFrame& frame, int panelX, int panelW, int sta
     }
 }
 
-void terminalDrawPanel(TerminalFrame& frame) {
+void terminalDrawPanel(TerminalFrame& frame, const WorldIndex& world) {
     int panelW = 24;
     int panelX = frame.cols - panelW;
     if (panelX < 1) return;
     termFillV(frame, panelX - 1, 0, frame.rows, '|', termDim(), termBg());
-    terminalDrawMinimap(frame, panelX, panelW);
+    terminalDrawMinimap(frame, world, panelX, panelW);
     int mmH = std::min(view.viewH / 3, 14);
     int y = 1 + mmH + 1;
     termFillH(frame, y - 1, panelX, panelW, '-', termDim(), termBg());
-    terminalDrawSelection(frame, panelX, panelW, y);
+    terminalDrawSelection(frame, world, panelX, panelW, y);
 }
 
-void terminalDrawBottom(TerminalFrame& frame) {
+void terminalDrawBottom(TerminalFrame& frame, const WorldIndex& world) {
     int botY2 = frame.rows - 2;
     int botY1 = frame.rows - 1;
     termFillH(frame, botY2, 0, frame.cols, ' ', termFg(), termBar());
@@ -398,8 +400,9 @@ void terminalDrawBottom(TerminalFrame& frame) {
     std::string line;
     if (g.mode == M_BUILD_SELECT)
         line = " BUILD: [H]ouse [B]arracks [S]table [T]ower [F]arm [W]all [G]ate [A]rmory [C]hurch [M]arket [K]Castle [L]umber [N]mine [I]mill [D]ock [Esc] ";
-    else if (g.mode == M_TRAIN_SELECT)
-        line = trainPromptFor(sdlFindEntity(g.selectedId));
+    else if (g.mode == M_TRAIN_SELECT) {
+        line = trainPromptFor(renderFindEntity(g, world, g.selectedId));
+    }
     else if (g.mode == M_MARKET_TRADE)
         line = " MARKET: [G] 40g->30w  [W] 40w->30g  [F] 50g->30f  [V] 40f->30g  [Esc] ";
     else if (g.mode == M_PAUSED)
@@ -412,14 +415,14 @@ void terminalDrawBottom(TerminalFrame& frame) {
     else
         line = " Arrows:Move  Spc:Select  Enter:Cmd  B:Build T:Train ?:Help D:Diag V:Save L:Load Q:Resign X:Exit ";
     termPutString(frame, 1, botY2, termTrunc(line, frame.cols - 2), termFg(), termBar());
-    if (g.statusTimer > 0) {
-        termPutString(frame, 1, botY1, termTrunc(">> " + g.statusMsg, frame.cols - 14), termHigh(), termBar());
+    if (ui.statusTimer > 0) {
+        termPutString(frame, 1, botY1, termTrunc(">> " + ui.statusMsg, frame.cols - 14), termHigh(), termBar());
     }
     std::ostringstream pos; pos << "(" << view.cursorX << "," << view.cursorY << ")";
     termPutString(frame, std::max(0, frame.cols - (int)pos.str().size() - 1), botY1, pos.str(), termDim(), termBar());
 }
 
-void registerTerminalKeyTokens(const TerminalFrame& frame) {
+void registerTerminalKeyTokens(const TerminalFrame& frame, const WorldIndex& world) {
     int y = frame.rows - 2;
     std::string line;
     std::vector<std::pair<std::string, int>> tokens;
@@ -427,7 +430,7 @@ void registerTerminalKeyTokens(const TerminalFrame& frame) {
         line = " BUILD: [H]ouse [B]arracks [S]table [T]ower [F]arm [W]all [G]ate [A]rmory [C]hurch [M]arket [K]Castle [L]umber [N]mine [I]mill [D]ock [Esc] ";
         tokens = terminalBuildTokens();
     } else if (g.mode == M_TRAIN_SELECT) {
-        Entity* sel = sdlFindEntity(g.selectedId);
+        Entity* sel = renderFindEntity(g, world, g.selectedId);
         line = trainPromptFor(sel);
         tokens = sel ? trainOptionTokensFor(sel->type) : std::vector<std::pair<std::string, int>>{{"Esc", 27}};
     } else if (g.mode == M_MARKET_TRADE) {
@@ -482,7 +485,7 @@ void terminalDrawHelpOverlay(TerminalFrame& frame) {
     int row = y + 1;
     termPutString(frame, x + 2, row++, "Help", termHigh(), bg);
     int n = 0;
-    const CommandBinding* commands = gameplayCommands(n);
+    const CommandHelpBinding* commands = gameplayHelpBindings(n);
     for (int i = 0; i < n && row < y + h - 5; ++i) {
         std::ostringstream line;
         line << commands[i].keys << "  " << commands[i].label << " - " << commands[i].help;
@@ -497,13 +500,13 @@ void terminalDrawHelpOverlay(TerminalFrame& frame) {
     termPutString(frame, x + 2, y + h - 2, "Press ? to close", termHigh(), bg);
 }
 
-TerminalFrame buildAsciiTerminalFrame() {
+TerminalFrame buildAsciiTerminalFrame(const WorldIndex& world) {
     TerminalFrame frame = makeBlankTerminalFrame();
     updateTerminalCamera(frame.cols, frame.rows, !s.middleDown);
     terminalDrawTop(frame);
     terminalDrawTerrainBar(frame);
-    terminalDrawPanel(frame);
-    terminalDrawBottom(frame);
+    terminalDrawPanel(frame, world);
+    terminalDrawBottom(frame, world);
     terminalDrawHelpOverlay(frame);
     return frame;
 }
@@ -527,7 +530,7 @@ void drawTerminalCellAt(const SDL_Rect& r, const TerminalCell& cell, TTF_Font* f
     SDL_RenderCopy(s.ren, tex, nullptr, &dst);
 }
 
-void drawAsciiTerminalMap(const TerminalFrame& frame) {
+void drawAsciiTerminalMap(const TerminalFrame& frame, const WorldIndex& world) {
     int mapCellW = 9, mapCellH = 18;
     terminalMapCellMetrics(mapCellW, mapCellH);
     SDL_Rect mr = terminalMapPixelRect(frame);
@@ -540,16 +543,16 @@ void drawAsciiTerminalMap(const TerminalFrame& frame) {
             int mx = view.viewX + sx;
             if (!inBounds(mx, my)) continue;
             SDL_Rect r{mr.x + sx * mapCellW, mr.y + sy * mapCellH, mapCellW, mapCellH};
-            drawTerminalCellAt(r, terminalMapCell(mx, my), s.mono);
+            drawTerminalCellAt(r, terminalMapCell(world, mx, my), s.mono);
         }
     }
     SDL_RenderSetClipRect(s.ren, nullptr);
 }
 
-void drawAsciiTerminalFrame(bool present) {
+void drawAsciiTerminalFrame(const WorldIndex& world, bool present) {
     SDL_GetWindowSize(s.win, &s.winW, &s.winH);
     applyRendererOutputScale();
-    TerminalFrame frame = buildAsciiTerminalFrame();
+    TerminalFrame frame = buildAsciiTerminalFrame(world);
     setDraw(termBg());
     SDL_RenderClear(s.ren);
     SDL_SetRenderDrawBlendMode(s.ren, SDL_BLENDMODE_BLEND);
@@ -560,8 +563,8 @@ void drawAsciiTerminalFrame(bool present) {
             drawTerminalCellAt(r, cell, s.mono);
         }
     }
-    drawAsciiTerminalMap(frame);
-    registerTerminalKeyTokens(frame);
+    drawAsciiTerminalMap(frame, world);
+    registerTerminalKeyTokens(frame, world);
     if (present) SDL_RenderPresent(s.ren);
 }
 
@@ -574,7 +577,7 @@ void updateAsciiMobileCamera(int cols, int rows) {
     view.viewY = std::max(0, std::min(view.viewY, MAP_H - view.viewH));
 }
 
-void drawAsciiMobileMap() {
+void drawAsciiMobileMap(const WorldIndex& world) {
     SDL_Rect mr = mapRect();
     int cellW = 8, cellH = 15;
     asciiMobileCellMetrics(cellW, cellH);
@@ -592,7 +595,7 @@ void drawAsciiMobileMap() {
             int mx = view.viewX + sx;
             if (!inBounds(mx, my)) continue;
             SDL_Rect r{mr.x + sx * cellW, mr.y + sy * cellH, cellW, cellH};
-            drawTerminalCellAt(r, terminalMapCell(mx, my), font);
+            drawTerminalCellAt(r, terminalMapCell(world, mx, my), font);
         }
     }
     SDL_RenderSetClipRect(s.ren, nullptr);
@@ -600,7 +603,7 @@ void drawAsciiMobileMap() {
     SDL_RenderDrawRect(s.ren, &mr);
 }
 
-void drawAsciiMobileMiniMapText(SDL_Rect r) {
+void drawAsciiMobileMiniMapText(const WorldIndex& world, SDL_Rect r) {
     setDraw(termBg());
     SDL_RenderFillRect(s.ren, &r);
     setDraw(termDim());
@@ -626,14 +629,15 @@ void drawAsciiMobileMiniMapText(SDL_Rect r) {
             Color fg = termDim();
             if (g.map[my][mx].explored[0]) {
                 Terrain t = g.map[my][mx].terrain;
-                if (t == T_WATER || t == T_SHALLOWS) { ch = '~'; fg = rgb(90, 150, 220); }
-                else if (t == T_MOUNTAIN || t == T_STONE) { ch = '^'; fg = rgb(150, 150, 150); }
-                else if (t == T_GOLD) { ch = '$'; fg = rgb(235, 210, 70); }
-                else if (t == T_CASTLE_WALL || t == T_CASTLE_GATE) { ch = '#'; fg = rgb(190, 190, 190); }
-                else { ch = '.'; fg = rgb(90, 135, 90); }
+                ch = terrainAsciiGlyph(t);
+                if (t == T_WATER || t == T_SHALLOWS) { fg = rgb(90, 150, 220); }
+                else if (t == T_MOUNTAIN || t == T_STONE) { fg = rgb(150, 150, 150); }
+                else if (t == T_GOLD) { fg = rgb(235, 210, 70); }
+                else if (t == T_CASTLE_WALL || t == T_CASTLE_GATE) { fg = rgb(190, 190, 190); }
+                else { fg = rgb(90, 135, 90); }
             }
             if (g.map[my][mx].visible[0]) {
-                Entity* ent = sdlEntityAt(mx, my);
+                Entity* ent = renderEntityAt(g, world, mx, my);
                 if (ent && ent->alive) {
                     ch = isBuilding(ent->type) ? '#' : '*';
                     fg = ownerTermFg(ent->owner);
@@ -669,7 +673,7 @@ void drawAsciiMobileHelpOverlay() {
     drawTextFit(x, y, "Tap map: select or command. Drag map: pan.", termFg(), w, s.monoSmall ? s.monoSmall : s.mono); y += 22;
     drawTextFit(x, y, "Use terminal buttons for build, attack, rally, pause, and idle.", termFg(), w, s.monoSmall ? s.monoSmall : s.mono); y += 26;
     int n = 0;
-    const CommandBinding* commands = gameplayCommands(n);
+    const CommandHelpBinding* commands = gameplayHelpBindings(n);
     for (int i = 0; i < n && y < r.y + r.h - 42; ++i) {
         std::ostringstream line;
         line << commands[i].label << " - " << commands[i].help;
@@ -679,7 +683,7 @@ void drawAsciiMobileHelpOverlay() {
     drawTextFit(x, r.y + r.h - 28, "Tap [Help] to close", termHigh(), w, s.monoSmall ? s.monoSmall : s.mono);
 }
 
-void drawAsciiMobileHud() {
+void drawAsciiMobileHud(const WorldIndex& world) {
     SDL_Rect pr = panelRect();
     int pad = mobileSafePad();
     setDraw(termBg());
@@ -708,19 +712,19 @@ void drawAsciiMobileHud() {
     int summaryW = mobilePortrait() ? std::max(1, mm.x - (pr.x + pad) - 10) : textW;
     drawTextFit(pr.x + pad, y, termTrunc(tile.str(), 54), termDim(), summaryW, s.monoSmall ? s.monoSmall : s.mono);
     y += 20;
-    drawTextFit(pr.x + pad, y, mobileSelectionSummary(), termHigh(), summaryW, s.monoSmall ? s.monoSmall : s.mono);
+    drawTextFit(pr.x + pad, y, mobileSelectionSummary(world), termHigh(), summaryW, s.monoSmall ? s.monoSmall : s.mono);
     y += 20;
     if (s.mobileBuildType != E_NONE) {
         drawTextFit(pr.x + pad, y, std::string("Placing ") + STATS[s.mobileBuildType].name,
                     termAccent(), summaryW, s.monoSmall ? s.monoSmall : s.mono);
     } else if (g.mode == M_RALLY_SET || g.mode == M_ATTACK_MOVE || g.mode == M_BUILD_SELECT) {
         drawTextFit(pr.x + pad, y, modeName(g.mode), termAccent(), summaryW, s.monoSmall ? s.monoSmall : s.mono);
-    } else if (g.statusTimer > 0) {
-        drawTextFit(pr.x + pad, y, ">> " + g.statusMsg, termHigh(), summaryW, s.monoSmall ? s.monoSmall : s.mono);
+    } else if (ui.statusTimer > 0) {
+        drawTextFit(pr.x + pad, y, ">> " + ui.statusMsg, termHigh(), summaryW, s.monoSmall ? s.monoSmall : s.mono);
     }
 
-    drawAsciiMobileMiniMapText(mm);
-    for (const MobileButton& b : mobileHudButtons()) {
+    drawAsciiMobileMiniMapText(world, mm);
+    for (const MobileButton& b : mobileHudButtons(world)) {
         bool active = (b.id == "build" && g.mode == M_BUILD_SELECT)
                    || (b.id == "attack" && g.mode == M_ATTACK_MOVE)
                    || (b.id == "rally" && g.mode == M_RALLY_SET);
@@ -728,14 +732,14 @@ void drawAsciiMobileHud() {
     }
 }
 
-void drawAsciiMobileFrame(bool present) {
+void drawAsciiMobileFrame(const WorldIndex& world, bool present) {
     SDL_GetWindowSize(s.win, &s.winW, &s.winH);
     applyRendererOutputScale();
     s.isometric = false;
     setDraw(termBg());
     SDL_RenderClear(s.ren);
-    drawAsciiMobileMap();
-    drawAsciiMobileHud();
+    drawAsciiMobileMap(world);
+    drawAsciiMobileHud(world);
     drawAsciiMobileHelpOverlay();
     if (present) SDL_RenderPresent(s.ren);
 }

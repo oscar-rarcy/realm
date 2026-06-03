@@ -2,12 +2,6 @@
 #include "core/game_events.h"
 #include "core/world_index.h"
 
-void setStatus(const std::string& msg) { emitStatusEvent(-1, msg); }
-
-void addActionMarker(int x, int y, char glyph) {
-    emitActionMarkerEvent(-1, { x, y }, glyph);
-}
-
 void addPlayerFood(Game& game, int owner, int amount, Entity* depot) {
     if (owner < 0 || owner >= MAX_PLAYERS || amount <= 0) return;
     game.players[owner].food += amount;
@@ -74,38 +68,14 @@ Entity* corpseAt(Game& game, const WorldIndex& world, int x, int y) {
     return found;
 }
 
-void buildOccupancyGrid(const Game& game, OccupancyGrid& grid, bool includeUnits, bool includeBuildings, int ignoreEntityId) {
-    memset(grid.occupied, 0, sizeof(grid.occupied));
-    for (const auto& e : game.entities) {
-        if (!e.alive || e.state == S_GARRISONED || e.id == ignoreEntityId) continue;
-        bool building = isBuilding(e.type);
-        if ((building && !includeBuildings) || (!building && !includeUnits)) continue;
-        if (e.type == E_GATE && e.gateOpen && includeBuildings) continue;
-        const EntityStats& s = STATS[e.type];
-        int w = building ? s.sizeW : 1;
-        int h = building ? s.sizeH : 1;
-        for (int dy = 0; dy < h; dy++) for (int dx = 0; dx < w; dx++) {
-            int x = e.x + dx, y = e.y + dy;
-            if (inBounds(x, y)) grid.occupied[y][x] = true;
-        }
-    }
-}
-
-bool isOccupied(const OccupancyGrid& grid, int x, int y) {
-    return inBounds(x, y) && grid.occupied[y][x];
-}
-
 static bool isLandPassableFor(const Game& game, int x, int y) {
     if (!inBounds(x, y)) return false;
-    Terrain t = game.map[y][x].terrain;
-    return t != T_MOUNTAIN && t != T_WATER && t != T_STONE && t != T_CASTLE_WALL
-        && t != T_FISH && t != T_LAVA;
+    return terrainDef(game.map[y][x].terrain).passableLand;
 }
 
 static bool isWaterPassableFor(const Game& game, int x, int y) {
     if (!inBounds(x, y)) return false;
-    Terrain t = game.map[y][x].terrain;
-    return t == T_WATER || t == T_SHALLOWS || t == T_REEDS || t == T_FISH;
+    return terrainDef(game.map[y][x].terrain).passableWater;
 }
 
 bool canPlace(const Game& game, const WorldIndex& world, EntityType type, int x, int y, int owner) {
@@ -123,11 +93,7 @@ bool canPlace(const Game& game, const WorldIndex& world, EntityType type, int x,
     for (int dy = 0; dy < s.sizeH; dy++) for (int dx = 0; dx < s.sizeW; dx++) {
         int nx = x+dx, ny = y+dy;
         if (!inBounds(nx,ny) || !isLandPassableFor(game, nx, ny)) return false;
-        Terrain ter = game.map[ny][nx].terrain;
-        if (ter == T_GOLD) return false;
-        // Forests are resource terrain — chop the trees before you can build here.
-        if (ter==T_FOREST||ter==T_PINE||ter==T_PALM||ter==T_DEAD_TREE) return false;
-        if (ter==T_SHALLOWS||ter==T_MARSH||ter==T_REEDS||ter==T_ICE) return false;
+        if (!terrainDef(game.map[ny][nx].terrain).buildable) return false;
         if (isOccupied(world, { nx, ny }, OccupancyLayer::Any)) return false;
     }
     // Docks must sit on the shoreline — at least one neighbouring tile must be water.

@@ -90,9 +90,7 @@ bool writeSaveFile(const Game& game, const std::string& path) {
         os << "PROJECTILE " << p.x << ' ' << p.y << ' ' << p.tx << ' ' << p.ty << ' '
            << (int)p.glyph << ' ' << p.color << ' ' << p.life << ' ' << (p.alive ? 1 : 0) << "\n";
     }
-    os << "MARKERS " << game.actionMarkers.size() << "\n";
-    for (const ActionMarker& m : game.actionMarkers)
-        os << "MARKER " << m.x << ' ' << m.y << ' ' << m.ticks << ' ' << (int)m.glyph << "\n";
+    os << "MARKERS 0\n";
     os.flush();
     if (!os) return false;
     os.close();

@@ -44,11 +44,10 @@ AIWorldView buildAIWorldView(Game& game, const WorldIndex& world, int o, const A
     return view;
 }
 
-void tickAIForOwner(Game& game, int owner) {
-    const AITuning& tuning = defaultAITuning();
+void tickAIForOwner(Game& game, EventSink& events, int owner, const AITuning& tuning) {
     WorldIndex world = buildWorldIndex(game);
     AIWorldView view = buildAIWorldView(game, world, owner, tuning);
-    GameContext gameContext{ game, world, gameEvents() };
+    GameContext gameContext{ game, world, events };
     AIContext aiContext{ owner, gameContext, view, tuning, {}, {} };
 
     aiGather(aiContext);
@@ -62,12 +61,13 @@ void tickAIForOwner(Game& game, int owner) {
     executeAICommands(aiContext);
 }
 
-void tickAI(Game& game) {
+void tickAI(Game& game, EventSink& events) {
+    const AITuning& tuning = defaultAITuning();
     game.aiTimer++;
-    if (game.aiTimer < defaultAITuning().aiThinkIntervalTicks) return;
+    if (game.aiTimer < tuning.aiThinkIntervalTicks) return;
     game.aiTimer = 0;
     for (int o = 1; o < MAX_PLAYERS; o++) {
         if (!game.players[o].alive) continue;
-        tickAIForOwner(game, o);
+        tickAIForOwner(game, events, o, tuning);
     }
 }

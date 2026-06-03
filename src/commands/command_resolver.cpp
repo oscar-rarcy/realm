@@ -1,6 +1,10 @@
 #include "command.h"
-#include "realm.h"
+#include "core/entity_defs.h"
 #include "core/entity_query.h"
+#include "core/game_state_types.h"
+#include "core/order_service.h"
+#include "core/rng.h"
+#include "core/terrain_defs.h"
 #include "core/world_index.h"
 
 namespace {
@@ -70,8 +74,9 @@ Command typedContextCommand(const Game& game, const WorldIndex& world, PlayerId 
             return command;
         }
         Terrain terrain = game.map[target.y][target.x].terrain;
-        bool wood = terrain == T_FOREST || terrain == T_PINE || terrain == T_PALM || terrain == T_DEAD_TREE;
-        if ((terrain == T_GOLD || wood || terrain == T_BERRY) && game.map[target.y][target.x].resources > 0) {
+        if (terrainHasDirectGatherResource(terrain)
+            && !terrainMatchesResource(terrain, CR_FISH)
+            && game.map[target.y][target.x].resources > 0) {
             command.payload = GatherCommand{ selection, target };
             return command;
         }
@@ -84,7 +89,7 @@ Command typedContextCommand(const Game& game, const WorldIndex& world, PlayerId 
     }
     if (sel->type == E_FISHING_BOAT) {
         Terrain terrain = game.map[target.y][target.x].terrain;
-        command.payload = (terrain == T_FISH && game.map[target.y][target.x].resources > 0)
+        command.payload = (terrainMatchesResource(terrain, CR_FISH) && game.map[target.y][target.x].resources > 0)
             ? CommandPayload{ GatherCommand{ selection, target } }
             : CommandPayload{ MoveCommand{ selection, target } };
         return command;

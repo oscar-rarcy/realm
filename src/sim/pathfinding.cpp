@@ -1,10 +1,16 @@
 #include "realm.h"
+#include "core/world_index.h"
 
 std::vector<std::pair<int,int>> findPathFor(const Game& game, Entity& e, int tx, int ty) {
     return findPath(game, e.x, e.y, tx, ty, 300, isNaval(e.type));
 }
 
-std::vector<std::pair<int,int>> findPath(const Game& game, int sx, int sy, int tx, int ty, int /*maxSteps*/, bool naval) {
+std::vector<std::pair<int,int>> findPath(const Game& game, int sx, int sy, int tx, int ty, int maxSteps, bool naval) {
+    WorldIndex world = buildWorldIndex(game);
+    return findPath(game, world, sx, sy, tx, ty, maxSteps, naval);
+}
+
+std::vector<std::pair<int,int>> findPath(const Game& game, const WorldIndex& sourceWorld, int sx, int sy, int tx, int ty, int /*maxSteps*/, bool naval) {
     if (sx == tx && sy == ty) return {};
     auto pass = [&](int x, int y) { return naval ? isPassableWater(game,x,y) : isPassable(game,x,y); };
     // If target tile is blocked, retarget to its nearest passable neighbor.
@@ -18,9 +24,8 @@ std::vector<std::pair<int,int>> findPath(const Game& game, int sx, int sy, int t
         tx = bx; ty = by;
     }
 
-    OccupancyGrid blockers{};
-    buildOccupancyGrid(game, blockers, false, true);
-    blockers.occupied[ty][tx] = false; // always allow reaching the destination
+    WorldIndex world = sourceWorld;
+    world.buildingOccupancy.occupied[ty][tx] = false; // always allow reaching the destination
 
     static int  gScore[MAP_H][MAP_W];
     static int  visited[MAP_H][MAP_W];  // == vgen → discovered (g+parent valid)
@@ -64,13 +69,13 @@ std::vector<std::pair<int,int>> findPath(const Game& game, int sx, int sy, int t
             int nx = cx+dx8[i], ny = cy+dy8[i];
             if (!inBounds(nx,ny)) continue;
             if (closed[ny][nx] == vgen) continue;
-            if (!pass(nx,ny) || isOccupied(blockers, nx, ny)) continue;
+            if (!pass(nx,ny) || isOccupied(world, { nx, ny }, OccupancyLayer::Buildings)) continue;
             // Forbid corner-cutting between two blocked cardinals on a diagonal step.
             if (i & 1) {
                 int hx = cx+dx8[i], hy = cy;
                 int vx = cx,         vy = cy+dy8[i];
-                if (!pass(hx,hy) || isOccupied(blockers, hx, hy)) continue;
-                if (!pass(vx,vy) || isOccupied(blockers, vx, vy)) continue;
+                if (!pass(hx,hy) || isOccupied(world, { hx, hy }, OccupancyLayer::Buildings)) continue;
+                if (!pass(vx,vy) || isOccupied(world, { vx, vy }, OccupancyLayer::Buildings)) continue;
             }
             int ng = gc + cost8[i];
             if (visited[ny][nx] == vgen && ng >= gScore[ny][nx]) continue;

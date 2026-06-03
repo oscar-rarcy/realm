@@ -2,9 +2,8 @@
 #include "view_state.h"
 #include "input_keys.h"
 
-void renderUI() {
+void renderUI(const WorldIndex& world) {
     int maxY, maxX; getmaxyx(stdscr, maxY, maxX);
-    WorldIndex world = buildWorldIndex(g);
     Player& p = g.players[0]; int panelW = 24, panelX = maxX - panelW;
 
     // Top bar
@@ -411,9 +410,9 @@ void renderUI() {
     attroff(COLOR_PAIR(CP_UI_BAR));
 
     mvhline(botY1, 0, ' ', maxX);
-    if (g.statusTimer > 0) {
+    if (ui.statusTimer > 0) {
         attron(COLOR_PAIR(CP_UI_HIGH)|A_BOLD);
-        mvprintw(botY1, 1, ">> %s", g.statusMsg.c_str());
+        mvprintw(botY1, 1, ">> %s", ui.statusMsg.c_str());
         attroff(COLOR_PAIR(CP_UI_HIGH)|A_BOLD);
     }
     attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(botY1, maxX-12, "(%d,%d)", view.cursorX, view.cursorY); attroff(COLOR_PAIR(CP_UI_DIM));

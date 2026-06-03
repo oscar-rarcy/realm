@@ -1,10 +1,10 @@
 #include "tileset_assets.h"
 #include "realm.h"
+#include "render/entity_visual_defs.h"
 
 #include <png.h>
 
 #include <algorithm>
-#include <cctype>
 #include <cmath>
 #include <cstdio>
 #include <filesystem>
@@ -34,23 +34,6 @@ struct TextureRecord {
 };
 
 std::unordered_map<std::string, TextureRecord> gTextureCache;
-
-std::string lowerSlug(const std::string& text) {
-    std::string out;
-    bool lastUnderscore = false;
-    for (unsigned char raw : text) {
-        char ch = (char)std::tolower(raw);
-        if ((ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9')) {
-            out.push_back(ch);
-            lastUnderscore = false;
-        } else if (!lastUnderscore && !out.empty()) {
-            out.push_back('_');
-            lastUnderscore = true;
-        }
-    }
-    while (!out.empty() && out.back() == '_') out.pop_back();
-    return out.empty() ? "unknown" : out;
-}
 
 std::string frameName(int frameIndex, const char* suffix) {
     std::ostringstream ss;
@@ -196,9 +179,8 @@ TilesetAssetFrame copyFrame(const TextureRecord& record) {
 } // namespace
 
 std::string tilesetEntitySlug(EntityType type) {
-    if (type == E_PEASANT) return "peasant";
     if (type <= E_NONE || type > E_BOAR) return "unknown";
-    return lowerSlug(STATS[type].name ? STATS[type].name : "unknown");
+    return entityAssetSlug(type);
 }
 
 TilesetAssetFrame tilesetLoadEntityFrame(SDL_Renderer* renderer, const TilesetAssetRequest& request) {

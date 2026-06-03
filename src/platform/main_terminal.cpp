@@ -2,6 +2,7 @@
 #include "view_state.h"
 #include "env_config.h"
 #include "entity_animation.h"
+#include "core/game_events.h"
 #include "input_keys.h"
 
 #include <chrono>
@@ -133,7 +134,7 @@ int main(int argc, char** argv) {
     while (true) {
         int numAIs = showSplash();
         initGame(numAIs);
-        setStatus("Dawn breaks over the realm. Select peasants [Space] and gather [Enter]. [A]=select all military.");
+        emitUiStatusEvent(-1, "Dawn breaks over the realm. Select peasants [Space] and gather [Enter]. [A]=select all military.");
 
         auto nextTick = Clock::now() + Ms(TICK_MS);
         int lastCx = view.cursorX, lastCy = view.cursorY;
@@ -157,7 +158,8 @@ int main(int argc, char** argv) {
             if (Clock::now() >= nextTick) {
                 nextTick += Ms(TICK_MS);
                 if (g.mode != M_PAUSED && g.mode != M_GAME_OVER) {
-                    tickSimulationOnce(g, true);
+                    tickSimulationOnce(g, gameEvents(), true);
+                    tickUiState(ui);
                 }
                 render();
                 ticked = true;

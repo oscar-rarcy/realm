@@ -1,4 +1,6 @@
 #include "realm.h"
+#include "core/game_events.h"
+#include "core/order_service.h"
 #include "core/world_index.h"
 
 void moveAlongPath(Game& game, const WorldIndex& world, Entity& e) {
@@ -74,7 +76,7 @@ void moveAlongPath(Game& game, const WorldIndex& world, Entity& e) {
     }
 }
 
-bool findNearbyResource(Game& game, const WorldIndex& world, Entity& e) {
+bool findNearbyResource(Game& game, const WorldIndex& world, EventSink& events, Entity& e) {
     if (e.cargo.type == CR_NONE) return false;
     int bestD = 99999, bx = -1, by = -1;
     int r = FOG_RADIUS * 4;
@@ -89,7 +91,7 @@ bool findNearbyResource(Game& game, const WorldIndex& world, Entity& e) {
         if (d < bestD) { bestD = d; bx = nx; by = ny; }
     }
     if (bx >= 0) {
-        orderGather(game, world, e, bx, by);
+        startGather(game, world, events, e.owner, Selection{ e.id, { e.id } }, { bx, by });
         return true;
     }
     return false;

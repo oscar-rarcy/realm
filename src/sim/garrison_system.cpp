@@ -3,6 +3,14 @@
 #include "core/entity_query.h"
 #include "core/world_index.h"
 
+namespace {
+
+void emitStatus(EventSink& events, int player, const std::string& message, GameEventType type = GameEventType::StatusMessage) {
+    events.emit({ type, player, -1, { -1, -1 }, message, 0 });
+}
+
+} // namespace
+
 bool canGarrisonIn(EntityType bt) {
     return bt==E_TOWER || bt==E_TOWNHALL || bt==E_CASTLE || bt==E_HOUSE || bt==E_TRANSPORT;
 }
@@ -76,7 +84,7 @@ void ejectGarrison(Game& game, Entity& bld) {
 }
 
 // Centralized death handler: marks dead, ejects garrison, ruins terrain, updates supply.
-void killEntity(Game& game, Entity& t) {
+void killEntity(Game& game, EventSink& events, Entity& t) {
     if (!t.alive) return;
     int id = t.id;
     t.alive = false; t.state = S_DEAD; t.hp = 0; t.deathTicks = 0;
@@ -88,7 +96,7 @@ void killEntity(Game& game, Entity& t) {
         game.players[t.owner].food -= loss;
         t.storedFood = 0;
         if (loss > 0)
-            emitStatusEvent(t.owner, std::string("Mill destroyed! Lost ") + std::to_string(loss) + " food.", GameEventType::ResourcesChanged);
+            emitStatus(events, t.owner, std::string("Mill destroyed! Lost ") + std::to_string(loss) + " food.", GameEventType::ResourcesChanged);
     }
     // Anything that can hold a garrison (buildings + transports) drops its cargo on death.
     if (canGarrisonIn(t.type)) ejectGarrison(game, t);
@@ -107,53 +115,4 @@ void killEntity(Game& game, Entity& t) {
         }
     }
     updateSupply(game, t.owner);
-}
-
-void orderGarrison(Game& game, const WorldIndex& world, Entity& e, int buildingId) {
-    Entity* bld = findEntity(game, world, buildingId);
-    if (!bld || !bld->alive || bld->underConstruction) return;
-    if (bld->owner != e.owner) return;
-    if (!canGarrisonIn(bld->type)) return;
-    if (!isUnit(e.type) || isSiege(e.type)) return;
-    // Naval units can't board buildings or each other.
-    if (isNaval(e.type)) return;
-    if ((int)bld->garrison.size() >= garrisonCap(bld->type)) {
-        if (e.owner == 0) emitStatusEvent(e.owner, std::string(STATS[bld->type].name) + " is full", GameEventType::CommandRejected);
-        return;
-    }
-    e.state = S_ENTERING; e.targetId = buildingId;
-    e.targetX = bld->x; e.targetY = bld->y;
-    e.stuckTicks = 0;
-    int bw = STATS[bld->type].sizeW, bh = STATS[bld->type].sizeH;
-    int bestAX = bld->x-1, bestAY = bld->y, bestAD = 99999;
-    for (int dy = -1; dy <= bh; dy++) for (int dx = -1; dx <= bw; dx++) {
-        if (dx>=0 && dx<bw && dy>=0 && dy<bh) continue;
-        int nx = bld->x+dx, ny = bld->y+dy;
-        if (inBounds(nx,ny) && isPassable(game,nx,ny)) {
-            int d = mdist(e.x, e.y, nx, ny);
-            if (d < bestAD) { bestAD = d; bestAX = nx; bestAY = ny; }
-        }
-    }
-    e.path = findPath(game, e.x, e.y, bestAX, bestAY, 300, isNaval(e.type)); e.pathIdx = 0;
-}
-
-void orderHelp(Game& game, const WorldIndex& world, Entity& e, int buildingId) {
-    if (!canBuild(e.type)) return;
-    Entity* bld = findEntity(game, world, buildingId);
-    if (!bld || !bld->alive) return;
-    // Allow tending a completed farm; otherwise only work on buildings under construction
-    if (!bld->underConstruction && bld->type != E_FARM) return;
-    e.state = S_BUILDING; e.targetId = buildingId;
-    e.targetX = bld->x; e.targetY = bld->y;
-    int bldW = STATS[bld->type].sizeW, bldH = STATS[bld->type].sizeH;
-    int bestAX = bld->x-1, bestAY = bld->y, bestAD = 99999;
-    for (int dy = -1; dy <= bldH; dy++) for (int dx = -1; dx <= bldW; dx++) {
-        if (dx>=0 && dx<bldW && dy>=0 && dy<bldH) continue;
-        int nx = bld->x+dx, ny = bld->y+dy;
-        if (inBounds(nx,ny) && isPassable(game,nx,ny)) {
-            int d = mdist(e.x, e.y, nx, ny);
-            if (d < bestAD) { bestAD = d; bestAX = nx; bestAY = ny; }
-        }
-    }
-    e.path = findPath(game, e.x, e.y, bestAX, bestAY, 300, isNaval(e.type)); e.pathIdx = 0;
 }

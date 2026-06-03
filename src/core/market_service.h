@@ -9,6 +9,7 @@
 struct WorldIndex;
 struct Entity;
 struct Game;
+class EventSink;
 
 enum class TradeResource { Gold, Wood, Food };
 
@@ -39,8 +40,5 @@ struct CanTradeResult {
 
 CanTradeResult canTrade(const Game& game, int player, const Entity& market, MarketTradeType type);
 
-// Validates and, on success, moves resources for the trade. Emits a status
-// message for the human player (owner 0). Returns true when the trade happened.
-bool executeTrade(Game& game, int player, int marketId, MarketTradeType type);
-ServiceResult executeTradeService(Game& game, int player, int marketId, MarketTradeType type);
-ServiceResult executeTradeService(Game& game, const WorldIndex& world, int player, int marketId, MarketTradeType type);
+// Validates and, on success, moves resources for the trade.
+ServiceResult executeTradeService(Game& game, const WorldIndex& world, EventSink& events, int player, int marketId, MarketTradeType type);

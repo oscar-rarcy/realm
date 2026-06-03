@@ -15,6 +15,10 @@ static const MarketTradeDef DEFS[] = {
 
 static const int DEF_COUNT = (int)(sizeof(DEFS) / sizeof(DEFS[0]));
 
+static void emitStatus(EventSink& events, int player, const std::string& message, GameEventType type = GameEventType::StatusMessage) {
+    events.emit({ type, player, -1, { -1, -1 }, message, 0 });
+}
+
 const MarketTradeDef* marketTradeDefs(int& count) {
     count = DEF_COUNT;
     return DEFS;
@@ -54,22 +58,12 @@ CanTradeResult canTrade(const Game& game, int player, const Entity& market, Mark
     return {true, nullptr};
 }
 
-bool executeTrade(Game& game, int player, int marketId, MarketTradeType type) {
-    return executeTradeService(game, player, marketId, type).ok;
-}
-
-ServiceResult executeTradeService(Game& game, int player, int marketId, MarketTradeType type) {
-    WorldIndex world = buildWorldIndex(game);
-    return executeTradeService(game, world, player, marketId, type);
-}
-
-ServiceResult executeTradeService(Game& game, const WorldIndex& world, int player, int marketId, MarketTradeType type) {
+ServiceResult executeTradeService(Game& game, const WorldIndex& world, EventSink& events, int player, int marketId, MarketTradeType type) {
     Entity* market = findEntity(game, world, marketId);
     if (!market) return { false, "Market not found." };
 
     CanTradeResult result = canTrade(game, player, *market, type);
     if (!result.ok) {
-        emitStatusEvent(player, result.reason, GameEventType::CommandRejected);
         return { false, result.reason };
     }
 
@@ -77,6 +71,6 @@ ServiceResult executeTradeService(Game& game, const WorldIndex& world, int playe
     Player& p = game.players[player];
     addResource(p, def->from, -def->fromAmount);
     addResource(p, def->to, def->toAmount);
-    emitStatusEvent(player, def->successMessage);
+    emitStatus(events, player, def->successMessage);
     return { true, nullptr };
 }

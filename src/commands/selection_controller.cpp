@@ -1,7 +1,11 @@
 #include "command.h"
-#include "realm.h"
 #include "view_state.h"
+#include "core/entity_defs.h"
+#include "core/entity_query.h"
 #include "core/game_events.h"
+#include "core/game_state_types.h"
+#include "core/rng.h"
+#include "core/world_index.h"
 
 #include <algorithm>
 
@@ -13,6 +17,10 @@ bool validIssuer(PlayerId issuer) {
 
 bool validControlSlot(int slot) {
     return slot >= 0 && slot < 9;
+}
+
+void emitStatus(EventSink& events, int player, const std::string& message, GameEventType type = GameEventType::StatusMessage) {
+    events.emit({ type, player, -1, { -1, -1 }, message, 0 });
 }
 
 std::vector<int>& controlGroupSlot(Game& game, PlayerId issuer, int slot) {
@@ -30,13 +38,13 @@ Selection currentSelection(const Game& game) {
     return selection;
 }
 
-void selectAtTile(Game& game, const WorldIndex& world, PlayerId issuer, int x, int y) {
+void selectAtTile(Game& game, const WorldIndex& world, EventSink& events, PlayerId issuer, int x, int y) {
     if (!inBounds(x, y)) return;
     Entity* ent = entityAtOwner(game, world, x, y, issuer);
     if (ent) {
         game.selectedId = ent->id;
         game.selectedIds.clear();
-        emitStatusEvent(issuer, std::string("Selected: ") + STATS[ent->type].name);
+        emitStatus(events, issuer, std::string("Selected: ") + STATS[ent->type].name);
         return;
     }
     Entity* any = entityAt(game, world, x, y);
@@ -44,19 +52,14 @@ void selectAtTile(Game& game, const WorldIndex& world, PlayerId issuer, int x, i
     if (any && any->alive && visible) {
         game.selectedId = any->id;
         game.selectedIds.clear();
-        emitStatusEvent(issuer, std::string(any->owner==OWNER_NATURE ? "Animal: " : "Enemy ") + STATS[any->type].name);
+        emitStatus(events, issuer, std::string(any->owner==OWNER_NATURE ? "Animal: " : "Enemy ") + STATS[any->type].name);
     } else {
         game.selectedId = -1;
         game.selectedIds.clear();
     }
 }
 
-void selectAtTile(Game& game, int x, int y) {
-    WorldIndex world = buildWorldIndex(game);
-    selectAtTile(game, world, 0, x, y);
-}
-
-void boxSelect(Game& game, const WorldIndex& world, PlayerId issuer, int x0, int y0, int x1, int y1) {
+void boxSelect(Game& game, const WorldIndex& world, EventSink& events, PlayerId issuer, int x0, int y0, int x1, int y1) {
     x0 = std::max(0, std::min(x0, MAP_W-1));
     x1 = std::max(0, std::min(x1, MAP_W-1));
     y0 = std::max(0, std::min(y0, MAP_H-1));
@@ -76,19 +79,10 @@ void boxSelect(Game& game, const WorldIndex& world, PlayerId issuer, int x0, int
         }
     }
     if (!game.selectedIds.empty())
-        emitStatusEvent(issuer, std::to_string(game.selectedIds.size()) + " units selected");
+        emitStatus(events, issuer, std::to_string(game.selectedIds.size()) + " units selected");
 }
 
-void boxSelect(Game& game, PlayerId issuer, int x0, int y0, int x1, int y1) {
-    WorldIndex world = buildWorldIndex(game);
-    boxSelect(game, world, issuer, x0, y0, x1, y1);
-}
-
-void boxSelect(Game& game, int x0, int y0, int x1, int y1) {
-    boxSelect(game, 0, x0, y0, x1, y1);
-}
-
-void selectAllOfTypeInView(Game& game, const WorldIndex& world, PlayerId issuer, int x, int y) {
+void selectAllOfTypeInView(Game& game, const WorldIndex& world, EventSink& events, PlayerId issuer, int x, int y) {
     if (!inBounds(x, y)) return;
     Entity* ent = entityAtOwner(game, world, x, y, issuer);
     if (!ent || !isUnit(ent->type)) return;
@@ -106,12 +100,7 @@ void selectAllOfTypeInView(Game& game, const WorldIndex& world, PlayerId issuer,
         }
     }
     if (!game.selectedIds.empty())
-        emitStatusEvent(issuer, std::to_string(game.selectedIds.size()) + " " + STATS[t].name + "s selected");
-}
-
-void selectAllOfTypeInView(Game& game, int x, int y) {
-    WorldIndex world = buildWorldIndex(game);
-    selectAllOfTypeInView(game, world, 0, x, y);
+        emitStatus(events, issuer, std::to_string(game.selectedIds.size()) + " " + STATS[t].name + "s selected");
 }
 
 Entity* selectNextIdleWorker(Game& game, const WorldIndex& world, PlayerId issuer, EntityId afterId) {

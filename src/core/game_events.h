@@ -6,6 +6,7 @@
 #include <vector>
 
 struct Game;
+struct UiState;
 
 enum class GameEventType {
     StatusMessage,
@@ -43,7 +44,6 @@ public:
 
 EventSink& gameEvents();
 std::vector<GameEvent> drainGameEvents();
-void flushGameEventsToUi(Game& game, int viewerPlayer = 0);
+void flushGameEventsToUi(UiState& uiState, int viewerPlayer = 0);
 void emitGameEvent(const GameEvent& event);
-void emitStatusEvent(int player, const std::string& message, GameEventType type = GameEventType::StatusMessage);
-void emitActionMarkerEvent(int player, MapPos tile, char glyph);
+void emitUiStatusEvent(int player, const std::string& message, GameEventType type = GameEventType::StatusMessage);

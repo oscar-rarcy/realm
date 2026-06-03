@@ -54,6 +54,15 @@ Entity* aiBldg(AIContext& context, EntityType t) {
     return nullptr;
 }
 
+bool aiCanAffordEntity(AIContext& context, EntityType type) {
+    if (!validAiOwner(context.owner)) return false;
+    const Player& player = context.ctx.game.players[context.owner];
+    const EntityStats& stats = STATS[type];
+    return player.gold >= stats.costGold
+        && player.wood >= stats.costWood
+        && player.food >= stats.costFood;
+}
+
 // Worker selection for AI construction. Prefers idle peasants; if none exist,
 // pulls one off gathering/returning so the AI doesn't deadlock at 10/10
 // population because aiGather() consumed every idle worker before the build

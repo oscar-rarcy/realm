@@ -7,6 +7,7 @@
 #include <vector>
 
 struct Entity;
+class EventSink;
 struct Game;
 struct WorldIndex;
 
@@ -107,6 +108,7 @@ void aiGather(AIContext& context);
 int aiCount(AIContext& context, EntityType type);
 int aiCountAll(AIContext& context, EntityType type);
 Entity* aiBldg(AIContext& context, EntityType type);
+bool aiCanAffordEntity(AIContext& context, EntityType type);
 void aiBuildSpotNear(AIContext& context, EntityType type, int cx, int cy, int& ox, int& oy);
 void aiBuildSpot(AIContext& context, EntityType type, int& ox, int& oy);
 void aiBuildSpotWide(AIContext& context, EntityType type, int& ox, int& oy);
@@ -123,7 +125,7 @@ void runAIFoodEconomy(AIContext& context);
 void runAINaval(AIContext& context);
 void runAIExpansion(AIContext& context);
 void runAIAttackAndDefense(AIContext& context);
-void tickAIForOwner(Game& game, int owner);
+void tickAIForOwner(Game& game, EventSink& events, int owner, const AITuning& tuning);
 
 void aiIssueBuild(AIContext& context, Entity& builder, EntityType buildingType, int x, int y);
 void aiIssueTrain(AIContext& context, Entity& producer, EntityType unitType);

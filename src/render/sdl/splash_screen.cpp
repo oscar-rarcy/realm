@@ -1,5 +1,6 @@
 #include "render/sdl/sdl_splash.h"
 #include "realm.h"
+#include "core/game_events.h"
 
 bool saveRendererPixels(const std::string& path) {
     SDL_Surface* surface = SDL_CreateRGBSurfaceWithFormat(0, s.winW, s.winH, 32, SDL_PIXELFORMAT_ARGB8888);
@@ -32,7 +33,7 @@ void drawHelpOverlay() {
     int x = r.x + 18, y = r.y + 16;
     drawText(x, y, "Help", rgb(255,235,145)); y += 28;
     int n = 0;
-    const CommandBinding* commands = gameplayCommands(n);
+    const CommandHelpBinding* commands = gameplayHelpBindings(n);
     for (int i = 0; i < n && y < r.y + r.h - 96; i++) {
         std::ostringstream line;
         line << commands[i].keys << "  " << commands[i].label << " - " << commands[i].help;
@@ -203,7 +204,7 @@ int applySplashChoice(int ch, int& numAIs, int& biomeIdx) {
     }
     if (ch == 'q' || ch == 'Q' || ch == 'x' || ch == 'X') {
 #if defined(REALM_WEB)
-        setStatus("Close the browser tab to exit.");
+        emitUiStatusEvent(-1, "Close the browser tab to exit.");
         return 0;
 #else
         return -1;

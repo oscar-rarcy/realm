@@ -1,5 +1,7 @@
 #include "commands/input_mode_controller.h"
-#include "realm.h"
+#include "core/entity_defs.h"
+#include "core/game_state_types.h"
+#include "core/production_service.h"
 
 void setInputMode(Game& game, GameMode mode) {
     game.mode = mode;
@@ -48,8 +50,7 @@ bool selectedPeasantCanBuild(const Game& game, PlayerId issuer) {
 bool selectedProducerCanTrain(const Game& game, PlayerId issuer) {
     const Entity* entity = selectedEntity(game);
     if (!entity || !entity->alive || entity->owner != issuer || entity->underConstruction) return false;
-    return entity->type == E_TOWNHALL || entity->type == E_BARRACKS || entity->type == E_STABLE
-        || entity->type == E_DOCK || entity->type == E_CASTLE;
+    return productionRule(entity->type) != nullptr;
 }
 
 std::optional<EntityType> selectedTrainProducerType(const Game& game, PlayerId issuer) {
@@ -89,8 +90,7 @@ InputUtilityMode utilityModeForSelectedBuilding(const Game& game, PlayerId issue
     }
     if (entity->type == E_MARKET) return InputUtilityMode::MarketTrade;
     if (entity->type == E_BLACKSMITH) return InputUtilityMode::Research;
-    if (entity->type == E_TOWNHALL || entity->type == E_CASTLE || entity->type == E_BARRACKS
-            || entity->type == E_STABLE || entity->type == E_DOCK) {
+    if (productionRule(entity->type)) {
         return InputUtilityMode::Rally;
     }
     return InputUtilityMode::None;

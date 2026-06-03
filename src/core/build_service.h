@@ -6,23 +6,24 @@
 
 struct Entity;
 struct Game;
+class EventSink;
 
 struct CanStartBuildResult {
     bool ok;
     const char* reason; // non-null human-readable reason when !ok
 };
 
-CanStartBuildResult canStartBuild(const Game& game, int player, const Entity& builder,
-                                  EntityType buildingType, MapPos tile);
+struct BuildRule {
+    char menuHotkey;
+    EntityType buildingType;
+};
+
+const BuildRule* buildRules(int& count);
+const BuildRule* buildRule(EntityType buildingType);
+
 CanStartBuildResult canStartBuild(const Game& game, const WorldIndex& world, int player,
                                   const Entity& builder, EntityType buildingType, MapPos tile);
 
-bool startBuild(Game& game, int player, int builderId, EntityType buildingType, MapPos tile);
-bool startBuild(Game& game, WorldIndex& world, int player, int builderId, EntityType buildingType, MapPos tile);
-ServiceResult startBuildService(Game& game, WorldIndex& world, int player, int builderId, EntityType buildingType, MapPos tile);
-bool startBuildLine(Game& game, int player, int builderId, EntityType buildingType,
-                    MapPos start, MapPos end);
-bool startBuildLine(Game& game, WorldIndex& world, int player, int builderId, EntityType buildingType,
-                    MapPos start, MapPos end);
-ServiceResult startBuildLineService(Game& game, WorldIndex& world, int player, int builderId, EntityType buildingType,
+ServiceResult startBuildService(Game& game, WorldIndex& world, EventSink& events, int player, int builderId, EntityType buildingType, MapPos tile);
+ServiceResult startBuildLineService(Game& game, WorldIndex& world, EventSink& events, int player, int builderId, EntityType buildingType,
                                     MapPos start, MapPos end);

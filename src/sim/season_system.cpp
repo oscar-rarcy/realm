@@ -1,7 +1,15 @@
 #include "realm.h"
 #include "core/game_events.h"
 
-static void applyWinter(Game& game) {
+namespace {
+
+void emitStatus(EventSink& events, int player, const std::string& message, GameEventType type = GameEventType::StatusMessage) {
+    events.emit({ type, player, -1, { -1, -1 }, message, 0 });
+}
+
+} // namespace
+
+static void applyWinter(Game& game, EventSink& events) {
     for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
         Tile& t = game.map[y][x];
         t.preWinterTerrain = t.terrain;
@@ -25,20 +33,20 @@ static void applyWinter(Game& game) {
     for (auto& e : game.entities) {
         if (!e.alive || e.owner != OWNER_NATURE) continue;
         if (e.type != E_DEER && e.type != E_SHEEP && e.type != E_BOAR) continue;
-        if (realmRand(game) % 100 < 35) killEntity(game, e);
+        if (realmRand(game) % 100 < 35) killEntity(game, events, e);
     }
-    if (game.players[0].alive) emitStatusEvent(0, "Winter falls. The land freezes over.");
+    if (game.players[0].alive) emitStatus(events, 0, "Winter falls. The land freezes over.");
 }
 
-void tickSeasons(Game& game) {
+void tickSeasons(Game& game, EventSink& events) {
     if (game.attackNotifyCd > 0) game.attackNotifyCd--;
     int s = (int)getSeason(game);
     if (s != game.prevSeason) {
-        if (s == WINTER) applyWinter(game);
-        else if (s == SUMMER && game.players[0].alive) emitStatusEvent(0, "Summer crowns the fields in gold.");
-        else if (s == AUTUMN && game.players[0].alive) emitStatusEvent(0, "Autumn reddens the woods.");
+        if (s == WINTER) applyWinter(game, events);
+        else if (s == SUMMER && game.players[0].alive) emitStatus(events, 0, "Summer crowns the fields in gold.");
+        else if (s == AUTUMN && game.players[0].alive) emitStatus(events, 0, "Autumn reddens the woods.");
         if (s == SPRING && game.prevSeason == WINTER && game.players[0].alive)
-            emitStatusEvent(0, "Spring stirs. The thaw begins.");
+            emitStatus(events, 0, "Spring stirs. The thaw begins.");
         game.prevSeason = s;
     }
     int phase = 0;
@@ -47,9 +55,9 @@ void tickSeasons(Game& game) {
     else if (isDawn(game)) phase = 3;
     if (phase != game.prevTimePhase) {
         if (game.players[0].alive) {
-            if (phase == 1) emitStatusEvent(0, "Evening gathers over the realm.");
-            else if (phase == 2) emitStatusEvent(0, "Night settles. Torches flicker.");
-            else if (phase == 3) emitStatusEvent(0, "Dawn breaks over the realm.");
+            if (phase == 1) emitStatus(events, 0, "Evening gathers over the realm.");
+            else if (phase == 2) emitStatus(events, 0, "Night settles. Torches flicker.");
+            else if (phase == 3) emitStatus(events, 0, "Dawn breaks over the realm.");
         }
         game.prevTimePhase = phase;
     }
@@ -71,7 +79,7 @@ void tickThaw(Game& game) {
     }
 }
 
-void tickWinter(Game& game) {
+void tickWinter(Game& game, EventSink& events) {
     if (getSeason(game) != WINTER) return;
     if (game.tick % 100 != 0) return;
     for (int p = 0; p < MAX_PLAYERS; p++) {
@@ -94,10 +102,10 @@ void tickWinter(Game& game) {
             for (auto& e : game.entities) {
                 if (!e.alive || e.owner != p || !isUnit(e.type)) continue;
                 e.hp -= 3;
-                if (e.hp <= 0) killEntity(game, e);
+                if (e.hp <= 0) killEntity(game, events, e);
                 if (++hits >= starve) break;
             }
-            emitStatusEvent(p, "Starvation! Units are losing health.");
+            emitStatus(events, p, "Starvation! Units are losing health.");
         }
     }
 }

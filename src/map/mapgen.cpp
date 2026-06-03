@@ -4,21 +4,21 @@
 #include <queue>
 #include <utility>
 
-static float noiseGrid[32][32];
-
-static void initNoise(Game& game) {
+MapNoise initMapNoise(Game& game) {
+    MapNoise noise;
     for (int y = 0; y < 32; y++)
         for (int x = 0; x < 32; x++)
-            noiseGrid[y][x] = (float)(realmRand(game) % 1000) / 1000.0f;
+            noise.samples[y][x] = (float)(realmRand(game) % 1000) / 1000.0f;
+    return noise;
 }
 
 static float lerp(float a, float b, float t) { return a + t * (b - a); }
 
-float sampleNoise(float fx, float fy) {
+float sampleNoise(const MapNoise& noise, float fx, float fy) {
     int x0 = (int)fx % 31, y0 = (int)fy % 31, x1 = x0 + 1, y1 = y0 + 1;
     float tx = fx - (int)fx, ty = fy - (int)fy;
-    return lerp(lerp(noiseGrid[y0][x0], noiseGrid[y0][x1], tx),
-                lerp(noiseGrid[y1][x0], noiseGrid[y1][x1], tx), ty);
+    return lerp(lerp(noise.samples[y0][x0], noise.samples[y0][x1], tx),
+                lerp(noise.samples[y1][x0], noise.samples[y1][x1], tx), ty);
 }
 
 void clearStartArea(Game& game, int cx, int cy, int radius) {
@@ -68,15 +68,11 @@ static float edist(int x1, int y1, int x2, int y2) {
 
 static bool mapLandPassable(const Game& game, int x, int y) {
     if (!inBounds(x, y)) return false;
-    Terrain t = game.map[y][x].terrain;
-    return t != T_MOUNTAIN && t != T_WATER && t != T_STONE && t != T_CASTLE_WALL
-        && t != T_FISH && t != T_LAVA;
+    return terrainDef(game.map[y][x].terrain).passableLand;
 }
 
 static bool validStartingFoundationTerrain(Terrain terrain) {
-    return terrain != T_MOUNTAIN && terrain != T_WATER && terrain != T_SHALLOWS
-        && terrain != T_STONE && terrain != T_CASTLE_WALL && terrain != T_FISH
-        && terrain != T_LAVA && terrain != T_GOLD;
+    return terrainDef(terrain).buildable;
 }
 
 static bool hasReachableStartingResources(const Game& game, int sx, int sy) {
@@ -112,7 +108,7 @@ static bool hasReachableStartingResources(const Game& game, int sx, int sy) {
 static bool hasViableDockShoreline(const Game& game) {
     for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
         Terrain water = game.map[y][x].terrain;
-        if (water != T_WATER && water != T_SHALLOWS && water != T_FISH) continue;
+        if (!terrainDef(water).passableWater) continue;
         for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
             if (dx == 0 && dy == 0) continue;
             int nx = x + dx, ny = y + dy;
@@ -144,7 +140,7 @@ bool validateMapInvariants(const Game& game, std::string* error) {
     int waterishTiles = 0;
     for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
         Terrain terrain = game.map[y][x].terrain;
-        if (terrain == T_WATER || terrain == T_SHALLOWS || terrain == T_FISH) waterishTiles++;
+        if (terrainDef(terrain).passableWater) waterishTiles++;
     }
     if (waterishTiles > (MAP_W * MAP_H) / 4 && !hasViableDockShoreline(game))
         return fail("ocean map has no viable dock shoreline");
@@ -164,7 +160,7 @@ bool validateMapInvariants(const Game& game, std::string* error) {
     return true;
 }
 
-static void generateContinentMap(Game& game) {
+static void generateContinentMap(Game& game, const MapNoise& noise) {
     int n = 2 + (realmRand(game) % 2);
     std::vector<std::pair<int,int>> seeds;
     auto jitter = [&game](int v, int amt) { return v + (realmRand(game) % (2*amt + 1)) - amt; };
@@ -184,7 +180,7 @@ static void generateContinentMap(Game& game) {
             float d = edist(x, y, s.first, s.second);
             if (d < minD) minD = d;
         }
-        float wobble = sampleNoise(x*0.07f, y*0.07f) * 18.0f - 4.0f;
+        float wobble = sampleNoise(noise, x*0.07f, y*0.07f) * 18.0f - 4.0f;
         float adjD = minD + wobble;
 
         Biome b; Terrain t;
@@ -272,10 +268,6 @@ static void generateContinentMap(Game& game) {
         game.map[y][x].preWinterTerrain = game.map[y][x].terrain;
 }
 
-MapGenerationConfig currentMapGenerationConfig() {
-    return currentMapGenerationConfig(g);
-}
-
 MapGenerationConfig currentMapGenerationConfig(const Game& game) {
     return { game.biomeChoice };
 }
@@ -284,17 +276,17 @@ void generateMap(Game& game, const MapGenerationConfig& config) {
     game.biomeChoice = (config.biomeChoice >= -1 && config.biomeChoice <= B_OCEAN)
         ? config.biomeChoice
         : -1;
-    initNoise(game);
+    const MapNoise noise = initMapNoise(game);
     if (game.biomeChoice == B_OCEAN) {
-        generateContinentMap(game);
+        generateContinentMap(game, noise);
     } else {
-        assignBiomesAndPaintBaseTerrain(game);
-        addMountains(game);
+        assignBiomesAndPaintBaseTerrain(game, noise);
+        addMountains(game, noise);
         addWater(game);
         addFish(game);
         addGold(game);
         addStone(game);
-        addRoads(game);
+        addRoads(game, noise);
         addPointsOfInterest(game);
         addFoodPatches(game);
         snapshotPreWinterTerrain(game);

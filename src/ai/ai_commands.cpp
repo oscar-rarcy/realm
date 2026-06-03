@@ -94,27 +94,17 @@ void aiIssueToggleTrebuchetPacked(AIContext& context, Entity& trebuchet) {
     aiQueue(context, std::move(command));
 }
 
-static void countRejected(AIContext& context, CommandType type) {
-    switch (type) {
-        case CommandType::Build:
-        case CommandType::BuildLine:
-            context.rejectedBuildCommands++;
-            break;
-        case CommandType::Train:
-            context.rejectedTrainCommands++;
-            break;
-        case CommandType::Research:
-            context.rejectedResearchCommands++;
-            break;
-        case CommandType::Gather:
-            context.rejectedGatherCommands++;
-            break;
-        case CommandType::Attack:
-        case CommandType::AttackMove:
-            context.rejectedAttackCommands++;
-            break;
-        default:
-            break;
+static void countRejected(AIContext& context, const Command& command) {
+    if (commandHasPayload<BuildCommand>(command) || commandHasPayload<BuildLineCommand>(command)) {
+        context.rejectedBuildCommands++;
+    } else if (commandHasPayload<TrainCommand>(command)) {
+        context.rejectedTrainCommands++;
+    } else if (commandHasPayload<ResearchCommand>(command)) {
+        context.rejectedResearchCommands++;
+    } else if (commandHasPayload<GatherCommand>(command)) {
+        context.rejectedGatherCommands++;
+    } else if (commandHasPayload<AttackCommand>(command) || commandHasPayload<AttackMoveCommand>(command)) {
+        context.rejectedAttackCommands++;
     }
 }
 
@@ -131,10 +121,10 @@ void executeAICommands(AIContext& context) {
             continue;
         }
         context.rejectedCommands.push_back({ command, result });
-        countRejected(context, command.type());
+        countRejected(context, command);
         if (context.ctx.game.diagnostics) {
             std::cerr << "realm: ai command rejected owner=" << context.owner
-                      << " type=" << (int)command.type()
+                      << " type=" << commandPayloadName(command)
                       << " tick=" << context.ctx.game.tick
                       << " reason=\"" << result.reason << "\"\n";
         }

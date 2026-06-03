@@ -1,6 +1,7 @@
 #include "display.h"
 #include "realm.h"
 #include "input_keys.h"
+#include "render/entity_visual_defs.h"
 #include <cstring>
 #include <cstdint>
 
@@ -8,96 +9,6 @@
 // GLOBAL STATE
 // ============================================================
 DisplayMode displayMode = DM_ASCII;
-
-// ============================================================
-// EMOJI MAPPING — ENTITY TYPES
-//
-// Every EntityType must have an entry.  All glyphs verified to
-// be exactly one terminal column wide (see glyphIsWidth1 below).
-//
-// Theme: chess pieces for military/civic units; geometric shapes
-// for buildings; arrows/triangles for animals.
-//
-// Chess pieces used (all in U+2654-U+265F, width-1):
-//   ♟ U+265F  black pawn   — Peasant  (common labourer)
-//   ♙ U+2659  white pawn   — Militia  (basic infantry)
-//   ♝ U+2657  white bishop — Archer   (long-diagonal range)
-//   ♞ U+265E  black knight — Knight   (cavalry, black = heavy)
-//   ♘ U+2658  white knight — Stable   (horse symbol)
-//   ♖ U+2656  white rook   — Town Hall (main keep)
-//   ♚ U+265A  black king   — Castle   (ultimate fortress)
-//
-// Geometric / Math symbols (all BMP, width-1):
-//   □ ■ ▦ ▣ △ ▽ ▲ ▷ ◁ ◌ ● ○ ◆ ◇ ∪ ∩ §  ✚
-// ============================================================
-static const char* ENTITY_EMOJI[] = {
-    // E_NONE
-    " ",
-    // E_PEASANT   — common labourer: black chess pawn
-    "\xe2\x99\x9f",   // ♟ U+265F
-    // E_MILITIA   — basic soldier: white chess pawn
-    "\xe2\x99\x99",   // ♙ U+2659
-    // E_ARCHER    — ranged unit: white chess bishop
-    "\xe2\x99\x97",   // ♝ U+2657
-    // E_KNIGHT    — heavy cavalry: black chess knight
-    "\xe2\x99\x9e",   // ♞ U+265E
-    // E_SPEARMAN  — infantry counter: white up-pointing triangle
-    "\xe2\x96\xb3",   // △ U+25B3
-    // E_CATAPULT  — body glyph (arm chars handled separately in render)
-    "\xe2\x8a\x99",   // ⊙ U+2299  CIRCLED DOT OPERATOR = catapult wheel
-    // E_TREBUCHET — heavier siege arm
-    "\xe2\x8c\x90",   // ⌐ U+2310
-    // E_FISHING_BOAT — hull shape: union ∪
-    "\xe2\x88\xaa",   // ∪ U+222A
-    // E_WARSHIP   — solid prow: black down-pointing triangle
-    "\xe2\x96\xbc",   // ▼ U+25BC
-    // E_TRANSPORT — open vessel: white down-pointing triangle
-    "\xe2\x96\xbd",   // ▽ U+25BD
-    // E_RAM       — body glyph (arm chars handled separately in render)
-    "\xe2\x96\xac",   // ▬ U+25AC  BLACK RECTANGLE = ram body
-    // E_TOWNHALL  — main keep: white chess rook
-    "\xe2\x99\x96",   // ♖ U+2656
-    // E_HOUSE     — small building: white square
-    "\xe2\x96\xa1",   // □ U+25A1
-    // E_BARRACKS  — military building: cross-hatched square
-    "\xe2\x96\xa6",   // ▦ U+25A6
-    // E_STABLE    — horses: white chess knight
-    "\xe2\x99\x98",   // ♘ U+2658
-    // E_TOWER     — watchtower: square-in-square
-    "\xe2\x96\xa3",   // ▣ U+25A3
-    // E_FARM      — field: section sign (same look as wheat terrain)
-    "\xc2\xa7",       // § U+00A7
-    // E_BLACKSMITH — forge: white up-pointing triangle
-    "\xe2\x96\xb3",   // △ U+25B3
-    // E_CHURCH    — cross: heavy greek cross
-    "\xe2\x9c\x9a",   // ✚ U+271A
-    // E_MARKET    — wealth: black diamond
-    "\xe2\x97\x86",   // ◆ U+25C6
-    // E_WALL      — fortification: black square (solid block)
-    "\xe2\x96\xa0",   // ■ U+25A0
-    // E_GATE      — state-dependent; render.cpp picks open/closed symbol
-    "\xe2\x96\xac",   // ▬ U+25AC  (placeholder; overridden by gate state)
-    // E_CASTLE    — ultimate fortress: black chess king
-    "\xe2\x99\x9a",   // ♚ U+265A
-    // E_LUMBER_CAMP — trees/timber: black club suit
-    "\xe2\x99\xa3",   // ♣ U+2663
-    // E_MINING_CAMP — ore: white diamond (hollow, to differ from Market ◆)
-    "\xe2\x97\x87",   // ◇ U+25C7
-    // E_MILL      — millstone: white circle
-    "\xe2\x97\x8b",   // ○ U+25CB
-    // E_DOCK      — harbour entrance: intersection ∩
-    "\xe2\x88\xa9",   // ∩ U+2229
-    // E_DEER      — grazing prey: right-pointing triangle
-    "\xe2\x96\xb7",   // ▷ U+25B7
-    // E_WOLF      — predator: left-pointing triangle (stalking)
-    "\xe2\x97\x81",   // ◁ U+25C1
-    // E_SHEEP     — passive flock: dotted circle (fluffy)
-    "\xe2\x97\x8c",   // ◌ U+25CC
-    // E_BOAR      — heavy beast: black circle (solid, heavy)
-    "\xe2\x97\x8f",   // ● U+25CF
-};
-static_assert(sizeof(ENTITY_EMOJI)/sizeof(ENTITY_EMOJI[0]) == 32,
-    "ENTITY_EMOJI must have an entry for every EntityType (0..E_BOAR)");
 
 // ============================================================
 // EMOJI MAPPING — RAW CHARS
@@ -202,10 +113,7 @@ const char* getEntityEmoji(int etype) {
         bufs[i][1] = '\0';
         return bufs[i];
     }
-    // Bounds check: unknown types fall back to a neutral symbol.
-    if (etype < 0 || etype >= (int)(sizeof(ENTITY_EMOJI)/sizeof(ENTITY_EMOJI[0])))
-        return "?";
-    return ENTITY_EMOJI[etype];
+    return entityTerminalEmoji((EntityType)etype);
 }
 
 // ============================================================

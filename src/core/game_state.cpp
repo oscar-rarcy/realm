@@ -24,8 +24,3 @@ int spawnEntity(Game& game, EntityType type, int owner, int x, int y, bool built
     updateSupply(game, owner);
     return e.id;
 }
-void tickActionMarkers(Game& game) {
-    for (auto& m : game.actionMarkers) if (m.ticks > 0) m.ticks--;
-    game.actionMarkers.erase(std::remove_if(game.actionMarkers.begin(), game.actionMarkers.end(),
-        [](const ActionMarker& m){ return m.ticks <= 0; }), game.actionMarkers.end());
-}

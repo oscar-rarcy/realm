@@ -2,24 +2,24 @@
 
 #include "render/sdl/sdl_map.h"
 
-std::vector<MobileButton> mobileHudButtons();
-bool mobileHasSelectedWorker();
-bool mobileHasSelectedMilitary();
+std::vector<MobileButton> mobileHudButtons(const WorldIndex& world);
+bool mobileHasSelectedWorker(const WorldIndex& world);
+bool mobileHasSelectedMilitary(const WorldIndex& world);
 bool isTrainProducer(EntityType t);
 std::string trainPromptFor(const Entity* sel);
 std::vector<std::pair<std::string, int>> trainOptionTokensFor(EntityType t);
 std::vector<std::pair<std::string, int>> terminalBuildTokens();
-std::string mobileSelectionSummary();
+std::string mobileSelectionSummary(const WorldIndex& world);
 EntityType mobileDefaultTrainType(EntityType producer);
-void drawMobileHud();
+void drawMobileHud(const WorldIndex& world);
 void drawTopBar();
-void drawMiniMap(int x, int y, int w, int h);
+void drawMiniMap(const WorldIndex& world, int x, int y, int w, int h);
 void mobileDrawResources(int x, int y, int w);
 void drawButton(const MobileButton& b, bool active = false, bool danger = false);
 void drawConsoleButton(const MobileButton& b, bool active = false, bool danger = false);
 void addGridButtons(std::vector<MobileButton>& out, int x, int y, int w,
                     const std::vector<std::pair<std::string, std::string>>& items,
                     int cols = 3);
-void drawPanel();
-void drawBottom();
+void drawPanel(const WorldIndex& world);
+void drawBottom(const WorldIndex& world);
 bool devCaptureEnabled();

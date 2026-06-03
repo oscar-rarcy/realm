@@ -4,9 +4,8 @@
 #include "core/game_events.h"
 #include "core/world_index.h"
 
-CanResearchResult canResearch(const Game& game, int player, const Entity& building, ResearchId id) {
-    WorldIndex world = buildWorldIndex(game);
-    return canResearch(game, world, player, building, id);
+static void emitStatus(EventSink& events, int player, const std::string& message, GameEventType type = GameEventType::StatusMessage) {
+    events.emit({ type, player, -1, { -1, -1 }, message, 0 });
 }
 
 CanResearchResult canResearch(const Game& game, const WorldIndex& world, int player, const Entity& building, ResearchId id) {
@@ -40,22 +39,12 @@ CanResearchResult canResearch(const Game& game, const WorldIndex& world, int pla
     return {true, nullptr};
 }
 
-bool startResearch(Game& game, int player, int buildingId, ResearchId id) {
-    return startResearchService(game, player, buildingId, id).ok;
-}
-
-ServiceResult startResearchService(Game& game, int player, int buildingId, ResearchId id) {
-    WorldIndex world = buildWorldIndex(game);
-    return startResearchService(game, world, player, buildingId, id);
-}
-
-ServiceResult startResearchService(Game& game, const WorldIndex& world, int player, int buildingId, ResearchId id) {
+ServiceResult startResearchService(Game& game, const WorldIndex& world, EventSink& events, int player, int buildingId, ResearchId id) {
     Entity* building = findEntity(game, world, buildingId);
     if (!building) return { false, "Research building not found." };
 
     CanResearchResult result = canResearch(game, world, player, *building, id);
     if (!result.ok) {
-        emitStatusEvent(player, result.reason, GameEventType::CommandRejected);
         return { false, result.reason };
     }
 
@@ -66,6 +55,6 @@ ServiceResult startResearchService(Game& game, const WorldIndex& world, int play
     building->researching = def->bit;
     building->researchProgress = 0;
     building->researchTime = def->ticks;
-    emitStatusEvent(player, def->startMessage, GameEventType::ResearchStarted);
+    emitStatus(events, player, def->startMessage, GameEventType::ResearchStarted);
     return { true, nullptr };
 }

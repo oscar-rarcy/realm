@@ -252,51 +252,51 @@ void getTerrainVisual(Terrain t, int x, int y, char& ch, int& cp) {
     float bright  = getBrightness(g);
     bool  night   = bright < 0.3f;
     Biome biome   = g.map[y][x].biome;
+    ch = terrainAsciiGlyph(t);
 
     switch (t) {
-    case T_GRASS:        ch='.'; cp=CP_GRASS;       break;
-    case T_TALL_GRASS:   ch='"'; cp=CP_TALL_GRASS;  break;
+    case T_GRASS:        cp=CP_GRASS;       break;
+    case T_TALL_GRASS:   cp=CP_TALL_GRASS;  break;
     case T_FLOWERS: {
-        ch='*';
         static const int fcp[] = {CP_FLOWERS, CP_FLOWERS_BLUE, CP_FLOWERS_YELLOW, CP_FLOWERS_RED};
         cp = fcp[((unsigned)(x*7+y*13)^(unsigned)(x*3+y)) % 4];
         break;
     }
-    case T_MEADOW:       ch=','; cp=CP_MEADOW;      break;
-    case T_FOREST:       ch='T'; cp=CP_FOREST;      break;
-    case T_PINE:         ch='Y'; cp=CP_PINE;        break;
-    case T_PALM:         ch='y'; cp=CP_PALM;        break;
-    case T_DEAD_TREE:    ch='t'; cp=CP_DEAD_TREE;   break;
-    case T_MOUNTAIN:     ch='^'; cp=CP_MOUNTAIN;    break;
-    case T_HILLS:        ch='n'; cp=CP_HILLS;       break;
-    case T_STONE:        ch='o'; cp=CP_STONE;       break;
-    case T_WATER:        ch='~'; cp=CP_WATER;       break;
-    case T_SHALLOWS:     ch='~'; cp=CP_SHALLOWS;    break;
-    case T_MARSH:        ch='='; cp=CP_MARSH;       break;
-    case T_REEDS:        ch='|'; cp=CP_REEDS;       break;
-    case T_GOLD:         ch='$'; cp=CP_GOLD;        break;
-    case T_SAND:         ch='.'; cp=CP_SAND;        break;
-    case T_DUNES:        ch='~'; cp=CP_DUNES;       break;
-    case T_SNOW:         ch='.'; cp=CP_SNOW_GROUND; break;
-    case T_ICE:          ch='='; cp=CP_ICE;         break;
-    case T_DIRT:         ch='.'; cp=CP_DIRT;        break;
-    case T_ROAD:         ch='#'; cp=CP_ROAD;        break;
-    case T_MUD:          ch=','; cp=CP_DIRT;        break;
-    case T_WHEAT:        ch='%'; cp=CP_WHEAT;       break;
-    case T_BERRY:        ch=':'; cp=CP_BERRY;       break;
-    case T_FISH:         ch=(g.tick%30<15)?'~':'"'; cp=CP_SHALLOWS; break;
-    case T_RUINS:        ch='&'; cp=CP_RUINS;       break;
-    case T_GRAVEL:       ch=':'; cp=CP_GRAVEL;      break;
+    case T_MEADOW:       cp=CP_MEADOW;      break;
+    case T_FOREST:       cp=CP_FOREST;      break;
+    case T_PINE:         cp=CP_PINE;        break;
+    case T_PALM:         cp=CP_PALM;        break;
+    case T_DEAD_TREE:    cp=CP_DEAD_TREE;   break;
+    case T_MOUNTAIN:     cp=CP_MOUNTAIN;    break;
+    case T_HILLS:        cp=CP_HILLS;       break;
+    case T_STONE:        cp=CP_STONE;       break;
+    case T_WATER:        cp=CP_WATER;       break;
+    case T_SHALLOWS:     cp=CP_SHALLOWS;    break;
+    case T_MARSH:        cp=CP_MARSH;       break;
+    case T_REEDS:        cp=CP_REEDS;       break;
+    case T_GOLD:         cp=CP_GOLD;        break;
+    case T_SAND:         cp=CP_SAND;        break;
+    case T_DUNES:        cp=CP_DUNES;       break;
+    case T_SNOW:         cp=CP_SNOW_GROUND; break;
+    case T_ICE:          cp=CP_ICE;         break;
+    case T_DIRT:         cp=CP_DIRT;        break;
+    case T_ROAD:         cp=CP_ROAD;        break;
+    case T_MUD:          cp=CP_DIRT;        break;
+    case T_WHEAT:        cp=CP_WHEAT;       break;
+    case T_BERRY:        cp=CP_BERRY;       break;
+    case T_FISH:         ch=(g.tick%30<15)?terrainAsciiGlyph(t):'"'; cp=CP_SHALLOWS; break;
+    case T_RUINS:        cp=CP_RUINS;       break;
+    case T_GRAVEL:       cp=CP_GRAVEL;      break;
     case T_LAVA: {
         int frame = (g.tick/4 + x*3 + y*5) % 6;
         ch = (frame < 2) ? '~' : (frame < 4) ? '=' : '*';
         cp = (frame == 1 || frame == 4) ? CP_LAVA_HOT : CP_LAVA;
         break;
     }
-    case T_ASH:          ch='.'; cp=CP_ASH;         break;
-    case T_CASTLE_WALL:  ch='#'; cp=CP_CASTLE_WALL; break;
-    case T_CASTLE_FLOOR: ch='.'; cp=CP_CASTLE_FLOOR;break;
-    case T_CASTLE_GATE:  ch='='; cp=CP_CASTLE_GATE; break;
+    case T_ASH:          cp=CP_ASH;         break;
+    case T_CASTLE_WALL:  cp=CP_CASTLE_WALL; break;
+    case T_CASTLE_FLOOR: cp=CP_CASTLE_FLOOR;break;
+    case T_CASTLE_GATE:  cp=CP_CASTLE_GATE; break;
     case TERRAIN_COUNT:  ch='?'; cp=CP_GRASS;       break;
     }
 

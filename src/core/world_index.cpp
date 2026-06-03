@@ -3,6 +3,7 @@
 
 #include <cstring>
 
+#ifdef REALM_ENABLE_WORLD_INDEX_STATS
 static int g_worldIndexBuildCount = 0;
 
 void resetWorldIndexBuildCount() {
@@ -12,6 +13,7 @@ void resetWorldIndexBuildCount() {
 int worldIndexBuildCount() {
     return g_worldIndexBuildCount;
 }
+#endif
 
 static void indexResourceTile(WorldIndex& world, const Tile& tile, int x, int y) {
     if (tile.resources <= 0) return;
@@ -35,7 +37,9 @@ static void indexEntityTile(WorldIndex& world, const Entity& entity, bool buildi
 }
 
 WorldIndex buildWorldIndex(const Game& game) {
+#ifdef REALM_ENABLE_WORLD_INDEX_STATS
     g_worldIndexBuildCount++;
+#endif
     WorldIndex world;
     std::memset(world.unitOccupancy.occupied, 0, sizeof(world.unitOccupancy.occupied));
     std::memset(world.buildingOccupancy.occupied, 0, sizeof(world.buildingOccupancy.occupied));

@@ -1,5 +1,6 @@
 #include "render/sdl/sdl_splash.h"
 #include "realm.h"
+#include "core/world_index.h"
 #include "view_state.h"
 
 namespace {
@@ -700,16 +701,17 @@ void drawLabPreview(const LabState& lab, SDL_Rect area, TilesetAssetFrame& asset
         SDL_RenderDrawRect(s.ren, &empty);
     }
 
-    Entity* ent = sdlEntityAt(LAB_X, LAB_Y);
+    WorldIndex world = buildWorldIndex(g);
+    Entity* ent = renderEntityAt(g, world, LAB_X, LAB_Y);
     if (lab.previewMode != 0 && ent) {
         int spriteSize = 128;
         SDL_Rect dst{cx - spriteSize / 2, cy - spriteSize / 2 - 18, spriteSize, spriteSize};
         SDL_Color team = hueColor(lab.hue);
         Color mod = applyVisionToGlyph(rgb(255,255,255), LAB_X, LAB_Y);
-        if (!drawEntityImageTile(*ent, dst, mod, labActionId(lab), directionId(lab.direction),
+        if (!drawEntityImageTile(g, world, *ent, dst, mod, labActionId(lab), directionId(lab.direction),
                                  lab.frame, team, &assetFrame)) {
             bool usesSymbolFont = false;
-            drawCentered(tilesetEntityVisual(*ent, usesSymbolFont), dst, rgb(255,255,255),
+            drawCentered(tilesetEntityVisual(g, world, *ent, usesSymbolFont), dst, rgb(255,255,255),
                          usesSymbolFont, usesSymbolFont);
         }
     } else if (lab.previewMode == 1) {
@@ -795,7 +797,8 @@ void drawLabFrame(const LabState& lab, bool present) {
     ry += 38;
 
     drawLabLine(rx, ry, "ASCII Cell", rgb(255,230,135));
-    TerminalCell cell = terminalMapCell(LAB_X, LAB_Y);
+    WorldIndex world = buildWorldIndex(g);
+    TerminalCell cell = terminalMapCell(world, LAB_X, LAB_Y);
     std::string glyph(1, cell.ch);
     drawLabLine(rx, ry, "glyph: " + glyph);
     drawLabLine(rx, ry, "fg rgb: " + std::to_string(cell.fg.r) + "," + std::to_string(cell.fg.g) + "," + std::to_string(cell.fg.b));

@@ -1,5 +1,6 @@
 #include "render/sdl/sdl_capture.h"
 #include "realm.h"
+#include "core/game_events.h"
 #include "view_state.h"
 
 std::string captureTimestamp() {
@@ -26,7 +27,7 @@ void captureIssueBundle() {
     if (ec) dir = fs::path("captures") / ("realm-issue-" + captureTimestamp());
     fs::create_directories(dir, ec);
     if (ec) {
-        setStatus("Issue capture failed.");
+        emitUiStatusEvent(-1, "Issue capture failed.");
         std::cerr << "realm: issue capture mkdir failed " << dir.string()
                   << " error=" << ec.message() << "\n";
         return;
@@ -57,11 +58,11 @@ void captureIssueBundle() {
 
     int clip = SDL_SetClipboardText(dir.string().c_str());
     if (saved && shot && clip == 0) {
-        setStatus("Issue capture saved; path copied.");
+        emitUiStatusEvent(-1, "Issue capture saved; path copied.");
     } else if (saved || shot) {
-        setStatus("Issue capture partial; see log.");
+        emitUiStatusEvent(-1, "Issue capture partial; see log.");
     } else {
-        setStatus("Issue capture failed.");
+        emitUiStatusEvent(-1, "Issue capture failed.");
     }
 
     std::cerr << "realm: issue capture dir=" << dir.string()

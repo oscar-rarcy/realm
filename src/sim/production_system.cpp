@@ -1,9 +1,18 @@
 #include "realm.h"
 #include "core/game_events.h"
 #include "core/entity_query.h"
+#include "core/order_service.h"
 #include "core/world_index.h"
 
-void tickProduction(Game& game, Entity& e) {
+namespace {
+
+void emitStatus(EventSink& events, int player, const std::string& message, GameEventType type = GameEventType::StatusMessage) {
+    events.emit({ type, player, -1, { -1, -1 }, message, 0 });
+}
+
+} // namespace
+
+void tickProduction(Game& game, EventSink& events, Entity& e) {
     if (e.producing != E_NONE && !e.underConstruction) {
         int bonus = 0;
         for (auto& o : game.entities)
@@ -34,10 +43,10 @@ void tickProduction(Game& game, Entity& e) {
                 if (e.rallySet && newId >= 0) {
                     WorldIndex updatedWorld = buildWorldIndex(game);
                     Entity* nu = findEntity(game, updatedWorld, newId);
-                    if (nu) orderMove(game, *nu, e.rallyX, e.rallyY);
+                    if (nu) startMove(game, updatedWorld, events, nu->owner, Selection{ nu->id, { nu->id } }, { e.rallyX, e.rallyY });
                 }
                 e.producing = E_NONE; e.trainProgress = 0; e.trainTime = 0; e.state = S_IDLE;
-                emitStatusEvent(e.owner, std::string(STATS[completed].name) + " is ready.", GameEventType::EntitySpawned);
+                emitStatus(events, e.owner, std::string(STATS[completed].name) + " is ready.", GameEventType::EntitySpawned);
                 // Pop the next queued unit straight into production.
                 if (!e.queue.empty()) {
                     EntityType next = (EntityType)e.queue.front();
@@ -50,18 +59,18 @@ void tickProduction(Game& game, Entity& e) {
     }
 }
 
-void tickResearch(Game& game, Entity& e) {
+void tickResearch(Game& game, EventSink& events, Entity& e) {
     if (e.researching != 0 && !e.underConstruction) {
         e.researchProgress += 1;
         if (e.researchProgress >= e.researchTime) {
             game.players[e.owner].research |= e.researching;
             int bit = e.researching;
             e.researching = 0; e.researchProgress = 0; e.researchTime = 0;
-            if (bit == R_IRON_WEAPONS) emitStatusEvent(e.owner, "Iron Weapons researched - militia/knights +2 atk!", GameEventType::ResearchCompleted);
-            else if (bit == R_CROSSBOWS) emitStatusEvent(e.owner, "Crossbows researched - archers +2 range!", GameEventType::ResearchCompleted);
-            else if (bit == R_PIKES) emitStatusEvent(e.owner, "Pikes researched - spearmen +1 range!", GameEventType::ResearchCompleted);
-            else if (bit == R_COUNTERWEIGHT) emitStatusEvent(e.owner, "Counterweight researched - trebuchets deploy faster!", GameEventType::ResearchCompleted);
-            else if (bit == R_PLATE_HELM) emitStatusEvent(e.owner, "Plate Helm researched - knights take less melee damage!", GameEventType::ResearchCompleted);
+            if (bit == R_IRON_WEAPONS) emitStatus(events, e.owner, "Iron Weapons researched - militia/knights +2 atk!", GameEventType::ResearchCompleted);
+            else if (bit == R_CROSSBOWS) emitStatus(events, e.owner, "Crossbows researched - archers +2 range!", GameEventType::ResearchCompleted);
+            else if (bit == R_PIKES) emitStatus(events, e.owner, "Pikes researched - spearmen +1 range!", GameEventType::ResearchCompleted);
+            else if (bit == R_COUNTERWEIGHT) emitStatus(events, e.owner, "Counterweight researched - trebuchets deploy faster!", GameEventType::ResearchCompleted);
+            else if (bit == R_PLATE_HELM) emitStatus(events, e.owner, "Plate Helm researched - knights take less melee damage!", GameEventType::ResearchCompleted);
         }
     }
 }

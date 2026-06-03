@@ -5,16 +5,51 @@
 #include <cstdlib>
 #include <vector>
 
-CanStartBuildResult canStartBuild(const Game& game, int player, const Entity& builder,
-                                  EntityType buildingType, MapPos tile) {
-    WorldIndex world = buildWorldIndex(game);
-    return canStartBuild(game, world, player, builder, buildingType, tile);
+static const BuildRule BUILD_RULES[] = {
+    {'\0', E_TOWNHALL},
+    {'h', E_HOUSE},
+    {'b', E_BARRACKS},
+    {'s', E_STABLE},
+    {'t', E_TOWER},
+    {'f', E_FARM},
+    {'w', E_WALL},
+    {'a', E_BLACKSMITH},
+    {'c', E_CHURCH},
+    {'m', E_MARKET},
+    {'k', E_CASTLE},
+    {'l', E_LUMBER_CAMP},
+    {'n', E_MINING_CAMP},
+    {'i', E_MILL},
+    {'g', E_GATE},
+    {'d', E_DOCK},
+};
+
+static const int BUILD_RULE_COUNT = (int)(sizeof(BUILD_RULES) / sizeof(BUILD_RULES[0]));
+
+static void emitActionMarker(EventSink& events, int player, MapPos tile, char glyph) {
+    events.emit({ GameEventType::ActionMarker, player, -1, tile, "", glyph });
+}
+
+static void emitStatus(EventSink& events, int player, const std::string& message, GameEventType type = GameEventType::StatusMessage) {
+    events.emit({ type, player, -1, { -1, -1 }, message, 0 });
+}
+
+const BuildRule* buildRules(int& count) {
+    count = BUILD_RULE_COUNT;
+    return BUILD_RULES;
+}
+
+const BuildRule* buildRule(EntityType buildingType) {
+    for (int i = 0; i < BUILD_RULE_COUNT; i++)
+        if (BUILD_RULES[i].buildingType == buildingType) return &BUILD_RULES[i];
+    return nullptr;
 }
 
 CanStartBuildResult canStartBuild(const Game& game, const WorldIndex& world, int player,
                                   const Entity& builder, EntityType buildingType, MapPos tile) {
     if (!builder.alive || !canBuild(builder.type)) return { false, "Cannot build." };
     if (builder.owner != player) return { false, "Not your builder." };
+    if (!buildRule(buildingType)) return { false, "Unknown building type." };
 
     const Player& p = game.players[player];
     if (p.gold < STATS[buildingType].costGold || p.wood < STATS[buildingType].costWood)
@@ -39,23 +74,13 @@ static void pathBuilderToFootprint(const Game& game, Entity& builder, EntityType
     builder.pathIdx = 0;
 }
 
-bool startBuild(Game& game, int player, int builderId, EntityType buildingType, MapPos tile) {
-    WorldIndex world = buildWorldIndex(game);
-    return startBuild(game, world, player, builderId, buildingType, tile);
-}
-
-bool startBuild(Game& game, WorldIndex& world, int player, int builderId, EntityType buildingType, MapPos tile) {
-    return startBuildService(game, world, player, builderId, buildingType, tile).ok;
-}
-
-ServiceResult startBuildService(Game& game, WorldIndex& world, int player, int builderId, EntityType buildingType, MapPos tile) {
+ServiceResult startBuildService(Game& game, WorldIndex& world, EventSink& events, int player, int builderId, EntityType buildingType, MapPos tile) {
     if (!inBounds(tile.x, tile.y)) return { false, "Build target is out of bounds." };
     Entity* builder = findEntity(game, world, builderId);
     if (!builder) return { false, "Builder not found." };
 
     CanStartBuildResult result = canStartBuild(game, world, player, *builder, buildingType, tile);
     if (!result.ok) {
-        emitStatusEvent(player, result.reason, GameEventType::CommandRejected);
         return { false, result.reason };
     }
 
@@ -63,9 +88,11 @@ ServiceResult startBuildService(Game& game, WorldIndex& world, int player, int b
     p.gold -= STATS[buildingType].costGold;
     p.wood -= STATS[buildingType].costWood;
     int bid = spawnEntity(game, buildingType, player, tile.x, tile.y, false);
-    emitActionMarkerEvent(player, tile, '#');
-    emitGameEvent({ GameEventType::BuildingPlaced, player, bid, tile, "", 0 });
+    emitActionMarker(events, player, tile, '#');
+    events.emit({ GameEventType::BuildingPlaced, player, bid, tile, "", 0 });
     world = buildWorldIndex(game);
+    builder = findEntity(game, world, builderId);
+    if (!builder) return { false, "Builder not found." };
     builder->state = S_BUILDING;
     builder->targetId = bid;
     builder->targetX = tile.x;
@@ -74,23 +101,13 @@ ServiceResult startBuildService(Game& game, WorldIndex& world, int player, int b
     return { true, nullptr };
 }
 
-bool startBuildLine(Game& game, int player, int builderId, EntityType buildingType,
-                    MapPos start, MapPos end) {
-    WorldIndex world = buildWorldIndex(game);
-    return startBuildLine(game, world, player, builderId, buildingType, start, end);
-}
-
-bool startBuildLine(Game& game, WorldIndex& world, int player, int builderId, EntityType buildingType,
-                    MapPos start, MapPos end) {
-    return startBuildLineService(game, world, player, builderId, buildingType, start, end).ok;
-}
-
-ServiceResult startBuildLineService(Game& game, WorldIndex& world, int player, int builderId, EntityType buildingType,
+ServiceResult startBuildLineService(Game& game, WorldIndex& world, EventSink& events, int player, int builderId, EntityType buildingType,
                                     MapPos start, MapPos end) {
     Entity* builder = findEntity(game, world, builderId);
     if (!builder) return { false, "Builder not found." };
     if (!builder->alive || !canBuild(builder->type)) return { false, "Cannot build." };
     if (builder->owner != player) return { false, "Not your builder." };
+    if (!buildRule(buildingType)) return { false, "Unknown building type." };
 
     std::vector<MapPos> tiles;
     int cx = start.x, cy = start.y;
@@ -106,7 +123,6 @@ ServiceResult startBuildLineService(Game& game, WorldIndex& world, int player, i
     }
 
     if (tiles.empty()) {
-        emitStatusEvent(player, "Can't build there!", GameEventType::CommandRejected);
         return { false, "Can't build there!" };
     }
 
@@ -114,7 +130,6 @@ ServiceResult startBuildLineService(Game& game, WorldIndex& world, int player, i
     int totalWood = (int)tiles.size() * STATS[buildingType].costWood;
     Player& p = game.players[player];
     if (p.gold < totalGold || p.wood < totalWood) {
-        emitStatusEvent(player, "Not enough resources!", GameEventType::CommandRejected);
         return { false, "Not enough resources!" };
     }
 
@@ -136,8 +151,8 @@ ServiceResult startBuildLineService(Game& game, WorldIndex& world, int player, i
             builder->targetY = first->y;
             pathBuilderToFootprint(game, *builder, buildingType, { first->x, first->y });
         }
-        emitActionMarkerEvent(player, start, '#');
-        emitStatusEvent(player, "Building walls...", GameEventType::BuildingPlaced);
+        emitActionMarker(events, player, start, '#');
+        emitStatus(events, player, "Building walls...", GameEventType::BuildingPlaced);
     }
     return { true, nullptr };
 }

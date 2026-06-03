@@ -11,14 +11,18 @@ static const EntityType CASTLE_UNITS[] = { E_PEASANT, E_TREBUCHET };
 static const EntityType DOCK_UNITS[] = { E_FISHING_BOAT, E_WARSHIP, E_TRANSPORT };
 
 static const ProductionRule RULES[] = {
-    { E_TOWNHALL, TOWN_HALL_UNITS, (int)(sizeof(TOWN_HALL_UNITS) / sizeof(TOWN_HALL_UNITS[0])), 5 },
-    { E_BARRACKS, BARRACKS_UNITS, (int)(sizeof(BARRACKS_UNITS) / sizeof(BARRACKS_UNITS[0])), 5 },
-    { E_STABLE, STABLE_UNITS, (int)(sizeof(STABLE_UNITS) / sizeof(STABLE_UNITS[0])), 5 },
-    { E_CASTLE, CASTLE_UNITS, (int)(sizeof(CASTLE_UNITS) / sizeof(CASTLE_UNITS[0])), 5 },
-    { E_DOCK, DOCK_UNITS, (int)(sizeof(DOCK_UNITS) / sizeof(DOCK_UNITS[0])), 5 },
+    { E_TOWNHALL, TOWN_HALL_UNITS, (int)(sizeof(TOWN_HALL_UNITS) / sizeof(TOWN_HALL_UNITS[0])), "p", 5 },
+    { E_BARRACKS, BARRACKS_UNITS, (int)(sizeof(BARRACKS_UNITS) / sizeof(BARRACKS_UNITS[0])), "mascr", 5 },
+    { E_STABLE, STABLE_UNITS, (int)(sizeof(STABLE_UNITS) / sizeof(STABLE_UNITS[0])), "k", 5 },
+    { E_CASTLE, CASTLE_UNITS, (int)(sizeof(CASTLE_UNITS) / sizeof(CASTLE_UNITS[0])), "pt", 5 },
+    { E_DOCK, DOCK_UNITS, (int)(sizeof(DOCK_UNITS) / sizeof(DOCK_UNITS[0])), "bwt", 5 },
 };
 
 static const int RULE_COUNT = (int)(sizeof(RULES) / sizeof(RULES[0]));
+
+static void emitStatus(EventSink& events, int player, const std::string& message, GameEventType type = GameEventType::StatusMessage) {
+    events.emit({ type, player, -1, { -1, -1 }, message, 0 });
+}
 
 const ProductionRule* productionRules(int& count) {
     count = RULE_COUNT;
@@ -58,22 +62,12 @@ CanTrainResult canTrain(const Game& game, int player, const Entity& producer, En
     return { true, nullptr };
 }
 
-bool startTraining(Game& game, int player, int producerId, EntityType unitType) {
-    return startTrainingService(game, player, producerId, unitType).ok;
-}
-
-ServiceResult startTrainingService(Game& game, int player, int producerId, EntityType unitType) {
-    WorldIndex world = buildWorldIndex(game);
-    return startTrainingService(game, world, player, producerId, unitType);
-}
-
-ServiceResult startTrainingService(Game& game, const WorldIndex& world, int player, int producerId, EntityType unitType) {
+ServiceResult startTrainingService(Game& game, const WorldIndex& world, EventSink& events, int player, int producerId, EntityType unitType) {
     Entity* producer = findEntity(game, world, producerId);
     if (!producer) return { false, "Producer not found." };
 
     CanTrainResult result = canTrain(game, player, *producer, unitType);
     if (!result.ok) {
-        emitStatusEvent(player, result.reason, GameEventType::CommandRejected);
         return { false, result.reason };
     }
 
@@ -88,10 +82,10 @@ ServiceResult startTrainingService(Game& game, const WorldIndex& world, int play
         producer->trainProgress = 0;
         producer->trainTime = stats.trainTime;
         producer->state = S_TRAINING;
-        emitGameEvent({ GameEventType::TrainingStarted, player, producer->id, { -1, -1 }, "", 0 });
+        events.emit({ GameEventType::TrainingStarted, player, producer->id, { -1, -1 }, "", 0 });
     } else {
         producer->queue.push_back((int)unitType);
-        emitStatusEvent(player, "Queued.", GameEventType::TrainingQueued);
+        emitStatus(events, player, "Queued.", GameEventType::TrainingQueued);
     }
     return { true, nullptr };
 }

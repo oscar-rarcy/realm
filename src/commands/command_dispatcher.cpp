@@ -1,8 +1,10 @@
 #include "command.h"
-#include "realm.h"
 #include "core/build_service.h"
+#include "core/entity_query.h"
+#include "core/game_state_types.h"
 #include "core/order_service.h"
 #include "core/production_service.h"
+#include "core/rng.h"
 #include "core/research_service.h"
 #include "core/market_service.h"
 #include "sim/save_service.h"
@@ -66,6 +68,24 @@ static CommandResult serviceResult(GameContext& context, PlayerId issuer, Servic
     return result.ok ? accepted(context, issuer) : rejected(context, issuer, result.reason ? result.reason : fallback);
 }
 
+template <typename ServiceFn>
+static CommandResult capturedOrderResult(GameContext& context, PlayerId issuer, ServiceFn&& serviceFn) {
+    CapturingEventSink capture(context.events);
+    ServiceResult result = serviceFn(capture);
+    CommandResult out = orderResult(context, issuer, result);
+    out.events.insert(out.events.begin(), capture.events.begin(), capture.events.end());
+    return out;
+}
+
+template <typename ServiceFn>
+static CommandResult capturedServiceResult(GameContext& context, PlayerId issuer, ServiceFn&& serviceFn, const char* fallback) {
+    CapturingEventSink capture(context.events);
+    ServiceResult result = serviceFn(capture);
+    CommandResult out = serviceResult(context, issuer, result, fallback);
+    out.events.insert(out.events.begin(), capture.events.begin(), capture.events.end());
+    return out;
+}
+
 static Entity* selectedEntity(GameContext& context, const Selection& selection) {
     return entityById(context.game, context.world, selection.primaryId);
 }
@@ -85,7 +105,7 @@ CommandResult dispatchCommand(GameContext& context, const Command& command) {
         [&](const ContextCommand& payload) -> CommandResult {
             if (!inBounds(payload.target.x, payload.target.y)) return rejected(context, issuer, "Target is out of bounds.");
             Command typed = resolveContextCommand(game, context.world, issuer, payload.selection, payload.target);
-            if (typed.type() != CommandType::None && typed.type() != CommandType::Context) {
+            if (!commandIsEmpty(typed) && !commandIsContext(typed)) {
                 typed.issuer = issuer;
                 return dispatchCommand(context, typed);
             }
@@ -93,87 +113,113 @@ CommandResult dispatchCommand(GameContext& context, const Command& command) {
         },
         [&](const SelectCommand& payload) -> CommandResult {
             if (!inBounds(payload.target.x, payload.target.y)) return rejected(context, issuer, "Selection target is out of bounds.");
-            selectAtTile(game, context.world, issuer, payload.target.x, payload.target.y);
-            return accepted(context, issuer);
+            return capturedOrderResult(context, issuer, [&](EventSink& events) {
+                selectAtTile(game, context.world, events, issuer, payload.target.x, payload.target.y);
+                return ServiceResult{ true, nullptr };
+            });
         },
         [&](const BoxSelectCommand& payload) -> CommandResult {
             if (!inBounds(payload.start.x, payload.start.y) || !inBounds(payload.end.x, payload.end.y))
                 return rejected(context, issuer, "Box selection target is out of bounds.");
-            boxSelect(game, context.world, issuer, payload.start.x, payload.start.y, payload.end.x, payload.end.y);
-            return accepted(context, issuer);
+            return capturedOrderResult(context, issuer, [&](EventSink& events) {
+                boxSelect(game, context.world, events, issuer, payload.start.x, payload.start.y, payload.end.x, payload.end.y);
+                return ServiceResult{ true, nullptr };
+            });
         },
         [&](const SelectAllOfTypeInViewCommand& payload) -> CommandResult {
             if (!inBounds(payload.target.x, payload.target.y)) return rejected(context, issuer, "Selection target is out of bounds.");
-            selectAllOfTypeInView(game, context.world, issuer, payload.target.x, payload.target.y);
-            return accepted(context, issuer);
+            return capturedOrderResult(context, issuer, [&](EventSink& events) {
+                selectAllOfTypeInView(game, context.world, events, issuer, payload.target.x, payload.target.y);
+                return ServiceResult{ true, nullptr };
+            });
         },
         [&](const BuildCommand& payload) -> CommandResult {
             if (!inBounds(payload.target.x, payload.target.y)) return rejected(context, issuer, "Build target is out of bounds.");
             Entity* builder = selectedEntity(context, payload.selection);
             if (!builder || builder->owner != issuer) return rejected(context, issuer, "Builder is not owned by issuer.");
-            return serviceResult(context, issuer,
-                startBuildService(game, context.world, issuer, builder->id, payload.entityType, payload.target),
-                "Build command rejected.");
+            return capturedServiceResult(context, issuer, [&](EventSink& events) {
+                return startBuildService(game, context.world, events, issuer, builder->id, payload.entityType, payload.target);
+            }, "Build command rejected.");
         },
         [&](const BuildLineCommand& payload) -> CommandResult {
             if (!inBounds(payload.start.x, payload.start.y) || !inBounds(payload.end.x, payload.end.y))
                 return rejected(context, issuer, "Build-line target is out of bounds.");
             Entity* builder = selectedEntity(context, payload.selection);
             if (!builder || builder->owner != issuer) return rejected(context, issuer, "Builder is not owned by issuer.");
-            return serviceResult(context, issuer,
-                startBuildLineService(game, context.world, issuer, builder->id, payload.entityType, payload.start, payload.end),
-                "Build-line command rejected.");
+            return capturedServiceResult(context, issuer, [&](EventSink& events) {
+                return startBuildLineService(game, context.world, events, issuer, builder->id, payload.entityType, payload.start, payload.end);
+            }, "Build-line command rejected.");
         },
         [&](const TrainCommand& payload) -> CommandResult {
             Entity* building = selectedEntity(context, payload.selection);
             if (!building || building->owner != issuer) return rejected(context, issuer, "Producer is not owned by issuer.");
-            return serviceResult(context, issuer,
-                startTrainingService(game, context.world, issuer, building->id, payload.entityType),
-                "Train command rejected.");
+            return capturedServiceResult(context, issuer, [&](EventSink& events) {
+                return startTrainingService(game, context.world, events, issuer, building->id, payload.entityType);
+            }, "Train command rejected.");
         },
         [&](const ResearchCommand& payload) -> CommandResult {
             Entity* building = selectedEntity(context, payload.selection);
             if (!building || building->owner != issuer) return rejected(context, issuer, "Research building is not owned by issuer.");
-            return serviceResult(context, issuer,
-                startResearchService(game, context.world, issuer, building->id, payload.researchId),
-                "Research command rejected.");
+            return capturedServiceResult(context, issuer, [&](EventSink& events) {
+                return startResearchService(game, context.world, events, issuer, building->id, payload.researchId);
+            }, "Research command rejected.");
         },
         [&](const MarketTradeCommand& payload) -> CommandResult {
             Entity* market = selectedEntity(context, payload.selection);
             if (!market || market->owner != issuer) return rejected(context, issuer, "Market is not owned by issuer.");
-            return serviceResult(context, issuer,
-                executeTradeService(game, context.world, issuer, market->id, payload.trade),
-                "Market trade rejected.");
+            return capturedServiceResult(context, issuer, [&](EventSink& events) {
+                return executeTradeService(game, context.world, events, issuer, market->id, payload.trade);
+            }, "Market trade rejected.");
         },
         [&](const HelpCommand& payload) -> CommandResult {
-            return orderResult(context, issuer, startHelp(game, context.world, issuer, payload.selection, payload.targetId));
+            return capturedOrderResult(context, issuer, [&](EventSink& events) {
+                return startHelp(game, context.world, events, issuer, payload.selection, payload.targetId);
+            });
         },
         [&](const SetRallyCommand& payload) -> CommandResult {
-            return orderResult(context, issuer, setRallyPoint(game, context.world, issuer, payload.selection, payload.target));
+            return capturedOrderResult(context, issuer, [&](EventSink& events) {
+                return setRallyPoint(game, context.world, events, issuer, payload.selection, payload.target);
+            });
         },
         [&](const AttackMoveCommand& payload) -> CommandResult {
-            return orderResult(context, issuer, startAttackMove(game, context.world, issuer, payload.selection, payload.target));
+            return capturedOrderResult(context, issuer, [&](EventSink& events) {
+                return startAttackMove(game, context.world, events, issuer, payload.selection, payload.target);
+            });
         },
         [&](const MoveCommand& payload) -> CommandResult {
-            return orderResult(context, issuer, startMove(game, context.world, issuer, payload.selection, payload.target));
+            return capturedOrderResult(context, issuer, [&](EventSink& events) {
+                return startMove(game, context.world, events, issuer, payload.selection, payload.target);
+            });
         },
         [&](const AttackCommand& payload) -> CommandResult {
-            return orderResult(context, issuer, startAttack(game, context.world, issuer, payload.selection, payload.targetId));
+            return capturedOrderResult(context, issuer, [&](EventSink& events) {
+                return startAttack(game, context.world, events, issuer, payload.selection, payload.targetId);
+            });
         },
         [&](const GatherCommand& payload) -> CommandResult {
-            return orderResult(context, issuer, startGather(game, context.world, issuer, payload.selection, payload.target));
+            return capturedOrderResult(context, issuer, [&](EventSink& events) {
+                return startGather(game, context.world, events, issuer, payload.selection, payload.target);
+            });
         },
         [&](const GarrisonCommand& payload) -> CommandResult {
-            return orderResult(context, issuer, startGarrison(game, context.world, issuer, payload.selection, payload.targetId));
+            return capturedOrderResult(context, issuer, [&](EventSink& events) {
+                return startGarrison(game, context.world, events, issuer, payload.selection, payload.targetId);
+            });
         },
         [&](const EjectGarrisonCommand& payload) -> CommandResult {
-            return orderResult(context, issuer, ejectGarrisonService(game, context.world, issuer, payload.selection));
+            return capturedOrderResult(context, issuer, [&](EventSink& events) {
+                return ejectGarrisonService(game, context.world, events, issuer, payload.selection);
+            });
         },
         [&](const HoldPositionCommand& payload) -> CommandResult {
-            return orderResult(context, issuer, holdPosition(game, context.world, issuer, payload.selection));
+            return capturedOrderResult(context, issuer, [&](EventSink& events) {
+                return holdPosition(game, context.world, events, issuer, payload.selection);
+            });
         },
         [&](const StopCommand& payload) -> CommandResult {
-            return orderResult(context, issuer, stopUnits(game, context.world, issuer, payload.selection));
+            return capturedOrderResult(context, issuer, [&](EventSink& events) {
+                return stopUnits(game, context.world, events, issuer, payload.selection);
+            });
         },
         [&](const AssignControlGroupCommand& payload) -> CommandResult {
             if (!assignControlGroup(game, context.world, issuer, payload.slot, payload.selection)) return rejected(context, issuer, "Invalid control group assignment.");
@@ -219,10 +265,14 @@ CommandResult dispatchCommand(GameContext& context, const Command& command) {
             return accepted(context, issuer);
         },
         [&](const ToggleGateCommand& payload) -> CommandResult {
-            return orderResult(context, issuer, toggleGateMode(game, context.world, issuer, payload.selection));
+            return capturedOrderResult(context, issuer, [&](EventSink& events) {
+                return toggleGateMode(game, context.world, events, issuer, payload.selection);
+            });
         },
         [&](const ToggleTrebuchetPackedCommand& payload) -> CommandResult {
-            return orderResult(context, issuer, toggleTrebuchetPacked(game, context.world, issuer, payload.selection));
+            return capturedOrderResult(context, issuer, [&](EventSink& events) {
+                return toggleTrebuchetPacked(game, context.world, events, issuer, payload.selection);
+            });
         },
         [&](const ToggleDiagnosticsCommand&) -> CommandResult {
             game.diagnostics = !game.diagnostics;

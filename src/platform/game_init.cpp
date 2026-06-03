@@ -1,19 +1,38 @@
 #include "realm.h"
-#include "core/world_index.h"
 #include "view_state.h"
 
 #include <iostream>
+#include <vector>
 
-static bool startupEntityAt(int x, int y) {
-    WorldIndex world = buildWorldIndex(g);
-    return entityAt(g, world, x, y) != nullptr;
+struct StartupOccupancy {
+    std::vector<unsigned char> occupied = std::vector<unsigned char>(MAP_W * MAP_H, 0);
+
+    bool entityAt(int x, int y) const {
+        return inBounds(x, y) && occupied[y * MAP_W + x] != 0;
+    }
+
+    void markFootprint(EntityType type, int x, int y) {
+        const EntityStats& stats = STATS[type];
+        const int w = isBuilding(type) ? stats.sizeW : 1;
+        const int h = isBuilding(type) ? stats.sizeH : 1;
+        for (int yy = y; yy < y + h; yy++) {
+            for (int xx = x; xx < x + w; xx++) {
+                if (inBounds(xx, yy)) occupied[yy * MAP_W + xx] = 1;
+            }
+        }
+    }
+};
+
+static void spawnStartupEntity(Game& game, StartupOccupancy& occupancy, EntityType type, int owner, int x, int y) {
+    spawnEntity(game, type, owner, x, y);
+    occupancy.markFootprint(type, x, y);
 }
 
-static void placeStartResources(int thX, int thY) {
+static void placeStartResources(const StartupOccupancy& occupancy, int thX, int thY) {
     for (int i = 0; i < 7; i++) {
         int x = std::max(1, std::min(thX + 6 + i % 3, MAP_W - 2));
         int y = std::max(1, std::min(thY + 1 + i / 3, MAP_H - 2));
-        if (!startupEntityAt(x, y)) {
+        if (!occupancy.entityAt(x, y)) {
             g.map[y][x].terrain = T_FOREST;
             g.map[y][x].resources = 120;
             g.map[y][x].preWinterTerrain = T_FOREST;
@@ -22,7 +41,7 @@ static void placeStartResources(int thX, int thY) {
     for (int i = 0; i < 5; i++) {
         int x = std::max(1, std::min(thX + 1 + i, MAP_W - 2));
         int y = std::max(1, std::min(thY + 7, MAP_H - 2));
-        if (!startupEntityAt(x, y)) {
+        if (!occupancy.entityAt(x, y)) {
             g.map[y][x].terrain = T_BERRY;
             g.map[y][x].resources = 70;
             g.map[y][x].preWinterTerrain = T_BERRY;
@@ -40,7 +59,7 @@ void initGame(int numAIs) {
 }
 
 void initGameWithSeed(int numAIs, unsigned seed, int humanCorner) {
-    initGameWithSeed(numAIs, seed, humanCorner, currentMapGenerationConfig());
+    initGameWithSeed(numAIs, seed, humanCorner, currentMapGenerationConfig(g));
 }
 
 void initGameWithSeed(int numAIs, unsigned seed, int humanCorner, const MapGenerationConfig& mapConfig) {
@@ -50,7 +69,7 @@ void initGameWithSeed(int numAIs, unsigned seed, int humanCorner, const MapGener
     int matchNumber = g.matchNumber + 1;
     g.entities.clear();
     g.projectiles.clear();
-    g.actionMarkers.clear();
+    resetUiState();
     g.projectiles.reserve(256);
     g.nextId = 1; g.tick = 0; g.mode = M_NORMAL;
     g.selectedId = -1; g.selectedIds.clear(); g.groupAssignPending = false;
@@ -60,7 +79,6 @@ void initGameWithSeed(int numAIs, unsigned seed, int humanCorner, const MapGener
         for (int i = 0; i < 9; i++)
             g.controlGroupsByOwner[p][i].clear();
     g.winner = -1; g.aiTimer = 0; g.farmTimer = 0; g.animalTimer = 0;
-    g.statusMsg.clear(); g.statusTimer = 0;
     g.buildPending = E_NONE; view.wallDragX = 0; view.wallDragY = 0;
     g.dayPhase = 0.25f; g.seasonPhase = 0.0f; g.prevSeason = -1;
     g.prevTimePhase = 0; g.attackNotifyCd = 0;
@@ -169,6 +187,7 @@ void initGameWithSeed(int numAIs, unsigned seed, int humanCorner, const MapGener
     }
     g.humanCorner = humanCorner;
 
+    StartupOccupancy startupOccupancy;
     bool spawned[MAX_PLAYERS] = {false};
     for (int i = 0; i < (int)spawns.size() && i <= numAIs; i++) {
         int owner = (i == 0) ? 0 : i;
@@ -176,10 +195,10 @@ void initGameWithSeed(int numAIs, unsigned seed, int humanCorner, const MapGener
         spawned[owner] = true;
         clearStartArea(g, spawns[i].thX - 2, spawns[i].thY - 2, 6);
         placeGoldCluster(g, spawns[i].thX + 9, spawns[i].thY + 4, 5);
-        placeStartResources(spawns[i].thX, spawns[i].thY);
-        spawnEntity(g, E_TOWNHALL, owner, spawns[i].thX, spawns[i].thY);
+        placeStartResources(startupOccupancy, spawns[i].thX, spawns[i].thY);
+        spawnStartupEntity(g, startupOccupancy, E_TOWNHALL, owner, spawns[i].thX, spawns[i].thY);
         for (int j = 0; j < 4; j++)
-            spawnEntity(g, E_PEASANT, owner, spawns[i].thX + 4 + j, spawns[i].thY + 4);
+            spawnStartupEntity(g, startupOccupancy, E_PEASANT, owner, spawns[i].thX + 4 + j, spawns[i].thY + 4);
     }
     // Mark any non-spawned slots dead so checkWin doesn't wait on them.
     for (int p = 1; p < MAX_PLAYERS; p++) if (!spawned[p]) g.players[p].alive = false;
@@ -217,8 +236,8 @@ void initGameWithSeed(int numAIs, unsigned seed, int humanCorner, const MapGener
                 ay = std::max(1, std::min(ay, MAP_H-2));
                 Terrain tr = g.map[ay][ax].terrain;
                 if ((tr==T_GRASS||tr==T_MEADOW||tr==T_TALL_GRASS||tr==T_FOREST)
-                    && !startupEntityAt(ax,ay) && farFromAnyBase(ax, ay, 10))
-                    { spawnEntity(g, E_DEER, OWNER_NATURE, ax, ay); i++; total++; }
+                    && !startupOccupancy.entityAt(ax,ay) && farFromAnyBase(ax, ay, 10))
+                    { spawnStartupEntity(g, startupOccupancy, E_DEER, OWNER_NATURE, ax, ay); i++; total++; }
             }
         }
     }
@@ -226,9 +245,9 @@ void initGameWithSeed(int numAIs, unsigned seed, int humanCorner, const MapGener
     for (int i = 0, t = 0; i < 7 && t < 600; t++) {
         int ax = 10 + realmRand(g)%(MAP_W-20), ay = 10 + realmRand(g)%(MAP_H-20);
         Terrain tr = g.map[ay][ax].terrain;
-        if ((tr==T_FOREST||tr==T_PINE||tr==T_TALL_GRASS) && !startupEntityAt(ax,ay)
+        if ((tr==T_FOREST||tr==T_PINE||tr==T_TALL_GRASS) && !startupOccupancy.entityAt(ax,ay)
             && farFromAnyBase(ax, ay, 16))
-            { spawnEntity(g, E_WOLF, OWNER_NATURE, ax, ay); i++; }
+            { spawnStartupEntity(g, startupOccupancy, E_WOLF, OWNER_NATURE, ax, ay); i++; }
     }
     // Boars in temperate woodland and forest biomes
     for (int i = 0, t = 0; i < 18 && t < 800; t++) {
@@ -236,9 +255,9 @@ void initGameWithSeed(int numAIs, unsigned seed, int humanCorner, const MapGener
         Terrain tr = g.map[ay][ax].terrain;
         Biome  b  = g.map[ay][ax].biome;
         if ((tr==T_FOREST||tr==T_PINE||tr==T_TALL_GRASS||tr==T_GRASS)
-            && (b==B_TEMPERATE||b==B_FOREST) && !startupEntityAt(ax,ay)
+            && (b==B_TEMPERATE||b==B_FOREST) && !startupOccupancy.entityAt(ax,ay)
             && farFromAnyBase(ax, ay, 16))
-            { spawnEntity(g, E_BOAR, OWNER_NATURE, ax, ay); i++; }
+            { spawnStartupEntity(g, startupOccupancy, E_BOAR, OWNER_NATURE, ax, ay); i++; }
     }
     // Domestic sheep near each player's town hall (one cluster per chosen spawn)
     for (int i = 0; i < (int)spawns.size() && i <= numAIs; i++) {
@@ -246,7 +265,10 @@ void initGameWithSeed(int numAIs, unsigned seed, int humanCorner, const MapGener
         for (int i = 0, t = 0; i < 4 && t < 200; t++) {
             int ax = bx+(realmRand(g)%7)-3, ay = by+(realmRand(g)%7)-3;
             ax = std::max(1, std::min(ax, MAP_W-2)); ay = std::max(1, std::min(ay, MAP_H-2));
-            if (isPassable(g, ax,ay) && !startupEntityAt(ax,ay)) { spawnEntity(g, E_SHEEP, OWNER_NATURE, ax, ay); i++; }
+            if (isPassable(g, ax,ay) && !startupOccupancy.entityAt(ax,ay)) {
+                spawnStartupEntity(g, startupOccupancy, E_SHEEP, OWNER_NATURE, ax, ay);
+                i++;
+            }
         }
     }
 

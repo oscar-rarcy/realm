@@ -23,6 +23,8 @@ struct ResearchDef {
     int ticks;
     EntityType requiredBuilding;       // building that runs the research (E_BLACKSMITH)
     EntityType requiredOwnedBuilding;  // E_NONE, or a completed building the player must own
+    char menuHotkey;
+    const char* menuLabel;
     const char* startMessage;
 };
 

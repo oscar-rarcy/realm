@@ -8,33 +8,33 @@ const char* seasonNameSafe();
 const char* timeNameSafe();
 const char* weatherName();
 std::string trimPanelLine(const std::string& s, size_t maxLen = 32);
-Entity* sdlFindEntity(int id);
-Entity* sdlEntityAt(int x, int y);
-Entity* sdlCorpseAt(int x, int y);
-bool sdlCanPlace(EntityType type, int x, int y, int owner);
+struct Game;
+struct WorldIndex;
+Entity* renderFindEntity(Game& game, const WorldIndex& world, int id);
+Entity* renderEntityAt(Game& game, const WorldIndex& world, int x, int y);
+bool renderCanPlace(Game& game, const WorldIndex& world, EntityType type, int x, int y, int owner);
 std::string cursorTileSummary();
 std::string cursorStackSummary();
-void drawMap();
+void drawMap(const WorldIndex& world);
 
 void fillDiamond(int cx, int cy, int hw, int hh, Color c);
 void drawDiamondOutline(int cx, int cy, int hw, int hh, Color c);
 void hatchDiamond(int cx, int cy, int hw, int hh, Color c, int step);
 void sparkleDiamond(int cx, int cy, int hw, int hh, Color c, int x, int y);
 void applyTerrainTextureIso(int cx, int cy, int hw, int hh, const Tile& t, int x, int y);
-char terrainAscii(Terrain t);
 const char* terrainGlyph(const Tile& t, int x, int y);
 bool isResourceEmojiTerrain(Terrain t);
 bool isSelected(const Entity* e);
 void logMissingTerrainImageTile(Terrain t);
 void logMissingVisualTileParts(const Tile& tile);
-void drawFeatureOccluderIfNeeded(int mx, int my, SDL_Rect rect);
-bool drawEntityImageTile(const Entity& e, SDL_Rect dst, Color modulation,
+void drawFeatureOccluderIfNeeded(Game& game, const WorldIndex& world, int mx, int my, SDL_Rect rect);
+bool drawEntityImageTile(const Game& game, const WorldIndex& world, const Entity& e, SDL_Rect dst, Color modulation,
                          const char* forcedAction = nullptr,
                          const char* forcedDirection = nullptr,
                          int explicitFrame = -1,
                          SDL_Color teamColor = SDL_Color{0,0,0,0},
                          TilesetAssetFrame* outFrame = nullptr);
-std::string tilesetEntityVisual(const Entity& e, bool& usesSymbolFont);
+std::string tilesetEntityVisual(const Game& game, const WorldIndex& world, const Entity& e, bool& usesSymbolFont);
 Color glyphColorForTerrain(const Tile& t, int x, int y);
 Color applyVisionAndLight(Color c, int x, int y);
 Color applyVisionToGlyph(Color c, int x, int y);

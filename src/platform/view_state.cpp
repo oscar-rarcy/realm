@@ -5,9 +5,21 @@
 #include <algorithm>
 
 ViewState view;
+UiState ui;
 
 void resetViewState() {
     view = ViewState{};
+}
+
+void resetUiState() {
+    ui = UiState{};
+}
+
+void tickUiState(UiState& state) {
+    if (state.statusTimer > 0) state.statusTimer--;
+    for (auto& marker : state.actionMarkers) if (marker.ticks > 0) marker.ticks--;
+    state.actionMarkers.erase(std::remove_if(state.actionMarkers.begin(), state.actionMarkers.end(),
+        [](const ActionMarker& marker){ return marker.ticks <= 0; }), state.actionMarkers.end());
 }
 
 void clampCursorToMap(ViewState& state) {

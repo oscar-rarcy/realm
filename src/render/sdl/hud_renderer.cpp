@@ -1,8 +1,12 @@
 #include "render/sdl/sdl_hud.h"
 #include "realm.h"
+#include "commands/input_intent.h"
+#include "core/build_service.h"
+#include "core/production_service.h"
+#include "core/world_index.h"
 #include "view_state.h"
 
-void drawMiniMap(int x, int y, int w, int h) {
+void drawMiniMap(const WorldIndex& world, int x, int y, int w, int h) {
     setDraw(rgb(10,12,18)); SDL_Rect bg{x,y,w,h}; SDL_RenderFillRect(s.ren,&bg);
     for (int yy=0; yy<h; ++yy) {
         int my = yy * MAP_H / std::max(1,h);
@@ -10,7 +14,7 @@ void drawMiniMap(int x, int y, int w, int h) {
             int mx = xx * MAP_W / std::max(1,w);
             const Tile& t = g.map[my][mx];
             Color c = t.explored[0] ? terrainBg(t,mx,my) : rgb(5,5,8);
-            Entity* e = t.visible[0] ? sdlEntityAt(mx,my) : nullptr;
+            Entity* e = t.visible[0] ? renderEntityAt(g, world, mx, my) : nullptr;
             if (e && e->alive && e->owner != OWNER_NATURE) c = ownerBg(e->owner);
             setDraw(c); SDL_RenderDrawPoint(s.ren, x+xx, y+yy);
         }
@@ -56,68 +60,131 @@ void drawTopBar() {
     drawTextFit(10, 7, ss.str(), rgb(235,238,230), std::max(1, s.winW - s.panelW - 18));
 }
 
+static std::string menuKeyLabel(char key) {
+    char upper = (char)std::toupper((unsigned char)key);
+    return std::string(1, upper);
+}
+
+static std::vector<std::pair<std::string, int>> productionTokensFor(EntityType producer, bool bracketed) {
+    std::vector<std::pair<std::string, int>> tokens;
+    const ProductionRule* rule = productionRule(producer);
+    if (!rule || !rule->menuHotkeys) {
+        tokens.push_back({ bracketed ? "[Esc]" : "Esc", 27 });
+        return tokens;
+    }
+    for (int i = 0; i < rule->allowedCount && rule->menuHotkeys[i] != '\0'; i++) {
+        std::string label = menuKeyLabel(rule->menuHotkeys[i]);
+        if (bracketed) label = "[" + label + "]";
+        tokens.push_back({ label, rule->menuHotkeys[i] });
+    }
+    tokens.push_back({ bracketed ? "[Esc]" : "Esc", 27 });
+    return tokens;
+}
+
+static std::vector<std::pair<std::string, int>> buildTokens(bool bracketed) {
+    std::vector<std::pair<std::string, int>> tokens;
+    int count = 0;
+    const BuildRule* rules = buildRules(count);
+    for (int i = 0; i < count; i++) {
+        if (rules[i].menuHotkey == '\0') continue;
+        std::string label = menuKeyLabel(rules[i].menuHotkey);
+        if (bracketed) label = "[" + label + "]";
+        tokens.push_back({ label, rules[i].menuHotkey });
+    }
+    tokens.push_back({ bracketed ? "[Esc]" : "Esc", 27 });
+    return tokens;
+}
+
+static std::string unitMenuName(EntityType type) {
+    const char* name = STATS[type].name ? STATS[type].name : "Unknown";
+    std::string out(name);
+    if (!out.empty()) out[0] = (char)std::tolower((unsigned char)out[0]);
+    return out;
+}
+
 bool isTrainProducer(EntityType t) {
-    return t == E_TOWNHALL || t == E_BARRACKS || t == E_STABLE || t == E_DOCK || t == E_CASTLE;
+    return productionRule(t) != nullptr;
 }
 
 std::string trainPromptFor(const Entity* sel) {
     if (!sel || sel->owner != 0 || !isTrainProducer(sel->type))
         return "TRAIN: select a production building, Esc cancel";
-    switch (sel->type) {
-        case E_TOWNHALL: return "TRAIN: P Peasant (50g), repeat to queue, Esc cancel";
-        case E_BARRACKS: return "TRAIN: M Militia  A Archer  S Spearman  C Catapult  R Ram, Esc cancel";
-        case E_STABLE: return "TRAIN: K Knight, repeat to queue, Esc cancel";
-        case E_CASTLE: return "TRAIN: P Peasant  T Trebuchet, repeat to queue, Esc cancel";
-        case E_DOCK: return "TRAIN: B Fishing boat  W Warship  T Transport, Esc cancel";
-        default: return "TRAIN: no units available, Esc cancel";
+    const ProductionRule* rule = productionRule(sel->type);
+    if (!rule || !rule->menuHotkeys) return "TRAIN: no units available, Esc cancel";
+    std::ostringstream prompt;
+    prompt << "TRAIN:";
+    for (int i = 0; i < rule->allowedCount && rule->menuHotkeys[i] != '\0'; i++) {
+        EntityType unit = rule->allowedUnits[i];
+        prompt << ' ' << menuKeyLabel(rule->menuHotkeys[i]) << ' ' << STATS[unit].name;
     }
+    prompt << ", repeat to queue, Esc cancel";
+    return prompt.str();
 }
 
 std::vector<std::string> trainPanelHintsFor(EntityType t) {
-    switch (t) {
-        case E_TOWNHALL: return {"P: peasant (50g)"};
-        case E_BARRACKS: return {"M: militia  A: archer", "S: spearman  C: catapult", "R: ram"};
-        case E_STABLE: return {"K: knight"};
-        case E_CASTLE: return {"P: peasant", "T: trebuchet"};
-        case E_DOCK: return {"B: fish boat  W: warship", "T: transport"};
-        default: return {};
+    std::vector<std::string> lines;
+    const ProductionRule* rule = productionRule(t);
+    if (!rule || !rule->menuHotkeys) return lines;
+    std::ostringstream line;
+    int onLine = 0;
+    for (int i = 0; i < rule->allowedCount && rule->menuHotkeys[i] != '\0'; i++) {
+        if (onLine == 2) {
+            lines.push_back(line.str());
+            line.str("");
+            line.clear();
+            onLine = 0;
+        }
+        if (onLine > 0) line << "  ";
+        line << menuKeyLabel(rule->menuHotkeys[i]) << ": " << unitMenuName(rule->allowedUnits[i]);
+        onLine++;
     }
+    if (onLine > 0) lines.push_back(line.str());
+    return lines;
 }
 
 std::vector<std::pair<std::string, int>> trainOptionTokensFor(EntityType t) {
-    switch (t) {
-        case E_TOWNHALL: return {{"P", 'p'}, {"Esc", 27}};
-        case E_BARRACKS: return {{"M", 'm'}, {"A", 'a'}, {"S", 's'}, {"C", 'c'}, {"R", 'r'}, {"Esc", 27}};
-        case E_STABLE: return {{"K", 'k'}, {"Esc", 27}};
-        case E_CASTLE: return {{"P", 'p'}, {"T", 't'}, {"Esc", 27}};
-        case E_DOCK: return {{"B", 'b'}, {"W", 'w'}, {"T", 't'}, {"Esc", 27}};
-        default: return {{"Esc", 27}};
-    }
+    return productionTokensFor(t, false);
 }
 
 std::vector<std::pair<std::string, int>> desktopBuildTokensLine1() {
-    return {{"H", 'h'}, {"B", 'b'}, {"S", 's'}, {"T", 't'},
-            {"F", 'f'}, {"W", 'w'}, {"K", 'k'}};
+    std::vector<std::pair<std::string, int>> tokens = buildTokens(false);
+    if (tokens.size() <= 8) return tokens;
+    return std::vector<std::pair<std::string, int>>(tokens.begin(), tokens.begin() + 8);
 }
 
 std::vector<std::pair<std::string, int>> desktopBuildTokensLine2() {
-    return {{"L", 'l'}, {"N", 'n'}, {"I", 'i'}, {"D", 'd'}, {"Esc", 27}};
+    std::vector<std::pair<std::string, int>> tokens = buildTokens(false);
+    if (tokens.size() <= 8) return {};
+    return std::vector<std::pair<std::string, int>>(tokens.begin() + 8, tokens.end());
 }
 
 std::vector<std::pair<std::string, int>> terminalBuildTokens() {
-    return {{"[H]", 'h'}, {"[B]", 'b'}, {"[S]", 's'}, {"[T]", 't'}, {"[F]", 'f'},
-            {"[W]", 'w'}, {"[G]", 'g'}, {"[A]", 'a'}, {"[C]", 'c'}, {"[M]", 'm'},
-            {"[K]", 'k'}, {"[L]", 'l'}, {"[N]", 'n'}, {"[I]", 'i'}, {"[D]", 'd'},
-            {"[Esc]", 27}};
+    return buildTokens(true);
 }
 
 std::vector<std::pair<std::string, int>> defaultBottomTokens() {
+    auto tokenFor = [](const char* id) -> std::pair<std::string, int> {
+        int count = 0;
+        const CommandHelpBinding* bindings = gameplayHelpBindings(count);
+        for (int i = 0; i < count; i++) {
+            if (std::string(bindings[i].id) != id || bindings[i].keyCount <= 0) continue;
+            return { std::string(bindings[i].keys) + ":" + bindings[i].label, bindings[i].keyCodes[0] };
+        }
+        return { "", 0 };
+    };
+    std::vector<std::pair<std::string, int>> tokens = {
+        tokenFor("build"),
+        tokenFor("train"),
+        tokenFor("save"),
+        tokenFor("load"),
+        tokenFor("diagnostics"),
+        tokenFor("resign"),
+    };
 #if defined(REALM_WEB)
-    return {{"B:Build", 'b'}, {"T:Train", 't'}, {"F5-F8:Save", 'v'}, {"F9-F12:Load", 'l'},
-            {"D:Diag", 'd'}, {"Q:Resign", 'q'}};
+    return tokens;
 #else
-    return {{"B:Build", 'b'}, {"T:Train", 't'}, {"F5-F8:Save", 'v'}, {"F9-F12:Load", 'l'},
-            {"D:Diag", 'd'}, {"Q:Resign", 'q'}, {"X:Hold", 'x'}};
+    tokens.push_back(tokenFor("hold"));
+    return tokens;
 #endif
 }
 
@@ -168,9 +235,9 @@ void mobileDrawResources(int x, int y, int w) {
 
 
 
-void drawPanel() {
+void drawPanel(const WorldIndex& world) {
     if (isMobileGui()) {
-        drawMobileHud();
+        drawMobileHud(world);
         return;
     }
     SDL_Rect pr = panelRect();
@@ -181,7 +248,7 @@ void drawPanel() {
     int x = pr.x + 14, y = 12;
     int textW = std::max(1, pr.w - 28);
     SDL_Rect mini = miniMapRect();
-    drawMiniMap(mini.x, mini.y, mini.w, mini.h); y += 124;
+    drawMiniMap(world, mini.x, mini.y, mini.w, mini.h); y += 124;
 
     drawText(x, y, "Realm", rgb(245,245,230)); y += 22;
     std::ostringstream c; c << "Cursor: (" << view.cursorX << "," << view.cursorY << ")";
@@ -199,7 +266,7 @@ void drawPanel() {
         ds2 << "Ent " << g.entities.size() << " Proj " << g.projectiles.size()
             << " Seed " << g.seed;
         drawTextFit(x, y, trimPanelLine(ds2.str()), rgb(255,210,120), textW); y += 20;
-        if (Entity* selDiag = sdlFindEntity(g.selectedId)) {
+        if (Entity* selDiag = renderFindEntity(g, world, g.selectedId)) {
             std::ostringstream ds3;
             ds3 << "Sel #" << selDiag->id << ' ' << STATS[selDiag->type].name
                 << ' ' << stateName(selDiag->state);
@@ -207,7 +274,7 @@ void drawPanel() {
         }
     }
 
-    Entity* sel = sdlFindEntity(g.selectedId);
+    Entity* sel = renderFindEntity(g, world, g.selectedId);
     if (!g.selectedIds.empty()) {
         std::ostringstream gs; gs << "Group: " << g.selectedIds.size() << " units";
         drawTextFit(x, y, gs.str(), rgb(255,230,135), textW); y += 22;
@@ -216,7 +283,7 @@ void drawPanel() {
         Color badge = (sel->owner == OWNER_NATURE) ? rgb(95,95,80) : ownerBg(sel->owner);
         SDL_Rect b{x,y,22,22}; setDraw(badge); SDL_RenderFillRect(s.ren,&b);
         bool usesSymbolFont = false;
-        drawCentered(tilesetEntityVisual(*sel, usesSymbolFont), b, rgb(255,255,255), usesSymbolFont);
+        drawCentered(tilesetEntityVisual(g, world, *sel, usesSymbolFont), b, rgb(255,255,255), usesSymbolFont);
         drawTextFit(x+30, y+2, STATS[sel->type].name, rgb(255,230,135), std::max(1, textW - 30)); y += 26;
         std::ostringstream hp; hp << "HP: " << sel->hp << "/" << sel->maxHp;
         drawTextFit(x, y, hp.str(), rgb(220,220,210), textW); y += 20;
@@ -259,7 +326,7 @@ void drawPanel() {
     }
 }
 
-void drawBottom() {
+void drawBottom(const WorldIndex& world) {
     SDL_Rect bot{0,s.winH-s.bottomH,s.winW,s.bottomH};
     setDraw(rgb(12,32,58)); SDL_RenderFillRect(s.ren,&bot);
     std::string controls1 = "Arrows:Move  Space/Click:Select  Enter/R-click:Cmd  B:Build  T:Train";
@@ -280,7 +347,7 @@ void drawBottom() {
         controls2.clear();
     }
     else if (g.mode == M_BUILD_SELECT) { controls1 = "BUILD: H House, B Barracks, S Stable, T Tower, F Farm, W Wall, K Castle"; controls2 = "G Gate  A Armory  C Church  M Market  L Lumber  N Mine  I Mill  D Dock  Esc"; }
-    else if (g.mode == M_TRAIN_SELECT) { controls1 = trainPromptFor(sdlFindEntity(g.selectedId)); controls2.clear(); }
+    else if (g.mode == M_TRAIN_SELECT) { controls1 = trainPromptFor(renderFindEntity(g, world, g.selectedId)); controls2.clear(); }
     else if (g.mode == M_MARKET_TRADE) { controls1 = "MARKET: G 40g->30w  W 40w->30g  F 50g->30f  V 40f->30g"; controls2 = "Esc cancel"; }
     int hintX = s.winW - 14;
     if (devCaptureEnabled()) {
@@ -296,7 +363,7 @@ void drawBottom() {
         drawKeyTokensInText(10, s.winH-s.bottomH+6, controls1, desktopBuildTokensLine1(),
                             rgb(230,235,230), topLineW);
     } else if (g.mode == M_TRAIN_SELECT) {
-        Entity* sel = sdlFindEntity(g.selectedId);
+        Entity* sel = renderFindEntity(g, world, g.selectedId);
         drawKeyTokensInText(10, s.winH-s.bottomH+6, controls1,
                             sel ? trainOptionTokensFor(sel->type) : std::vector<std::pair<std::string, int>>{{"Esc", 27}},
                             rgb(230,235,230), topLineW);
@@ -315,8 +382,8 @@ void drawBottom() {
         drawKeyTokensInText(10, s.winH-s.bottomH+6, controls1, defaultBottomTokens(),
                             rgb(230,235,230), topLineW);
     }
-    if (g.statusTimer > 0) {
-        drawTextFit(10, s.winH-s.bottomH+26, ">> " + g.statusMsg, rgb(255,230,120), maxW);
+    if (ui.statusTimer > 0) {
+        drawTextFit(10, s.winH-s.bottomH+26, ">> " + ui.statusMsg, rgb(255,230,120), maxW);
     } else if (!controls2.empty()) {
         if (g.mode == M_BUILD_SELECT) {
             drawKeyTokensInText(10, s.winH-s.bottomH+26, controls2, desktopBuildTokensLine2(),

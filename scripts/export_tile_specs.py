@@ -14,6 +14,7 @@ from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
+GAME_TYPES_HEADER = ROOT / "src" / "core" / "game_types.h"
 ENTITY_RANGES = {
     "units": ("E_PEASANT", "E_RAM"),
     "buildings": ("E_TOWNHALL", "E_DOCK"),
@@ -141,43 +142,43 @@ AMMUNITION_SPECS = [
     {
         "slug": "arrow",
         "name": "Arrow",
-        "description": "standard arrow ammunition after release",
+        "description": "standard blue-feathered arrow ammunition after release",
         "states": [
-            {"id": "in_flight", "description": "single arrow in flight, readable diagonal silhouette, no bow or archer"},
+            {"id": "in_flight", "description": "single blue-feathered arrow in flight, readable diagonal silhouette, no bow or archer"},
         ],
     },
     {
         "slug": "crossbow_bolt",
         "name": "Crossbow Bolt",
-        "description": "compact crossbow bolt ammunition after release",
+        "description": "compact blue-feathered crossbow bolt ammunition after release",
         "states": [
-            {"id": "in_flight", "description": "short bolt in flight, strong head and shaft silhouette, no crossbow"},
+            {"id": "in_flight", "description": "short blue-feathered bolt in flight, strong head and shaft silhouette, no crossbow"},
         ],
     },
     {
         "slug": "flaming_arrow",
         "name": "Flaming Arrow",
-        "description": "future flaming arrow ammunition with a tiny flame loop",
+        "description": "future blue-feathered flaming arrow ammunition with a tiny flame loop",
         "states": [
-            {"id": "flame_frame_1", "description": "arrow in flight with small flame flicker frame 1"},
-            {"id": "flame_frame_2", "description": "arrow in flight with shifted small flame flicker frame 2"},
+            {"id": "flame_frame_1", "description": "blue-feathered arrow in flight with small flame flicker frame 1"},
+            {"id": "flame_frame_2", "description": "blue-feathered arrow in flight with shifted small flame flicker frame 2"},
         ],
     },
     {
         "slug": "tower_bolt",
         "name": "Tower Bolt",
-        "description": "heavy defensive bolt fired by towers or garrisons",
+        "description": "heavy defensive bolt with a narrow blue painted tail stripe, fired by towers or garrisons",
         "states": [
-            {"id": "in_flight", "description": "heavy bolt in flight, readable at small RTS scale, no tower"},
+            {"id": "in_flight", "description": "heavy bolt in flight with a narrow blue painted tail stripe, readable at small RTS scale, no tower"},
         ],
     },
     {
         "slug": "warship_arrow_volley",
         "name": "Warship Arrow Volley",
-        "description": "small grouped naval arrow volley after release",
+        "description": "small grouped naval volley of blue-feathered arrows after release",
         "states": [
-            {"id": "volley_frame_1", "description": "compact arrow volley in flight frame 1, no ship or water wake"},
-            {"id": "volley_frame_2", "description": "compact arrow volley in flight frame 2 with shifted arrows, no ship or water wake"},
+            {"id": "volley_frame_1", "description": "compact volley of blue-feathered arrows in flight frame 1, no ship or water wake"},
+            {"id": "volley_frame_2", "description": "compact volley of blue-feathered arrows in flight frame 2 with shifted arrows, no ship or water wake"},
         ],
     },
     {
@@ -393,8 +394,8 @@ def parse_stats(source: str) -> dict[str, dict[str, Any]]:
         body = line.strip().removeprefix("{").removesuffix(",").removesuffix("}")
         records.append(next(csv.reader([body], skipinitialspace=True)))
 
-    realm_h = read_text(ROOT / "include" / "realm.h")
-    entity_names = enum_values(realm_h, "EntityType")
+    game_types_h = read_text(GAME_TYPES_HEADER)
+    entity_names = enum_values(game_types_h, "EntityType")
     out: dict[str, dict[str, Any]] = {}
     for enum_name, fields in zip(entity_names, records):
         if len(fields) < 16:
@@ -678,14 +679,14 @@ def write_json(path: Path, data: Any) -> None:
 
 
 def export_specs(out_dir: Path, clean: bool) -> dict[str, Any]:
-    realm_h = read_text(ROOT / "include" / "realm.h")
+    game_types_h = read_text(GAME_TYPES_HEADER)
     entity_defs_cpp = read_text(ROOT / "src" / "core" / "entity_defs.cpp")
     terrain_defs_cpp = read_text(ROOT / "src" / "core" / "terrain_defs.cpp")
     sdl_display_glyphs_cpp = read_text(ROOT / "src" / "render" / "sdl" / "display_glyphs.cpp")
     audit_md = read_text(ROOT / "docs" / "tileset" / "realm_tileset_visual_audit.md")
 
-    entity_order = enum_values(realm_h, "EntityType")
-    terrain_order = enum_values(realm_h, "Terrain")
+    entity_order = enum_values(game_types_h, "EntityType")
+    terrain_order = enum_values(game_types_h, "Terrain")
     stats = parse_stats(entity_defs_cpp)
     terrain_names = parse_terrain_names(terrain_defs_cpp)
     terrain_glyphs = parse_terrain_glyphs(sdl_display_glyphs_cpp)

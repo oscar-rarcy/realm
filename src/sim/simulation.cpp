@@ -1,4 +1,5 @@
 #include "realm.h"
+#include "core/game_events.h"
 #include "core/world_index.h"
 
 #include <algorithm>
@@ -8,7 +9,7 @@
 #include <utility>
 #include <vector>
 
-static void tickSimulationOnceInternal(Game& game, bool runAI);
+static void tickSimulationOnceInternal(Game& game, EventSink& events, bool runAI);
 
 static bool validateOrRecoverGameState(Game& game, const char* phase) {
     std::vector<ValidationIssue> issues = validateGameStateIssues(game);
@@ -52,21 +53,20 @@ static void pruneDeadReferenceList(Game& game, const WorldIndex& world, std::vec
         [&](int id){ return findEntity(game, world, id) == nullptr; }), ids.end());
 }
 
-static void tickSimulationOnceInternal(Game& game, bool runAI) {
+static void tickSimulationOnceInternal(Game& game, EventSink& events, bool runAI) {
     validateOrRecoverGameState(game, "pre-tick");
     game.tick++;
-    if (game.statusTimer > 0) game.statusTimer--;
     game.dayPhase += 1.0f / DAY_LENGTH;
     if (game.dayPhase >= 1.0f) game.dayPhase -= 1.0f;
     game.seasonPhase += 1.0f / SEASON_LENGTH;
     if (game.seasonPhase >= 4.0f) game.seasonPhase -= 4.0f;
-    for (int i = 0; i < (int)game.entities.size(); i++) tickEntity(game, game.entities[i]);
-    tickSeasons(game); tickThaw(game); tickWinter(game);
-    tickWeather(game); tickPaving(game);
-    tickTowers(game); tickGates(game); tickProjectiles(game); tickFarms(game); tickMarkets(game);
-    tickChurches(game); tickAnimals(game);
-    if (runAI) tickAI(game);
-    tickActionMarkers(game); updateFog(game);
+    for (int i = 0; i < (int)game.entities.size(); i++) tickEntity(game, events, game.entities[i]);
+    tickSeasons(game, events); tickThaw(game); tickWinter(game, events);
+    tickWeather(game, events); tickPaving(game);
+    tickTowers(game, events); tickGates(game); tickProjectiles(game); tickFarms(game, events); tickMarkets(game);
+    tickChurches(game, events); tickAnimals(game, events);
+    if (runAI) tickAI(game, events);
+    updateFog(game);
     for (auto& e : game.entities) {
         if (!e.alive && e.state == S_DEAD && e.deathTicks < CORPSE_REMOVE_TICKS)
             e.deathTicks++;
@@ -93,10 +93,10 @@ static void tickSimulationOnceInternal(Game& game, bool runAI) {
     validateOrRecoverGameState(game, "post-tick");
 }
 
-void tickSimulationOnce(Game& game) {
-    tickSimulationOnceInternal(game, false);
+void tickSimulationOnce(Game& game, EventSink& events) {
+    tickSimulationOnceInternal(game, events, false);
 }
 
-void tickSimulationOnce(Game& game, bool runAI) {
-    tickSimulationOnceInternal(game, runAI);
+void tickSimulationOnce(Game& game, EventSink& events, bool runAI) {
+    tickSimulationOnceInternal(game, events, runAI);
 }

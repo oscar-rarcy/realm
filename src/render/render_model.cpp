@@ -1,11 +1,12 @@
-#include "render/visual_model.h"
+#include "render/render_model.h"
 #include "realm.h"
 
 static bool isAnimalEntityType(EntityType type) {
     return type == E_DEER || type == E_WOLF || type == E_SHEEP || type == E_BOAR;
 }
 
-RenderModel buildRenderModel(const Game& game, int observerOwner, int viewX, int viewY, int viewW, int viewH) {
+RenderModel buildRenderModel(const Game& game, const std::vector<ActionMarker>& actionMarkers,
+                             int observerOwner, int viewX, int viewY, int viewW, int viewH) {
     RenderModel model;
     int x0 = std::max(0, viewX);
     int y0 = std::max(0, viewY);
@@ -16,6 +17,8 @@ RenderModel buildRenderModel(const Game& game, int observerOwner, int viewX, int
     model.viewY = y0;
     model.viewW = x1 - x0;
     model.viewH = y1 - y0;
+    model.mode = game.mode;
+    model.buildPreviewType = game.mode == M_BUILD_SELECT || game.mode == M_WALL_DRAG ? game.buildPending : E_NONE;
     model.tiles.reserve((x1 - x0) * (y1 - y0));
     for (int y = y0; y < y1; y++) for (int x = x0; x < x1; x++) {
         const Tile& tile = game.map[y][x];
@@ -39,6 +42,23 @@ RenderModel buildRenderModel(const Game& game, int observerOwner, int viewX, int
         info.owner = entity.owner;
         info.x = entity.x;
         info.y = entity.y;
+        info.hp = entity.hp;
+        info.maxHp = entity.maxHp;
+        info.state = entity.state;
+        info.targetId = entity.targetId;
+        info.targetX = entity.targetX;
+        info.targetY = entity.targetY;
+        info.facingDx = entity.facingDx;
+        info.facingDy = entity.facingDy;
+        info.alertTicks = entity.alertTicks;
+        info.underConstruction = entity.underConstruction;
+        info.attackMove = entity.attackMove != 0;
+        info.holdPosition = entity.holdPosition != 0;
+        info.packed = entity.packed != 0;
+        info.packTicks = entity.packTicks;
+        info.rallySet = entity.rallySet != 0;
+        info.rallyX = entity.rallyX;
+        info.rallyY = entity.rallyY;
         info.visible = observerOwner < 0 || observerOwner >= MAX_PLAYERS
             || game.map[entity.y][entity.x].visible[observerOwner];
         info.selected = entity.id == game.selectedId
@@ -48,9 +68,14 @@ RenderModel buildRenderModel(const Game& game, int observerOwner, int viewX, int
         if (entity.type == E_TRANSPORT) info.transportState = transportVisualState(entity);
         model.entities.push_back(info);
     }
-    for (const ActionMarker& marker : game.actionMarkers) {
+    for (const ActionMarker& marker : actionMarkers) {
         if (marker.x < x0 || marker.y < y0 || marker.x >= x1 || marker.y >= y1) continue;
         model.actionMarkers.push_back({ marker.x, marker.y, marker.ticks, marker.glyph });
     }
     return model;
+}
+
+RenderModel buildRenderModel(const Game& game, int observerOwner, int viewX, int viewY, int viewW, int viewH) {
+    static const std::vector<ActionMarker> noActionMarkers;
+    return buildRenderModel(game, noActionMarkers, observerOwner, viewX, viewY, viewW, viewH);
 }

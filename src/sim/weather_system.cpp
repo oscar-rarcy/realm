@@ -1,7 +1,15 @@
 #include "realm.h"
 #include "core/game_events.h"
 
-void tickWeather(Game& game) {
+namespace {
+
+void emitStatus(EventSink& events, int player, const std::string& message, GameEventType type = GameEventType::StatusMessage) {
+    events.emit({ type, player, -1, { -1, -1 }, message, 0 });
+}
+
+} // namespace
+
+void tickWeather(Game& game, EventSink& events) {
     Season s = getSeason(game);
     float sp = getSeasonProgress(game);
 
@@ -31,14 +39,14 @@ void tickWeather(Game& game) {
     if (s == WINTER && (game.weather == W_RAIN || game.weather == W_STORM)) {
         game.weather = W_SNOW;
         game.weatherTimer = 300;
-        if (game.players[0].alive) emitStatusEvent(0, "The rain turns to snow.");
+        if (game.players[0].alive) emitStatus(events, 0, "The rain turns to snow.");
         return;
     }
     bool lateAutumn = (s == AUTUMN && sp > 0.5f);
     if (!lateAutumn && s != WINTER && game.weather == W_SNOW) {
         game.weather = W_CLEAR;
         game.weatherTimer = 100;
-        if (game.players[0].alive) emitStatusEvent(0, "The skies clear.");
+        if (game.players[0].alive) emitStatus(events, 0, "The skies clear.");
         return;
     }
 
@@ -90,9 +98,9 @@ void tickWeather(Game& game) {
     }
 
     if (game.players[0].alive) {
-        if      (game.weather == W_RAIN)  emitStatusEvent(0, "Rain begins.");
-        else if (game.weather == W_STORM) emitStatusEvent(0, "A storm rolls in!");
-        else if (game.weather == W_SNOW)  emitStatusEvent(0, "Snow begins to fall.");
-        else                           emitStatusEvent(0, "The skies clear.");
+        if      (game.weather == W_RAIN)  emitStatus(events, 0, "Rain begins.");
+        else if (game.weather == W_STORM) emitStatus(events, 0, "A storm rolls in!");
+        else if (game.weather == W_SNOW)  emitStatus(events, 0, "Snow begins to fall.");
+        else                              emitStatus(events, 0, "The skies clear.");
     }
 }

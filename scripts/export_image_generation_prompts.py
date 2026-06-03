@@ -14,6 +14,7 @@ from typing import Any
 from export_tile_specs import (
     AMMUNITION_SPECS,
     ENTITY_RANGES,
+    GAME_TYPES_HEADER,
     PLAYER_SIGIL,
     ROOT,
     ammunition_refs_for_entity,
@@ -779,6 +780,7 @@ def common_sheet_contract(
     item_noun: str,
     team_color_required: bool,
     player_colour: dict[str, str] | None = None,
+    negative_arrow_phrase: str = "arrows",
 ) -> list[str]:
     team_rule_lines = []
     if team_color_required:
@@ -796,7 +798,7 @@ def common_sheet_contract(
             "- Consistency: keep the same material identity, palette, lighting direction, detail scale, and outline weight across every slot in the file.",
             "- Tile edges: make each cell seamless on all four edges; do not add interior padding, drop shadows, borders, vignettes, or fade-outs.",
             *team_rule_lines,
-            "- Negative prompt: no text, labels, numbers, arrows, UI chrome, watermarks, signatures, photo texture, heavy blur, diamond-shaped tiles, or extra unlisted states.",
+            f"- Negative prompt: no text, labels, numbers, {negative_arrow_phrase}, UI chrome, watermarks, signatures, photo texture, heavy blur, diamond-shaped tiles, or extra unlisted states.",
             "",
         ]
     background = "Use a transparent sheet background. If the image tool cannot produce alpha, use one flat #ff00ff magenta background and clear gutters between cells."
@@ -810,7 +812,7 @@ def common_sheet_contract(
         "- Consistency: keep the same asset identity, palette, lighting direction, scale, and outline weight across every slot in the file.",
         "- Margins: leave enough padding that no silhouette, weapon, tool, projectile, shadow, crop, corpse, decal, or effect touches a cell edge.",
         *team_rule_lines,
-        "- Negative prompt: no text, labels, numbers, arrows, UI chrome, watermarks, signatures, photo texture, heavy blur, cropped silhouettes, or extra unlisted states.",
+        f"- Negative prompt: no text, labels, numbers, {negative_arrow_phrase}, UI chrome, watermarks, signatures, photo texture, heavy blur, cropped silhouettes, or extra unlisted states.",
         "",
     ]
 
@@ -1197,6 +1199,7 @@ def target_asset_markdown(
     item_noun: str,
     items: list[dict[str, str]],
     extra_notes: list[str] | None = None,
+    negative_arrow_phrase: str = "arrows",
 ) -> str:
     sheets = sheet_chunks(items)
     default_state = items[0]["id"] if items else "base"
@@ -1216,7 +1219,7 @@ def target_asset_markdown(
         "- Directions: tile",
         f"- Default state: `{default_state}`",
         "",
-        *common_sheet_contract(group, item_noun, False),
+        *common_sheet_contract(group, item_noun, False, negative_arrow_phrase=negative_arrow_phrase),
         "## States Or Variants To Generate",
         "",
         f"Generate **one {item_noun} for each listed state or variant**. There are {len(items)} item(s). Each image may contain at most **16 items** in a **4 by 4** grid.",
@@ -1376,6 +1379,7 @@ def ammunition_markdown(spec: dict[str, Any]) -> str:
             "Keep the sprite compact, centred, readable over light and dark terrain, and suitable for animation between tiles.",
             "If the ammunition has multiple states, keep the same projectile identity while changing only the animated part such as flame flicker or volley spacing.",
         ],
+        negative_arrow_phrase="direction arrows",
     )
 
 
@@ -1404,11 +1408,11 @@ def write(path: Path, text: str) -> None:
 
 
 def export_prompts(out_dir: Path, clean: bool) -> dict[str, list[tuple[str, str]]]:
-    realm_h = read_text(ROOT / "include" / "realm.h")
+    game_types_h = read_text(GAME_TYPES_HEADER)
     entity_defs_cpp = read_text(ROOT / "src" / "core" / "entity_defs.cpp")
     audit_md = read_text(ROOT / "docs" / "tileset" / "realm_tileset_visual_audit.md")
 
-    entity_order = enum_values(realm_h, "EntityType")
+    entity_order = enum_values(game_types_h, "EntityType")
     stats = parse_stats(entity_defs_cpp)
     entity_audit, _terrain_audit = parse_audit_tables(audit_md)
 
