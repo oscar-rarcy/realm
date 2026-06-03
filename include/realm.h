@@ -394,6 +394,7 @@ MapGenerationConfig currentMapGenerationConfig(const Game& game);
 void generateMap(Game& game,const MapGenerationConfig& config);
 void generateMap(const MapGenerationConfig& config);
 void generateMap();
+Game& mapGenerationTarget();
 void clearStartArea(int cx,int cy,int radius);
 void placeGoldCluster(int cx,int cy,int count);
 float sampleNoise(float fx,float fy);

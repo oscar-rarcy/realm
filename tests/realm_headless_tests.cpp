@@ -1468,9 +1468,27 @@ static void testContextResolverProducesTypedCommands() {
     int houseId = spawnEntity(E_HOUSE, 0, 36, 30);
     Entity* house = findEntity(houseId);
     assert(house);
+    house->underConstruction = true;
+    Command help = resolveContextCommand(g, workerSelection, { 36, 30 });
+    assert(help.type() == CommandType::Help);
+    const HelpCommand* helpPayload = std::get_if<HelpCommand>(&help.payload);
+    assert(helpPayload && helpPayload->targetId == houseId);
+    Command legacyHelp;
+    legacyHelp.payload = ContextCommand{ workerSelection, { 36, 30 } };
+    assert(dispatchCommand(g, legacyHelp).status == CommandStatus::Accepted);
+    Entity* worker = findEntity(workerId);
+    assert(worker && worker->state == S_BUILDING && worker->targetId == houseId);
     house->underConstruction = false;
     Command garrison = resolveContextCommand(g, workerSelection, { 36, 30 });
     assert(garrison.type() == CommandType::Garrison);
+    int farmId = spawnEntity(E_FARM, 0, 38, 30);
+    Entity* existingFarm = findEntity(farmId);
+    assert(existingFarm);
+    existingFarm->underConstruction = false;
+    Command tend = resolveContextCommand(g, workerSelection, { 38, 30 });
+    assert(tend.type() == CommandType::Help);
+    const HelpCommand* tendPayload = std::get_if<HelpCommand>(&tend.payload);
+    assert(tendPayload && tendPayload->targetId == farmId);
     assert(validateGameState(nullptr));
 }
 
@@ -1792,9 +1810,8 @@ static void testAICommandDispatch() {
     Entity* tender = findEntity(tenderId);
     assert(farm && tender);
     farm->underConstruction = false;
-    setActiveAIContext(&aiContext);
-    aiIssueContext(*tender, farm->x, farm->y);
-    setActiveAIContext(nullptr);
+    aiContext.ctx.world = buildWorldIndex(g);
+    aiIssueContext(aiContext, *tender, farm->x, farm->y);
     assert(aiContext.plannedCommands.size() == 1);
     assert(aiContext.plannedCommands.back().type() == CommandType::Context);
     executeAICommands(aiContext);

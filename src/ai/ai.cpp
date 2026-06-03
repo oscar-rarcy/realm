@@ -50,23 +50,20 @@ AIWorldView buildAIWorldView(int o, const AITuning& tuning) {
 }
 
 void tickAIForOwner(int owner) {
-    Player& player = g.players[owner];
     const AITuning& tuning = defaultAITuning();
     AIWorldView view = buildAIWorldView(owner, tuning);
     WorldIndex world = buildWorldIndex(g);
     GameContext gameContext{ g, world, gameEvents() };
     AIContext aiContext{ owner, gameContext, view, tuning, {}, {} };
 
-    setActiveAIContext(&aiContext);
-    aiGather(owner);
-    runAIEconomy(owner, player, view);
-    runAIProduction(owner, player, view);
-    runAIDefenseInfrastructure(owner, player, view);
-    runAIFoodEconomy(owner, player, view);
-    runAINaval(owner, player, view);
-    runAIExpansion(owner, player, view);
-    runAIAttackAndDefense(owner, player, view);
-    setActiveAIContext(nullptr);
+    aiGather(aiContext);
+    runAIEconomy(aiContext);
+    runAIProduction(aiContext);
+    runAIDefenseInfrastructure(aiContext);
+    runAIFoodEconomy(aiContext);
+    runAINaval(aiContext);
+    runAIExpansion(aiContext);
+    runAIAttackAndDefense(aiContext);
     executeAICommands(aiContext);
 }
 

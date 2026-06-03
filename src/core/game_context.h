@@ -23,8 +23,7 @@ inline GameContext makeGameContext(Game& game, WorldIndex& world, EventSink& eve
     return { game, world, events };
 }
 
-inline GameContext legacyGameContext(Game& game) {
-    static WorldIndex world;
+inline GameContext legacyGameContext(Game& game, WorldIndex& world) {
     world = buildWorldIndex(game);
     return makeGameContext(game, world, gameEvents());
 }

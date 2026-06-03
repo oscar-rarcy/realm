@@ -7,11 +7,11 @@
 // ============================================================
 // AI — economy + military build-out, target picking, wave dispatch
 // ============================================================
-static int countTypeInIndex(const WorldIndex& world, int owner, EntityType type, bool includeUnderConstruction) {
-    if (owner < 0 || owner > MAX_PLAYERS) return 0;
+static int countTypeInIndex(Game& game, const WorldIndex& world, int owner, EntityType type, bool includeUnderConstruction) {
+    if (owner < 0 || owner >= MAX_PLAYERS) return 0;
     int count = 0;
     for (EntityId id : world.entitiesByOwner[owner]) {
-        const Entity* entity = entityById(g, world, id);
+        const Entity* entity = entityById(game, world, id);
         if (entity && entity->type == type && (includeUnderConstruction || !entity->underConstruction)) count++;
     }
     return count;
@@ -38,17 +38,25 @@ static void forEachEnemyEntity(Game& game, const WorldIndex& world, int owner, F
 
 int aiCount(int o, EntityType t) {
     WorldIndex world = buildWorldIndex(g);
-    return countTypeInIndex(world, o, t, false);
+    return countTypeInIndex(g, world, o, t, false);
 }
 
 int aiCountAll(int o, EntityType t) {
     WorldIndex world = buildWorldIndex(g);
-    return countTypeInIndex(world, o, t, true);
+    return countTypeInIndex(g, world, o, t, true);
+}
+
+int aiCount(AIContext& context, EntityType t) {
+    return countTypeInIndex(context.ctx.game, context.ctx.world, context.owner, t, false);
+}
+
+int aiCountAll(AIContext& context, EntityType t) {
+    return countTypeInIndex(context.ctx.game, context.ctx.world, context.owner, t, true);
 }
 
 Entity* aiIdle(int o, EntityType t) {
     WorldIndex world = buildWorldIndex(g);
-    if (o < 0 || o > MAX_PLAYERS) return nullptr;
+    if (o < 0 || o >= MAX_PLAYERS) return nullptr;
     for (EntityId id : world.entitiesByOwner[o]) {
         Entity* entity = entityById(g, world, id);
         if (entity && entity->type == t && entity->state == S_IDLE && !entity->underConstruction) return entity;
@@ -58,9 +66,19 @@ Entity* aiIdle(int o, EntityType t) {
 
 Entity* aiBldg(int o, EntityType t) {
     WorldIndex world = buildWorldIndex(g);
-    if (o < 0 || o > MAX_PLAYERS) return nullptr;
+    if (o < 0 || o >= MAX_PLAYERS) return nullptr;
     for (EntityId id : world.buildingsByOwner[o]) {
         Entity* entity = entityById(g, world, id);
+        if (entity && entity->type == t && !entity->underConstruction) return entity;
+    }
+    return nullptr;
+}
+
+Entity* aiBldg(AIContext& context, EntityType t) {
+    int o = context.owner;
+    if (!validAiOwner(o)) return nullptr;
+    for (EntityId id : context.ctx.world.buildingsByOwner[o]) {
+        Entity* entity = entityById(context.ctx.game, context.ctx.world, id);
         if (entity && entity->type == t && !entity->underConstruction) return entity;
     }
     return nullptr;
@@ -86,11 +104,37 @@ Entity* aiWorker(int o) {
     return nullptr;
 }
 
+Entity* aiWorker(AIContext& context) {
+    int o = context.owner;
+    if (!validAiOwner(o)) return nullptr;
+    for (EntityId id : context.ctx.world.unitsByOwner[o]) {
+        Entity* e = entityById(context.ctx.game, context.ctx.world, id);
+        if (e && isWorker(e->type) && e->state == S_IDLE && !e->underConstruction) return e;
+    }
+    for (EntityId id : context.ctx.world.unitsByOwner[o]) {
+        Entity* e = entityById(context.ctx.game, context.ctx.world, id);
+        if (e && isWorker(e->type)
+            && !e->underConstruction
+            && (e->state == S_GATHERING || e->state == S_RETURNING)) return e;
+    }
+    return nullptr;
+}
+
 Entity* aiIdlePeasant(int o) {
     WorldIndex world = buildWorldIndex(g);
     if (!validAiOwner(o)) return nullptr;
     for (EntityId id : world.unitsByOwner[o]) {
         Entity* e = entityById(g, world, id);
+        if (e && isWorker(e->type) && e->state == S_IDLE && !e->underConstruction) return e;
+    }
+    return nullptr;
+}
+
+Entity* aiIdlePeasant(AIContext& context) {
+    int o = context.owner;
+    if (!validAiOwner(o)) return nullptr;
+    for (EntityId id : context.ctx.world.unitsByOwner[o]) {
+        Entity* e = entityById(context.ctx.game, context.ctx.world, id);
         if (e && isWorker(e->type) && e->state == S_IDLE && !e->underConstruction) return e;
     }
     return nullptr;
@@ -108,8 +152,9 @@ static void considerResourceTarget(const Entity& gatherer, const std::vector<Res
     }
 }
 
-void aiGather(int o) {
-    WorldIndex world = buildWorldIndex(g);
+void aiGather(AIContext& context) {
+    const int o = context.owner;
+    WorldIndex& world = context.ctx.world;
     if (!validAiOwner(o)) return;
     for (EntityId id : world.unitsByOwner[o]) {
         Entity* entity = entityById(g, world, id);
@@ -123,8 +168,18 @@ void aiGather(int o) {
             considerResourceTarget(e, world.resources.wood, bestD, bx, by);
             considerResourceTarget(e, world.resources.food, bestD, bx, by);
         }
-        if (bx >= 0) aiIssueGather(e, bx, by);
+        if (bx >= 0) aiIssueGather(context, e, bx, by);
     }
+}
+
+void aiGather(int o) {
+    const AITuning& tuning = defaultAITuning();
+    AIWorldView view = buildAIWorldView(o, tuning);
+    WorldIndex world = buildWorldIndex(g);
+    GameContext gameContext{ g, world, gameEvents() };
+    AIContext context{ o, gameContext, view, tuning, {}, {} };
+    aiGather(context);
+    executeAICommands(context);
 }
 
 // Build placement: try near a given centre. Prefer positions with breathing
@@ -155,6 +210,37 @@ void aiBuildSpotNear(int o, EntityType bt, int cx, int cy, int& ox, int& oy) {
 }
 void aiBuildSpot(int o, EntityType bt, int& ox, int& oy) { aiBuildSpotNear(o, bt, -1, -1, ox, oy); }
 
+void aiBuildSpotNear(AIContext& context, EntityType bt, int cx, int cy, int& ox, int& oy) {
+    int o = context.owner;
+    Game& game = context.ctx.game;
+    WorldIndex& world = context.ctx.world;
+    if (cx < 0 || cy < 0) {
+        Entity* th = aiBldg(context, E_TOWNHALL);
+        if (!th) th = aiBldg(context, E_CASTLE);
+        if (!th) return;
+        cx = th->x; cy = th->y;
+    }
+    for (int r = 4; r < 22; r++) for (int a = 0; a < 28; a++) {
+        int bx = cx + (realmRand()%(r*2+1)) - r, by = cy + (realmRand()%(r*2+1)) - r;
+        if (!canPlace(game, world, bt, bx, by, o)) continue;
+        bool tooClose = false;
+        for (EntityId id : world.buildingsByOwner[o]) {
+            Entity* e = entityById(game, world, id);
+            if (!e) continue;
+            if (dist(e->x, e->y, bx, by) < 3) { tooClose = true; break; }
+        }
+        if (!tooClose) { ox = bx; oy = by; return; }
+    }
+    for (int r = 2; r < 22; r++) for (int a = 0; a < 28; a++) {
+        int bx = cx + (realmRand()%(r*2+1)) - r, by = cy + (realmRand()%(r*2+1)) - r;
+        if (canPlace(game, world, bt, bx, by, o)) { ox = bx; oy = by; return; }
+    }
+}
+
+void aiBuildSpot(AIContext& context, EntityType bt, int& ox, int& oy) {
+    aiBuildSpotNear(context, bt, -1, -1, ox, oy);
+}
+
 void aiBuildSpotWide(int o, EntityType bt, int& ox, int& oy) {
     WorldIndex world = buildWorldIndex(g);
     Entity* th = aiBldg(o, E_TOWNHALL);
@@ -163,6 +249,19 @@ void aiBuildSpotWide(int o, EntityType bt, int& ox, int& oy) {
     for (int r = 5; r < 28; r++) for (int a = 0; a < 32; a++) {
         int bx = th->x + (realmRand()%(r*2+1)) - r, by = th->y + (realmRand()%(r*2+1)) - r;
         if (canPlace(g, world, bt, bx, by, o)) { ox = bx; oy = by; return; }
+    }
+}
+
+void aiBuildSpotWide(AIContext& context, EntityType bt, int& ox, int& oy) {
+    int o = context.owner;
+    Game& game = context.ctx.game;
+    WorldIndex& world = context.ctx.world;
+    Entity* th = aiBldg(context, E_TOWNHALL);
+    if (!th) th = aiBldg(context, E_CASTLE);
+    if (!th) return;
+    for (int r = 5; r < 28; r++) for (int a = 0; a < 32; a++) {
+        int bx = th->x + (realmRand()%(r*2+1)) - r, by = th->y + (realmRand()%(r*2+1)) - r;
+        if (canPlace(game, world, bt, bx, by, o)) { ox = bx; oy = by; return; }
     }
 }
 
@@ -191,10 +290,9 @@ AIIntel aiScout(int o) {
     return x;
 }
 
-static Entity* aiNearestEnemyBuilding(int o, int x, int y) {
+static Entity* aiNearestEnemyBuilding(Game& game, const WorldIndex& world, int o, int x, int y) {
     Entity* best = nullptr; int bestD = 99999;
-    WorldIndex world = buildWorldIndex(g);
-    forEachEnemyEntity(g, world, o, [&](Entity& e) {
+    forEachEnemyEntity(game, world, o, [&](Entity& e) {
         if (!isBuilding(e.type)) return;
         int d = dist(x, y, e.x, e.y);
         if (d < bestD) { bestD = d; best = &e; }
@@ -217,49 +315,61 @@ static bool findShoreTileNear(int cx, int cy, int searchR, int& ox, int& oy) {
     return false;
 }
 
-void aiTickTrebuchets(int o) {
+void aiTickTrebuchets(AIContext& context) {
+    const int o = context.owner;
     int rng = STATS[E_TREBUCHET].range;
-    WorldIndex world = buildWorldIndex(g);
+    WorldIndex& world = context.ctx.world;
     if (!validAiOwner(o)) return;
     for (EntityId id : world.unitsByOwner[o]) {
-        Entity* entity = entityById(g, world, id);
+        Entity* entity = entityById(context.ctx.game, world, id);
         if (!entity || entity->type != E_TREBUCHET || entity->underConstruction) continue;
         Entity& t = *entity;
         if (t.packTicks > 0) continue;
-        Entity* target = aiNearestEnemyBuilding(o, t.x, t.y);
+        Entity* target = aiNearestEnemyBuilding(context.ctx.game, world, o, t.x, t.y);
         if (t.packed) {
             if (!target) continue;
             if (dist(t.x, t.y, target->x, target->y) <= rng) {
-                aiIssueToggleTrebuchetPacked(t);
+                aiIssueToggleTrebuchetPacked(context, t);
             } else if (t.state == S_IDLE || t.path.empty()) {
-                aiIssueMove(t, target->x, target->y);
+                aiIssueMove(context, t, target->x, target->y);
             }
         } else {
             if (t.hp * 100 < t.maxHp * 25 || !target || dist(t.x, t.y, target->x, target->y) > rng) {
-                aiIssueToggleTrebuchetPacked(t);
+                aiIssueToggleTrebuchetPacked(context, t);
                 continue;
             }
-            if (t.state == S_IDLE || t.targetId != target->id) aiIssueAttack(t, target->id);
+            if (t.state == S_IDLE || t.targetId != target->id) aiIssueAttack(context, t, target->id);
         }
     }
 }
 
-void aiTickTransports(int o) {
-    Entity* target = nullptr;
+void aiTickTrebuchets(int o) {
+    const AITuning& tuning = defaultAITuning();
+    AIWorldView view = buildAIWorldView(o, tuning);
     WorldIndex world = buildWorldIndex(g);
+    GameContext gameContext{ g, world, gameEvents() };
+    AIContext context{ o, gameContext, view, tuning, {}, {} };
+    aiTickTrebuchets(context);
+    executeAICommands(context);
+}
+
+void aiTickTransports(AIContext& context) {
+    const int o = context.owner;
+    Entity* target = nullptr;
+    WorldIndex& world = context.ctx.world;
     if (!validAiOwner(o)) return;
-    forEachEnemyEntity(g, world, o, [&](Entity& e) {
+    forEachEnemyEntity(context.ctx.game, world, o, [&](Entity& e) {
         if (target) return;
         if (e.type == E_TOWNHALL || e.type == E_CASTLE) target = &e;
     });
-    Entity* home = aiBldg(o, E_TOWNHALL);
-    if (!home) home = aiBldg(o, E_CASTLE);
+    Entity* home = aiBldg(context, E_TOWNHALL);
+    if (!home) home = aiBldg(context, E_CASTLE);
     if (!target || !home) return;
     int ex=-1, ey=-1, hx=-1, hy=-1;
     if (!findShoreTileNear(target->x, target->y, 18, ex, ey)) return;
     if (!findShoreTileNear(home->x, home->y, 18, hx, hy)) return;
     for (EntityId transportId : world.unitsByOwner[o]) {
-        Entity* transport = entityById(g, world, transportId);
+        Entity* transport = entityById(context.ctx.game, world, transportId);
         if (!transport || transport->type != E_TRANSPORT || transport->underConstruction) continue;
         Entity& t = *transport;
         bool atHome = dist(t.x, t.y, hx, hy) <= 3;
@@ -267,32 +377,39 @@ void aiTickTransports(int o) {
         if (t.garrison.empty()) {
             if (atHome) {
                 int free = garrisonCap(E_TRANSPORT);
-                Entity* peasant = aiIdlePeasant(o);
-                if (peasant && mdist(peasant->x, peasant->y, t.x, t.y) <= 12) { aiIssueGarrison(*peasant, t.id); free--; }
+                Entity* peasant = aiIdlePeasant(context);
+                if (peasant && mdist(peasant->x, peasant->y, t.x, t.y) <= 12) { aiIssueGarrison(context, *peasant, t.id); free--; }
                 for (EntityId unitId : world.unitsByOwner[o]) {
                     if (free <= 0) break;
-                    Entity* unit = entityById(g, world, unitId);
+                    Entity* unit = entityById(context.ctx.game, world, unitId);
                     if (!unit || unit->state != S_IDLE) continue;
                     Entity& u = *unit;
                     if (!isUnit(u.type) || u.type == E_PEASANT || isNaval(u.type) || u.type == E_TREBUCHET) continue;
-                    if (mdist(u.x, u.y, t.x, t.y) <= 12) { aiIssueGarrison(u, t.id); free--; }
+                    if (mdist(u.x, u.y, t.x, t.y) <= 12) { aiIssueGarrison(context, u, t.id); free--; }
                 }
             } else if (t.state == S_IDLE || t.path.empty()) {
-                aiIssueMove(t, hx, hy);
+                aiIssueMove(context, t, hx, hy);
             }
         } else {
-            if (atEnemy) aiIssueEjectGarrison(t);
-            else if (t.state == S_IDLE || t.path.empty()) aiIssueMove(t, ex, ey);
+            if (atEnemy) aiIssueEjectGarrison(context, t);
+            else if (t.state == S_IDLE || t.path.empty()) aiIssueMove(context, t, ex, ey);
         }
     }
 }
 
-// Pick a target worth attacking from `attacker`'s position.
-// Priorities: peasants (raid), wounded enemies, towers, key buildings.
-int aiPickTarget(int o, Entity* attacker) {
-    Entity* best = nullptr; int bestScore = -999999;
+void aiTickTransports(int o) {
+    const AITuning& tuning = defaultAITuning();
+    AIWorldView view = buildAIWorldView(o, tuning);
     WorldIndex world = buildWorldIndex(g);
-    forEachEnemyEntity(g, world, o, [&](Entity& e) {
+    GameContext gameContext{ g, world, gameEvents() };
+    AIContext context{ o, gameContext, view, tuning, {}, {} };
+    aiTickTransports(context);
+    executeAICommands(context);
+}
+
+static int aiPickTargetIndexed(Game& game, const WorldIndex& world, int o, Entity* attacker) {
+    Entity* best = nullptr; int bestScore = -999999;
+    forEachEnemyEntity(game, world, o, [&](Entity& e) {
         if (e.state == S_GARRISONED) return;
         int score = 0;
         if      (e.type == E_CATAPULT || e.type == E_TREBUCHET)     score += 270;
@@ -313,10 +430,20 @@ int aiPickTarget(int o, Entity* attacker) {
     return best ? best->id : -1;
 }
 
-int aiPickSiegeTarget(int o, Entity* attacker) {
-    Entity* best = nullptr; int bestScore = -999999;
+// Pick a target worth attacking from `attacker`'s position.
+// Priorities: peasants (raid), wounded enemies, towers, key buildings.
+int aiPickTarget(int o, Entity* attacker) {
     WorldIndex world = buildWorldIndex(g);
-    forEachEnemyEntity(g, world, o, [&](Entity& e) {
+    return aiPickTargetIndexed(g, world, o, attacker);
+}
+
+int aiPickTarget(AIContext& context, Entity* attacker) {
+    return aiPickTargetIndexed(context.ctx.game, context.ctx.world, context.owner, attacker);
+}
+
+static int aiPickSiegeTargetIndexed(Game& game, const WorldIndex& world, int o, Entity* attacker) {
+    Entity* best = nullptr; int bestScore = -999999;
+    forEachEnemyEntity(game, world, o, [&](Entity& e) {
         if (!isBuilding(e.type) && e.type != E_CATAPULT && e.type != E_TREBUCHET) return;
         int score = 0;
         if      (e.type == E_TOWNHALL || e.type == E_CASTLE) score += 300;
@@ -329,4 +456,13 @@ int aiPickSiegeTarget(int o, Entity* attacker) {
         if (score > bestScore) { bestScore = score; best = &e; }
     });
     return best ? best->id : -1;
+}
+
+int aiPickSiegeTarget(int o, Entity* attacker) {
+    WorldIndex world = buildWorldIndex(g);
+    return aiPickSiegeTargetIndexed(g, world, o, attacker);
+}
+
+int aiPickSiegeTarget(AIContext& context, Entity* attacker) {
+    return aiPickSiegeTargetIndexed(context.ctx.game, context.ctx.world, context.owner, attacker);
 }

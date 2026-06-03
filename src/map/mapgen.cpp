@@ -4,6 +4,29 @@
 #include <queue>
 #include <utility>
 
+static Game* activeMapGenerationTarget = &g;
+
+Game& mapGenerationTarget() {
+    return *activeMapGenerationTarget;
+}
+
+namespace {
+
+struct ScopedMapGenerationTarget {
+    explicit ScopedMapGenerationTarget(Game& game) : previous(activeMapGenerationTarget) {
+        activeMapGenerationTarget = &game;
+    }
+    ~ScopedMapGenerationTarget() {
+        activeMapGenerationTarget = previous;
+    }
+    Game* previous;
+};
+
+} // namespace
+
+#define g mapGenerationTarget()
+#define realmRand() realmRand(mapGenerationTarget())
+
 static float noiseGrid[32][32];
 
 static void initNoise() {
@@ -305,13 +328,8 @@ void generateMap(const MapGenerationConfig& config) {
 }
 
 void generateMap(Game& game, const MapGenerationConfig& config) {
-    if (&game == &g) {
-        generateMap(config);
-        return;
-    }
-    std::swap(g, game);
+    ScopedMapGenerationTarget scoped(game);
     generateMap(config);
-    std::swap(g, game);
 }
 
 void generateMap() {

@@ -126,6 +126,32 @@ ServiceResult startGather(Game& game, const WorldIndex& world, PlayerId issuer, 
     return ok();
 }
 
+ServiceResult canHelp(Game& game, const WorldIndex& world, PlayerId issuer, EntityId unitId, EntityId targetId) {
+    const Entity* unit = entityIn(game, world, unitId);
+    if (!ownedUnit(unit, issuer) || unit->type != E_PEASANT) return fail("Selected unit cannot help.");
+    const Entity* target = entityIn(game, world, targetId);
+    if (!target || !target->alive || target->owner != issuer) return fail("Help target is invalid.");
+    if (target->underConstruction && isBuilding(target->type)) return ok();
+    if (target->type == E_FARM && !target->underConstruction) return ok();
+    return fail("Help target is invalid.");
+}
+
+ServiceResult startHelp(Game& game, const WorldIndex& world, PlayerId issuer, const Selection& selection, EntityId targetId) {
+    const Entity* target = entityIn(game, world, targetId);
+    if (!target || !target->alive || target->owner != issuer) return fail("Help target is invalid.");
+    bool ordered = false;
+    for (int id : selection.ids) {
+        ServiceResult allowed = canHelp(game, world, issuer, id, targetId);
+        if (!allowed.ok) continue;
+        Entity* unit = entityIn(game, world, id);
+        orderHelp(game, world, *unit, targetId);
+        ordered = true;
+    }
+    if (!ordered) return fail("No selected units can help.");
+    emitStatusEvent(issuer, target->underConstruction ? "Helping build..." : "Tending farm...");
+    return ok();
+}
+
 ServiceResult canGarrison(const Game& game, const WorldIndex& world, PlayerId issuer, EntityId unitId, EntityId targetId) {
     const Entity* unit = entityIn(game, world, unitId);
     if (!ownedUnit(unit, issuer) || isSiege(unit->type) || isNaval(unit->type))

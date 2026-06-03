@@ -83,14 +83,12 @@ CommandResult dispatchCommand(GameContext& context, const Command& command) {
         },
         [&](const ContextCommand& payload) -> CommandResult {
             if (!inBounds(payload.target.x, payload.target.y)) return rejected(context, issuer, "Target is out of bounds.");
-            Command typed = resolveContextCommand(game, issuer, payload.selection, payload.target);
+            Command typed = resolveContextCommand(game, context.world, issuer, payload.selection, payload.target);
             if (typed.type() != CommandType::None && typed.type() != CommandType::Context) {
                 typed.issuer = issuer;
                 return dispatchCommand(context, typed);
             }
-            if (payload.selection.ids.size() > 1) cmdAtTileGroup(payload.selection, payload.target.x, payload.target.y, issuer);
-            else cmdAtTileSingle(selectedEntity(context, payload.selection), payload.target.x, payload.target.y, issuer);
-            return accepted(context, issuer);
+            return rejected(context, issuer, "Context command could not be resolved.");
         },
         [&](const SelectCommand& payload) -> CommandResult {
             if (!inBounds(payload.target.x, payload.target.y)) return rejected(context, issuer, "Selection target is out of bounds.");
@@ -145,6 +143,9 @@ CommandResult dispatchCommand(GameContext& context, const Command& command) {
             return serviceResult(context, issuer,
                 executeTradeService(game, context.world, issuer, market->id, payload.trade),
                 "Market trade rejected.");
+        },
+        [&](const HelpCommand& payload) -> CommandResult {
+            return orderResult(context, issuer, startHelp(game, context.world, issuer, payload.selection, payload.targetId));
         },
         [&](const SetRallyCommand& payload) -> CommandResult {
             return orderResult(context, issuer, setRallyPoint(game, context.world, issuer, payload.selection, payload.target));
@@ -241,6 +242,7 @@ CommandResult dispatchCommand(GameContext& context, const Command& command) {
 }
 
 CommandResult dispatchCommand(Game& game, const Command& command) {
-    GameContext context = legacyGameContext(game);
+    WorldIndex world;
+    GameContext context = legacyGameContext(game, world);
     return dispatchCommand(context, command);
 }

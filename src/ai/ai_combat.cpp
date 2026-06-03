@@ -28,13 +28,12 @@ void forEachEnemyEntity(Game& game, const WorldIndex& world, int owner, Fn&& fn)
 
 } // namespace
 
-void runAIAttackAndDefense(int o, Player& p, const AIWorldView& view) {
-    if (o < 0 || o > MAX_PLAYERS) return;
-    WorldIndex world = buildWorldIndex(g);
-    const AIIntel& intel = view.intel;
-    const AITuning& tuning = defaultAITuning();
+static void planAttackWave(AIContext& context, Player& player, const AIIntel& intel) {
+    int o = context.owner;
+    WorldIndex& world = context.ctx.world;
+    const AITuning& tuning = context.tuning;
     // === ATTACK RHYTHM: send waves from idle military only ===
-    if (p.aiWaveCd > 0) p.aiWaveCd--;
+    if (player.aiWaveCd > 0) player.aiWaveCd--;
     int idleArmy = 0;
     Entity* anchor = nullptr;
     for (EntityId id : world.unitsByOwner[o]) {
@@ -50,9 +49,9 @@ void runAIAttackAndDefense(int o, Player& p, const AIWorldView& view) {
         : (lateGame ? tuning.lateAttackThreshold
                     : (midGame ? tuning.midAttackThreshold : tuning.earlyAttackThreshold));
     int waveCooldown = lateGame ? tuning.lateWaveCooldown : tuning.midWaveCooldown;
-    if (idleArmy >= attackThreshold && p.aiWaveCd == 0 && anchor) {
-        int tid = aiPickTarget(o, anchor);
-        int siegeId = aiPickSiegeTarget(o, anchor);
+    if (idleArmy >= attackThreshold && player.aiWaveCd == 0 && anchor) {
+        int tid = aiPickTarget(context, anchor);
+        int siegeId = aiPickSiegeTarget(context, anchor);
         if (tid < 0 && intel.playerTownCenterId) tid = *intel.playerTownCenterId;
         if (tid >= 0) {
             for (EntityId id : world.unitsByOwner[o]) {
@@ -60,13 +59,18 @@ void runAIAttackAndDefense(int o, Player& p, const AIWorldView& view) {
                 if (!e || !aiCombatUnit(*e, o)) continue;
                 int myTarget = (e->type == E_CATAPULT && siegeId >= 0) ? siegeId : tid;
                 Entity* target = entityById(g, world, myTarget);
-                if (target) aiIssueAttackMove(*e, target->x, target->y);
-                else aiIssueAttack(*e, myTarget);
+                if (target) aiIssueAttackMove(context, *e, target->x, target->y);
+                else aiIssueAttack(context, *e, myTarget);
             }
-            p.aiWaveCd = waveCooldown;
+            player.aiWaveCd = waveCooldown;
         }
     }
+}
 
+static void planBaseDefense(AIContext& context) {
+    int o = context.owner;
+    WorldIndex& world = context.ctx.world;
+    const AITuning& tuning = context.tuning;
     // === DEFENSE: respond to threats near any owned TH/Castle ===
     for (EntityId baseId : world.buildingsByOwner[o]) {
         Entity* base = entityById(g, world, baseId);
@@ -79,14 +83,18 @@ void runAIAttackAndDefense(int o, Player& p, const AIWorldView& view) {
                 for (EntityId defenderId : world.unitsByOwner[o]) {
                     Entity* d = entityById(g, world, defenderId);
                     if (d && aiIdleMilitaryUnit(*d, o)) {
-                        aiIssueAttackMove(*d, en.x, en.y);
+                        aiIssueAttackMove(context, *d, en.x, en.y);
                     }
                 }
                 handledThreat = true;
             }
         });
     }
+}
 
+static void planWorkerDefense(AIContext& context) {
+    int o = context.owner;
+    WorldIndex& world = context.ctx.world;
     // Worker defense: if a peasant was hit, nearest idle military intercepts.
     for (EntityId workerId : world.unitsByOwner[o]) {
         Entity* worker = entityById(g, world, workerId);
@@ -103,10 +111,20 @@ void runAIAttackAndDefense(int o, Player& p, const AIWorldView& view) {
             int d = mdist(en.x,en.y,worker->x,worker->y);
             if (d < threatD) { threatD = d; threat = &en; }
         });
-        if (guard && threat) aiIssueAttackMove(*guard, threat->x, threat->y);
+        if (guard && threat) aiIssueAttackMove(context, *guard, threat->x, threat->y);
         break;
     }
+}
 
-    aiTickTrebuchets(o);
-    if (g.biomeChoice == B_OCEAN) aiTickTransports(o);
+void runAIAttackAndDefense(AIContext& context) {
+    const int o = context.owner;
+    if (o < 0 || o >= MAX_PLAYERS) return;
+    Player& player = context.ctx.game.players[o];
+    const AIIntel& intel = context.view.intel;
+    planAttackWave(context, player, intel);
+    planBaseDefense(context);
+    planWorkerDefense(context);
+
+    aiTickTrebuchets(context);
+    if (g.biomeChoice == B_OCEAN) aiTickTransports(context);
 }

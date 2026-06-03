@@ -19,6 +19,9 @@ ServiceResult startAttack(Game& game, const WorldIndex& world, PlayerId issuer, 
 ServiceResult canGatherAt(Game& game, const WorldIndex& world, PlayerId issuer, EntityId unitId, MapPos target);
 ServiceResult startGather(Game& game, const WorldIndex& world, PlayerId issuer, const Selection& selection, MapPos target);
 
+ServiceResult canHelp(Game& game, const WorldIndex& world, PlayerId issuer, EntityId unitId, EntityId targetId);
+ServiceResult startHelp(Game& game, const WorldIndex& world, PlayerId issuer, const Selection& selection, EntityId targetId);
+
 ServiceResult canGarrison(const Game& game, const WorldIndex& world, PlayerId issuer, EntityId unitId, EntityId targetId);
 ServiceResult startGarrison(Game& game, const WorldIndex& world, PlayerId issuer, const Selection& selection, EntityId targetId);
 ServiceResult ejectGarrisonService(Game& game, const WorldIndex& world, PlayerId issuer, const Selection& selection);

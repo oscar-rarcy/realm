@@ -10,11 +10,14 @@ bool validAiOwner(int owner) {
 
 } // namespace
 
-void runAIEconomy(int o, Player& p, const AIWorldView& view) {
+void runAIEconomy(AIContext& context) {
+    const int o = context.owner;
+    Player& p = context.ctx.game.players[o];
+    const AIWorldView& view = context.view;
     const int peas = view.peas, mil = view.mil, arch = view.arch, kni = view.kni;
     const int spr = view.spr;
     const int hous = view.hous, peasCap = view.peasCap;
-    WorldIndex world = buildWorldIndex(g);
+    WorldIndex& world = context.ctx.world;
     if (!validAiOwner(o)) return;
     // === ECONOMY: peasants from every TH/Castle ===
     if (peas < peasCap) {
@@ -25,44 +28,49 @@ void runAIEconomy(int o, Player& p, const AIWorldView& view) {
             if (th.underConstruction) continue;
             if (th.type != E_TOWNHALL && th.type != E_CASTLE) continue;
             if (th.producing != E_NONE) continue;
-            if (p.gold >= 50) { aiIssueTrain(th, E_PEASANT); break; }
+            if (p.gold >= 50) { aiIssueTrain(context, th, E_PEASANT); break; }
         }
     }
 
     // === SUPPLY: keep houses ahead of training ===
     if (p.supply + 4 >= p.supplyMax && hous < 16 && p.wood >= 50) {
-        Entity* b = aiWorker(o);
-        if (b) { int bx=-1,by=-1; aiBuildSpotWide(o,E_HOUSE,bx,by); if(bx>=0) aiIssueBuild(*b,E_HOUSE,bx,by); }
+        Entity* b = aiWorker(context);
+        if (b) { int bx=-1,by=-1; aiBuildSpotWide(context,E_HOUSE,bx,by); if(bx>=0) aiIssueBuild(context, *b,E_HOUSE,bx,by); }
     }
 
-    if (aiCountAll(o,E_CASTLE) == 0 && mil + arch + kni + spr >= 8 && p.gold >= 100 && p.wood >= 250) {
-        Entity* b = aiWorker(o);
-        if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_CASTLE,bx,by); if(bx>=0) aiIssueBuild(*b,E_CASTLE,bx,by); }
+    if (aiCountAll(context,E_CASTLE) == 0 && mil + arch + kni + spr >= 8 && p.gold >= 100 && p.wood >= 250) {
+        Entity* b = aiWorker(context);
+        if (b) { int bx=-1,by=-1; aiBuildSpot(context,E_CASTLE,bx,by); if(bx>=0) aiIssueBuild(context, *b,E_CASTLE,bx,by); }
     }
 }
 
-void runAIDefenseInfrastructure(int o, Player& p, const AIWorldView& view) {
+void runAIDefenseInfrastructure(AIContext& context) {
+    const int o = context.owner;
+    Player& p = context.ctx.game.players[o];
+    const AIWorldView& view = context.view;
     const int mil = view.mil, towerCap = view.towerCap;
     // === DEFENSE: towers scaled to threat ===
-    if (aiCountAll(o,E_TOWER) < towerCap && mil >= 2 && p.wood >= 100 && p.gold >= 50) {
-        Entity* b = aiWorker(o);
-        if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_TOWER,bx,by); if(bx>=0) aiIssueBuild(*b,E_TOWER,bx,by); }
+    if (aiCountAll(context,E_TOWER) < towerCap && mil >= 2 && p.wood >= 100 && p.gold >= 50) {
+        Entity* b = aiWorker(context);
+        if (b) { int bx=-1,by=-1; aiBuildSpot(context,E_TOWER,bx,by); if(bx>=0) aiIssueBuild(context, *b,E_TOWER,bx,by); }
     }
 }
 
-void runAIFoodEconomy(int o, Player& p, const AIWorldView&) {
+void runAIFoodEconomy(AIContext& context) {
+    const int o = context.owner;
+    Player& p = context.ctx.game.players[o];
     const AITuning& tuning = defaultAITuning();
-    WorldIndex world = buildWorldIndex(g);
+    WorldIndex& world = context.ctx.world;
     if (!validAiOwner(o)) return;
     // === FOOD: mill + farms scale up before winter ===
-    if (aiCountAll(o,E_MILL) == 0 && p.wood >= 100) {
-        Entity* b = aiWorker(o);
-        if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_MILL,bx,by); if(bx>=0) aiIssueBuild(*b,E_MILL,bx,by); }
+    if (aiCountAll(context,E_MILL) == 0 && p.wood >= 100) {
+        Entity* b = aiWorker(context);
+        if (b) { int bx=-1,by=-1; aiBuildSpot(context,E_MILL,bx,by); if(bx>=0) aiIssueBuild(context, *b,E_MILL,bx,by); }
     }
     int wantFarms = (getSeason() == AUTUMN) ? tuning.autumnFarmCount : (getSeason() == WINTER ? 0 : tuning.normalFarmCount);
-    if (aiCountAll(o,E_MILL) > 0 && aiCountAll(o,E_FARM) < wantFarms && getSeason() != WINTER) {
-        Entity* b = aiWorker(o);
-        if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_FARM,bx,by); if(bx>=0) aiIssueBuild(*b,E_FARM,bx,by); }
+    if (aiCountAll(context,E_MILL) > 0 && aiCountAll(context,E_FARM) < wantFarms && getSeason() != WINTER) {
+        Entity* b = aiWorker(context);
+        if (b) { int bx=-1,by=-1; aiBuildSpot(context,E_FARM,bx,by); if(bx>=0) aiIssueBuild(context, *b,E_FARM,bx,by); }
     }
     for (EntityId farmId : world.buildingsByOwner[o]) {
         Entity* farmEntity = entityById(g, world, farmId);
@@ -77,25 +85,28 @@ void runAIFoodEconomy(int o, Player& p, const AIWorldView&) {
             }
         }
         if (!tended) {
-            Entity* tend = aiIdlePeasant(o);
-            if (tend) { aiIssueContext(*tend, farm.x, farm.y); break; }
+            Entity* tend = aiIdlePeasant(context);
+            if (tend) { aiIssueContext(context, *tend, farm.x, farm.y); break; }
         }
     }
 }
 
-void runAINaval(int o, Player& p, const AIWorldView& view) {
+void runAINaval(AIContext& context) {
+    const int o = context.owner;
+    Player& p = context.ctx.game.players[o];
+    const AIWorldView& view = context.view;
     const int peas = view.peas;
     const AITuning& tuning = defaultAITuning();
-    WorldIndex world = buildWorldIndex(g);
+    WorldIndex& world = context.ctx.world;
     if (!validAiOwner(o)) return;
     // === NAVAL: dock + boats if water nearby ===
-    if (aiCountAll(o,E_DOCK) == 0 && p.wood >= 100 && peas >= 4) {
-        Entity* th = aiBldg(o, E_TOWNHALL);
+    if (aiCountAll(context,E_DOCK) == 0 && p.wood >= 100 && peas >= 4) {
+        Entity* th = aiBldg(context, E_TOWNHALL);
         if (th) {
-            int bx=-1,by=-1; aiBuildSpotNear(o, E_DOCK, th->x, th->y, bx, by);
+            int bx=-1,by=-1; aiBuildSpotNear(context, E_DOCK, th->x, th->y, bx, by);
             if (bx >= 0) {
-                Entity* b = aiWorker(o);
-                if (b) aiIssueBuild(*b, E_DOCK, bx, by);
+                Entity* b = aiWorker(context);
+                if (b) aiIssueBuild(context, *b, E_DOCK, bx, by);
             }
         }
     }
@@ -105,33 +116,36 @@ void runAINaval(int o, Player& p, const AIWorldView& view) {
         Entity& dk = *dock;
         if (dk.producing != E_NONE) continue;
         // Fishing boats first for food, then a couple of warships for coastline pressure.
-        if (aiCount(o,E_FISHING_BOAT) < tuning.fishingBoatCap && p.gold >= 80 && p.wood >= 50) { aiIssueTrain(dk, E_FISHING_BOAT); continue; }
-        if (aiCount(o,E_WARSHIP) < tuning.warshipCap && p.gold >= 150 && p.wood >= 80 && p.food >= 20) { aiIssueTrain(dk, E_WARSHIP); continue; }
-        if (g.biomeChoice == B_OCEAN && aiCount(o,E_TRANSPORT) < tuning.transportCap
-            && p.gold >= 80 && p.wood >= 40 && p.food >= 10) { aiIssueTrain(dk, E_TRANSPORT); continue; }
+        if (aiCount(context,E_FISHING_BOAT) < tuning.fishingBoatCap && p.gold >= 80 && p.wood >= 50) { aiIssueTrain(context, dk, E_FISHING_BOAT); continue; }
+        if (aiCount(context,E_WARSHIP) < tuning.warshipCap && p.gold >= 150 && p.wood >= 80 && p.food >= 20) { aiIssueTrain(context, dk, E_WARSHIP); continue; }
+        if (g.biomeChoice == B_OCEAN && aiCount(context,E_TRANSPORT) < tuning.transportCap
+            && p.gold >= 80 && p.wood >= 40 && p.food >= 10) { aiIssueTrain(context, dk, E_TRANSPORT); continue; }
     }
 }
 
-void runAIExpansion(int o, Player& p, const AIWorldView& view) {
+void runAIExpansion(AIContext& context) {
+    const int o = context.owner;
+    Player& p = context.ctx.game.players[o];
+    const AIWorldView& view = context.view;
     const int peas = view.peas, mil = view.mil, arch = view.arch, kni = view.kni;
     const int spr = view.spr;
     const AIIntel& intel = view.intel;
     const AITuning& tuning = defaultAITuning();
-    WorldIndex world = buildWorldIndex(g);
+    WorldIndex& world = context.ctx.world;
     if (!validAiOwner(o)) return;
     // === EXPANSION: forward TH halfway to the player ===
-    if (aiCountAll(o,E_TOWNHALL) + aiCountAll(o,E_CASTLE) < tuning.expansionBaseCap
+    if (aiCountAll(context,E_TOWNHALL) + aiCountAll(context,E_CASTLE) < tuning.expansionBaseCap
         && peas >= tuning.expansionPeasantMin && p.wood >= 260 && intel.playerTownCenterPos) {
-        Entity* myTh = aiBldg(o, E_TOWNHALL);
-        if (!myTh) myTh = aiBldg(o, E_CASTLE);
+        Entity* myTh = aiBldg(context, E_TOWNHALL);
+        if (!myTh) myTh = aiBldg(context, E_CASTLE);
         if (myTh) {
             MapPos playerBase = *intel.playerTownCenterPos;
             int fx = (myTh->x + playerBase.x) / 2;
             int fy = (myTh->y + playerBase.y) / 2;
-            int bx=-1, by=-1; aiBuildSpotNear(o, E_TOWNHALL, fx, fy, bx, by);
+            int bx=-1, by=-1; aiBuildSpotNear(context, E_TOWNHALL, fx, fy, bx, by);
             if (bx >= 0) {
-                Entity* b = aiWorker(o);
-                if (b) aiIssueBuild(*b, E_TOWNHALL, bx, by);
+                Entity* b = aiWorker(context);
+                if (b) aiIssueBuild(context, *b, E_TOWNHALL, bx, by);
             }
         }
     }
@@ -151,13 +165,13 @@ void runAIExpansion(int o, Player& p, const AIWorldView& view) {
             int d = mdist(unit->x, unit->y, bld.x, bld.y);
             if (d < bestD) { bestD = d; archer = unit; }
         }
-        if (archer) aiIssueGarrison(*archer, bld.id);
+        if (archer) aiIssueGarrison(context, *archer, bld.id);
     }
 
     // === FORWARD AGGRESSION: mid-game outpost near the player base ===
     if (g.tick > tuning.expansionTick && intel.playerTownCenterPos && (mil + arch + kni + spr) >= tuning.forwardAggressionArmy) {
-        Entity* home = aiBldg(o, E_TOWNHALL);
-        if (!home) home = aiBldg(o, E_CASTLE);
+        Entity* home = aiBldg(context, E_TOWNHALL);
+        if (!home) home = aiBldg(context, E_CASTLE);
         if (home) {
             MapPos playerBase = *intel.playerTownCenterPos;
             int fx = home->x + (playerBase.x - home->x) * tuning.forwardAggressionPercent / 100;
@@ -170,8 +184,8 @@ void runAIExpansion(int o, Player& p, const AIWorldView& view) {
                 if (dist(e->x, e->y, fx, fy) < tuning.forwardAnchorRadius) { anchor = e; break; }
             }
             if (!anchor && p.gold >= 100 && p.wood >= 250) {
-                Entity* b = aiWorker(o);
-                if (b) { int bx=-1,by=-1; aiBuildSpotNear(o,E_CASTLE,fx,fy,bx,by); if(bx>=0) aiIssueBuild(*b,E_CASTLE,bx,by); }
+                Entity* b = aiWorker(context);
+                if (b) { int bx=-1,by=-1; aiBuildSpotNear(context,E_CASTLE,fx,fy,bx,by); if(bx>=0) aiIssueBuild(context, *b,E_CASTLE,bx,by); }
             } else if (anchor) {
                 bool hasBarr = false;
                 for (EntityId buildingId : world.buildingsByOwner[o]) {
@@ -180,8 +194,8 @@ void runAIExpansion(int o, Player& p, const AIWorldView& view) {
                         { hasBarr = true; break; }
                 }
                 if (!hasBarr && p.wood >= 150) {
-                    Entity* b = aiWorker(o);
-                    if (b) { int bx=-1,by=-1; aiBuildSpotNear(o,E_BARRACKS,anchor->x,anchor->y,bx,by); if(bx>=0) aiIssueBuild(*b,E_BARRACKS,bx,by); }
+                    Entity* b = aiWorker(context);
+                    if (b) { int bx=-1,by=-1; aiBuildSpotNear(context,E_BARRACKS,anchor->x,anchor->y,bx,by); if(bx>=0) aiIssueBuild(context, *b,E_BARRACKS,bx,by); }
                 }
             }
         }
@@ -189,8 +203,8 @@ void runAIExpansion(int o, Player& p, const AIWorldView& view) {
 
     // === COASTAL BEACHHEAD: landed peasant starts a forward Castle ===
     if (g.biomeChoice == B_OCEAN && intel.playerTownCenterPos && p.gold >= 100 && p.wood >= 250) {
-        Entity* home = aiBldg(o, E_TOWNHALL);
-        if (!home) home = aiBldg(o, E_CASTLE);
+        Entity* home = aiBldg(context, E_TOWNHALL);
+        if (!home) home = aiBldg(context, E_CASTLE);
         MapPos playerBase = *intel.playerTownCenterPos;
         for (EntityId unitId : world.unitsByOwner[o]) {
             Entity* unit = entityById(g, world, unitId);
@@ -204,7 +218,7 @@ void runAIExpansion(int o, Player& p, const AIWorldView& view) {
                 if (b && isBuilding(b->type) && mdist(b->x,b->y,u.x,u.y) < tuning.beachheadBaseRadius)
                     { hasBase = true; break; }
             }
-            if (!hasBase) { int bx=-1,by=-1; aiBuildSpotNear(o,E_CASTLE,u.x,u.y,bx,by); if(bx>=0) aiIssueBuild(u,E_CASTLE,bx,by); }
+            if (!hasBase) { int bx=-1,by=-1; aiBuildSpotNear(context,E_CASTLE,u.x,u.y,bx,by); if(bx>=0) aiIssueBuild(context, u,E_CASTLE,bx,by); }
             break;
         }
     }

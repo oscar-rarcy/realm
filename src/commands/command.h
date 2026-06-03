@@ -25,6 +25,7 @@ enum class CommandType {
     Train,
     Research,
     MarketTrade,
+    Help,
     Garrison,
     EjectGarrison,
     SetRally,
@@ -68,6 +69,7 @@ struct BuildLineCommand { Selection selection; EntityType entityType = E_NONE; M
 struct TrainCommand { Selection selection; EntityType entityType = E_NONE; };
 struct ResearchCommand { Selection selection; ResearchId researchId{}; };
 struct MarketTradeCommand { Selection selection; MarketTradeType trade{}; };
+struct HelpCommand { Selection selection; EntityId targetId = -1; };
 struct GarrisonCommand { Selection selection; EntityId targetId = -1; };
 struct EjectGarrisonCommand { Selection selection; };
 struct SetRallyCommand { Selection selection; MapPos target{-1, -1}; };
@@ -99,6 +101,7 @@ using CommandPayload = std::variant<
     TrainCommand,
     ResearchCommand,
     MarketTradeCommand,
+    HelpCommand,
     GarrisonCommand,
     EjectGarrisonCommand,
     SetRallyCommand,
@@ -136,6 +139,7 @@ struct Command {
             else if constexpr (std::is_same_v<T, TrainCommand>) return CommandType::Train;
             else if constexpr (std::is_same_v<T, ResearchCommand>) return CommandType::Research;
             else if constexpr (std::is_same_v<T, MarketTradeCommand>) return CommandType::MarketTrade;
+            else if constexpr (std::is_same_v<T, HelpCommand>) return CommandType::Help;
             else if constexpr (std::is_same_v<T, GarrisonCommand>) return CommandType::Garrison;
             else if constexpr (std::is_same_v<T, EjectGarrisonCommand>) return CommandType::EjectGarrison;
             else if constexpr (std::is_same_v<T, SetRallyCommand>) return CommandType::SetRally;
@@ -159,12 +163,11 @@ struct Command {
 };
 
 Selection currentSelection();
+Command resolveContextCommand(const Game& game, const WorldIndex& world, PlayerId issuer, const Selection& selection, MapPos target);
 Command resolveContextCommand(const Game& game, PlayerId issuer, const Selection& selection, MapPos target);
 Command resolveContextCommand(const Game& game, const Selection& selection, MapPos target);
 CommandResult dispatchCommand(Game& game, const Command& command);
 CommandResult dispatchCommand(GameContext& context, const Command& command);
-void cmdAtTileSingle(Entity* selected, int x, int y, PlayerId issuer=0);
-void cmdAtTileGroup(const Selection& selection, int x, int y, PlayerId issuer=0);
 void selectAtTile(Game& game, int x, int y);
 void selectAtTile(Game& game, const WorldIndex& world, PlayerId issuer, int x, int y);
 void boxSelect(Game& game, int x0, int y0, int x1, int y1);

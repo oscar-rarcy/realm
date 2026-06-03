@@ -1,5 +1,8 @@
 #include "realm.h"
 
+#define g mapGenerationTarget()
+#define realmRand() realmRand(mapGenerationTarget())
+
 void assignBiomesAndPaintBaseTerrain() {
     for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
         float n1 = sampleNoise(x*0.028f, y*0.028f), n2 = sampleNoise(x*0.020f+10, y*0.020f+10);

@@ -96,9 +96,11 @@ static std::optional<MarketTradeType> tradeMenuSelection(int ch) {
     return std::nullopt;
 }
 
-static void dispatchBuildCommand(EntityType type, int x, int y, int endX = -1, int endY = -1) {
+static constexpr PlayerId kLocalPlayer = 0;
+
+static void dispatchBuildCommand(PlayerId issuer, EntityType type, int x, int y, int endX = -1, int endY = -1) {
     Command command;
-    command.issuer = 0;
+    command.issuer = issuer;
     if (endX >= 0 && endY >= 0) {
         command.payload = BuildLineCommand{ currentSelection(), type, {x, y}, {endX, endY} };
     } else {
@@ -107,14 +109,16 @@ static void dispatchBuildCommand(EntityType type, int x, int y, int endX = -1, i
     dispatchCommand(g, command);
 }
 
-static void dispatchTrainCommand(EntityType type) {
+static void dispatchTrainCommand(PlayerId issuer, EntityType type) {
     Command command;
+    command.issuer = issuer;
     command.payload = TrainCommand{ currentSelection(), type };
     dispatchCommand(g, command);
 }
 
-static void dispatchTileCommand(CommandType type, int x, int y) {
+static void dispatchTileCommand(PlayerId issuer, CommandType type, int x, int y) {
     Command command;
+    command.issuer = issuer;
     Selection selection = currentSelection();
     switch (type) {
     case CommandType::Select: command.payload = SelectCommand{ {x, y} }; break;
@@ -127,8 +131,9 @@ static void dispatchTileCommand(CommandType type, int x, int y) {
     dispatchCommand(g, command);
 }
 
-static void dispatchSimpleCommand(CommandType type) {
+static void dispatchSimpleCommand(PlayerId issuer, CommandType type) {
     Command command;
+    command.issuer = issuer;
     Selection selection = currentSelection();
     switch (type) {
     case CommandType::TogglePause: command.payload = TogglePauseCommand{}; break;
@@ -145,8 +150,9 @@ static void dispatchSimpleCommand(CommandType type) {
     dispatchCommand(g, command);
 }
 
-static void dispatchSlotCommand(CommandType type, int slot) {
+static void dispatchSlotCommand(PlayerId issuer, CommandType type, int slot) {
     Command command;
+    command.issuer = issuer;
     switch (type) {
     case CommandType::Save: command.payload = SaveCommand{ slot }; break;
     case CommandType::Load: command.payload = LoadCommand{ slot }; break;
@@ -157,56 +163,56 @@ static void dispatchSlotCommand(CommandType type, int slot) {
     dispatchCommand(g, command);
 }
 
-static void moveCursorToSelected() {
-    std::optional<MapPos> pos = selectedEntityPosition(g, 0);
+static void moveCursorToSelected(PlayerId issuer) {
+    std::optional<MapPos> pos = selectedEntityPosition(g, issuer);
     if (!pos) return;
     view.cursorX = pos->x;
     view.cursorY = pos->y;
 }
 
-void handleInput(int ch) {
+static void handleInputForPlayer(int ch, PlayerId issuer) {
     InputIntentResult input = inputIntentFromKey(ch);
     if (input.intent == InputIntent::None) return;
     if (input.intent == InputIntent::Resign) {
-        dispatchSimpleCommand(CommandType::Resign);
+        dispatchSimpleCommand(issuer, CommandType::Resign);
         return;
     }
     if (input.intent == InputIntent::Confirm && g.mode==M_GAME_OVER) {
-        dispatchSimpleCommand(CommandType::Resign); return;
+        dispatchSimpleCommand(issuer, CommandType::Resign); return;
     }
     if (input.intent == InputIntent::TogglePause && (g.mode==M_NORMAL||g.mode==M_PAUSED)) {
-        dispatchSimpleCommand(CommandType::TogglePause); return;
+        dispatchSimpleCommand(issuer, CommandType::TogglePause); return;
     }
     if (isInputBlockedByMode(g.mode)) return;
 
     // Build mode
     if (g.mode == M_BUILD_SELECT) {
-        if (!selectedPeasantCanBuild(g, 0)) { cancelInputMode(g); return; }
+        if (!selectedPeasantCanBuild(g, issuer)) { cancelInputMode(g); return; }
         if (ch == 27) { cancelInputMode(g); return; }
         EntityType tb = buildMenuSelection(ch);
         if (tb == E_WALL) {
             // Wall uses click-drag mode instead of point placement
-            if (selectedPeasantCanBuild(g, 0)) {
+            if (selectedPeasantCanBuild(g, issuer)) {
                 startWallBuildMode(g);
                 inputStatus("Click and drag to draw wall line...");
             }
             return;
         }
         if (tb == E_NONE) return;
-        if (tb != E_NONE) { dispatchBuildCommand(tb, view.cursorX, view.cursorY); cancelInputMode(g); }
+        if (tb != E_NONE) { dispatchBuildCommand(issuer, tb, view.cursorX, view.cursorY); cancelInputMode(g); }
         return;
     }
 
     // Train mode
     if (g.mode == M_TRAIN_SELECT) {
-        std::optional<EntityType> producer = selectedTrainProducerType(g, 0);
+        std::optional<EntityType> producer = selectedTrainProducerType(g, issuer);
         if (!producer) { cancelInputMode(g); return; }
         EntityType tt = trainMenuSelection(*producer, ch);
         if (tt != E_NONE) {
-            dispatchTrainCommand(tt);
+            dispatchTrainCommand(issuer, tt);
             // Keep train mode open so repeated unit keys queue more units. This
             // avoids P becoming Pause immediately after queueing a peasant.
-            if (selectedProducerCanTrain(g, 0)) setInputMode(g, M_TRAIN_SELECT);
+            if (selectedProducerCanTrain(g, issuer)) setInputMode(g, M_TRAIN_SELECT);
         }
         if (ch == 27) cancelInputMode(g);
         return;
@@ -215,11 +221,12 @@ void handleInput(int ch) {
     // Market resource trade.
     if (g.mode == M_MARKET_TRADE) {
         if (ch == 27) { cancelInputMode(g); return; }
-        if (!selectedMarketCanTrade(g, 0)) {
+        if (!selectedMarketCanTrade(g, issuer)) {
             cancelInputMode(g); return;
         }
         auto dispatchTrade = [&](MarketTradeType type) {
             Command command;
+            command.issuer = issuer;
             command.payload = MarketTradeCommand{ currentSelection(), type };
             dispatchCommand(g, command);
             cancelInputMode(g);
@@ -244,8 +251,8 @@ void handleInput(int ch) {
                 view.wallDragX = view.cursorX; view.wallDragY = view.cursorY;
                 inputStatus("Wall start set — move cursor then press Space/Enter to place");
             } else {
-                if (selectedPeasantCanBuild(g, 0)) {
-                    dispatchBuildCommand(E_WALL, view.wallDragX, view.wallDragY, view.cursorX, view.cursorY);
+                if (selectedPeasantCanBuild(g, issuer)) {
+                    dispatchBuildCommand(issuer, E_WALL, view.wallDragX, view.wallDragY, view.cursorX, view.cursorY);
                 }
                 view.dragging = false; cancelInputMode(g);
             }
@@ -264,8 +271,8 @@ void handleInput(int ch) {
                 view.wallDragX = mapX; view.wallDragY = mapY;
             } else if (me.bstate & (BUTTON1_RELEASED | BUTTON1_CLICKED)) {
                 if (view.dragging || (me.bstate & BUTTON1_CLICKED)) {
-                    if (selectedPeasantCanBuild(g, 0)) {
-                        dispatchBuildCommand(E_WALL, view.wallDragX, view.wallDragY, mapX, mapY);
+                    if (selectedPeasantCanBuild(g, issuer)) {
+                        dispatchBuildCommand(issuer, E_WALL, view.wallDragX, view.wallDragY, mapX, mapY);
                     }
                 }
                 view.dragging = false;
@@ -282,8 +289,8 @@ void handleInput(int ch) {
         if (ch == KEY_DOWN)  { view.cursorY++; goto clamp; }
         if (ch == KEY_LEFT)  { view.cursorX--; goto clamp; }
         if (ch == KEY_RIGHT) { view.cursorX++; goto clamp; }
-        auto commit = [](int tx, int ty) {
-            dispatchTileCommand(CommandType::SetRally, tx, ty);
+        auto commit = [issuer](int tx, int ty) {
+            dispatchTileCommand(issuer, CommandType::SetRally, tx, ty);
             cancelInputMode(g);
         };
         if (ch == '\n' || ch == '\r' || ch == KEY_ENTER) { commit(view.cursorX, view.cursorY); goto clamp; }
@@ -305,8 +312,8 @@ void handleInput(int ch) {
         if (ch == KEY_DOWN)  { view.cursorY++; goto clamp; }
         if (ch == KEY_LEFT)  { view.cursorX--; goto clamp; }
         if (ch == KEY_RIGHT) { view.cursorX++; goto clamp; }
-        auto commit = [](int tx, int ty) {
-            dispatchTileCommand(CommandType::AttackMove, tx, ty);
+        auto commit = [issuer](int tx, int ty) {
+            dispatchTileCommand(issuer, CommandType::AttackMove, tx, ty);
             cancelInputMode(g);
         };
         if (ch == '\n' || ch == '\r' || ch == KEY_ENTER) { commit(view.cursorX, view.cursorY); goto clamp; }
@@ -324,11 +331,12 @@ void handleInput(int ch) {
     // Research selection from the blacksmith.
     if (g.mode == M_RESEARCH_SELECT) {
         if (ch == 27) { cancelInputMode(g); return; }
-        if (!selectedBlacksmithCanResearch(g, 0)) {
+        if (!selectedBlacksmithCanResearch(g, issuer)) {
             cancelInputMode(g); return;
         }
         auto dispatchResearch = [&](ResearchId id) {
             Command command;
+            command.issuer = issuer;
             command.payload = ResearchCommand{ currentSelection(), id };
             dispatchCommand(g, command);
             cancelInputMode(g);
@@ -357,34 +365,34 @@ void handleInput(int ch) {
 
     case InputIntent::ToggleDiagnosticsOrTrebuchet:
         {
-            if (selectedTrebuchetCanToggle(g, 0)) {
-                dispatchSimpleCommand(CommandType::ToggleTrebuchetPacked);
+            if (selectedTrebuchetCanToggle(g, issuer)) {
+                dispatchSimpleCommand(issuer, CommandType::ToggleTrebuchetPacked);
             } else {
-                dispatchSimpleCommand(CommandType::ToggleDiagnostics);
+                dispatchSimpleCommand(issuer, CommandType::ToggleDiagnostics);
             }
         }
         break;
 
     case InputIntent::Save:
-        dispatchSlotCommand(CommandType::Save, input.slot);
+        dispatchSlotCommand(issuer, CommandType::Save, input.slot);
         break;
 
     case InputIntent::Load:
-        dispatchSlotCommand(CommandType::Load, input.slot);
+        dispatchSlotCommand(issuer, CommandType::Load, input.slot);
         break;
 
     case InputIntent::Select: {
-        dispatchTileCommand(CommandType::Select, view.cursorX, view.cursorY);
+        dispatchTileCommand(issuer, CommandType::Select, view.cursorX, view.cursorY);
         break;
     }
 
     case InputIntent::Confirm: {
-        dispatchCommand(g, resolveContextCommand(g, currentSelection(), {view.cursorX, view.cursorY}));
+        dispatchCommand(g, resolveContextCommand(g, issuer, currentSelection(), {view.cursorX, view.cursorY}));
         break;
     }
 
     case InputIntent::BuildMenu: {
-        if (selectedPeasantCanBuild(g, 0)) {
+        if (selectedPeasantCanBuild(g, issuer)) {
             setInputMode(g, M_BUILD_SELECT);
             inputStatus("Select building to place at cursor...");
         } else inputStatus("Select a peasant first!");
@@ -392,7 +400,7 @@ void handleInput(int ch) {
     }
 
     case InputIntent::TrainMenu: {
-        InputTrainMenuEligibility eligibility = trainMenuEligibilityForSelected(g, 0);
+        InputTrainMenuEligibility eligibility = trainMenuEligibilityForSelected(g, issuer);
         if (eligibility == InputTrainMenuEligibility::CanTrain) {
             setInputMode(g, M_TRAIN_SELECT);
             inputStatus("Select unit to train...");
@@ -404,13 +412,13 @@ void handleInput(int ch) {
 
     // Eject garrison from selected building or transport
     case InputIntent::EjectGarrison: {
-        dispatchSimpleCommand(CommandType::EjectGarrison);
+        dispatchSimpleCommand(issuer, CommandType::EjectGarrison);
         break;
     }
 
     // Rally point (production buildings) / research menu (blacksmith)
     case InputIntent::RallyResearchTradeMenu: {
-        InputUtilityMode utilityMode = utilityModeForSelectedBuilding(g, 0);
+        InputUtilityMode utilityMode = utilityModeForSelectedBuilding(g, issuer);
         if (utilityMode == InputUtilityMode::None) {
             inputStatus("Select a production building first.");
             break;
@@ -433,7 +441,7 @@ void handleInput(int ch) {
     // Cycle to the next idle peasant
     case InputIntent::CycleIdleWorker: {
         WorldIndex world = buildWorldIndex(g);
-        Entity* pick = selectNextIdleWorker(g, world, 0, g.selectedId);
+        Entity* pick = selectNextIdleWorker(g, world, issuer, g.selectedId);
         if (pick) {
             view.cursorX = pick->x; view.cursorY = pick->y;
             inputStatus("Idle peasant selected");
@@ -443,13 +451,13 @@ void handleInput(int ch) {
 
     // Gate toggle: cycle auto -> locked-open -> locked-closed -> auto
     case InputIntent::ToggleGate: {
-        dispatchSimpleCommand(CommandType::ToggleGate);
+        dispatchSimpleCommand(issuer, CommandType::ToggleGate);
         break;
     }
 
     // Debug: reveal entire map (Shift+S)
     case InputIntent::RevealMapDebug: {
-        dispatchSimpleCommand(CommandType::RevealMapDebug);
+        dispatchSimpleCommand(issuer, CommandType::RevealMapDebug);
         break;
     }
 
@@ -458,13 +466,13 @@ void handleInput(int ch) {
     //   with military selected → enter attack-move mode (next click = a-move target)
     case InputIntent::AttackMoveOrSelectArmy: {
         WorldIndex world = buildWorldIndex(g);
-        bool hasMilitarySel = selectionContainsMilitary(g, world, 0, currentSelection());
+        bool hasMilitarySel = selectionContainsMilitary(g, world, issuer, currentSelection());
         if (hasMilitarySel) {
             setInputMode(g, M_ATTACK_MOVE);
             inputStatus("Attack-move: click destination. [Esc] cancel");
         } else {
-            int count = selectAllMilitary(g, world, 0);
-            std::optional<MapPos> pos = selectedEntityPosition(g, 0);
+            int count = selectAllMilitary(g, world, issuer);
+            std::optional<MapPos> pos = selectedEntityPosition(g, issuer);
             if (pos) {
                 view.cursorX = pos->x;
                 view.cursorY = pos->y;
@@ -477,14 +485,14 @@ void handleInput(int ch) {
 
     // Hold position — stop and ignore auto-aggro until explicitly ordered.
     case InputIntent::HoldPosition: {
-        dispatchSimpleCommand(CommandType::HoldPosition);
+        dispatchSimpleCommand(issuer, CommandType::HoldPosition);
         break;
     }
 
     // Enter group assign mode
     case InputIntent::GroupAssign: {
         WorldIndex world = buildWorldIndex(g);
-        if (beginControlGroupAssignment(g, world, 0)) {
+        if (beginControlGroupAssignment(g, world, issuer)) {
             inputStatus("Press [1]-[9] to assign group...");
         }
         break;
@@ -494,10 +502,10 @@ void handleInput(int ch) {
     case InputIntent::ControlGroup: {
         int idx = input.slot;
         if (controlGroupAssignmentPending(g)) {
-            dispatchSlotCommand(CommandType::AssignControlGroup, idx);
+            dispatchSlotCommand(issuer, CommandType::AssignControlGroup, idx);
         } else {
-            dispatchSlotCommand(CommandType::RecallControlGroup, idx);
-            moveCursorToSelected();
+            dispatchSlotCommand(issuer, CommandType::RecallControlGroup, idx);
+            moveCursorToSelected(issuer);
         }
         break;
     }
@@ -505,7 +513,7 @@ void handleInput(int ch) {
     // Cycle through own units
     case InputIntent::CycleUnit: {
         WorldIndex world = buildWorldIndex(g);
-        Entity* selected = selectNextUnit(g, world, 0, g.selectedId);
+        Entity* selected = selectNextUnit(g, world, issuer, g.selectedId);
         if (selected) {
             view.cursorX = selected->x;
             view.cursorY = selected->y;
@@ -516,7 +524,7 @@ void handleInput(int ch) {
     // Home to town hall
     case InputIntent::HomeBase: {
         WorldIndex world = buildWorldIndex(g);
-        Entity* home = selectHomeBase(g, world, 0);
+        Entity* home = selectHomeBase(g, world, issuer);
         if (home) {
             view.cursorX = home->x + 1;
             view.cursorY = home->y + 1;
@@ -561,6 +569,7 @@ void handleInput(int ch) {
         if (me.bstate & BUTTON1_DOUBLE_CLICKED) {
             // Select all of clicked unit type within the current viewport.
             Command command;
+            command.issuer = issuer;
             command.payload = SelectAllOfTypeInViewCommand{ {mapX, mapY} };
             dispatchCommand(g, command);
             view.dragging = false;
@@ -579,11 +588,13 @@ void handleInput(int ch) {
                 if (moved) {
                     // Box select: all own units inside the rectangle
                     Command command;
+                    command.issuer = issuer;
                     command.payload = BoxSelectCommand{ {view.dragStartX, view.dragStartY}, {mapX, mapY} };
                     dispatchCommand(g, command);
                 } else {
                     // Click: select entity at cursor
                     Command command;
+                    command.issuer = issuer;
                     command.payload = SelectCommand{ {mapX, mapY} };
                     dispatchCommand(g, command);
                 }
@@ -593,13 +604,14 @@ void handleInput(int ch) {
             // Terminals that report CLICKED instead of PRESSED+RELEASED
             view.dragging = false;
             Command command;
+            command.issuer = issuer;
             command.payload = SelectCommand{ {mapX, mapY} };
             dispatchCommand(g, command);
         }
         else if (me.bstate & (BUTTON3_CLICKED | BUTTON3_PRESSED)) {
             // Right click: issue command at cursor position
             view.dragging = false;
-            dispatchCommand(g, resolveContextCommand(g, currentSelection(), {mapX, mapY}));
+            dispatchCommand(g, resolveContextCommand(g, issuer, currentSelection(), {mapX, mapY}));
         }
         // All other events (pure movement): cursor already updated above
         break;
@@ -613,4 +625,8 @@ void handleInput(int ch) {
 
     clamp:
     clampCursorToMap(view);
+}
+
+void handleInput(int ch) {
+    handleInputForPlayer(ch, kLocalPlayer);
 }

@@ -107,6 +107,20 @@ RULES: list[tuple[str, list[str], re.Pattern[str]]] = [
         re.compile(r"\bspawnEntity\s*\("),
     ),
     (
+        "context command resolution must produce typed commands instead of invoking orders or status directly",
+        [
+            "src/commands/command_resolver.cpp",
+        ],
+        re.compile(r"\border(Move|Attack|Gather|Garrison|Help|GroupMove|GroupAttack)\s*\(|\bemitStatusEvent\s*\("),
+    ),
+    (
+        "dispatcher must not fall back to legacy context tile order helpers",
+        [
+            "src/commands/command_dispatcher.cpp",
+        ],
+        re.compile(r"\bcmdAtTile(Single|Group)\s*\("),
+    ),
+    (
         "input controller must not mutate player resources directly",
         [
             "src/commands/input_controller.cpp",
@@ -163,6 +177,17 @@ RULES: list[tuple[str, list[str], re.Pattern[str]]] = [
         re.compile(r"\bbuildPending\b|\bhelpOverlay\b|\bgroupAssignPending\b"),
     ),
     (
+        "input controller must thread a PlayerId issuer instead of hardcoding player 0 in ownership checks",
+        [
+            "src/commands/input_controller.cpp",
+        ],
+        re.compile(
+            r"\b(selected\w+|selectNext\w+|selectAllMilitary|beginControlGroupAssignment|"
+            r"selectionContainsMilitary|trainMenuEligibilityForSelected|utilityModeForSelectedBuilding)"
+            r"\s*\(\s*g\s*,\s*(?:world\s*,\s*)?0\b"
+        ),
+    ),
+    (
         "AI command helpers must execute through AIContext instead of dispatchCommand(g, ...)",
         [
             "src/ai/*.cpp",
@@ -170,11 +195,34 @@ RULES: list[tuple[str, list[str], re.Pattern[str]]] = [
         re.compile(r"\bdispatchCommand\s*\(\s*g\s*,"),
     ),
     (
+        "AI planners must pass AIContext explicitly instead of using an active-context shim",
+        [
+            "src/ai/*.h",
+            "src/ai/*.cpp",
+            "tests/*.cpp",
+        ],
+        re.compile(r"\b(activeAIContext|setActiveAIContext)\b"),
+    ),
+    (
         "local save/load overloads must not swap through global g",
         [
             "src/sim/save_load.cpp",
         ],
         re.compile(r"\bstd::swap\s*\(\s*g\s*,\s*game\s*\)"),
+    ),
+    (
+        "local map generation must not swap through global g",
+        [
+            "src/map/mapgen.cpp",
+        ],
+        re.compile(r"\bstd::swap\s*\(\s*g\s*,\s*game\s*\)"),
+    ),
+    (
+        "legacy GameContext adapters must not own a static WorldIndex",
+        [
+            "src/core/game_context.h",
+        ],
+        re.compile(r"\bstatic\s+WorldIndex\b"),
     ),
     (
         "save orchestration must delegate parsing to save_reader",
