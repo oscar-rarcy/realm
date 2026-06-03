@@ -450,6 +450,11 @@ void moveAlongPath(Entity& e) {
     if (ter==T_ROAD||ter==T_DIRT||ter==T_CASTLE_FLOOR) spd = std::max(1, spd-1);
     else if (ter==T_MARSH||ter==T_SHALLOWS||ter==T_SAND||ter==T_SNOW||ter==T_ICE||ter==T_ASH) spd += 1;
     else if (ter==T_MUD) spd += 2; // bogged down
+    // Forests impede everyone; cavalry takes a worse penalty since trees
+    // negate the open-ground speed advantage that justifies their cost.
+    else if (ter==T_FOREST||ter==T_PINE||ter==T_PALM||ter==T_DEAD_TREE) {
+        spd += (e.type == E_KNIGHT) ? 2 : 1;
+    }
     if (getSeason() == WINTER) spd = std::max(spd, STATS[e.type].speed+1);
     // Weather: rain and storm bog down movement on natural ground.
     if (g.weather != W_CLEAR && (ter==T_GRASS||ter==T_TALL_GRASS||ter==T_FLOWERS
