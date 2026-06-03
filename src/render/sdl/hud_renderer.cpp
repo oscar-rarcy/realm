@@ -258,7 +258,7 @@ void drawPanel(const WorldIndex& world) {
     drawTextFit(x, y, displayMode == DM_ASCII ? "Visual: ASCII" : "Visual: Tileset", rgb(150,170,190), textW); y += 20;
     drawTextFit(x, y, "Wheel zoom / middle pan", rgb(150,160,168), textW); y += 26;
 
-    if (g.diagnostics) {
+    if (g.local.diagnostics) {
         std::ostringstream ds;
         ds << "Diag tick " << g.tick << " mode " << modeName(g.mode);
         drawTextFit(x, y, trimPanelLine(ds.str()), rgb(255,210,120), textW); y += 20;
@@ -266,7 +266,7 @@ void drawPanel(const WorldIndex& world) {
         ds2 << "Ent " << g.entities.size() << " Proj " << g.projectiles.size()
             << " Seed " << g.seed;
         drawTextFit(x, y, trimPanelLine(ds2.str()), rgb(255,210,120), textW); y += 20;
-        if (Entity* selDiag = renderFindEntity(g, world, g.selectedId)) {
+        if (Entity* selDiag = renderFindEntity(g, world, g.local.selectedId)) {
             std::ostringstream ds3;
             ds3 << "Sel #" << selDiag->id << ' ' << STATS[selDiag->type].name
                 << ' ' << stateName(selDiag->state);
@@ -274,9 +274,9 @@ void drawPanel(const WorldIndex& world) {
         }
     }
 
-    Entity* sel = renderFindEntity(g, world, g.selectedId);
-    if (!g.selectedIds.empty()) {
-        std::ostringstream gs; gs << "Group: " << g.selectedIds.size() << " units";
+    Entity* sel = renderFindEntity(g, world, g.local.selectedId);
+    if (!g.local.selectedIds.empty()) {
+        std::ostringstream gs; gs << "Group: " << g.local.selectedIds.size() << " units";
         drawTextFit(x, y, gs.str(), rgb(255,230,135), textW); y += 22;
         drawTextFit(x, y, "R-click: command group", rgb(180,185,190), textW); y += 20;
     } else if (sel) {
@@ -347,7 +347,9 @@ void drawBottom(const WorldIndex& world) {
         controls2.clear();
     }
     else if (g.mode == M_BUILD_SELECT) { controls1 = "BUILD: H House, B Barracks, S Stable, T Tower, F Farm, W Wall, K Castle"; controls2 = "G Gate  A Armory  C Church  M Market  L Lumber  N Mine  I Mill  D Dock  Esc"; }
-    else if (g.mode == M_TRAIN_SELECT) { controls1 = trainPromptFor(renderFindEntity(g, world, g.selectedId)); controls2.clear(); }
+    else if (g.mode == M_BUILD_PLACE) { controls1 = std::string("PLACE ") + (g.local.buildPending != E_NONE ? STATS[g.local.buildPending].name : "building"); controls2 = "Arrows/mouse to position  Enter/click build  Esc/right-click cancel"; }
+    else if (g.mode == M_PATROL_SET) { controls1 = "PATROL"; controls2 = "Click target or move cursor + Enter  Esc cancels"; }
+    else if (g.mode == M_TRAIN_SELECT) { controls1 = trainPromptFor(renderFindEntity(g, world, g.local.selectedId)); controls2.clear(); }
     else if (g.mode == M_MARKET_TRADE) { controls1 = "MARKET: G 40g->30w  W 40w->30g  F 50g->30f  V 40f->30g"; controls2 = "Esc cancel"; }
     int hintX = s.winW - 14;
     if (devCaptureEnabled()) {
@@ -363,7 +365,7 @@ void drawBottom(const WorldIndex& world) {
         drawKeyTokensInText(10, s.winH-s.bottomH+6, controls1, desktopBuildTokensLine1(),
                             rgb(230,235,230), topLineW);
     } else if (g.mode == M_TRAIN_SELECT) {
-        Entity* sel = renderFindEntity(g, world, g.selectedId);
+        Entity* sel = renderFindEntity(g, world, g.local.selectedId);
         drawKeyTokensInText(10, s.winH-s.bottomH+6, controls1,
                             sel ? trainOptionTokensFor(sel->type) : std::vector<std::pair<std::string, int>>{{"Esc", 27}},
                             rgb(230,235,230), topLineW);
@@ -394,3 +396,5 @@ void drawBottom(const WorldIndex& world) {
         }
     }
 }
+
+

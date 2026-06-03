@@ -12,7 +12,7 @@ void emitStatus(EventSink& events, int player, const std::string& message, GameE
 
 } // namespace
 
-void tickProduction(Game& game, EventSink& events, Entity& e) {
+void tickProduction(Game& game, WorldIndex& world, EventSink& events, Entity& e) {
     if (e.producing != E_NONE && !e.underConstruction) {
         int bonus = 0;
         for (auto& o : game.entities)
@@ -22,7 +22,6 @@ void tickProduction(Game& game, EventSink& events, Entity& e) {
             auto& bs = STATS[e.type]; bool placed = false;
             bool produceNaval = isNaval(e.producing);
             int newId = -1;
-            WorldIndex world = buildWorldIndex(game);
             for (int r = 0; r <= 4 && !placed; r++)
                 for (int dy = -r; dy <= bs.sizeH+r && !placed; dy++)
                     for (int dx = -r; dx <= bs.sizeW+r && !placed; dx++) {
@@ -38,12 +37,12 @@ void tickProduction(Game& game, EventSink& events, Entity& e) {
             if (!placed) {
                 e.trainProgress = e.trainTime; // stay at completion threshold
             } else {
+                world = buildWorldIndex(game);
                 // Send to rally point if the building has a player-set one
                 EntityType completed = e.producing;
                 if (e.rallySet && newId >= 0) {
-                    WorldIndex updatedWorld = buildWorldIndex(game);
-                    Entity* nu = findEntity(game, updatedWorld, newId);
-                    if (nu) startMove(game, updatedWorld, events, nu->owner, Selection{ nu->id, { nu->id } }, { e.rallyX, e.rallyY });
+                    Entity* nu = findEntity(game, world, newId);
+                    if (nu) startMove(game, world, events, nu->owner, Selection{ nu->id, { nu->id } }, { e.rallyX, e.rallyY });
                 }
                 e.producing = E_NONE; e.trainProgress = 0; e.trainTime = 0; e.state = S_IDLE;
                 emitStatus(events, e.owner, std::string(STATS[completed].name) + " is ready.", GameEventType::EntitySpawned);

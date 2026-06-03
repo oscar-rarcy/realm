@@ -22,23 +22,31 @@ bool readIntVec(std::istream& is, std::vector<int>& v) {
     return true;
 }
 
+GameMode loadedModeForSave(int rawMode) {
+    GameMode mode = (GameMode)rawMode;
+    return mode == M_PAUSED || mode == M_GAME_OVER ? mode : M_NORMAL;
+}
+
 bool parseSaveStream(std::istream& is, Game& ng, int& version) {
     std::string tag;
     version = 0;
     if (!(is >> tag >> version) || tag != "REALM_SAVE" || !isSupportedSaveVersion(version)) return false;
     if (!(is >> tag) || tag != "META") return false;
-    int mode = 0, ret = 0, diag = 0, help = 0;
+    int mode = 0, selectedId = -1, ret = 0, diag = 0, help = 0;
     if (!(is >> ng.seed >> ng.startupAIs >> ng.humanCorner >> ng.matchNumber >> ng.biomeChoice
-          >> ng.tick >> mode >> ng.selectedId >> ng.winner >> ng.aiTimer >> ng.farmTimer
+          >> ng.tick >> mode >> selectedId >> ng.winner >> ng.aiTimer >> ng.farmTimer
           >> ng.animalTimer
           >> ng.dayPhase >> ng.seasonPhase >> ng.prevSeason >> ng.weather >> ng.weatherTimer)) return false;
     if (!(is >> ng.prevTimePhase >> ng.attackNotifyCd)) return false;
     if (!(is >> ng.nextId >> ng.rngState >> ret >> diag >> help)) return false;
-    ng.mode = (GameMode)mode;
+    ng.mode = loadedModeForSave(mode);
     ng.returnToMenu = ret != 0;
-    ng.diagnostics = diag != 0;
-    ng.helpOverlay = help != 0;
-    for (int i = 0; i < 9; i++) ng.controlGroups[i].clear();
+    ng.local.selectedId = -1;
+    ng.local.selectedIds.clear();
+    ng.local.groupAssignPending = false;
+    ng.local.buildPending = E_NONE;
+    ng.local.diagnostics = false;
+    ng.local.helpOverlay = false;
     for (int p = 0; p < MAX_PLAYERS; p++)
         for (int i = 0; i < 9; i++)
             ng.controlGroupsByOwner[p][i].clear();
@@ -53,12 +61,27 @@ bool parseSaveStream(std::istream& is, Game& ng, int& version) {
         pl.alive = alive != 0;
     }
     if (!(is >> tag) || tag != "SELECTED") return false;
-    if (!readIntVec(is, ng.selectedIds)) return false;
-    for (int i = 0; i < 9; i++) {
-        int idx = -1;
-        if (!(is >> tag) || tag != "GROUP") return false;
-        if (!(is >> idx) || idx < 0 || idx >= 9) return false;
-        if (!readIntVec(is, ng.controlGroups[idx])) return false;
+    if (version <= 10) {
+        ng.local.selectedId = selectedId;
+        if (!readIntVec(is, ng.local.selectedIds)) return false;
+        for (int i = 0; i < 9; i++) {
+            int idx = -1;
+            if (!(is >> tag) || tag != "GROUP") return false;
+            if (!(is >> idx) || idx < 0 || idx >= 9) return false;
+            if (!readIntVec(is, ng.controlGroupsByOwner[0][idx])) return false;
+        }
+    } else {
+        std::vector<int> ignoredSelection;
+        if (!readIntVec(is, ignoredSelection)) return false;
+        for (int p = 0; p < MAX_PLAYERS; p++) {
+            for (int i = 0; i < 9; i++) {
+                int owner = -1;
+                int idx = -1;
+                if (!(is >> tag) || tag != "GROUP_OWNER") return false;
+                if (!(is >> owner >> idx) || owner < 0 || owner >= MAX_PLAYERS || idx < 0 || idx >= 9) return false;
+                if (!readIntVec(is, ng.controlGroupsByOwner[owner][idx])) return false;
+            }
+        }
     }
     int mw = 0, mh = 0;
     if (!(is >> tag >> mw >> mh) || tag != "MAP" || mw != MAP_W || mh != MAP_H) return false;
@@ -115,6 +138,22 @@ bool parseSaveStream(std::istream& is, Game& ng, int& version) {
         if (!readIntVec(is, e.queue)) return false;
         if (!(is >> tag) || tag != "GARRISON") return false;
         if (!readIntVec(is, e.garrison)) return false;
+        if (version >= 10) {
+            size_t waypointN = 0;
+            if (!(is >> tag >> waypointN) || tag != "WAYPOINTS") return false;
+            e.waypoints.reserve(waypointN);
+            for (size_t j = 0; j < waypointN; j++) {
+                int x = 0, y = 0;
+                if (!(is >> x >> y)) return false;
+                e.waypoints.push_back({x, y});
+            }
+            int patrol = 0;
+            if (!(is >> tag >> patrol) || tag != "PATROL") return false;
+            e.patrolMode = patrol != 0;
+        } else {
+            e.waypoints.clear();
+            e.patrolMode = false;
+        }
         ng.entities.push_back(e);
     }
     if (!(is >> tag >> n) || tag != "PROJECTILES") return false;

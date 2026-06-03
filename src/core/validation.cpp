@@ -45,12 +45,12 @@ std::vector<ValidationIssue> validateGameStateIssues(const Game& game) {
         add(ValidationSeverity::Error, msg, entityId, tile);
     };
 
-    if (game.selectedId < -1) recoverable("selected id is below sentinel", game.selectedId);
-    if (game.selectedId >= game.nextId) recoverable("selected id is beyond nextId", game.selectedId);
-    if (game.selectedId > 0 && !findEntityIn(game, game.selectedId)) recoverable("selected id does not reference a live entity", game.selectedId);
-    for (int id : game.selectedIds)
+    if (game.local.selectedId < -1) recoverable("selected id is below sentinel", game.local.selectedId);
+    if (game.local.selectedId >= game.nextId) recoverable("selected id is beyond nextId", game.local.selectedId);
+    if (game.local.selectedId > 0 && !findEntityIn(game, game.local.selectedId)) recoverable("selected id does not reference a live entity", game.local.selectedId);
+    for (int id : game.local.selectedIds)
         if (id <= 0 || id >= game.nextId || !findEntityIn(game, id)) recoverable("selectedIds contains invalid entity id", id);
-    for (const auto& group : game.controlGroups)
+    for (const auto& group : game.controlGroupsByOwner[0])
         for (int id : group) {
             const Entity* entity = findEntityIn(game, id);
             if (id <= 0 || id >= game.nextId || !entity) recoverable("control group contains invalid entity id", id);
@@ -135,10 +135,9 @@ RecoveryResult recoverGameState(Game& game, const std::vector<ValidationIssue>& 
         return result;
     }
 
-    if (game.selectedId < 0 || game.selectedId >= game.nextId || findEntityIn(game, game.selectedId) == nullptr)
-        game.selectedId = -1;
-    pruneInvalidEntityIds(game, game.selectedIds);
-    for (int i = 0; i < 9; i++) pruneInvalidEntityIdsForOwner(game, game.controlGroups[i], 0);
+    if (game.local.selectedId < 0 || game.local.selectedId >= game.nextId || findEntityIn(game, game.local.selectedId) == nullptr)
+        game.local.selectedId = -1;
+    pruneInvalidEntityIds(game, game.local.selectedIds);
     for (int p = 0; p < MAX_PLAYERS; p++)
         for (int i = 0; i < 9; i++)
             pruneInvalidEntityIdsForOwner(game, game.controlGroupsByOwner[p][i], p);

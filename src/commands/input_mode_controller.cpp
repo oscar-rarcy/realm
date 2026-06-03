@@ -8,6 +8,8 @@ void setInputMode(Game& game, GameMode mode) {
 }
 
 void cancelInputMode(Game& game) {
+    if (game.mode == M_BUILD_SELECT || game.mode == M_BUILD_PLACE || game.mode == M_WALL_DRAG)
+        game.local.buildPending = E_NONE;
     setInputMode(game, M_NORMAL);
 }
 
@@ -16,22 +18,22 @@ bool isInputBlockedByMode(GameMode mode) {
 }
 
 void startWallBuildMode(Game& game) {
-    game.buildPending = E_WALL;
+    game.local.buildPending = E_WALL;
     setInputMode(game, M_WALL_DRAG);
 }
 
 bool toggleHelpOverlay(Game& game) {
-    game.helpOverlay = !game.helpOverlay;
-    return game.helpOverlay;
+    game.local.helpOverlay = !game.local.helpOverlay;
+    return game.local.helpOverlay;
 }
 
 bool controlGroupAssignmentPending(const Game& game) {
-    return game.groupAssignPending;
+    return game.local.groupAssignPending;
 }
 
 static const Entity* selectedEntity(const Game& game) {
     for (const Entity& entity : game.entities) {
-        if (entity.alive && entity.id == game.selectedId) return &entity;
+        if (entity.alive && entity.id == game.local.selectedId) return &entity;
     }
     return nullptr;
 }

@@ -1,5 +1,7 @@
 #include "render/sdl/sdl_hud.h"
 #include "realm.h"
+#include "core/build_service.h"
+#include "core/production_service.h"
 #include "core/world_index.h"
 #include "view_state.h"
 
@@ -54,10 +56,52 @@ void addGridButtons(std::vector<MobileButton>& out, int x, int y, int w,
     }
 }
 
+namespace {
+
+constexpr int kMobileBuildButtonsPerPage = 5;
+
+std::string mobileEntityButtonId(const char* prefix, EntityType type) {
+    return std::string(prefix) + std::to_string((int)type);
+}
+
+std::vector<std::pair<std::string, std::string>> mobileBuildButtonsForPage(int page) {
+    std::vector<std::pair<std::string, std::string>> options;
+    int count = 0;
+    const BuildRule* rules = buildRules(count);
+    for (int i = 0; i < count; i++) {
+        if (rules[i].menuHotkey == '\0') continue;
+        options.push_back({ mobileEntityButtonId("build:", rules[i].buildingType), STATS[rules[i].buildingType].name });
+    }
+
+    int totalPages = std::max(1, (int)((options.size() + kMobileBuildButtonsPerPage - 1) / kMobileBuildButtonsPerPage));
+    page = std::max(0, std::min(page, totalPages - 1));
+    int start = page * kMobileBuildButtonsPerPage;
+    int end = std::min((int)options.size(), start + kMobileBuildButtonsPerPage);
+
+    std::vector<std::pair<std::string, std::string>> pageButtons(options.begin() + start, options.begin() + end);
+    pageButtons.push_back({ "cancel", "Cancel" });
+    if (page > 0) pageButtons.push_back({ "buildback", "Back" });
+    if (end < (int)options.size()) pageButtons.push_back({ "buildmore", "More" });
+    return pageButtons;
+}
+
+std::vector<std::pair<std::string, std::string>> mobileTrainButtonsFor(EntityType producer) {
+    std::vector<std::pair<std::string, std::string>> options;
+    const ProductionRule* rule = productionRule(producer);
+    if (!rule) return options;
+    for (int i = 0; i < rule->allowedCount; i++) {
+        EntityType unit = rule->allowedUnits[i];
+        options.push_back({ mobileEntityButtonId("train:", unit), std::string("Train ") + STATS[unit].name });
+    }
+    return options;
+}
+
+} // namespace
+
 std::string mobileSelectionSummary(const WorldIndex& world) {
-    if (!g.selectedIds.empty()) {
+    if (!g.local.selectedIds.empty()) {
         int idle = 0, gathering = 0, military = 0;
-        for (int id : g.selectedIds) {
+        for (int id : g.local.selectedIds) {
             Entity* e = renderFindEntity(g, world, id);
             if (!e || !e->alive) continue;
             if (e->state == S_IDLE) idle++;
@@ -65,11 +109,11 @@ std::string mobileSelectionSummary(const WorldIndex& world) {
             if (isMilitary(e->type)) military++;
         }
         std::ostringstream ss;
-        ss << g.selectedIds.size() << " units";
+        ss << g.local.selectedIds.size() << " units";
         if (idle || gathering || military) ss << "  " << idle << " idle  " << gathering << " gathering";
         return ss.str();
     }
-    Entity* sel = renderFindEntity(g, world, g.selectedId);
+    Entity* sel = renderFindEntity(g, world, g.local.selectedId);
     if (!sel) return "No selection";
     std::ostringstream ss;
     ss << STATS[sel->type].name << "  HP " << sel->hp << "/" << sel->maxHp;
@@ -87,38 +131,27 @@ std::string mobileSelectionSummary(const WorldIndex& world) {
 }
 
 bool mobileHasSelectedWorker(const WorldIndex& world) {
-    if (!g.selectedIds.empty()) {
-        for (int id : g.selectedIds) {
+    if (!g.local.selectedIds.empty()) {
+        for (int id : g.local.selectedIds) {
             Entity* e = renderFindEntity(g, world, id);
             if (e && e->alive && e->owner == 0 && canBuild(e->type)) return true;
         }
         return false;
     }
-    Entity* e = renderFindEntity(g, world, g.selectedId);
+    Entity* e = renderFindEntity(g, world, g.local.selectedId);
     return e && e->alive && e->owner == 0 && canBuild(e->type);
 }
 
 bool mobileHasSelectedMilitary(const WorldIndex& world) {
-    if (!g.selectedIds.empty()) {
-        for (int id : g.selectedIds) {
+    if (!g.local.selectedIds.empty()) {
+        for (int id : g.local.selectedIds) {
             Entity* e = renderFindEntity(g, world, id);
             if (e && e->alive && e->owner == 0 && isMilitary(e->type)) return true;
         }
         return false;
     }
-    Entity* e = renderFindEntity(g, world, g.selectedId);
+    Entity* e = renderFindEntity(g, world, g.local.selectedId);
     return e && e->alive && e->owner == 0 && isMilitary(e->type);
-}
-
-EntityType mobileDefaultTrainType(EntityType producer) {
-    switch (producer) {
-        case E_TOWNHALL: return E_PEASANT;
-        case E_BARRACKS: return E_MILITIA;
-        case E_STABLE: return E_KNIGHT;
-        case E_CASTLE: return E_TREBUCHET;
-        case E_DOCK: return E_FISHING_BOAT;
-        default: return E_NONE;
-    }
 }
 
 std::vector<MobileButton> mobileHudButtons(const WorldIndex& world) {
@@ -147,31 +180,20 @@ std::vector<MobileButton> mobileHudButtons(const WorldIndex& world) {
     if (s.mobileBuildType != E_NONE) {
         cmd.push_back({"cancel", "Cancel"});
     } else if (g.mode == M_BUILD_SELECT) {
-        if (s.mobileBuildPage == 0) {
-            cmd = {{"build:house", "House"}, {"build:farm", "Farm"}, {"build:barracks", "Barracks"},
-                   {"build:tower", "Tower"}, {"cancel", "Cancel"}, {"buildmore", "More"}};
-        } else {
-            cmd = {{"build:stable", "Stable"}, {"build:lumber", "Lumber"}, {"build:mining", "Mining"},
-                   {"build:mill", "Mill"}, {"build:dock", "Dock"}, {"buildback", "Back"}};
-        }
+        cmd = mobileBuildButtonsForPage(s.mobileBuildPage);
     } else {
-        Entity* sel = renderFindEntity(g, world, g.selectedId);
+        Entity* sel = renderFindEntity(g, world, g.local.selectedId);
         if (mobileHasSelectedWorker(world)) {
             cmd = {{"move", "Move"}, {"gather", "Gather"}, {"build", "Build"}, {"stop", "Stop"}};
         } else if (mobileHasSelectedMilitary(world)) {
             cmd = {{"move", "Move"}, {"attack", "Attack"}, {"attackmove", "Attack Move"}, {"stop", "Stop"}};
         } else if (sel && sel->owner == 0 && isBuilding(sel->type) && !sel->underConstruction) {
-            if (isTrainProducer(sel->type)) {
-                EntityType tt = mobileDefaultTrainType(sel->type);
-                cmd.push_back({"train", tt == E_NONE ? "Train" : std::string("Train ") + STATS[tt].name});
-            }
-            if (sel->type == E_TOWNHALL || sel->type == E_CASTLE || sel->type == E_BARRACKS
-                || sel->type == E_STABLE || sel->type == E_DOCK) {
-                cmd.push_back({"rally", "Rally"});
-            }
+            std::vector<std::pair<std::string, std::string>> trainButtons = mobileTrainButtonsFor(sel->type);
+            cmd.insert(cmd.end(), trainButtons.begin(), trainButtons.end());
+            if (productionRule(sel->type)) cmd.push_back({"rally", "Rally"});
             if (sel->type == E_MARKET) cmd.push_back({"trade", "Trade"});
             if (sel->type == E_BLACKSMITH) cmd.push_back({"research", "Research"});
-            cmd.push_back({"cancelqueue", "Cancel Queue"});
+            if (productionRule(sel->type)) cmd.push_back({"cancelqueue", "Cancel Queue"});
         } else {
             cmd = {{"selectarmy", "Select Army"}, {"help", "Help"}};
         }
@@ -201,7 +223,7 @@ void drawMobileHud(const WorldIndex& world) {
         drawTextFit(pr.x + pad, summaryY + 22,
                     std::string("Placing ") + STATS[s.mobileBuildType].name + " - tap a valid tile",
                     rgb(145,220,245), summaryW);
-    } else if (g.mode == M_RALLY_SET || g.mode == M_ATTACK_MOVE || g.mode == M_BUILD_SELECT || g.mode == M_MARKET_TRADE) {
+    } else if (g.mode == M_RALLY_SET || g.mode == M_ATTACK_MOVE || g.mode == M_BUILD_SELECT || g.mode == M_BUILD_PLACE || g.mode == M_PATROL_SET || g.mode == M_MARKET_TRADE) {
         drawTextFit(pr.x + pad, summaryY + 22, modeName(g.mode), rgb(145,220,245), summaryW);
     } else if (ui.statusTimer > 0) {
         drawTextFit(pr.x + pad, summaryY + 22, ui.statusMsg, rgb(255,230,120), summaryW);
@@ -209,9 +231,10 @@ void drawMobileHud(const WorldIndex& world) {
 
     drawMiniMap(world, mm.x, mm.y, mm.w, mm.h);
     for (const MobileButton& b : mobileHudButtons(world)) {
-        bool active = (b.id == "build" && g.mode == M_BUILD_SELECT)
+        bool active = (b.id == "build" && (g.mode == M_BUILD_SELECT || g.mode == M_BUILD_PLACE))
                    || (b.id == "attack" && g.mode == M_ATTACK_MOVE)
                    || (b.id == "rally" && g.mode == M_RALLY_SET);
         drawButton(b, active, b.id == "cancel");
     }
 }
+

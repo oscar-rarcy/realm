@@ -35,6 +35,8 @@
 #include <variant>
 #include <vector>
 
+void handleMobileHudButton(const std::string& id, const WorldIndex& world);
+
 class TestEventSink : public EventSink {
 public:
     void emit(const GameEvent& event) override { events.push_back(event); }
@@ -55,12 +57,6 @@ public:
 
     std::vector<GameEvent> events;
 };
-
-static bool hasEvent(const std::vector<GameEvent>& events, GameEventType type) {
-    return std::any_of(events.begin(), events.end(), [type](const GameEvent& event) {
-        return event.type == type;
-    });
-}
 
 static CommandResult dispatchTestCommand(const Command& command) {
     WorldIndex world = buildWorldIndex(g);
@@ -149,10 +145,12 @@ static std::string fullStateSummary() {
           << ':' << e.carcassFoodRemaining << ':' << e.carcassFoodMax << ':' << e.rallySet
           << ':' << e.researching << ':' << e.attackMove << ':' << e.holdPosition
           << ':' << e.facingDx << ':' << e.facingDy
-          << ':' << e.gateOpen << ':' << e.gateLocked << ":q";
+          << ':' << e.gateOpen << ':' << e.gateLocked << ':' << e.patrolMode << ":q";
         for (int q : e.queue) s << ',' << q;
         s << ":g";
         for (int gid : e.garrison) s << ',' << gid;
+        s << ":w";
+        for (auto waypoint : e.waypoints) s << ',' << waypoint.first << ':' << waypoint.second;
     }
     for (const auto& p : g.projectiles) {
         s << "|pr" << p.x << ':' << p.y << ':' << p.tx << ':' << p.ty << ':'
@@ -374,6 +372,42 @@ static void testVisualTileBridgeMappings() {
     assert(sawCobble);
 }
 
+static void testWeatherSightAndForestMovementPenalties() {
+    initGameWithSeed(0, 2751u, 0);
+    for (int y = 40; y <= 60; y++) for (int x = 40; x <= 65; x++) {
+        g.map[y][x].terrain = T_GRASS;
+        g.map[y][x].resources = 0;
+    }
+    int peasantId = spawnEntity(g, E_PEASANT, 0, 50, 50);
+    Entity* peasant = testFindEntity(peasantId);
+    assert(peasant);
+    g.dayPhase = 0.5f;
+    g.seasonPhase = (float)SUMMER;
+    g.weather = W_CLEAR;
+    updateFog(g);
+    assert(g.map[50][57].visible[0]);
+    g.weather = W_RAIN;
+    updateFog(g);
+    assert(g.map[50][56].visible[0]);
+    assert(!g.map[50][57].visible[0]);
+    g.weather = W_STORM;
+    updateFog(g);
+    assert(g.map[50][55].visible[0]);
+    assert(!g.map[50][56].visible[0]);
+
+    int knightId = spawnEntity(g, E_KNIGHT, 0, 52, 50);
+    Entity* knight = testFindEntity(knightId);
+    assert(knight);
+    g.weather = W_CLEAR;
+    g.map[50][53].terrain = T_FOREST;
+    WorldIndex world = buildWorldIndex(g);
+    knight->path = {{53, 50}};
+    knight->pathIdx = 0;
+    knight->moveCd = 0;
+    moveAlongPath(g, world, *knight);
+    assert(knight->x == 53 && knight->moveCd == STATS[E_KNIGHT].speed + 2);
+}
+
 static void testVisualEntityStateSelectors() {
     initGameWithSeed(0, 2603u, 0);
     Entity b{};
@@ -445,17 +479,17 @@ static void testRenderModelBuildsViewport() {
     hiddenWolf->deathTicks = 1;
     g.map[14][14].visible[0] = false;
     g.map[14][14].explored[0] = true;
-    g.selectedId = archerId;
-    g.selectedIds = { archerId };
-    g.mode = M_BUILD_SELECT;
-    g.buildPending = E_TOWER;
+    g.local.selectedId = archerId;
+    g.local.selectedIds = { archerId };
+    g.mode = M_BUILD_PLACE;
+    g.local.buildPending = E_TOWER;
     ui.actionMarkers.push_back({ 13, 13, 9, '!' });
     ui.actionMarkers.push_back({ 30, 30, 9, '?' });
 
     RenderModel model = buildRenderModel(g, ui.actionMarkers, 0, 10, 10, 5, 5);
     assert(model.viewX == 10 && model.viewY == 10);
     assert(model.viewW == 5 && model.viewH == 5);
-    assert(model.mode == M_BUILD_SELECT);
+    assert(model.mode == M_BUILD_PLACE);
     assert(model.buildPreviewType == E_TOWER);
     assert(model.tiles.size() == 25);
     assert(model.actionMarkers.size() == 1);
@@ -509,7 +543,10 @@ static void testAnimalCarcassHarvesting() {
 
     WorldIndex carcassWorld = buildWorldIndex(g);
     assert(startGather(g, carcassWorld, gameEvents(), peasant->owner, Selection{ peasant->id, { peasant->id } }, { deer->x, deer->y }).ok);
-    for (int i = 0; i < GATHER_TICKS; i++) tickEntity(g, gameEvents(), *peasant);
+    for (int i = 0; i < GATHER_TICKS; i++) {
+        tickEntity(g, carcassWorld, gameEvents(), *peasant);
+        carcassWorld = buildWorldIndex(g);
+    }
     assert(peasant->cargo.type == CR_FOOD);
     assert(peasant->cargo.amount > 0);
     assert(deer->carcassFoodRemaining < deer->carcassFoodMax);
@@ -613,16 +650,16 @@ static void testInputModeController() {
     cancelInputMode(game);
     assert(game.mode == M_NORMAL);
     startWallBuildMode(game);
-    assert(game.mode == M_WALL_DRAG && game.buildPending == E_WALL);
+    assert(game.mode == M_WALL_DRAG && game.local.buildPending == E_WALL);
     assert(toggleHelpOverlay(game));
-    assert(game.helpOverlay);
+    assert(game.local.helpOverlay);
     assert(!toggleHelpOverlay(game));
-    assert(!game.helpOverlay);
+    assert(!game.local.helpOverlay);
     assert(!controlGroupAssignmentPending(game));
 
     initGameWithSeed(0, 1451u, 0);
     int peasantId = spawnEntity(g, E_PEASANT, 1, 28, 28);
-    g.selectedId = peasantId;
+    g.local.selectedId = peasantId;
     assert(!selectedPeasantCanBuild(g, 0));
     assert(selectedPeasantCanBuild(g, 1));
     std::optional<MapPos> selectedPos = selectedEntityPosition(g, 1);
@@ -630,25 +667,25 @@ static void testInputModeController() {
     assert(!selectedEntityPosition(g, 0));
 
     int barracksId = spawnEntity(g, E_BARRACKS, 1, 30, 28);
-    g.selectedId = barracksId;
+    g.local.selectedId = barracksId;
     assert(selectedProducerCanTrain(g, 1));
     assert(selectedTrainProducerType(g, 1) && *selectedTrainProducerType(g, 1) == E_BARRACKS);
     assert(trainMenuEligibilityForSelected(g, 1) == InputTrainMenuEligibility::CanTrain);
     assert(utilityModeForSelectedBuilding(g, 1) == InputUtilityMode::Rally);
 
     int marketId = spawnEntity(g, E_MARKET, 1, 32, 28);
-    g.selectedId = marketId;
+    g.local.selectedId = marketId;
     assert(selectedMarketCanTrade(g, 1));
     assert(trainMenuEligibilityForSelected(g, 1) == InputTrainMenuEligibility::UnsupportedBuilding);
     assert(utilityModeForSelectedBuilding(g, 1) == InputUtilityMode::MarketTrade);
 
     int blacksmithId = spawnEntity(g, E_BLACKSMITH, 1, 34, 28);
-    g.selectedId = blacksmithId;
+    g.local.selectedId = blacksmithId;
     assert(selectedBlacksmithCanResearch(g, 1));
     assert(utilityModeForSelectedBuilding(g, 1) == InputUtilityMode::Research);
 
     int trebId = spawnEntity(g, E_TREBUCHET, 1, 36, 28);
-    g.selectedId = trebId;
+    g.local.selectedId = trebId;
     assert(selectedTrebuchetCanToggle(g, 1));
     assert(!selectedTrebuchetCanToggle(g, 0));
 }
@@ -661,9 +698,9 @@ static void testInputFeedbackHelper() {
 
 static void testRecoverableValidation() {
     initGameWithSeed(1, 1501u, 0);
-    g.selectedId = g.nextId + 99;
-    g.selectedIds.push_back(g.nextId + 100);
-    g.controlGroups[0].push_back(g.nextId + 101);
+    g.local.selectedId = g.nextId + 99;
+    g.local.selectedIds.push_back(g.nextId + 100);
+    g.controlGroupsByOwner[0][0].push_back(g.nextId + 101);
     int wrongOwnerGroupId = spawnEntity(g, E_MILITIA, 0, 30, 30);
     g.controlGroupsByOwner[1][0].push_back(wrongOwnerGroupId);
     assert(!g.entities.empty());
@@ -706,9 +743,9 @@ static void testRecoverableValidation() {
     RecoveryResult recovery = recoverGameState(g, issues);
     assert(recovery.recovered);
     assert(recovery.issuesProcessed == (int)issues.size());
-    assert(g.selectedId == -1);
-    assert(g.selectedIds.empty());
-    assert(g.controlGroups[0].empty());
+    assert(g.local.selectedId == -1);
+    assert(g.local.selectedIds.empty());
+    assert(g.controlGroupsByOwner[0][0].empty());
     assert(g.controlGroupsByOwner[1][0].empty());
     assert(corrupt.targetId == -1);
     assert(corrupt.pathIdx >= 0);
@@ -844,7 +881,8 @@ static void testSupplyAndTownHallCost() {
     localTh->rallySet = false;
     localEntityCountBefore = local.entities.size();
     globalEntityCountBefore = g.entities.size();
-    tickProduction(local, gameEvents(), *localTh);
+    WorldIndex productionWorld = buildWorldIndex(local);
+    tickProduction(local, productionWorld, gameEvents(), *localTh);
     assert(local.entities.size() == localEntityCountBefore + 1);
     assert(g.entities.size() == globalEntityCountBefore);
 
@@ -909,7 +947,7 @@ static void testSupplyAndTownHallCost() {
     local.attackNotifyCd = 0;
     int globalAttackNotifyBefore = g.attackNotifyCd;
     size_t globalProjectileCountBefore = g.projectiles.size();
-    tickEntity(local, gameEvents(), *localMilitia);
+    tickEntity(local, attackWorld, gameEvents(), *localMilitia);
     assert(!localEnemy->alive);
     assert(local.attackNotifyCd == 200);
     assert(g.attackNotifyCd == globalAttackNotifyBefore);
@@ -1218,8 +1256,8 @@ static void testTownHallTrainInputFlow() {
     for (auto& e : g.entities)
         if (e.alive && e.owner == 0 && e.type == E_TOWNHALL) { th = &e; break; }
     assert(th);
-    g.selectedId = th->id;
-    g.selectedIds.clear();
+    g.local.selectedId = th->id;
+    g.local.selectedIds.clear();
     g.mode = M_NORMAL;
     g.players[0].gold = 500;
     g.players[0].wood = 500;
@@ -1231,7 +1269,7 @@ static void testTownHallTrainInputFlow() {
     int goldBefore = g.players[0].gold;
     handleInput('p');
     assert(g.mode == M_TRAIN_SELECT);
-    th = testFindEntity(g.selectedId);
+    th = testFindEntity(g.local.selectedId);
     assert(th);
     assert(th->producing == E_PEASANT);
     assert(g.players[0].gold == goldBefore - STATS[E_PEASANT].costGold);
@@ -1247,8 +1285,8 @@ static void testHoldPositionInput() {
     m->state = S_MOVING;
     m->holdPosition = 0;
     m->targetId = 7;
-    g.selectedId = id;
-    g.selectedIds.clear();
+    g.local.selectedId = id;
+    g.local.selectedIds.clear();
     g.mode = M_NORMAL;
 
     // 'X' must hold position during gameplay, not exit the application.
@@ -1527,8 +1565,8 @@ static void testCommandSelectionDriftProtection() {
 
     // Change the global UI selection after the command is created. Dispatch must
     // use the command payload, not the current UI selection.
-    g.selectedId = bid;
-    g.selectedIds = { bid };
+    g.local.selectedId = bid;
+    g.local.selectedIds = { bid };
     assert(dispatchTestCommand(move).status == CommandStatus::Accepted);
 
     a = testFindEntity(aid);
@@ -1645,7 +1683,7 @@ static void testContextResolverProducesTypedCommands() {
 }
 
 static void testCommandPayloadDispatchCoverage() {
-    static_assert(std::variant_size<CommandPayload>::value == 30,
+    static_assert(std::variant_size<CommandPayload>::value == 33,
                   "Add this payload to dispatchCommand architecture coverage.");
 
     auto prepareClearArea = []() {
@@ -1665,15 +1703,12 @@ static void testCommandPayloadDispatchCoverage() {
         CommandResult result = dispatchCommand(context, command);
         assert(result.status == expected);
         if (expected == CommandStatus::Accepted) {
-            assert(hasEvent(result.events, GameEventType::CommandAccepted));
             assert(sink.events.size() > before);
             assert(sink.events.back().type == GameEventType::CommandAccepted);
         } else if (expected == CommandStatus::Rejected) {
-            assert(hasEvent(result.events, GameEventType::CommandRejected));
             assert(sink.events.size() > before);
             assert(sink.events.back().type == GameEventType::CommandRejected);
         } else {
-            assert(result.events.empty());
             assert(sink.events.size() == before);
         }
         context.world = buildWorldIndex(context.game);
@@ -1690,6 +1725,7 @@ static void testCommandPayloadDispatchCoverage() {
 
     int workerId = spawnEntity(g, E_PEASANT, 0, 24, 24);
     int secondWorkerId = spawnEntity(g, E_PEASANT, 0, 25, 24);
+    int militiaId = spawnEntity(g, E_MILITIA, 0, 26, 24);
     int enemyId = spawnEntity(g, E_MILITIA, 1, 32, 24);
     int barracksId = spawnEntity(g, E_BARRACKS, 0, 36, 24);
     int smithId = spawnEntity(g, E_BLACKSMITH, 0, 40, 24);
@@ -1723,6 +1759,8 @@ static void testCommandPayloadDispatchCoverage() {
     dispatchWithSink(context, sink, Command{ 0, SelectAllOfTypeInViewCommand{ { 24, 24 } } }, CommandStatus::Accepted);
     dispatchWithSink(context, sink, Command{ 0, ContextCommand{ Selection{ workerId, { workerId } }, { 28, 24 } } }, CommandStatus::Accepted);
     dispatchWithSink(context, sink, Command{ 0, MoveCommand{ Selection{ workerId, { workerId } }, { 29, 24 } } }, CommandStatus::Accepted);
+    dispatchWithSink(context, sink, Command{ 0, WaypointCommand{ Selection{ workerId, { workerId } }, { 31, 24 } } }, CommandStatus::Accepted);
+    dispatchWithSink(context, sink, Command{ 0, PatrolCommand{ Selection{ militiaId, { militiaId } }, { 31, 25 } } }, CommandStatus::Accepted);
     dispatchWithSink(context, sink, Command{ 0, AttackCommand{ Selection{ workerId, { workerId } }, enemyId } }, CommandStatus::Accepted);
     dispatchWithSink(context, sink, Command{ 0, AttackMoveCommand{ Selection{ workerId, { workerId } }, { 30, 24 } } }, CommandStatus::Accepted);
 
@@ -1789,9 +1827,9 @@ static void testCommandDispatcherAppActions() {
 
     command = Command{};
     command.payload = ToggleDiagnosticsCommand{};
-    bool diagnosticsBefore = g.diagnostics;
+    bool diagnosticsBefore = g.local.diagnostics;
     dispatchTestCommand(command);
-    assert(g.diagnostics != diagnosticsBefore);
+    assert(g.local.diagnostics != diagnosticsBefore);
 
     g.map[0][0].visible[0] = false;
     g.map[0][0].explored[0] = false;
@@ -1825,14 +1863,14 @@ static void testCommandDispatcherAppActions() {
     command = Command{};
     command.payload = AssignControlGroupCommand{ Selection{ a, { a, b } }, 2 };
     dispatchTestCommand(command);
-    assert(g.controlGroups[2].size() == 2);
-    g.selectedId = -1;
-    g.selectedIds.clear();
+    assert(g.controlGroupsByOwner[0][2].size() == 2);
+    g.local.selectedId = -1;
+    g.local.selectedIds.clear();
     command = Command{};
     command.payload = RecallControlGroupCommand{ 2 };
     dispatchTestCommand(command);
-    assert(g.selectedId == a);
-    assert(g.selectedIds.size() == 2);
+    assert(g.local.selectedId == a);
+    assert(g.local.selectedIds.size() == 2);
 
     int c = spawnEntity(g, E_MILITIA, 1, 42, 30);
     int d = spawnEntity(g, E_ARCHER, 1, 43, 30);
@@ -1841,22 +1879,22 @@ static void testCommandDispatcherAppActions() {
     command.payload = AssignControlGroupCommand{ Selection{ c, { c, d, a } }, 2 };
     CommandResult ownerGroupResult = dispatchTestCommand(command);
     assert(ownerGroupResult.status == CommandStatus::Accepted);
-    assert(g.controlGroups[2].size() == 2);
+    assert(g.controlGroupsByOwner[0][2].size() == 2);
     assert(g.controlGroupsByOwner[1][2].size() == 2);
     assert(std::find(g.controlGroupsByOwner[1][2].begin(), g.controlGroupsByOwner[1][2].end(), a) == g.controlGroupsByOwner[1][2].end());
-    g.selectedId = -1;
-    g.selectedIds.clear();
+    g.local.selectedId = -1;
+    g.local.selectedIds.clear();
     command = Command{};
     command.issuer = 1;
     command.payload = RecallControlGroupCommand{ 2 };
     dispatchTestCommand(command);
-    assert(g.selectedId == c);
-    assert(g.selectedIds.size() == 2);
+    assert(g.local.selectedId == c);
+    assert(g.local.selectedIds.size() == 2);
     command = Command{};
     command.payload = RecallControlGroupCommand{ 2 };
     dispatchTestCommand(command);
-    assert(g.selectedId == a);
-    assert(g.selectedIds.size() == 2);
+    assert(g.local.selectedId == a);
+    assert(g.local.selectedIds.size() == 2);
 
     command = Command{};
     command.payload = SaveCommand{ 7 };
@@ -1948,28 +1986,28 @@ static void testCommandIssuerOwnerRules() {
     command.issuer = 1;
     command.payload = SelectCommand{ { 30, 30 } };
     assert(dispatchTestCommand(command).status == CommandStatus::Accepted);
-    assert(g.selectedId == mid);
+    assert(g.local.selectedId == mid);
 
     int archerId = spawnEntity(g, E_ARCHER, 1, 31, 30);
     command = Command{};
     command.issuer = 1;
     command.payload = BoxSelectCommand{ { 29, 29 }, { 32, 31 } };
     assert(dispatchTestCommand(command).status == CommandStatus::Accepted);
-    assert(std::find(g.selectedIds.begin(), g.selectedIds.end(), mid) != g.selectedIds.end());
-    assert(std::find(g.selectedIds.begin(), g.selectedIds.end(), archerId) != g.selectedIds.end());
+    assert(std::find(g.local.selectedIds.begin(), g.local.selectedIds.end(), mid) != g.local.selectedIds.end());
+    assert(std::find(g.local.selectedIds.begin(), g.local.selectedIds.end(), archerId) != g.local.selectedIds.end());
 
     command = Command{};
     command.issuer = 1;
     command.payload = AssignControlGroupCommand{ Selection{ mid, { mid, archerId } }, 4 };
     assert(dispatchTestCommand(command).status == CommandStatus::Accepted);
-    g.selectedId = -1;
-    g.selectedIds.clear();
+    g.local.selectedId = -1;
+    g.local.selectedIds.clear();
     command = Command{};
     command.issuer = 1;
     command.payload = RecallControlGroupCommand{ 4 };
     assert(dispatchTestCommand(command).status == CommandStatus::Accepted);
-    assert(g.selectedId == mid);
-    assert(g.selectedIds.size() == 2);
+    assert(g.local.selectedId == mid);
+    assert(g.local.selectedIds.size() == 2);
     assert(validateGameState(g, nullptr));
 }
 
@@ -2011,9 +2049,24 @@ static void testOrderServiceContracts() {
     assert(sink.has(GameEventType::ActionMarker));
 
     sink.clear();
+    worker->state = S_IDLE;
+    worker->path.clear();
+    worker->pathIdx = 0;
+    assert(appendWaypoint(g, world, sink, 0, Selection{ workerId, { workerId } }, { 29, 24 }).ok);
+    assert(worker->waypoints.size() == 1);
+    tickEntity(g, world, sink, *worker);
+    assert(worker->state == S_MOVING && worker->targetX == 29 && worker->targetY == 24);
+
+    sink.clear();
     assert(startAttackMove(g, world, sink, 0, Selection{ militiaId, { militiaId } }, { 30, 24 }).ok);
     assert(militia->state == S_MOVING && militia->attackMove == 1);
     assert(sink.has(GameEventType::ActionMarker) && sink.has(GameEventType::StatusMessage));
+
+    sink.clear();
+    assert(startPatrol(g, world, sink, 0, Selection{ militiaId, { militiaId } }, { 30, 25 }).ok);
+    assert(militia->patrolMode);
+    assert(!militia->waypoints.empty());
+    assert(militia->state == S_MOVING && militia->targetX == 30 && militia->targetY == 25);
 
     sink.clear();
     assert(startAttack(g, world, sink, 0, Selection{ archerId, { archerId } }, enemyId).ok);
@@ -2084,7 +2137,7 @@ static void testSelectionServicesUseIssuer() {
     assert(selected && selected->id == secondPeasant);
     selected = selectNextIdleWorker(g, world, 1, secondPeasant);
     assert(selected && selected->id == firstPeasant);
-    assert(g.selectedId != humanPeasant);
+    assert(g.local.selectedId != humanPeasant);
 
     selected = selectNextUnit(g, world, 1, secondPeasant);
     assert(selected && selected->id == militiaId);
@@ -2096,24 +2149,38 @@ static void testSelectionServicesUseIssuer() {
 
     int count = selectAllMilitary(g, world, 1);
     assert(count == 2);
-    assert(g.selectedId == militiaId);
-    assert(g.selectedIds.size() == 2);
-    assert(std::find(g.selectedIds.begin(), g.selectedIds.end(), militiaId) != g.selectedIds.end());
-    assert(std::find(g.selectedIds.begin(), g.selectedIds.end(), archerId) != g.selectedIds.end());
-    assert(std::find(g.selectedIds.begin(), g.selectedIds.end(), enemyMilitia) == g.selectedIds.end());
+    assert(g.local.selectedId == militiaId);
+    assert(g.local.selectedIds.size() == 2);
+    assert(std::find(g.local.selectedIds.begin(), g.local.selectedIds.end(), militiaId) != g.local.selectedIds.end());
+    assert(std::find(g.local.selectedIds.begin(), g.local.selectedIds.end(), archerId) != g.local.selectedIds.end());
+    assert(std::find(g.local.selectedIds.begin(), g.local.selectedIds.end(), enemyMilitia) == g.local.selectedIds.end());
     assert(selectionContainsMilitary(g, world, 1, Selection{ militiaId, { militiaId, archerId } }));
     assert(!selectionContainsMilitary(g, world, 0, Selection{ militiaId, { militiaId, archerId } }));
 
-    g.selectedId = enemyMilitia;
-    g.selectedIds.clear();
+    TestEventSink selectSink;
+    boxSelect(g, world, selectSink, 1, 30, 30, 33, 30);
+    assert(g.local.selectedIds.size() == 2);
+    assert(std::find(g.local.selectedIds.begin(), g.local.selectedIds.end(), militiaId) != g.local.selectedIds.end());
+    assert(std::find(g.local.selectedIds.begin(), g.local.selectedIds.end(), archerId) != g.local.selectedIds.end());
+    assert(std::find(g.local.selectedIds.begin(), g.local.selectedIds.end(), firstPeasant) == g.local.selectedIds.end());
+    selectAtTile(g, world, selectSink, 1, 30, 30, true);
+    assert(std::find(g.local.selectedIds.begin(), g.local.selectedIds.end(), firstPeasant) != g.local.selectedIds.end());
+    selectAtTile(g, world, selectSink, 1, 30, 30, true);
+    assert(std::find(g.local.selectedIds.begin(), g.local.selectedIds.end(), firstPeasant) == g.local.selectedIds.end());
+    boxSelect(g, world, selectSink, 1, 30, 30, 31, 30, true);
+    assert(std::find(g.local.selectedIds.begin(), g.local.selectedIds.end(), firstPeasant) != g.local.selectedIds.end());
+    assert(std::find(g.local.selectedIds.begin(), g.local.selectedIds.end(), secondPeasant) != g.local.selectedIds.end());
+
+    g.local.selectedId = enemyMilitia;
+    g.local.selectedIds.clear();
     assert(!beginControlGroupAssignment(g, world, 1));
-    assert(!g.groupAssignPending);
-    g.selectedId = militiaId;
+    assert(!g.local.groupAssignPending);
+    g.local.selectedId = militiaId;
     assert(beginControlGroupAssignment(g, world, 1));
-    assert(g.groupAssignPending);
-    assert(g.selectedIds.size() == 1 && g.selectedIds[0] == militiaId);
+    assert(g.local.groupAssignPending);
+    assert(g.local.selectedIds.size() == 1 && g.local.selectedIds[0] == militiaId);
     clearSelection(g);
-    assert(g.selectedId == -1 && g.selectedIds.empty() && !g.groupAssignPending);
+    assert(g.local.selectedId == -1 && g.local.selectedIds.empty() && !g.local.groupAssignPending);
     assert(validateGameState(g, nullptr));
 }
 
@@ -2391,7 +2458,9 @@ static void testBuildService() {
     g.players[0].wood = STATS[E_HOUSE].costWood;
     TestEventSink buildSink;
     WorldIndex buildWorld = buildWorldIndex(g);
-    assert(startBuildService(g, buildWorld, buildSink, 0, peasant->id, E_HOUSE, { 34, 34 }).ok);
+    assert(!canPlace(g, buildWorld, E_HOUSE, peasant->x, peasant->y, 0));
+    assert(canPlace(g, buildWorld, E_HOUSE, peasant->x, peasant->y, 0, peasant->id));
+    assert(startBuildService(g, buildWorld, buildSink, 0, peasant->id, E_HOUSE, { peasant->x, peasant->y }).ok);
     assert(buildSink.has(GameEventType::ActionMarker));
     assert(buildSink.has(GameEventType::BuildingPlaced));
     assert(g.players[0].gold == 0 && g.players[0].wood == 0);
@@ -2475,38 +2544,40 @@ static void testGameEventSink() {
     move.payload = MoveCommand{ Selection{ id, { id } }, { 24, 22 } };
     CommandResult acceptedResult = dispatchCommand(context, move);
     assert(acceptedResult.status == CommandStatus::Accepted);
-    assert(!acceptedResult.events.empty());
-    assert(std::any_of(acceptedResult.events.begin(), acceptedResult.events.end(),
+    assert(!sink.events.empty());
+    assert(std::any_of(sink.events.begin(), sink.events.end(),
         [](const GameEvent& event){ return event.type == GameEventType::ActionMarker; }));
-    assert(acceptedResult.events.back().type == GameEventType::CommandAccepted);
     assert(!sink.events.empty() && sink.events.back().type == GameEventType::CommandAccepted);
 
+    sink.events.clear();
     Command rejectedMove;
     rejectedMove.issuer = 1;
     rejectedMove.payload = MoveCommand{ Selection{ id, { id } }, { 25, 22 } };
     CommandResult rejectedResult = dispatchCommand(context, rejectedMove);
     assert(rejectedResult.status == CommandStatus::Rejected);
-    assert(!rejectedResult.events.empty());
-    assert(rejectedResult.events.back().type == GameEventType::CommandRejected);
+    assert(!sink.events.empty());
+    assert(sink.events.back().type == GameEventType::CommandRejected);
 
+    sink.events.clear();
     std::remove("realm-slot8.sav");
     Command save;
     save.issuer = 0;
     save.payload = SaveCommand{ 8 };
     CommandResult saveResult = dispatchCommand(context, save);
     assert(saveResult.status == CommandStatus::Accepted);
-    assert(std::any_of(saveResult.events.begin(), saveResult.events.end(),
+    assert(std::any_of(sink.events.begin(), sink.events.end(),
         [](const GameEvent& event){ return event.type == GameEventType::SaveCompleted; }));
-    assert(saveResult.events.back().type == GameEventType::CommandAccepted);
+    assert(sink.events.back().type == GameEventType::CommandAccepted);
 
+    sink.events.clear();
     Command load;
     load.issuer = 0;
     load.payload = LoadCommand{ 8 };
     CommandResult loadResult = dispatchCommand(context, load);
     assert(loadResult.status == CommandStatus::Accepted);
-    assert(std::any_of(loadResult.events.begin(), loadResult.events.end(),
+    assert(std::any_of(sink.events.begin(), sink.events.end(),
         [](const GameEvent& event){ return event.type == GameEventType::LoadCompleted; }));
-    assert(loadResult.events.back().type == GameEventType::CommandAccepted);
+    assert(sink.events.back().type == GameEventType::CommandAccepted);
     std::remove("realm-slot8.sav");
 }
 
@@ -2926,13 +2997,18 @@ static void testSaveLoadRoundTrip() {
     assert(startupSummary() == before);
     for (int i = 0; i < 20; i++) tickSimulationOnce(g, gameEvents(), true);
 
-    // Version 8 uses the same payload as version 9 and should migrate in place.
+    // Version 8 uses the pre-waypoint payload and should migrate in place.
     {
         std::ifstream in("build/test-save.realm", std::ios::binary);
         std::string content((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
-        size_t pos = content.find("REALM_SAVE 9");
+        size_t pos = content.find("REALM_SAVE 10");
         assert(pos != std::string::npos);
-        content.replace(pos, std::string("REALM_SAVE 9").size(), "REALM_SAVE 8");
+        content.replace(pos, std::string("REALM_SAVE 10").size(), "REALM_SAVE 8");
+        while ((pos = content.find(" WAYPOINTS ", pos)) != std::string::npos) {
+            size_t lineEnd = content.find('\n', pos);
+            assert(lineEnd != std::string::npos);
+            content.erase(pos, lineEnd - pos);
+        }
         std::ofstream out("build/test-save-v8.realm", std::ios::binary);
         out << content;
     }
@@ -2942,6 +3018,15 @@ static void testSaveLoadRoundTrip() {
 
     initGameWithSeed(2, 4444u, 1);
     for (int i = 0; i < 250; i++) tickSimulationOnce(g, gameEvents(), true);
+    for (auto& e : g.entities) {
+        if (!e.alive || e.owner != 0 || !isUnit(e.type) || isNaval(e.type)) continue;
+        e.state = S_IDLE;
+        e.path.clear();
+        e.pathIdx = 0;
+        e.waypoints = {{e.x + 1, e.y}, {e.x, e.y}};
+        e.patrolMode = true;
+        break;
+    }
     assert(saveGame(g, "build/exact-resume.realm"));
     for (int i = 0; i < 100; i++) tickSimulationOnce(g, gameEvents(), true);
     std::string continuous = fullStateSummary();
@@ -2992,13 +3077,13 @@ static void testSaveLoadRoundTrip() {
     assert(g.seed == globalSeedBeforeLocalService);
     assert(!sink.events.empty() && sink.events.back().type == GameEventType::LoadCompleted);
     Game recoverableSave = *localGame;
-    recoverableSave.selectedId = recoverableSave.nextId + 99;
+    recoverableSave.local.selectedId = recoverableSave.nextId + 99;
     assert(saveGame(recoverableSave, "build/local-recoverable-save.realm"));
     localGame->seed = 123u;
-    localGame->selectedId = 12345;
+    localGame->local.selectedId = 12345;
     assert(loadGame(*localGame, "build/local-recoverable-save.realm"));
     assert(localGame->seed == 5005u);
-    assert(localGame->selectedId == -1);
+    assert(localGame->local.selectedId == -1);
     assert(g.seed == globalSeedBeforeLocalService);
 
     Game hardInvalidSave = *localGame;
@@ -3010,7 +3095,7 @@ static void testSaveLoadRoundTrip() {
     assert(localGame->seed == localBeforeHardLoad.seed);
     assert(localGame->nextId == localBeforeHardLoad.nextId);
     assert(localGame->entities.size() == localBeforeHardLoad.entities.size());
-    assert(localGame->selectedId == localBeforeHardLoad.selectedId);
+    assert(localGame->local.selectedId == localBeforeHardLoad.local.selectedId);
     assert(g.seed == globalSeedBeforeLocalService);
 
     localGame->seed = 777u;
@@ -3034,10 +3119,49 @@ static void testLongSimulationAndAIProgression() {
     assertIdsCoherent();
 }
 
+static void testMobileStopDispatchesCommand() {
+    initGameWithSeed(1, 5210u, 0);
+    int workerId = spawnEntity(g, E_PEASANT, 0, 24, 24);
+    WorldIndex world = buildWorldIndex(g);
+    Entity* worker = findEntity(g, world, workerId);
+    assert(worker);
+
+    TestEventSink setupSink;
+    assert(startMove(g, world, setupSink, 0, Selection{ workerId, { workerId } }, { 30, 24 }).ok);
+    assert(worker->state == S_MOVING);
+    g.local.selectedId = workerId;
+    g.local.selectedIds = { workerId };
+
+    drainGameEvents();
+    handleMobileHudButton("stop", world);
+    std::vector<GameEvent> events = drainGameEvents();
+
+    assert(worker->state == S_IDLE);
+    assert(worker->targetId == -1);
+    assert(worker->path.empty());
+    assert(worker->pathIdx == 0);
+    assert(worker->attackMove == 0);
+    assert(std::any_of(events.begin(), events.end(), [](const GameEvent& event) {
+        return event.type == GameEventType::UnitOrdered && event.message == "Stopped.";
+    }));
+    assert(!events.empty() && events.back().type == GameEventType::CommandAccepted);
+}
+
+static void testSimulationTickWorldIndexBuildBudget() {
+    initGameWithSeed(2, 5211u, 0);
+    for (int i = 0; i < 18; i++) {
+        spawnEntity(g, E_MILITIA, i % 2, 24 + i, 24 + (i / 6));
+    }
+    resetWorldIndexBuildCount();
+    tickSimulationOnce(g, gameEvents(), false);
+    assert(worldIndexBuildCount() <= 6);
+}
+
 int main() {
     testEntityAnimationSpecs();
     testCorpseDecayLifecycle();
     testVisualTileBridgeMappings();
+    testWeatherSightAndForestMovementPenalties();
     testVisualEntityStateSelectors();
     testRenderModelBuildsViewport();
     testLocalGameRng();
@@ -3072,6 +3196,8 @@ int main() {
     testBuildService();
     testGameEventSink();
     testWorldIndexParity();
+    testMobileStopDispatchesCommand();
+    testSimulationTickWorldIndexBuildBudget();
     testBerryGatherAndDepletion();
     testMillFoodStockpile();
     testWinterPartialWaterFreeze();
@@ -3084,3 +3210,4 @@ int main() {
     std::puts("realm_headless_tests: ok");
     return 0;
 }
+

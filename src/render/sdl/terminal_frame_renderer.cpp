@@ -155,8 +155,8 @@ TerminalCell terminalMapCell(const WorldIndex& world, int mx, int my) {
         }
     }
 
-    bool selected = ent && (ent->id == g.selectedId ||
-        std::find(g.selectedIds.begin(), g.selectedIds.end(), ent->id) != g.selectedIds.end());
+    bool selected = ent && (ent->id == g.local.selectedId ||
+        std::find(g.local.selectedIds.begin(), g.local.selectedIds.end(), ent->id) != g.local.selectedIds.end());
     if (selected) {
         cell.fg = rgb(10, 10, 12);
         cell.bg = rgb(240, 240, 230);
@@ -286,7 +286,7 @@ void terminalDrawSelection(TerminalFrame& frame, const WorldIndex& world, int pa
             std::ostringstream more; more << "+" << (stack - 3) << " more";
             line(more.str());
         }
-        if (g.diagnostics) {
+        if (g.local.diagnostics) {
             std::ostringstream ds; ds << "Diag T" << g.tick << " M:" << modeName(g.mode);
             line(ds.str(), termHigh());
             std::ostringstream ds2; ds2 << "Ent:" << g.entities.size() << " Proj:" << g.projectiles.size();
@@ -297,8 +297,8 @@ void terminalDrawSelection(TerminalFrame& frame, const WorldIndex& world, int pa
         y++;
     }
 
-    if (g.selectedIds.size() > 1) {
-        std::ostringstream gs; gs << "Group: " << g.selectedIds.size() << " units";
+    if (g.local.selectedIds.size() > 1) {
+        std::ostringstream gs; gs << "Group: " << g.local.selectedIds.size() << " units";
         line(gs.str(), termHigh());
         line("[Enter] Move/Attack", termAccent());
         line("[G] Assign to group", termAccent());
@@ -307,7 +307,7 @@ void terminalDrawSelection(TerminalFrame& frame, const WorldIndex& world, int pa
         return;
     }
 
-    Entity* sel = renderFindEntity(g, world, g.selectedId);
+    Entity* sel = renderFindEntity(g, world, g.local.selectedId);
     if (!sel) {
         line("No selection", termDim());
         y++;
@@ -400,8 +400,12 @@ void terminalDrawBottom(TerminalFrame& frame, const WorldIndex& world) {
     std::string line;
     if (g.mode == M_BUILD_SELECT)
         line = " BUILD: [H]ouse [B]arracks [S]table [T]ower [F]arm [W]all [G]ate [A]rmory [C]hurch [M]arket [K]Castle [L]umber [N]mine [I]mill [D]ock [Esc] ";
+    else if (g.mode == M_BUILD_PLACE) {
+        const char* name = (g.local.buildPending != E_NONE) ? STATS[g.local.buildPending].name : "building";
+        line = std::string(" PLACE ") + name + ": Arrows/Mouse, [Enter]/Click build, [Esc]/RClick cancel ";
+    }
     else if (g.mode == M_TRAIN_SELECT) {
-        line = trainPromptFor(renderFindEntity(g, world, g.selectedId));
+        line = trainPromptFor(renderFindEntity(g, world, g.local.selectedId));
     }
     else if (g.mode == M_MARKET_TRADE)
         line = " MARKET: [G] 40g->30w  [W] 40w->30g  [F] 50g->30f  [V] 40f->30g  [Esc] ";
@@ -410,10 +414,12 @@ void terminalDrawBottom(TerminalFrame& frame, const WorldIndex& world) {
     else if (g.mode == M_GAME_OVER)
         line = (g.winner == 0) ? " VICTORY! The realm is yours. [Enter/Q] Main menu  [X] Exit "
                                : " DEFEAT! Your kingdom has fallen. [Enter/Q] Main menu  [X] Exit ";
-    else if (g.groupAssignPending)
+    else if (g.local.groupAssignPending)
         line = " GROUP ASSIGN: Press [1]-[9] to assign selection to group, [Esc] to cancel ";
+    else if (g.mode == M_PATROL_SET)
+        line = " PATROL: Move cursor + Enter or click target. [Esc] cancel ";
     else
-        line = " Arrows:Move  Spc:Select  Enter:Cmd  B:Build T:Train ?:Help D:Diag V:Save L:Load Q:Resign X:Exit ";
+        line = " Arrows:Move  Spc:Select  Enter:Cmd  Shift+RClick:Waypoint Z:Patrol  B:Build T:Train ?:Help V:Save Q:Resign ";
     termPutString(frame, 1, botY2, termTrunc(line, frame.cols - 2), termFg(), termBar());
     if (ui.statusTimer > 0) {
         termPutString(frame, 1, botY1, termTrunc(">> " + ui.statusMsg, frame.cols - 14), termHigh(), termBar());
@@ -429,8 +435,12 @@ void registerTerminalKeyTokens(const TerminalFrame& frame, const WorldIndex& wor
     if (g.mode == M_BUILD_SELECT) {
         line = " BUILD: [H]ouse [B]arracks [S]table [T]ower [F]arm [W]all [G]ate [A]rmory [C]hurch [M]arket [K]Castle [L]umber [N]mine [I]mill [D]ock [Esc] ";
         tokens = terminalBuildTokens();
+    } else if (g.mode == M_BUILD_PLACE) {
+        const char* name = (g.local.buildPending != E_NONE) ? STATS[g.local.buildPending].name : "building";
+        line = std::string(" PLACE ") + name + ": [Enter] build  [Esc] cancel ";
+        tokens = {{"[Enter]", '\n'}, {"[Esc]", 27}};
     } else if (g.mode == M_TRAIN_SELECT) {
-        Entity* sel = renderFindEntity(g, world, g.selectedId);
+        Entity* sel = renderFindEntity(g, world, g.local.selectedId);
         line = trainPromptFor(sel);
         tokens = sel ? trainOptionTokensFor(sel->type) : std::vector<std::pair<std::string, int>>{{"Esc", 27}};
     } else if (g.mode == M_MARKET_TRADE) {
@@ -443,10 +453,13 @@ void registerTerminalKeyTokens(const TerminalFrame& frame, const WorldIndex& wor
         line = (g.winner == 0) ? " VICTORY! The realm is yours. [Enter/Q] Main menu  [X] Exit "
                                : " DEFEAT! Your kingdom has fallen. [Enter/Q] Main menu  [X] Exit ";
         tokens = {{"Enter", '\n'}, {"Q", 'q'}, {"[X]", 'x'}};
+    } else if (g.mode == M_PATROL_SET) {
+        line = " PATROL: [Enter] set target  [Esc] cancel ";
+        tokens = {{"[Enter]", '\n'}, {"[Esc]", 27}};
     } else {
-        line = " Arrows:Move  Spc:Select  Enter:Cmd  B:Build T:Train ?:Help D:Diag V:Save L:Load Q:Resign X:Hold ";
+        line = " Arrows:Move  Spc:Select  Enter:Cmd  Z:Patrol B:Build T:Train ?:Help D:Diag V:Save L:Load Q:Resign X:Hold ";
         tokens = {{"B:Build", 'b'}, {"T:Train", 't'}, {"?:Help", '?'}, {"D:Diag", 'd'},
-                  {"V:Save", 'v'}, {"L:Load", 'l'}, {"Q:Resign", 'q'}, {"X:Hold", 'x'}};
+                  {"V:Save", 'v'}, {"L:Load", 'l'}, {"Q:Resign", 'q'}, {"X:Hold", 'x'}, {"Z:Patrol", 'z'}};
     }
     size_t searchFrom = 0;
     for (const auto& token : tokens) {
@@ -462,7 +475,7 @@ void registerTerminalKeyTokens(const TerminalFrame& frame, const WorldIndex& wor
 }
 
 void terminalDrawHelpOverlay(TerminalFrame& frame) {
-    if (!g.helpOverlay) return;
+    if (!g.local.helpOverlay) return;
     int w = std::min(frame.cols - 4, 78);
     int h = std::min(frame.rows - 4, 24);
     if (w < 20 || h < 8) return;
@@ -658,7 +671,7 @@ void drawAsciiMobileMiniMapText(const WorldIndex& world, SDL_Rect r) {
 }
 
 void drawAsciiMobileHelpOverlay() {
-    if (!g.helpOverlay) return;
+    if (!g.local.helpOverlay) return;
     int pad = mobileSafePad();
     SDL_Rect r{pad, pad, std::max(1, s.winW - pad * 2), std::max(1, s.winH - pad * 2)};
     SDL_SetRenderDrawBlendMode(s.ren, SDL_BLENDMODE_BLEND);
@@ -717,7 +730,7 @@ void drawAsciiMobileHud(const WorldIndex& world) {
     if (s.mobileBuildType != E_NONE) {
         drawTextFit(pr.x + pad, y, std::string("Placing ") + STATS[s.mobileBuildType].name,
                     termAccent(), summaryW, s.monoSmall ? s.monoSmall : s.mono);
-    } else if (g.mode == M_RALLY_SET || g.mode == M_ATTACK_MOVE || g.mode == M_BUILD_SELECT) {
+    } else if (g.mode == M_RALLY_SET || g.mode == M_ATTACK_MOVE || g.mode == M_BUILD_SELECT || g.mode == M_BUILD_PLACE || g.mode == M_PATROL_SET) {
         drawTextFit(pr.x + pad, y, modeName(g.mode), termAccent(), summaryW, s.monoSmall ? s.monoSmall : s.mono);
     } else if (ui.statusTimer > 0) {
         drawTextFit(pr.x + pad, y, ">> " + ui.statusMsg, termHigh(), summaryW, s.monoSmall ? s.monoSmall : s.mono);
@@ -725,7 +738,7 @@ void drawAsciiMobileHud(const WorldIndex& world) {
 
     drawAsciiMobileMiniMapText(world, mm);
     for (const MobileButton& b : mobileHudButtons(world)) {
-        bool active = (b.id == "build" && g.mode == M_BUILD_SELECT)
+        bool active = (b.id == "build" && (g.mode == M_BUILD_SELECT || g.mode == M_BUILD_PLACE))
                    || (b.id == "attack" && g.mode == M_ATTACK_MOVE)
                    || (b.id == "rally" && g.mode == M_RALLY_SET);
         drawConsoleButton(b, active, b.id == "cancel");
@@ -743,3 +756,5 @@ void drawAsciiMobileFrame(const WorldIndex& world, bool present) {
     drawAsciiMobileHelpOverlay();
     if (present) SDL_RenderPresent(s.ren);
 }
+
+

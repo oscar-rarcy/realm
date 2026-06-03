@@ -64,6 +64,8 @@ struct Entity {
     int packTicks;
     std::vector<int> queue;
     std::vector<int> garrison;
+    std::vector<std::pair<int, int>> waypoints;
+    bool patrolMode;
 };
 
 struct Player {
@@ -71,6 +73,15 @@ struct Player {
     bool alive;
     int research;
     int aiWaveCd;
+};
+
+struct LocalGameState {
+    int selectedId = -1;
+    std::vector<int> selectedIds;
+    bool groupAssignPending = false;
+    EntityType buildPending = E_NONE;
+    bool diagnostics = false;
+    bool helpOverlay = false;
 };
 
 struct Game {
@@ -81,12 +92,8 @@ struct Game {
     Player players[MAX_PLAYERS + 1];
     int tick;
     GameMode mode;
-    int selectedId;
-    std::vector<int> selectedIds;
-    std::vector<int> controlGroups[9];
     std::vector<int> controlGroupsByOwner[MAX_PLAYERS][9];
-    bool groupAssignPending;
-    EntityType buildPending;
+    LocalGameState local;
     int winner, aiTimer, farmTimer, animalTimer;
     float dayPhase, seasonPhase;
     int prevSeason;
@@ -100,7 +107,5 @@ struct Game {
     int startupAIs;
     int humanCorner;
     int matchNumber;
-    bool diagnostics;
-    bool helpOverlay;
     unsigned rngState;
 };

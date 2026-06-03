@@ -112,7 +112,7 @@ Entity* entityAt(Game& game,const WorldIndex& world,int x,int y);
 Entity* entityAtOwner(Game& game,const WorldIndex& world,int x,int y,int owner);
 Entity* corpseAt(Game& game,const WorldIndex& world,int x,int y);
 bool    isHarvestableCarcass(const Entity& e);
-bool    canPlace(const Game& game,const WorldIndex& world,EntityType type,int x,int y,int owner);
+bool    canPlace(const Game& game,const WorldIndex& world,EntityType type,int x,int y,int owner,int ignoreEntityId=-1);
 void    updateSupply(Game& game,int owner);
 int     reservedSupply(const Game& game,int owner);
 int     spawnEntity(Game& game,EntityType type,int owner,int x,int y,bool built=true);
@@ -139,8 +139,8 @@ int  garrisonCap(EntityType bt);
 void ejectGarrison(Game& game,Entity& bld);
 
 // tick / game logic
-void tickEntity(Game& game,EventSink& events,Entity& e);
-void tickProduction(Game& game,EventSink& events,Entity& e);
+void tickEntity(Game& game,WorldIndex& world,EventSink& events,Entity& e);
+void tickProduction(Game& game,WorldIndex& world,EventSink& events,Entity& e);
 void tickResearch(Game& game,EventSink& events,Entity& e);
 void tickTowers(Game& game,EventSink& events);
 void tickGates(Game& game);

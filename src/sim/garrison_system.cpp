@@ -26,10 +26,8 @@ int garrisonCap(EntityType bt) {
 }
 
 static void clearReferencesToEntity(Game& game, int id) {
-    if (game.selectedId == id) game.selectedId = -1;
-    game.selectedIds.erase(std::remove(game.selectedIds.begin(), game.selectedIds.end(), id), game.selectedIds.end());
-    for (auto& group : game.controlGroups)
-        group.erase(std::remove(group.begin(), group.end(), id), group.end());
+    if (game.local.selectedId == id) game.local.selectedId = -1;
+    game.local.selectedIds.erase(std::remove(game.local.selectedIds.begin(), game.local.selectedIds.end(), id), game.local.selectedIds.end());
     for (int p = 0; p < MAX_PLAYERS; p++)
         for (auto& group : game.controlGroupsByOwner[p])
             group.erase(std::remove(group.begin(), group.end(), id), group.end());

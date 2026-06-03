@@ -12,6 +12,8 @@ class EventSink;
 bool canGarrisonIn(EntityType buildingType);
 ServiceResult canMove(const Game& game, const WorldIndex& world, PlayerId issuer, EntityId unitId, MapPos target);
 ServiceResult startMove(Game& game, const WorldIndex& world, EventSink& events, PlayerId issuer, const Selection& selection, MapPos target);
+ServiceResult appendWaypoint(Game& game, const WorldIndex& world, EventSink& events, PlayerId issuer, const Selection& selection, MapPos target);
+ServiceResult startPatrol(Game& game, const WorldIndex& world, EventSink& events, PlayerId issuer, const Selection& selection, MapPos target);
 ServiceResult startAttackMove(Game& game, const WorldIndex& world, EventSink& events, PlayerId issuer, const Selection& selection, MapPos target);
 
 ServiceResult canAttack(const Game& game, const WorldIndex& world, PlayerId issuer, EntityId unitId, EntityId targetId);

@@ -28,6 +28,7 @@ enum class InputIntent {
     ToggleGate,
     RevealMapDebug,
     AttackMoveOrSelectArmy,
+    Patrol,
     HoldPosition,
     GroupAssign,
     ControlGroup,

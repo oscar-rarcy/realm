@@ -189,6 +189,8 @@ const char* modeName(GameMode m) {
         case M_RALLY_SET: return "Rally"; case M_RESEARCH_SELECT: return "Research";
         case M_ATTACK_MOVE: return "Attack move";
         case M_MARKET_TRADE: return "Market trade";
+        case M_BUILD_PLACE: return "Place build";
+        case M_PATROL_SET: return "Patrol";
     }
     return "Unknown";
 }

@@ -18,7 +18,7 @@ RenderModel buildRenderModel(const Game& game, const std::vector<ActionMarker>& 
     model.viewW = x1 - x0;
     model.viewH = y1 - y0;
     model.mode = game.mode;
-    model.buildPreviewType = game.mode == M_BUILD_SELECT || game.mode == M_WALL_DRAG ? game.buildPending : E_NONE;
+    model.buildPreviewType = game.mode == M_BUILD_PLACE || game.mode == M_WALL_DRAG ? game.local.buildPending : E_NONE;
     model.tiles.reserve((x1 - x0) * (y1 - y0));
     for (int y = y0; y < y1; y++) for (int x = x0; x < x1; x++) {
         const Tile& tile = game.map[y][x];
@@ -61,8 +61,8 @@ RenderModel buildRenderModel(const Game& game, const std::vector<ActionMarker>& 
         info.rallyY = entity.rallyY;
         info.visible = observerOwner < 0 || observerOwner >= MAX_PLAYERS
             || game.map[entity.y][entity.x].visible[observerOwner];
-        info.selected = entity.id == game.selectedId
-            || std::find(game.selectedIds.begin(), game.selectedIds.end(), entity.id) != game.selectedIds.end();
+        info.selected = entity.id == game.local.selectedId
+            || std::find(game.local.selectedIds.begin(), game.local.selectedIds.end(), entity.id) != game.local.selectedIds.end();
         if (isBuilding(entity.type)) info.buildingState = buildingVisualState(entity);
         if (isAnimalEntityType(entity.type)) info.animalCarcassState = animalCarcassVisualState(entity);
         if (entity.type == E_TRANSPORT) info.transportState = transportVisualState(entity);

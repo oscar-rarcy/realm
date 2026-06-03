@@ -78,7 +78,7 @@ static bool isWaterPassableFor(const Game& game, int x, int y) {
     return terrainDef(game.map[y][x].terrain).passableWater;
 }
 
-bool canPlace(const Game& game, const WorldIndex& world, EntityType type, int x, int y, int owner) {
+bool canPlace(const Game& game, const WorldIndex& world, EntityType type, int x, int y, int owner, int ignoreEntityId) {
     (void)owner;
     // Top-level bounds check protects every map read below, including the
     // farm-only terrain read that previously ran before any inBounds check.
@@ -94,7 +94,19 @@ bool canPlace(const Game& game, const WorldIndex& world, EntityType type, int x,
         int nx = x+dx, ny = y+dy;
         if (!inBounds(nx,ny) || !isLandPassableFor(game, nx, ny)) return false;
         if (!terrainDef(game.map[ny][nx].terrain).buildable) return false;
-        if (isOccupied(world, { nx, ny }, OccupancyLayer::Any)) return false;
+        if (isOccupied(world, { nx, ny }, OccupancyLayer::Buildings)) return false;
+        if (isOccupied(world, { nx, ny }, OccupancyLayer::Units)) {
+            bool blocked = false;
+            for (EntityId id : entitiesAt(world, { nx, ny })) {
+                if (id == ignoreEntityId) continue;
+                const Entity* entity = entityById(game, world, id);
+                if (entity && !isBuilding(entity->type)) {
+                    blocked = true;
+                    break;
+                }
+            }
+            if (blocked) return false;
+        }
     }
     // Docks must sit on the shoreline — at least one neighbouring tile must be water.
     if (type == E_DOCK) {
@@ -108,4 +120,8 @@ bool canPlace(const Game& game, const WorldIndex& world, EntityType type, int x,
         if (!touchesWater) return false;
     }
     return true;
+}
+
+bool canPlace(const Game& game, const WorldIndex& world, EntityType type, int x, int y, int owner) {
+    return canPlace(game, world, type, x, y, owner, -1);
 }

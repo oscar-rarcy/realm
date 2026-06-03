@@ -5,7 +5,7 @@
 #include "view_state.h"
 
 static void renderHelpOverlay() {
-    if (!g.helpOverlay) return;
+    if (!g.local.helpOverlay) return;
     int maxY, maxX;
     getmaxyx(stdscr, maxY, maxX);
     int w = std::min(maxX - 4, 78);

@@ -54,7 +54,7 @@ CanStartBuildResult canStartBuild(const Game& game, const WorldIndex& world, int
     const Player& p = game.players[player];
     if (p.gold < STATS[buildingType].costGold || p.wood < STATS[buildingType].costWood)
         return { false, "Not enough resources!" };
-    if (!canPlace(game, world, buildingType, tile.x, tile.y, player)) return { false, "Can't build there!" };
+    if (!canPlace(game, world, buildingType, tile.x, tile.y, player, builder.id)) return { false, "Can't build there!" };
 
     return { true, nullptr };
 }
@@ -97,6 +97,8 @@ ServiceResult startBuildService(Game& game, WorldIndex& world, EventSink& events
     builder->targetId = bid;
     builder->targetX = tile.x;
     builder->targetY = tile.y;
+    builder->waypoints.clear();
+    builder->patrolMode = false;
     pathBuilderToFootprint(game, *builder, buildingType, tile);
     return { true, nullptr };
 }
@@ -149,6 +151,8 @@ ServiceResult startBuildLineService(Game& game, WorldIndex& world, EventSink& ev
             builder->targetId = firstId;
             builder->targetX = first->x;
             builder->targetY = first->y;
+            builder->waypoints.clear();
+            builder->patrolMode = false;
             pathBuilderToFootprint(game, *builder, buildingType, { first->x, first->y });
         }
         emitActionMarker(events, player, start, '#');

@@ -12,7 +12,7 @@ struct Game;
 struct WorldIndex;
 Entity* renderFindEntity(Game& game, const WorldIndex& world, int id);
 Entity* renderEntityAt(Game& game, const WorldIndex& world, int x, int y);
-bool renderCanPlace(Game& game, const WorldIndex& world, EntityType type, int x, int y, int owner);
+bool renderCanPlace(Game& game, const WorldIndex& world, EntityType type, int x, int y, int owner, int ignoreEntityId = -1);
 std::string cursorTileSummary();
 std::string cursorStackSummary();
 void drawMap(const WorldIndex& world);

@@ -38,6 +38,11 @@ bool ownedUnit(const Entity* entity, PlayerId issuer) {
     return entity && entity->alive && entity->owner == issuer && isUnit(entity->type);
 }
 
+void clearQueuedMovement(Entity& unit) {
+    unit.waypoints.clear();
+    unit.patrolMode = false;
+}
+
 int rolePriority(EntityType type) {
     switch (type) {
         case E_KNIGHT:    return 0;
@@ -60,9 +65,10 @@ std::vector<Entity*> selectedOwnedUnits(Game& game, const WorldIndex& world, con
     return units;
 }
 
-ServiceResult startSingleMove(Game& game, const WorldIndex& world, EventSink& events, Entity& unit, MapPos target, bool attackMove) {
+ServiceResult startSingleMove(Game& game, const WorldIndex& world, EventSink& events, Entity& unit, MapPos target, bool attackMove, bool clearQueued = true) {
     if (unit.type == E_TREBUCHET && unit.packed == 0)
         return fail("Pack the trebuchet first [D].");
+    if (clearQueued) clearQueuedMovement(unit);
     unit.state = S_MOVING;
     unit.targetX = target.x;
     unit.targetY = target.y;
@@ -134,6 +140,7 @@ ServiceResult startSingleAttack(Game& game, const WorldIndex& world, EventSink& 
     if (unit.type == E_RAM && !isBuilding(target->type)) return fail("Rams can only attack buildings.");
     if (unit.type == E_TREBUCHET && unit.packed == 1) return fail("Deploy the trebuchet first [D].");
     if (unit.type == E_TREBUCHET && unit.packTicks > 0) return fail("Trebuchet is already changing stance.");
+    clearQueuedMovement(unit);
     unit.holdPosition = 0;
     unit.state = S_ATTACKING;
     unit.targetId = targetId;
@@ -145,6 +152,7 @@ ServiceResult startSingleGather(Game& game, const WorldIndex& world, EventSink& 
     if (!inBounds(target.x, target.y)) return fail("Gather target is out of bounds.");
     Entity* carcass = corpseAt(game, world, target.x, target.y);
     if (carcass && isHarvestableCarcass(*carcass) && unit.type == E_PEASANT && canGather(unit.type)) {
+        clearQueuedMovement(unit);
         unit.cargo.type = CR_FOOD;
         unit.cargo.sourceX = target.x;
         unit.cargo.sourceY = target.y;
@@ -181,6 +189,7 @@ ServiceResult startSingleGather(Game& game, const WorldIndex& world, EventSink& 
         return fail("Selected unit cannot gather.");
     }
 
+    clearQueuedMovement(unit);
     unit.cargo.type = resource;
     unit.cargo.sourceX = target.x;
     unit.cargo.sourceY = target.y;
@@ -213,6 +222,7 @@ ServiceResult startSingleHelp(Game& game, const WorldIndex& world, Entity& unit,
     Entity* target = findEntity(game, world, targetId);
     if (!target || !target->alive) return fail("Help target is invalid.");
     if (!target->underConstruction && target->type != E_FARM) return fail("Help target is invalid.");
+    clearQueuedMovement(unit);
     unit.state = S_BUILDING;
     unit.targetId = targetId;
     unit.targetX = target->x;
@@ -239,6 +249,7 @@ ServiceResult startSingleGarrison(Game& game, const WorldIndex& world, Entity& u
     if (target->owner != unit.owner || !canGarrisonIn(target->type)) return fail("Garrison target is invalid.");
     if (!isUnit(unit.type) || isSiege(unit.type) || isNaval(unit.type)) return fail("Selected unit cannot garrison.");
     if ((int)target->garrison.size() >= garrisonCap(target->type)) return fail("Garrison target is full.");
+    clearQueuedMovement(unit);
     unit.state = S_ENTERING;
     unit.targetId = targetId;
     unit.targetX = target->x;
@@ -281,6 +292,40 @@ ServiceResult startMove(Game& game, const WorldIndex& world, EventSink& events, 
     ServiceResult allowed = canMove(game, world, issuer, selection.primaryId, target);
     if (!allowed.ok) return allowed;
     return startSingleMove(game, world, events, *units.front(), target, false);
+}
+
+ServiceResult appendWaypoint(Game& game, const WorldIndex& world, EventSink& events, PlayerId issuer, const Selection& selection, MapPos target) {
+    if (!inBounds(target.x, target.y)) return fail("Waypoint target is out of bounds.");
+    int count = 0;
+    for (Entity* unit : selectedOwnedUnits(game, world, selection, issuer)) {
+        if (isNaval(unit->type)) continue;
+        unit->waypoints.push_back({ target.x, target.y });
+        count++;
+    }
+    if (count == 0) return fail("No selected land units can queue a waypoint.");
+    emitStatus(events, issuer, "Waypoint queued (" + std::to_string(count) + " units)");
+    emitActionMarker(events, issuer, target, 'x');
+    return ok();
+}
+
+ServiceResult startPatrol(Game& game, const WorldIndex& world, EventSink& events, PlayerId issuer, const Selection& selection, MapPos target) {
+    if (!inBounds(target.x, target.y)) return fail("Patrol target is out of bounds.");
+    int count = 0;
+    for (Entity* unit : selectedOwnedUnits(game, world, selection, issuer)) {
+        if (isNaval(unit->type)) continue;
+        if (unit->x == target.x && unit->y == target.y) continue;
+        unit->waypoints.clear();
+        unit->patrolMode = true;
+        unit->waypoints.push_back({ target.x, target.y });
+        unit->waypoints.push_back({ unit->x, unit->y });
+        MapPos first{ unit->waypoints.front().first, unit->waypoints.front().second };
+        unit->waypoints.erase(unit->waypoints.begin());
+        unit->waypoints.push_back({ first.x, first.y });
+        if (startSingleMove(game, world, events, *unit, first, false, false).ok) count++;
+    }
+    if (count == 0) return fail("No valid units for patrol.");
+    emitStatus(events, issuer, std::to_string(count) + " unit(s) on patrol");
+    return ok();
 }
 
 ServiceResult startAttackMove(Game& game, const WorldIndex& world, EventSink& events, PlayerId issuer, const Selection& selection, MapPos target) {
@@ -425,6 +470,7 @@ ServiceResult setRallyPoint(Game& game, const WorldIndex& world, EventSink& even
 ServiceResult holdPosition(Game& game, const WorldIndex& world, EventSink& events, PlayerId issuer, const Selection& selection) {
     bool changed = false;
     for (Entity* unit : selectedOwnedUnits(game, world, selection, issuer)) {
+        clearQueuedMovement(*unit);
         unit->state = S_IDLE;
         unit->path.clear();
         unit->pathIdx = 0;
@@ -437,9 +483,10 @@ ServiceResult holdPosition(Game& game, const WorldIndex& world, EventSink& event
     return changed ? ok() : fail("No selected units can hold position.");
 }
 
-ServiceResult stopUnits(Game& game, const WorldIndex& world, EventSink&, PlayerId issuer, const Selection& selection) {
+ServiceResult stopUnits(Game& game, const WorldIndex& world, EventSink& events, PlayerId issuer, const Selection& selection) {
     bool changed = false;
     for (Entity* unit : selectedOwnedUnits(game, world, selection, issuer)) {
+        clearQueuedMovement(*unit);
         unit->state = S_IDLE;
         unit->path.clear();
         unit->pathIdx = 0;
@@ -448,6 +495,7 @@ ServiceResult stopUnits(Game& game, const WorldIndex& world, EventSink&, PlayerI
         unit->targetId = -1;
         changed = true;
     }
+    if (changed) emitStatus(events, issuer, "Stopped.", GameEventType::UnitOrdered);
     return changed ? ok() : fail("No selected units can stop.");
 }
 
@@ -477,6 +525,7 @@ ServiceResult toggleTrebuchetPacked(Game& game, const WorldIndex& world, EventSi
     int ticks = (game.players[issuer].research & R_COUNTERWEIGHT) ? 25 : 40;
     selected->packed = selected->packed ? 0 : 1;
     selected->packTicks = ticks;
+    clearQueuedMovement(*selected);
     selected->state = S_IDLE;
     selected->targetId = -1;
     selected->path.clear();

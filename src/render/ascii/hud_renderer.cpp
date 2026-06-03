@@ -122,7 +122,7 @@ void renderUI(const WorldIndex& world) {
         if (stack == 0) mvprintw(iy++, panelX+1, "Stack: empty");
         else if (stack > 3) mvprintw(iy++, panelX+2, "+%d more", stack - 3);
         attroff(COLOR_PAIR(CP_UI_TEXT));
-        if (g.diagnostics) {
+        if (g.local.diagnostics) {
             attron(COLOR_PAIR(CP_UI_HIGH));
             mvprintw(iy++, panelX+1, "Diag T%d M:%s", g.tick, modeName(g.mode));
             mvprintw(iy++, panelX+1, "Ent:%d Proj:%d", (int)g.entities.size(), (int)g.projectiles.size());
@@ -132,10 +132,10 @@ void renderUI(const WorldIndex& world) {
         iy++;
     }
 
-    if (g.selectedIds.size() > 1) {
+    if (g.local.selectedIds.size() > 1) {
         // Multi-unit group summary
         int counts[8] = {0};
-        for (int sid : g.selectedIds) {
+        for (int sid : g.local.selectedIds) {
             Entity* e = findEntity(g, world, sid); if (!e || !e->alive) continue;
             switch (e->type) {
             case E_PEASANT:  counts[0]++; break; case E_MILITIA:  counts[1]++; break;
@@ -145,7 +145,7 @@ void renderUI(const WorldIndex& world) {
             }
         }
         attron(COLOR_PAIR(CP_OWN_P0)|A_BOLD);
-        mvprintw(iy++, panelX+1, "Group: %d units", (int)g.selectedIds.size());
+        mvprintw(iy++, panelX+1, "Group: %d units", (int)g.local.selectedIds.size());
         attroff(COLOR_PAIR(CP_OWN_P0)|A_BOLD);
         attron(COLOR_PAIR(CP_UI_TEXT));
         // Use the entity glyph/emoji for each unit type in the group summary.
@@ -166,7 +166,7 @@ void renderUI(const WorldIndex& world) {
         mvprintw(iy++, panelX+1, "[1-9] Groups");
         attroff(COLOR_PAIR(CP_UI_ACCENT));
     } else {
-        Entity* sel = findEntity(g, world, g.selectedId);
+        Entity* sel = findEntity(g, world, g.local.selectedId);
         if (sel) {
             auto& st = STATS[sel->type];
             int nc = (sel->owner == 0) ? CP_PLAYER : CP_ENEMY;
@@ -379,8 +379,12 @@ void renderUI(const WorldIndex& world) {
     attron(COLOR_PAIR(CP_UI_BAR)); mvhline(botY2, 0, ' ', maxX);
     if (g.mode == M_BUILD_SELECT)
         mvprintw(botY2, 1, " BUILD: [H]ouse [B]arracks [S]table [T]ower [F]arm [W]all [G]ate [A]rmory [C]hurch [M]arket [K]Castle [L]umber [N]mine [I]mill [D]ock [Esc] ");
+    else if (g.mode == M_BUILD_PLACE) {
+        const char* name = (g.local.buildPending != E_NONE) ? STATS[g.local.buildPending].name : "building";
+        mvprintw(botY2, 1, " PLACE %s: Arrows/Mouse, [Enter]/Click to build, [Esc]/RClick cancel ", name);
+    }
     else if (g.mode == M_TRAIN_SELECT) {
-        Entity* s2 = findEntity(g, world, g.selectedId);
+        Entity* s2 = findEntity(g, world, g.local.selectedId);
         if (s2) {
             if (s2->type==E_TOWNHALL)  mvprintw(botY2, 1, " TRAIN: [P]easant(50g), repeat keys to queue [Esc] ");
             else if (s2->type==E_BARRACKS) mvprintw(botY2, 1, " TRAIN: [M]ilitia [A]rcher [S]pearman [C]atapult [R]am, repeat keys to queue [Esc] ");
@@ -402,10 +406,12 @@ void renderUI(const WorldIndex& world) {
         if (g.winner==0) mvprintw(botY2, 1, " VICTORY! The realm is yours. [Enter/Q] Main menu  [X] Exit ");
         else             mvprintw(botY2, 1, " DEFEAT! Your kingdom has fallen. [Enter/Q] Main menu  [X] Exit ");
         attroff(A_BOLD);
-    } else if (g.groupAssignPending) {
+    } else if (g.local.groupAssignPending) {
         attron(A_BOLD); mvprintw(botY2, 1, " GROUP ASSIGN: Press [1]-[9] to assign selection to group, [Esc] to cancel "); attroff(A_BOLD);
+    } else if (g.mode == M_PATROL_SET) {
+        mvprintw(botY2, 1, " PATROL: Move cursor + Enter or click target. [Esc] cancel ");
     } else {
-        mvprintw(botY2, 1, " Arrows:Move  Spc:Select  Enter:Cmd  B:Build T:Train ?:Help D:Diag V:Save L:Load Q:Resign X:Exit ");
+        mvprintw(botY2, 1, " Arrows:Move Spc:Select Enter:Cmd Shift+RClick:Waypoint Z:Patrol B:Build T:Train ?:Help V:Save Q:Resign ");
     }
     attroff(COLOR_PAIR(CP_UI_BAR));
 
@@ -417,3 +423,5 @@ void renderUI(const WorldIndex& world) {
     }
     attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(botY1, maxX-12, "(%d,%d)", view.cursorX, view.cursorY); attroff(COLOR_PAIR(CP_UI_DIM));
 }
+
+

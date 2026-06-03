@@ -16,6 +16,10 @@ void writeIntVec(std::ostream& os, const std::vector<int>& v) {
     for (int x : v) os << ' ' << x;
 }
 
+int persistedMode(GameMode mode) {
+    return mode == M_PAUSED || mode == M_GAME_OVER ? (int)mode : (int)M_NORMAL;
+}
+
 } // namespace
 
 bool writeSaveFile(const Game& game, const std::string& path) {
@@ -24,17 +28,16 @@ bool writeSaveFile(const Game& game, const std::string& path) {
     tmpPath.replace_extension(tmpPath.extension().string() + ".tmp");
     std::ofstream os(tmpPath);
     if (!os) return false;
-    os << std::setprecision(std::numeric_limits<float>::max_digits10);
-    os << "REALM_SAVE " << REALM_SAVE_VERSION << "\n";
-    os << "META " << game.seed << ' ' << game.startupAIs << ' ' << game.humanCorner << ' '
+       os << std::setprecision(std::numeric_limits<float>::max_digits10);
+       os << "REALM_SAVE " << REALM_SAVE_VERSION << "\n";
+       os << "META " << game.seed << ' ' << game.startupAIs << ' ' << game.humanCorner << ' '
        << game.matchNumber << ' ' << game.biomeChoice << ' ' << game.tick << ' '
-       << (int)game.mode << ' ' << game.selectedId << ' ' << game.winner << ' ' << game.aiTimer << ' ' << game.farmTimer << ' '
-       << game.animalTimer << ' '
-       << game.dayPhase << ' ' << game.seasonPhase << ' ' << game.prevSeason << ' '
-       << game.weather << ' ' << game.weatherTimer << ' ' << game.prevTimePhase << ' ' << game.attackNotifyCd << ' '
-       << game.nextId << ' ' << game.rngState << ' '
-       << (game.returnToMenu ? 1 : 0) << ' ' << (game.diagnostics ? 1 : 0) << ' '
-       << (game.helpOverlay ? 1 : 0) << "\n";
+          << persistedMode(game.mode) << ' ' << -1 << ' ' << game.winner << ' ' << game.aiTimer << ' ' << game.farmTimer << ' '
+          << game.animalTimer << ' '
+          << game.dayPhase << ' ' << game.seasonPhase << ' ' << game.prevSeason << ' '
+          << game.weather << ' ' << game.weatherTimer << ' ' << game.prevTimePhase << ' ' << game.attackNotifyCd << ' '
+          << game.nextId << ' ' << game.rngState << ' '
+          << (game.returnToMenu ? 1 : 0) << ' ' << 0 << ' ' << 0 << "\n";
     for (int p = 0; p <= MAX_PLAYERS; p++) {
         const Player& pl = game.players[p];
         os << "PLAYER " << p << ' ' << pl.gold << ' ' << pl.wood << ' ' << pl.food << ' '
@@ -42,12 +45,14 @@ bool writeSaveFile(const Game& game, const std::string& path) {
            << pl.research << ' ' << pl.aiWaveCd << "\n";
     }
     os << "SELECTED ";
-    writeIntVec(os, game.selectedIds);
+    writeIntVec(os, {});
     os << "\n";
-    for (int i = 0; i < 9; i++) {
-        os << "GROUP " << i << ' ';
-        writeIntVec(os, game.controlGroups[i]);
-        os << "\n";
+    for (int p = 0; p < MAX_PLAYERS; p++) {
+        for (int i = 0; i < 9; i++) {
+            os << "GROUP_OWNER " << p << ' ' << i << ' ';
+            writeIntVec(os, game.controlGroupsByOwner[p][i]);
+            os << "\n";
+        }
     }
     os << "MAP " << MAP_W << ' ' << MAP_H << "\n";
     for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
@@ -83,6 +88,9 @@ bool writeSaveFile(const Game& game, const std::string& path) {
         writeIntVec(os, e.queue);
         os << " GARRISON ";
         writeIntVec(os, e.garrison);
+        os << " WAYPOINTS " << e.waypoints.size();
+        for (auto pt : e.waypoints) os << ' ' << pt.first << ' ' << pt.second;
+        os << " PATROL " << (e.patrolMode ? 1 : 0);
         os << "\n";
     }
     os << "PROJECTILES " << game.projectiles.size() << "\n";

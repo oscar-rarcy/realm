@@ -28,9 +28,9 @@ std::vector<std::pair<int,int>> findPath(const Game& game, const WorldIndex& sou
     world.buildingOccupancy.occupied[ty][tx] = false; // always allow reaching the destination
 
     static int  gScore[MAP_H][MAP_W];
-    static int  visited[MAP_H][MAP_W];  // == vgen → discovered (g+parent valid)
-    static int  closed [MAP_H][MAP_W];  // == vgen → expanded (final g)
-    static int  vgen = 0;
+    static unsigned visited[MAP_H][MAP_W];  // == vgen -> discovered (g+parent valid)
+    static unsigned closed [MAP_H][MAP_W];  // == vgen -> expanded (final g)
+    static unsigned vgen = 0;
     static std::pair<int8_t,int8_t> parent[MAP_H][MAP_W];
     static const int dx8[]   = {0,1,1,1,0,-1,-1,-1};
     static const int dy8[]   = {-1,-1,0,1,1,1,0,-1};

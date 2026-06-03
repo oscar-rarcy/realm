@@ -72,14 +72,13 @@ void initGameWithSeed(int numAIs, unsigned seed, int humanCorner, const MapGener
     resetUiState();
     g.projectiles.reserve(256);
     g.nextId = 1; g.tick = 0; g.mode = M_NORMAL;
-    g.selectedId = -1; g.selectedIds.clear(); g.groupAssignPending = false;
+    g.local.selectedId = -1; g.local.selectedIds.clear(); g.local.groupAssignPending = false;
     view.dragging = false; view.dragStartX = 0; view.dragStartY = 0;
-    for (int i = 0; i < 9; i++) g.controlGroups[i].clear();
     for (int p = 0; p < MAX_PLAYERS; p++)
         for (int i = 0; i < 9; i++)
             g.controlGroupsByOwner[p][i].clear();
     g.winner = -1; g.aiTimer = 0; g.farmTimer = 0; g.animalTimer = 0;
-    g.buildPending = E_NONE; view.wallDragX = 0; view.wallDragY = 0;
+    g.local.buildPending = E_NONE; view.wallDragX = 0; view.wallDragY = 0;
     g.dayPhase = 0.25f; g.seasonPhase = 0.0f; g.prevSeason = -1;
     g.prevTimePhase = 0; g.attackNotifyCd = 0;
     g.weather = W_CLEAR; g.weatherTimer = 0;
@@ -88,8 +87,8 @@ void initGameWithSeed(int numAIs, unsigned seed, int humanCorner, const MapGener
     g.startupAIs = numAIs;
     g.humanCorner = -1;
     g.matchNumber = matchNumber;
-    g.diagnostics = std::getenv("REALM_DIAGNOSTICS") != nullptr;
-    g.helpOverlay = false;
+    g.local.diagnostics = std::getenv("REALM_DIAGNOSTICS") != nullptr;
+    g.local.helpOverlay = false;
     // biomeChoice is set by showSplash before initGame is called; don't reset it here
     // unless the caller provides an explicit map-generation config.
     g.biomeChoice = (mapConfig.biomeChoice >= -1 && mapConfig.biomeChoice <= B_OCEAN)

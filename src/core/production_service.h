@@ -31,3 +31,4 @@ CanTrainResult canTrain(const Game& game, int player, const Entity& producer, En
 
 // Validates and, on success, spends resources and starts/queues training.
 ServiceResult startTrainingService(Game& game, const WorldIndex& world, EventSink& events, int player, int producerId, EntityType unitType);
+ServiceResult cancelTrainingService(Game& game, const WorldIndex& world, EventSink& events, int player, int producerId);

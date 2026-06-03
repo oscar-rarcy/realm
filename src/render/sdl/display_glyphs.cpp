@@ -343,8 +343,8 @@ Color glyphColorForTerrain(const Tile& t, int x, int y) {
 
 bool isSelected(const Entity* e) {
     if (!e) return false;
-    if (e->id == g.selectedId) return true;
-    return std::find(g.selectedIds.begin(), g.selectedIds.end(), e->id) != g.selectedIds.end();
+    if (e->id == g.local.selectedId) return true;
+    return std::find(g.local.selectedIds.begin(), g.local.selectedIds.end(), e->id) != g.local.selectedIds.end();
 }
 
 float visibleFadeAt(int x, int y) {
@@ -511,3 +511,5 @@ void applyTerrainTexture(SDL_Rect r, const Tile& t, int x, int y) {
         default: break;
     }
 }
+
+

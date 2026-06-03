@@ -25,8 +25,8 @@ void updateFog(Game& game) {
         for (int p = 0; p < MAX_PLAYERS; p++) game.map[y][x].visible[p] = false;
     int nightPen = isNight(game) ? 2 : (isDusk(game)||isDawn(game)) ? 1 : 0;
     if (getSeason(game) == WINTER) nightPen += 1; // blizzards eat sight
-    if (game.weather == W_STORM) nightPen += 1;
-    else if (game.weather == W_RAIN || game.weather == W_SNOW) nightPen += (nightPen > 0 ? 0 : 1);
+    if (game.weather == W_STORM) nightPen += 2;
+    else if (game.weather == W_RAIN || game.weather == W_SNOW) nightPen += 1;
     for (auto& e : game.entities) {
         if (!e.alive || e.owner >= OWNER_NATURE) continue;
         if (e.state == S_GARRISONED) continue;

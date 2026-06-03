@@ -77,6 +77,24 @@ static Command inputCommand(PlayerId issuer, CommandPayload payload) {
     return command;
 }
 
+static bool mouseShiftDown(const MEVENT& event) {
+#ifdef BUTTON_SHIFT
+    return (event.bstate & BUTTON_SHIFT) != 0;
+#else
+    (void)event;
+    return false;
+#endif
+}
+
+static bool selectionHasLandUnit(Game& game, const WorldIndex& world, PlayerId issuer) {
+    for (int id : currentSelection(game).ids) {
+        Entity* entity = findEntity(game, world, id);
+        if (entity && entity->alive && entity->owner == issuer && isUnit(entity->type) && !isNaval(entity->type))
+            return true;
+    }
+    return false;
+}
+
 static void moveCursorToSelected(PlayerId issuer) {
     std::optional<MapPos> pos = selectedEntityPosition(g, issuer);
     if (!pos) return;
@@ -123,8 +141,49 @@ static void handleInputForPlayer(int ch, PlayerId issuer) {
         }
         if (tb == E_NONE) return;
         if (tb != E_NONE) {
-            dispatchCommandForLocalGame(g, gameEvents(), inputCommand(issuer, BuildCommand{ currentSelection(g), tb, {view.cursorX, view.cursorY} }));
+            g.local.buildPending = tb;
+            setInputMode(g, M_BUILD_PLACE);
+            status(std::string("Place ") + STATS[tb].name + ": arrows/mouse then Enter. [Esc]");
+        }
+        return;
+    }
+
+    // Build placement mode: cursor moves freely with a ghost footprint preview.
+    if (g.mode == M_BUILD_PLACE) {
+        if (!selectedPeasantCanBuild(g, issuer)) { g.local.buildPending = E_NONE; cancelInputMode(g); return; }
+        if (ch == 27) {
+            g.local.buildPending = E_NONE;
             cancelInputMode(g);
+            status("Build cancelled.");
+            return;
+        }
+        if (ch == KEY_UP)    { view.cursorY--; goto clamp; }
+        if (ch == KEY_DOWN)  { view.cursorY++; goto clamp; }
+        if (ch == KEY_LEFT)  { view.cursorX--; goto clamp; }
+        if (ch == KEY_RIGHT) { view.cursorX++; goto clamp; }
+        auto commitBuild = [&](int tx, int ty) {
+            EntityType bt = g.local.buildPending;
+            dispatchCommandForLocalGame(g, gameEvents(), inputCommand(issuer, BuildCommand{ currentSelection(g), bt, {tx, ty} }));
+            g.local.buildPending = E_NONE;
+            cancelInputMode(g);
+        };
+        if (ch == ' ' || ch == '\n' || ch == '\r' || ch == KEY_ENTER) {
+            commitBuild(view.cursorX, view.cursorY);
+            goto clamp;
+        }
+        if (ch == KEY_MOUSE) {
+            MEVENT me;
+            if (getmouse(&me) != OK) goto clamp;
+            ViewportCell cell = viewportCellAt(view, me.x, me.y, 2);
+            if (cell.inMap) { view.cursorX = cell.x; view.cursorY = cell.y; }
+            if (cell.inMap && (me.bstate & (BUTTON1_CLICKED | BUTTON1_RELEASED))) {
+                commitBuild(cell.x, cell.y);
+            } else if (me.bstate & (BUTTON3_CLICKED | BUTTON3_PRESSED)) {
+                g.local.buildPending = E_NONE;
+                cancelInputMode(g);
+                status("Build cancelled.");
+            }
+            goto clamp;
         }
         return;
     }
@@ -254,6 +313,33 @@ static void handleInputForPlayer(int ch, PlayerId issuer) {
         goto clamp;
     }
 
+    // Patrol target selection.
+    if (g.mode == M_PATROL_SET) {
+        if (ch == 27) {
+            cancelInputMode(g);
+            status("Patrol cancelled.");
+            return;
+        }
+        if (ch == KEY_UP)    { view.cursorY--; goto clamp; }
+        if (ch == KEY_DOWN)  { view.cursorY++; goto clamp; }
+        if (ch == KEY_LEFT)  { view.cursorX--; goto clamp; }
+        if (ch == KEY_RIGHT) { view.cursorX++; goto clamp; }
+        auto commit = [issuer](int tx, int ty) {
+            dispatchCommandForLocalGame(g, gameEvents(), inputCommand(issuer, PatrolCommand{ currentSelection(g), {tx, ty} }));
+            cancelInputMode(g);
+        };
+        if (ch == ' ' || ch == '\n' || ch == '\r' || ch == KEY_ENTER) { commit(view.cursorX, view.cursorY); goto clamp; }
+        if (ch == KEY_MOUSE) {
+            MEVENT me; if (getmouse(&me) != OK) goto clamp;
+            ViewportCell cell = viewportCellAt(view, me.x, me.y, 2);
+            if (cell.inMap) {
+                view.cursorX = cell.x; view.cursorY = cell.y;
+                if (me.bstate & (BUTTON1_CLICKED | BUTTON1_RELEASED | BUTTON3_CLICKED | BUTTON3_PRESSED)) commit(cell.x, cell.y);
+            }
+        }
+        goto clamp;
+    }
+
     // Research selection from the blacksmith.
     if (g.mode == M_RESEARCH_SELECT) {
         if (ch == 27) { cancelInputMode(g); return; }
@@ -369,7 +455,7 @@ static void handleInputForPlayer(int ch, PlayerId issuer) {
     // Cycle to the next idle peasant
     case InputIntent::CycleIdleWorker: {
         const WorldIndex& world = worldForInput();
-        Entity* pick = selectNextIdleWorker(g, world, issuer, g.selectedId);
+        Entity* pick = selectNextIdleWorker(g, world, issuer, g.local.selectedId);
         if (pick) {
             view.cursorX = pick->x; view.cursorY = pick->y;
             status("Idle peasant selected");
@@ -411,6 +497,17 @@ static void handleInputForPlayer(int ch, PlayerId issuer) {
         break;
     }
 
+    case InputIntent::Patrol: {
+        const WorldIndex& world = worldForInput();
+        if (selectionHasLandUnit(g, world, issuer)) {
+            setInputMode(g, M_PATROL_SET);
+            status("Patrol: click target. [Esc] cancel");
+        } else {
+            status("Select land units to patrol.");
+        }
+        break;
+    }
+
     // Hold position — stop and ignore auto-aggro until explicitly ordered.
     case InputIntent::HoldPosition: {
         dispatchCommandForLocalGame(g, gameEvents(), inputCommand(issuer, HoldPositionCommand{ currentSelection(g) }));
@@ -441,7 +538,7 @@ static void handleInputForPlayer(int ch, PlayerId issuer) {
     // Cycle through own units
     case InputIntent::CycleUnit: {
         const WorldIndex& world = worldForInput();
-        Entity* selected = selectNextUnit(g, world, issuer, g.selectedId);
+        Entity* selected = selectNextUnit(g, world, issuer, g.local.selectedId);
         if (selected) {
             view.cursorX = selected->x;
             view.cursorY = selected->y;
@@ -493,6 +590,22 @@ static void handleInputForPlayer(int ch, PlayerId issuer) {
             view.cursorX = mapX; view.cursorY = mapY;
             lastMx = mapX; lastMy = mapY;
         }
+        if (!clickEvt) {
+            const int edgeMargin = 2;
+            const int edgeStep = 2;
+            int mapSX = me.x;
+            int mapSY = me.y - 2;
+            int dx = 0, dy = 0;
+            if (mapSX < edgeMargin) dx = -edgeStep;
+            else if (mapSX >= view.viewW - edgeMargin) dx = edgeStep;
+            if (mapSY < edgeMargin) dy = -edgeStep;
+            else if (mapSY >= view.viewH - edgeMargin) dy = edgeStep;
+            if (dx || dy) {
+                view.viewX = std::max(0, std::min(view.viewX + dx, MAP_W - view.viewW));
+                view.viewY = std::max(0, std::min(view.viewY + dy, MAP_H - view.viewH));
+            }
+        }
+        bool shift = mouseShiftDown(me);
 
         if (me.bstate & BUTTON1_DOUBLE_CLICKED) {
             // Select all of clicked unit type within the current viewport.
@@ -517,13 +630,13 @@ static void handleInputForPlayer(int ch, PlayerId issuer) {
                     // Box select: all own units inside the rectangle
                     Command command;
                     command.issuer = issuer;
-                    command.payload = BoxSelectCommand{ {view.dragStartX, view.dragStartY}, {mapX, mapY} };
+                    command.payload = BoxSelectCommand{ {view.dragStartX, view.dragStartY}, {mapX, mapY}, shift };
                     dispatchCommandForLocalGame(g, gameEvents(), command);
                 } else {
                     // Click: select entity at cursor
                     Command command;
                     command.issuer = issuer;
-                    command.payload = SelectCommand{ {mapX, mapY} };
+                    command.payload = SelectCommand{ {mapX, mapY}, shift };
                     dispatchCommandForLocalGame(g, gameEvents(), command);
                 }
             }
@@ -533,14 +646,16 @@ static void handleInputForPlayer(int ch, PlayerId issuer) {
             view.dragging = false;
             Command command;
             command.issuer = issuer;
-            command.payload = SelectCommand{ {mapX, mapY} };
+            command.payload = SelectCommand{ {mapX, mapY}, shift };
             dispatchCommandForLocalGame(g, gameEvents(), command);
         }
         else if (me.bstate & (BUTTON3_CLICKED | BUTTON3_PRESSED)) {
             // Right click: issue command at cursor position
             view.dragging = false;
             const WorldIndex& world = worldForInput();
-            Command command = resolveContextCommand(g, world, issuer, currentSelection(g), {mapX, mapY});
+            Command command = shift
+                ? inputCommand(issuer, WaypointCommand{ currentSelection(g), {mapX, mapY} })
+                : resolveContextCommand(g, world, issuer, currentSelection(g), {mapX, mapY});
             dispatchCommandForLocalGame(g, gameEvents(), command);
         }
         // All other events (pure movement): cursor already updated above
@@ -559,3 +674,4 @@ static void handleInputForPlayer(int ch, PlayerId issuer) {
 void handleInput(int ch) {
     handleInputForPlayer(ch, kLocalPlayer);
 }
+

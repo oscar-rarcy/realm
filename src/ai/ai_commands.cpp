@@ -122,7 +122,7 @@ void executeAICommands(AIContext& context) {
         }
         context.rejectedCommands.push_back({ command, result });
         countRejected(context, command);
-        if (context.ctx.game.diagnostics) {
+        if (context.ctx.game.local.diagnostics) {
             std::cerr << "realm: ai command rejected owner=" << context.owner
                       << " type=" << commandPayloadName(command)
                       << " tick=" << context.ctx.game.tick

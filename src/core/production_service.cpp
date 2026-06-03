@@ -89,3 +89,20 @@ ServiceResult startTrainingService(Game& game, const WorldIndex& world, EventSin
     }
     return { true, nullptr };
 }
+
+ServiceResult cancelTrainingService(Game& game, const WorldIndex& world, EventSink& events, int player, int producerId) {
+    Entity* producer = findEntity(game, world, producerId);
+    if (!producer) return { false, "Producer not found." };
+    if (!producer->alive || producer->owner != player) return { false, "Not your building." };
+    if (!isBuilding(producer->type) || producer->underConstruction) return { false, "Building not complete." };
+    if (!productionRule(producer->type)) return { false, "Building has no production queue." };
+    if (producer->producing == E_NONE && producer->queue.empty()) return { false, "Queue is already empty." };
+
+    producer->queue.clear();
+    producer->producing = E_NONE;
+    producer->trainProgress = 0;
+    producer->trainTime = 0;
+    producer->state = S_IDLE;
+    emitStatus(events, player, "Queue cancelled.");
+    return { true, nullptr };
+}

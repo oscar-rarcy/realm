@@ -37,7 +37,7 @@ void renderMap(const WorldIndex& world) {
 
     // Selected ranged unit/tower: precompute range-ring centre + radius.
     int ringX = -1, ringY = -1, ringR = 0;
-    Entity* selR = findEntity(g, world, g.selectedId);
+    Entity* selR = findEntity(g, world, g.local.selectedId);
     if (selR && selR->alive && selR->owner == 0) {
         int rng = STATS[selR->type].range;
         if (selR->type == E_ARCHER && (g.players[0].research & R_CROSSBOWS)) rng += 2;
@@ -70,6 +70,21 @@ void renderMap(const WorldIndex& world) {
             int e2=2*err;
             if (e2>=dy){err+=dy; x0+=sx;}
             if (e2<=dx){err+=dx; y0+=sy2;}
+        }
+    }
+
+    static int buildPrev[MAP_H][MAP_W];
+    memset(buildPrev, 0, sizeof(buildPrev));
+    if (g.mode == M_BUILD_PLACE && g.local.buildPending != E_NONE) {
+        EntityType bt = g.local.buildPending;
+        bool ok = canPlace(g, world, bt, view.cursorX, view.cursorY, 0, g.local.selectedId);
+        int mark = ok ? 1 : 2;
+        for (int dy = 0; dy < STATS[bt].sizeH; dy++) {
+            for (int dx = 0; dx < STATS[bt].sizeW; dx++) {
+                int mx = view.cursorX + dx;
+                int my = view.cursorY + dy;
+                if (inBounds(mx, my)) buildPrev[my][mx] = mark;
+            }
         }
     }
 
@@ -136,9 +151,9 @@ void renderMap(const WorldIndex& world) {
                         && (isConcealing(g) || inCropLeft) && !isDetectedBy(g, mx-1, my, 0);
                     if (!leftCloaked) {
                         char sc = (leftEnt->type == E_CATAPULT) ? 'c' : (leftEnt->type == E_TREBUCHET ? 'q' : 'r');
-                        bool bodyIsSel = leftEnt->id == g.selectedId;
+                        bool bodyIsSel = leftEnt->id == g.local.selectedId;
                         if (!bodyIsSel)
-                            for (int sid : g.selectedIds) if (sid == leftEnt->id) { bodyIsSel = true; break; }
+                            for (int sid : g.local.selectedIds) if (sid == leftEnt->id) { bodyIsSel = true; break; }
                         int bcp = ownerColorPair(leftEnt->owner, night);
                         int sattr = COLOR_PAIR(bcp) | A_BOLD;
                         if (bodyIsSel) sattr |= A_REVERSE;
@@ -308,7 +323,7 @@ void renderMap(const WorldIndex& world) {
             bool isSel = false;
 
             // Single selection highlight
-            Entity* sel = findEntity(g, world, g.selectedId);
+            Entity* sel = findEntity(g, world, g.local.selectedId);
             if (sel && !isCur) {
                 auto& ss = STATS[sel->type];
                 if (ss.isBuilding) {
@@ -316,8 +331,8 @@ void renderMap(const WorldIndex& world) {
                 } else if (mx==sel->x && my==sel->y) isSel = true;
             }
             // Group selection highlight
-            if (!isSel && !g.selectedIds.empty()) {
-                for (int sid : g.selectedIds) {
+            if (!isSel && !g.local.selectedIds.empty()) {
+                for (int sid : g.local.selectedIds) {
                     Entity* se = findEntity(g, world, sid);
                     if (se && mx==se->x && my==se->y) { isSel = true; break; }
                 }
@@ -337,7 +352,12 @@ void renderMap(const WorldIndex& world) {
                 else                         mvprintw(y, x, "%s", estr);
             };
 
-            if (isCur) {
+            if (buildPrev[my][mx]) {
+                int previewCp = buildPrev[my][mx] == 1 ? CP_HP_GREEN : CP_HP_RED;
+                attron(COLOR_PAIR(previewCp)|A_BOLD);
+                drawAt(scY, scX, drawCh, emojiStr);
+                attroff(COLOR_PAIR(previewCp)|A_BOLD);
+            } else if (isCur) {
                 attron(COLOR_PAIR(CP_CURSOR));
                 drawAt(scY, scX, drawCh, emojiStr);
                 attroff(COLOR_PAIR(CP_CURSOR));
@@ -396,3 +416,5 @@ void renderMap(const WorldIndex& world) {
 
 // ============================================================
 // UI RENDER
+
+

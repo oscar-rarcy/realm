@@ -60,7 +60,8 @@ static void tickSimulationOnceInternal(Game& game, EventSink& events, bool runAI
     if (game.dayPhase >= 1.0f) game.dayPhase -= 1.0f;
     game.seasonPhase += 1.0f / SEASON_LENGTH;
     if (game.seasonPhase >= 4.0f) game.seasonPhase -= 4.0f;
-    for (int i = 0; i < (int)game.entities.size(); i++) tickEntity(game, events, game.entities[i]);
+    WorldIndex tickWorld = buildWorldIndex(game);
+    for (int i = 0; i < (int)game.entities.size(); i++) tickEntity(game, tickWorld, events, game.entities[i]);
     tickSeasons(game, events); tickThaw(game); tickWinter(game, events);
     tickWeather(game, events); tickPaving(game);
     tickTowers(game, events); tickGates(game); tickProjectiles(game); tickFarms(game, events); tickMarkets(game);
@@ -72,13 +73,12 @@ static void tickSimulationOnceInternal(Game& game, EventSink& events, bool runAI
             e.deathTicks++;
     }
     WorldIndex pruneWorld = buildWorldIndex(game);
-    pruneDeadReferenceList(game, pruneWorld, game.selectedIds);
-    for (int i = 0; i < 9; i++) pruneDeadReferenceList(game, pruneWorld, game.controlGroups[i]);
+    pruneDeadReferenceList(game, pruneWorld, game.local.selectedIds);
     for (int p = 0; p < MAX_PLAYERS; p++)
         for (int i = 0; i < 9; i++)
             pruneDeadReferenceList(game, pruneWorld, game.controlGroupsByOwner[p][i]);
-    if (game.selectedId >= 0) {
-        if (!findEntity(game, pruneWorld, game.selectedId)) game.selectedId = -1;
+    if (game.local.selectedId >= 0) {
+        if (!findEntity(game, pruneWorld, game.local.selectedId)) game.local.selectedId = -1;
     }
     if (game.tick % 100 == 0) {
         game.entities.erase(std::remove_if(game.entities.begin(), game.entities.end(),

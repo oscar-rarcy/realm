@@ -72,8 +72,8 @@ static int runAsciiCompareMode() {
     ok = captureAsciiComparePair(outDir, "01-overview") && ok;
 
     if (Entity* peasant = firstOwned(E_PEASANT, 0)) {
-        g.selectedId = peasant->id;
-        g.selectedIds.clear();
+        g.local.selectedId = peasant->id;
+        g.local.selectedIds.clear();
         view.cursorX = peasant->x;
         view.cursorY = peasant->y;
         ui.statusTimer = 0;
@@ -81,14 +81,14 @@ static int runAsciiCompareMode() {
     }
 
     if (Entity* townHall = firstOwned(E_TOWNHALL, 0)) {
-        g.selectedId = townHall->id;
-        g.selectedIds.clear();
+        g.local.selectedId = townHall->id;
+        g.local.selectedIds.clear();
         view.cursorX = townHall->x;
         view.cursorY = townHall->y;
-        g.diagnostics = true;
+        g.local.diagnostics = true;
         ui.statusTimer = 0;
         ok = captureAsciiComparePair(outDir, "03-selected-townhall-diagnostics") && ok;
-        g.diagnostics = false;
+        g.local.diagnostics = false;
     }
 
     std::cerr << "realm: ascii compare " << (ok ? "complete" : "failed")
@@ -123,8 +123,8 @@ static int runUiTestMode() {
     ok = captureUiFrame((outDir / "02-isometric-overview.bmp").string()) && ok;
 
     if (Entity* peasant = firstOwned(E_PEASANT, 0)) {
-        g.selectedId = peasant->id;
-        g.selectedIds.clear();
+        g.local.selectedId = peasant->id;
+        g.local.selectedIds.clear();
         view.cursorX = peasant->x;
         view.cursorY = peasant->y;
         emitUiStatusEvent(-1, "UI test: peasant selected");
@@ -162,24 +162,24 @@ static int runUiTestMode() {
     }
 
     if (Entity* townHall = firstOwned(E_TOWNHALL, 0)) {
-        g.selectedId = townHall->id;
-        g.selectedIds.clear();
+        g.local.selectedId = townHall->id;
+        g.local.selectedIds.clear();
         view.cursorX = townHall->x;
         view.cursorY = townHall->y;
-        g.diagnostics = true;
+        g.local.diagnostics = true;
         ok = captureUiFrame((outDir / "05-selected-townhall-diagnostics.bmp").string()) && ok;
-        g.diagnostics = false;
+        g.local.diagnostics = false;
     }
 
-    g.helpOverlay = true;
+    g.local.helpOverlay = true;
     ok = captureUiFrame((outDir / "06-help-overlay.bmp").string()) && ok;
-    g.helpOverlay = false;
+    g.local.helpOverlay = false;
 
     for (int i = 0; i < 60; i++) tickSimulationOnce(g, gameEvents(), true);
     ok = captureUiFrame((outDir / "07-after-60-ticks.bmp").string()) && ok;
 
-    g.selectedId = -1;
-    g.selectedIds.clear();
+    g.local.selectedId = -1;
+    g.local.selectedIds.clear();
     view.cursorX = MAP_W / 2;
     view.cursorY = MAP_H / 2;
     ui.statusTimer = 0;
@@ -298,8 +298,8 @@ static int runUiTestMode() {
     }
 
     if (Entity* peasant = firstOwned(E_PEASANT, 0)) {
-        g.selectedId = peasant->id;
-        g.selectedIds.clear();
+        g.local.selectedId = peasant->id;
+        g.local.selectedIds.clear();
         view.cursorX = peasant->x;
         view.cursorY = peasant->y;
         g.mode = M_NORMAL;
@@ -383,8 +383,8 @@ static int runUiTestMode() {
     ok = verifyZoomAnchor(true) && ok;
 
     if (Entity* townHall = firstOwned(E_TOWNHALL, 0)) {
-        g.selectedId = townHall->id;
-        g.selectedIds.clear();
+        g.local.selectedId = townHall->id;
+        g.local.selectedIds.clear();
         g.mode = M_NORMAL;
         g.players[0].gold = 500;
         g.players[0].wood = 500;
@@ -536,3 +536,5 @@ int main(int argc, char** argv) {
     gfxShutdown();
     return 0;
 }
+
+

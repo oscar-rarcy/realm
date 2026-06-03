@@ -22,7 +22,7 @@ bool saveRendererPixels(const std::string& path) {
 }
 
 void drawHelpOverlay() {
-    if (!g.helpOverlay) return;
+    if (!g.local.helpOverlay) return;
     SDL_Rect r{std::max(20, s.winW / 2 - 360), std::max(20, s.winH / 2 - 260), 720, 520};
     if (r.x + r.w > s.winW - 20) r.w = std::max(320, s.winW - 40), r.x = 20;
     if (r.y + r.h > s.winH - 20) r.h = std::max(320, s.winH - 40), r.y = 20;

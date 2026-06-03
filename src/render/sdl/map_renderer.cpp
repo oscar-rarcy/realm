@@ -17,8 +17,8 @@ static Entity* renderCorpseAt(Game& game, const WorldIndex& world, int x, int y)
     return corpseAt(game, world, x, y);
 }
 
-bool renderCanPlace(Game& game, const WorldIndex& world, EntityType type, int x, int y, int owner) {
-    return canPlace(game, world, type, x, y, owner);
+bool renderCanPlace(Game& game, const WorldIndex& world, EntityType type, int x, int y, int owner, int ignoreEntityId) {
+    return canPlace(game, world, type, x, y, owner, ignoreEntityId);
 }
 
 static const TileRenderInfo* tileInfoAt(const RenderModel& model, int mx, int my) {
@@ -260,11 +260,17 @@ void toggleFullscreen() {
 #endif
 }
 
+static EntityType activeBuildPreviewType() {
+    if (s.mobileBuildType != E_NONE) return s.mobileBuildType;
+    if (g.mode == M_BUILD_PLACE) return g.local.buildPending;
+    return E_NONE;
+}
+
 void drawMobileBuildPreviewTopDown(const WorldIndex& world) {
-    if (!isMobileGui() || s.mobileBuildType == E_NONE) return;
+    EntityType bt = activeBuildPreviewType();
+    if (bt == E_NONE) return;
     SDL_Rect mr = mapRect();
-    EntityType bt = s.mobileBuildType;
-    bool ok = renderCanPlace(g, world, bt, view.cursorX, view.cursorY, 0);
+    bool ok = renderCanPlace(g, world, bt, view.cursorX, view.cursorY, 0, g.local.selectedId);
     SDL_SetRenderDrawBlendMode(s.ren, SDL_BLENDMODE_BLEND);
     Color fill = ok ? rgb(70,210,120,72) : rgb(230,65,65,78);
     Color edge = ok ? rgb(130,255,170,220) : rgb(255,120,110,230);
@@ -282,9 +288,9 @@ void drawMobileBuildPreviewTopDown(const WorldIndex& world) {
 }
 
 void drawMobileBuildPreviewIso(const WorldIndex& world) {
-    if (!isMobileGui() || s.mobileBuildType == E_NONE) return;
-    EntityType bt = s.mobileBuildType;
-    bool ok = renderCanPlace(g, world, bt, view.cursorX, view.cursorY, 0);
+    EntityType bt = activeBuildPreviewType();
+    if (bt == E_NONE) return;
+    bool ok = renderCanPlace(g, world, bt, view.cursorX, view.cursorY, 0, g.local.selectedId);
     Color fill = ok ? rgb(70,210,120,72) : rgb(230,65,65,78);
     Color edge = ok ? rgb(130,255,170,220) : rgb(255,120,110,230);
     for (int dy = 0; dy < STATS[bt].sizeH; ++dy) {
@@ -432,3 +438,4 @@ void drawMap(const WorldIndex& world) {
     drawMobileBuildPreviewTopDown(world);
     SDL_RenderSetClipRect(s.ren, nullptr);
 }
+

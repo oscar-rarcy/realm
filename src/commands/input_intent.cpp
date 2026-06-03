@@ -9,6 +9,7 @@ const CommandHelpBinding* gameplayHelpBindings(int& count) {
         {"build", "Build", "B", "Normal", "Open peasant build menu", InputIntent::BuildMenu, -1, 2, {'b', 'B'}},
         {"train", "Train", "T", "Normal", "Open production queue; repeat unit keys to queue", InputIntent::TrainMenu, -1, 2, {'t', 'T'}},
         {"attack_move", "Attack move", "A", "Normal", "Select all military or set attack-move target", InputIntent::AttackMoveOrSelectArmy, -1, 1, {'A'}},
+        {"patrol", "Patrol", "Z", "Normal", "Set selected land units to patrol", InputIntent::Patrol, -1, 2, {'z', 'Z'}},
         {"rally", "Rally/research/trade", "R", "Normal", "Set rally point or open building utility menus", InputIntent::RallyResearchTradeMenu, -1, 2, {'r', 'R'}},
         {"groups", "Groups", "G, 1-9", "Normal", "Assign and recall control groups", InputIntent::GroupAssign, -1, 1, {'G'}},
         {"hold", "Hold position", "X", "Normal", "Stop and hold selected units in place", InputIntent::HoldPosition, -1, 2, {'x', 'X'}},

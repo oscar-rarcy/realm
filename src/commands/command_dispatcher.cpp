@@ -21,40 +21,22 @@ template<class... Ts>
 Overloaded(Ts...) -> Overloaded<Ts...>;
 
 static CommandResult result(CommandStatus status, const std::string& reason = {}) {
-    return { status, reason, {} };
+    return { status, reason };
 }
 
-static GameEvent emit(GameContext& context, GameEvent event) {
+static void emit(GameContext& context, GameEvent event) {
     context.events.emit(event);
-    return event;
 }
 
 static CommandResult accepted(GameContext& context, PlayerId issuer) {
-    CommandResult out = result(CommandStatus::Accepted);
-    out.events.push_back(emit(context, { GameEventType::CommandAccepted, issuer, -1, { -1, -1 }, "" }));
-    return out;
+    emit(context, { GameEventType::CommandAccepted, issuer, -1, { -1, -1 }, "" });
+    return result(CommandStatus::Accepted);
 }
 
 static CommandResult rejected(GameContext& context, PlayerId issuer, const std::string& reason) {
-    CommandResult out = result(CommandStatus::Rejected, reason);
-    out.events.push_back(emit(context, { GameEventType::CommandRejected, issuer, -1, { -1, -1 }, reason }));
-    return out;
+    emit(context, { GameEventType::CommandRejected, issuer, -1, { -1, -1 }, reason });
+    return result(CommandStatus::Rejected, reason);
 }
-
-class CapturingEventSink : public EventSink {
-public:
-    explicit CapturingEventSink(EventSink& next) : next_(next) {}
-
-    void emit(const GameEvent& event) override {
-        events.push_back(event);
-        next_.emit(event);
-    }
-
-    std::vector<GameEvent> events;
-
-private:
-    EventSink& next_;
-};
 
 static CommandResult noOp(const std::string& reason = {}) {
     return result(CommandStatus::NoOp, reason);
@@ -70,20 +52,14 @@ static CommandResult serviceResult(GameContext& context, PlayerId issuer, Servic
 
 template <typename ServiceFn>
 static CommandResult capturedOrderResult(GameContext& context, PlayerId issuer, ServiceFn&& serviceFn) {
-    CapturingEventSink capture(context.events);
-    ServiceResult result = serviceFn(capture);
-    CommandResult out = orderResult(context, issuer, result);
-    out.events.insert(out.events.begin(), capture.events.begin(), capture.events.end());
-    return out;
+    ServiceResult result = serviceFn(context.events);
+    return orderResult(context, issuer, result);
 }
 
 template <typename ServiceFn>
 static CommandResult capturedServiceResult(GameContext& context, PlayerId issuer, ServiceFn&& serviceFn, const char* fallback) {
-    CapturingEventSink capture(context.events);
-    ServiceResult result = serviceFn(capture);
-    CommandResult out = serviceResult(context, issuer, result, fallback);
-    out.events.insert(out.events.begin(), capture.events.begin(), capture.events.end());
-    return out;
+    ServiceResult result = serviceFn(context.events);
+    return serviceResult(context, issuer, result, fallback);
 }
 
 static Entity* selectedEntity(GameContext& context, const Selection& selection) {
@@ -114,7 +90,7 @@ CommandResult dispatchCommand(GameContext& context, const Command& command) {
         [&](const SelectCommand& payload) -> CommandResult {
             if (!inBounds(payload.target.x, payload.target.y)) return rejected(context, issuer, "Selection target is out of bounds.");
             return capturedOrderResult(context, issuer, [&](EventSink& events) {
-                selectAtTile(game, context.world, events, issuer, payload.target.x, payload.target.y);
+                selectAtTile(game, context.world, events, issuer, payload.target.x, payload.target.y, payload.toggle);
                 return ServiceResult{ true, nullptr };
             });
         },
@@ -122,7 +98,7 @@ CommandResult dispatchCommand(GameContext& context, const Command& command) {
             if (!inBounds(payload.start.x, payload.start.y) || !inBounds(payload.end.x, payload.end.y))
                 return rejected(context, issuer, "Box selection target is out of bounds.");
             return capturedOrderResult(context, issuer, [&](EventSink& events) {
-                boxSelect(game, context.world, events, issuer, payload.start.x, payload.start.y, payload.end.x, payload.end.y);
+                boxSelect(game, context.world, events, issuer, payload.start.x, payload.start.y, payload.end.x, payload.end.y, payload.additive);
                 return ServiceResult{ true, nullptr };
             });
         },
@@ -191,6 +167,16 @@ CommandResult dispatchCommand(GameContext& context, const Command& command) {
                 return startMove(game, context.world, events, issuer, payload.selection, payload.target);
             });
         },
+        [&](const WaypointCommand& payload) -> CommandResult {
+            return capturedOrderResult(context, issuer, [&](EventSink& events) {
+                return appendWaypoint(game, context.world, events, issuer, payload.selection, payload.target);
+            });
+        },
+        [&](const PatrolCommand& payload) -> CommandResult {
+            return capturedOrderResult(context, issuer, [&](EventSink& events) {
+                return startPatrol(game, context.world, events, issuer, payload.selection, payload.target);
+            });
+        },
         [&](const AttackCommand& payload) -> CommandResult {
             return capturedOrderResult(context, issuer, [&](EventSink& events) {
                 return startAttack(game, context.world, events, issuer, payload.selection, payload.targetId);
@@ -221,6 +207,13 @@ CommandResult dispatchCommand(GameContext& context, const Command& command) {
                 return stopUnits(game, context.world, events, issuer, payload.selection);
             });
         },
+        [&](const CancelProductionCommand& payload) -> CommandResult {
+            Entity* building = selectedEntity(context, payload.selection);
+            if (!building || building->owner != issuer) return rejected(context, issuer, "Producer is not owned by issuer.");
+            return capturedServiceResult(context, issuer, [&](EventSink& events) {
+                return cancelTrainingService(game, context.world, events, issuer, building->id);
+            }, "Cancel production rejected.");
+        },
         [&](const AssignControlGroupCommand& payload) -> CommandResult {
             if (!assignControlGroup(game, context.world, issuer, payload.slot, payload.selection)) return rejected(context, issuer, "Invalid control group assignment.");
             emit(context, { GameEventType::StatusMessage, issuer, -1, { -1, -1 },
@@ -233,7 +226,7 @@ CommandResult dispatchCommand(GameContext& context, const Command& command) {
             if (!recallControlGroup(game, context.world, issuer, payload.slot)) return rejected(context, issuer, "Group " + std::to_string(payload.slot + 1) + " is empty");
             emit(context, { GameEventType::StatusMessage, issuer, -1, { -1, -1 },
                             "Group " + std::to_string(payload.slot + 1) + " recalled ("
-                            + std::to_string(game.selectedIds.size()) + " units)" });
+                            + std::to_string(game.local.selectedIds.size()) + " units)" });
             return accepted(context, issuer);
         },
         [&](const TogglePauseCommand&) -> CommandResult {
@@ -243,21 +236,13 @@ CommandResult dispatchCommand(GameContext& context, const Command& command) {
         },
         [&](const SaveCommand& payload) -> CommandResult {
             std::string path = saveSlotPath(payload.slot);
-            CapturingEventSink capture(context.events);
-            GameContext serviceContext{ game, context.world, capture };
-            SaveLoadResult save = saveGameService(serviceContext, { path, payload.slot, issuer });
-            CommandResult out = save.ok ? accepted(context, issuer) : rejected(context, issuer, save.error);
-            out.events.insert(out.events.begin(), capture.events.begin(), capture.events.end());
-            return out;
+            SaveLoadResult save = saveGameService(context, { path, payload.slot, issuer });
+            return save.ok ? accepted(context, issuer) : rejected(context, issuer, save.error);
         },
         [&](const LoadCommand& payload) -> CommandResult {
             std::string path = saveSlotPath(payload.slot);
-            CapturingEventSink capture(context.events);
-            GameContext serviceContext{ game, context.world, capture };
-            SaveLoadResult load = loadGameService(serviceContext, { path, payload.slot, issuer });
-            CommandResult out = load.ok ? accepted(context, issuer) : rejected(context, issuer, load.error);
-            out.events.insert(out.events.begin(), capture.events.begin(), capture.events.end());
-            return out;
+            SaveLoadResult load = loadGameService(context, { path, payload.slot, issuer });
+            return load.ok ? accepted(context, issuer) : rejected(context, issuer, load.error);
         },
         [&](const ResignCommand&) -> CommandResult {
             game.returnToMenu = true;
@@ -275,9 +260,9 @@ CommandResult dispatchCommand(GameContext& context, const Command& command) {
             });
         },
         [&](const ToggleDiagnosticsCommand&) -> CommandResult {
-            game.diagnostics = !game.diagnostics;
+            game.local.diagnostics = !game.local.diagnostics;
             emit(context, { GameEventType::StatusMessage, issuer, -1, { -1, -1 },
-                            game.diagnostics ? "Diagnostics on." : "Diagnostics off." });
+                            game.local.diagnostics ? "Diagnostics on." : "Diagnostics off." });
             return accepted(context, issuer);
         },
         [&](const RevealMapDebugCommand&) -> CommandResult {

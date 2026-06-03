@@ -244,12 +244,12 @@ int realm_web_entity_count() {
 
 EMSCRIPTEN_KEEPALIVE
 int realm_web_selected_id() {
-    return g.selectedId;
+    return g.local.selectedId;
 }
 
 EMSCRIPTEN_KEEPALIVE
 int realm_web_selected_count() {
-    return g.selectedIds.empty() ? (g.selectedId >= 0 ? 1 : 0) : (int)g.selectedIds.size();
+    return g.local.selectedIds.empty() ? (g.local.selectedId >= 0 ? 1 : 0) : (int)g.local.selectedIds.size();
 }
 
 EMSCRIPTEN_KEEPALIVE
@@ -363,3 +363,5 @@ int main() {
     emscripten_set_main_loop(frame, 0, 1);
     return 0;
 }
+
+

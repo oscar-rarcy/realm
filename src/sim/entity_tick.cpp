@@ -50,6 +50,31 @@ static void orderHelpForTick(Game& game, const WorldIndex& world, EventSink& eve
     startHelp(game, world, events, e.owner, Selection{ e.id, { e.id } }, buildingId);
 }
 
+static bool tickQueuedWaypoint(Game& game, const WorldIndex& world, EventSink& events, Entity& e) {
+    if (e.state != S_IDLE || e.waypoints.empty() || !isUnit(e.type) || isNaval(e.type)) return false;
+    if (e.holdPosition != 0 || e.retreating != 0) return false;
+    MapPos target{ e.waypoints.front().first, e.waypoints.front().second };
+    e.waypoints.erase(e.waypoints.begin());
+    if (!inBounds(target.x, target.y)) return false;
+    if (e.patrolMode) e.waypoints.push_back({ target.x, target.y });
+    if (e.type == E_TREBUCHET && e.packed == 0) return false;
+    e.state = S_MOVING;
+    e.targetX = target.x;
+    e.targetY = target.y;
+    e.targetId = -1;
+    e.stuckTicks = 0;
+    e.attackMove = 0;
+    e.holdPosition = 0;
+    e.path = findPath(game, world, e.x, e.y, target.x, target.y, 300, isNaval(e.type));
+    e.pathIdx = 0;
+    if (e.path.empty() && (e.x != target.x || e.y != target.y)) {
+        e.state = S_IDLE;
+        return false;
+    }
+    events.emit({ GameEventType::ActionMarker, e.owner, -1, target, "", 'x' });
+    return true;
+}
+
 static bool tickConstruction(Game& game, const WorldIndex& world, EventSink& events, Entity& e) {
     if (e.underConstruction) {
         bool hasBuilder = false;
@@ -120,7 +145,7 @@ static void tickRetreat(Game& game, const WorldIndex& world, EventSink& events, 
     }
 }
 
-static void tickUnitState(Game& game, const WorldIndex& world, EventSink& events, Entity& e) {
+static void tickUnitState(Game& game, WorldIndex& world, EventSink& events, Entity& e) {
     switch (e.state) {
     case S_IDLE:
         // Military auto-engages anything visible within fog radius — units now
@@ -194,6 +219,7 @@ static void tickUnitState(Game& game, const WorldIndex& world, EventSink& events
                     auto& ts = STATS[t->type];
                     int tcx = t->x + ts.sizeW/2, tcy = t->y + ts.sizeH/2;
                     int primeId = t->id, splashRaw = rawDmg / 3;
+                    bool worldDirty = false;
                     for (auto& o : game.entities) {
                         if (!o.alive || o.id == primeId) continue;
                         auto& os = STATS[o.type];
@@ -202,9 +228,13 @@ static void tickUnitState(Game& game, const WorldIndex& world, EventSink& events
                         if (std::abs(ox - tcx) <= 1 && std::abs(oy - tcy) <= 1) {
                             int splashDmg = damageVs(game, E_CATAPULT, o.type, splashRaw, o.owner);
                             o.hp -= splashDmg; o.alertTicks = 12;
-                            if (o.hp <= 0) killEntity(game, events, o);
+                            if (o.hp <= 0) {
+                                killEntity(game, events, o);
+                                worldDirty = true;
+                            }
                         }
                     }
+                    if (worldDirty) world = buildWorldIndex(game);
                 }
                 if (t->hp <= 0) {
                     bool startCarcassHarvest = t->owner == OWNER_NATURE && e.owner < OWNER_NATURE
@@ -212,10 +242,10 @@ static void tickUnitState(Game& game, const WorldIndex& world, EventSink& events
                         && (t->type == E_DEER || t->type == E_SHEEP || t->type == E_BOAR);
                     int cx = t->x, cy = t->y;
                     killEntity(game, events, *t);
-                    WorldIndex afterDeathWorld = buildWorldIndex(game);
-                    Entity* carcass = corpseAtForTick(game, afterDeathWorld, cx, cy);
+                    world = buildWorldIndex(game);
+                    Entity* carcass = corpseAtForTick(game, world, cx, cy);
                     if (startCarcassHarvest && carcass && isHarvestableCarcass(*carcass)) {
-                        orderGatherForTick(game, afterDeathWorld, events, e, cx, cy);
+                        orderGatherForTick(game, world, events, e, cx, cy);
                         if (e.owner >= 0 && e.owner < OWNER_NATURE) emitStatus(events, e.owner, "Harvesting carcass.", GameEventType::UnitOrdered);
                     } else if (e.cargo.amount <= 0) {
                         e.state = S_IDLE;
@@ -450,14 +480,14 @@ static void tickUnitState(Game& game, const WorldIndex& world, EventSink& events
     }
 }
 
-void tickEntity(Game& game, EventSink& events, Entity& e) {
+void tickEntity(Game& game, WorldIndex& world, EventSink& events, Entity& e) {
     if (!e.alive) return;
     tickAlert(e);
-    tickProduction(game, events, e);
+    tickProduction(game, world, events, e);
     tickResearch(game, events, e);
-    WorldIndex world = buildWorldIndex(game);
     if (tickConstruction(game, world, events, e)) return;
     if (!isUnit(e.type)) return;
+    if (tickQueuedWaypoint(game, world, events, e)) return;
     if (tickPackedTrebuchet(events, e)) return;
     tickRetreat(game, world, events, e);
     tickUnitState(game, world, events, e);

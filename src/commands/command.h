@@ -26,11 +26,12 @@ enum class CommandStatus {
 struct CommandResult {
     CommandStatus status = CommandStatus::NoOp;
     std::string reason;
-    std::vector<GameEvent> events;
 };
 
 struct ContextCommand { Selection selection; MapPos target{-1, -1}; };
 struct MoveCommand { Selection selection; MapPos target{-1, -1}; };
+struct WaypointCommand { Selection selection; MapPos target{-1, -1}; };
+struct PatrolCommand { Selection selection; MapPos target{-1, -1}; };
 struct AttackCommand { Selection selection; EntityId targetId = -1; };
 struct AttackMoveCommand { Selection selection; MapPos target{-1, -1}; };
 struct GatherCommand { Selection selection; MapPos target{-1, -1}; };
@@ -45,8 +46,9 @@ struct EjectGarrisonCommand { Selection selection; };
 struct SetRallyCommand { Selection selection; MapPos target{-1, -1}; };
 struct HoldPositionCommand { Selection selection; };
 struct StopCommand { Selection selection; };
-struct SelectCommand { MapPos target{-1, -1}; };
-struct BoxSelectCommand { MapPos start{-1, -1}; MapPos end{-1, -1}; };
+struct CancelProductionCommand { Selection selection; };
+struct SelectCommand { MapPos target{-1, -1}; bool toggle = false; };
+struct BoxSelectCommand { MapPos start{-1, -1}; MapPos end{-1, -1}; bool additive = false; };
 struct SelectAllOfTypeInViewCommand { MapPos target{-1, -1}; };
 struct AssignControlGroupCommand { Selection selection; int slot = -1; };
 struct RecallControlGroupCommand { int slot = -1; };
@@ -63,6 +65,8 @@ using CommandPayload = std::variant<
     std::monostate,
     ContextCommand,
     MoveCommand,
+    WaypointCommand,
+    PatrolCommand,
     AttackCommand,
     AttackMoveCommand,
     GatherCommand,
@@ -77,6 +81,7 @@ using CommandPayload = std::variant<
     SetRallyCommand,
     HoldPositionCommand,
     StopCommand,
+    CancelProductionCommand,
     SelectCommand,
     BoxSelectCommand,
     SelectAllOfTypeInViewCommand,
@@ -115,6 +120,8 @@ inline const char* commandPayloadName(const Command& command) {
         if constexpr (std::is_same_v<T, std::monostate>) return "None";
         else if constexpr (std::is_same_v<T, ContextCommand>) return "Context";
         else if constexpr (std::is_same_v<T, MoveCommand>) return "Move";
+        else if constexpr (std::is_same_v<T, WaypointCommand>) return "Waypoint";
+        else if constexpr (std::is_same_v<T, PatrolCommand>) return "Patrol";
         else if constexpr (std::is_same_v<T, AttackCommand>) return "Attack";
         else if constexpr (std::is_same_v<T, AttackMoveCommand>) return "AttackMove";
         else if constexpr (std::is_same_v<T, GatherCommand>) return "Gather";
@@ -129,6 +136,7 @@ inline const char* commandPayloadName(const Command& command) {
         else if constexpr (std::is_same_v<T, SetRallyCommand>) return "SetRally";
         else if constexpr (std::is_same_v<T, HoldPositionCommand>) return "HoldPosition";
         else if constexpr (std::is_same_v<T, StopCommand>) return "Stop";
+        else if constexpr (std::is_same_v<T, CancelProductionCommand>) return "CancelProduction";
         else if constexpr (std::is_same_v<T, SelectCommand>) return "Select";
         else if constexpr (std::is_same_v<T, BoxSelectCommand>) return "BoxSelect";
         else if constexpr (std::is_same_v<T, SelectAllOfTypeInViewCommand>) return "SelectAllOfTypeInView";
@@ -148,8 +156,8 @@ inline const char* commandPayloadName(const Command& command) {
 Selection currentSelection(const Game& game);
 Command resolveContextCommand(const Game& game, const WorldIndex& world, PlayerId issuer, const Selection& selection, MapPos target);
 CommandResult dispatchCommand(GameContext& context, const Command& command);
-void selectAtTile(Game& game, const WorldIndex& world, EventSink& events, PlayerId issuer, int x, int y);
-void boxSelect(Game& game, const WorldIndex& world, EventSink& events, PlayerId issuer, int x0, int y0, int x1, int y1);
+void selectAtTile(Game& game, const WorldIndex& world, EventSink& events, PlayerId issuer, int x, int y, bool toggle = false);
+void boxSelect(Game& game, const WorldIndex& world, EventSink& events, PlayerId issuer, int x0, int y0, int x1, int y1, bool additive = false);
 void selectAllOfTypeInView(Game& game, const WorldIndex& world, EventSink& events, PlayerId issuer, int x, int y);
 Entity* selectNextIdleWorker(Game& game, const WorldIndex& world, PlayerId issuer, EntityId afterId);
 Entity* selectNextUnit(Game& game, const WorldIndex& world, PlayerId issuer, EntityId afterId);

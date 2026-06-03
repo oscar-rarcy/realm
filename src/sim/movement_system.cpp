@@ -55,6 +55,7 @@ void moveAlongPath(Game& game, const WorldIndex& world, Entity& e) {
     else if (ter==T_MARSH||ter==T_SHALLOWS||ter==T_SAND||ter==T_SNOW||ter==T_ICE||ter==T_ASH) spd += 1;
     else if (ter==T_MUD) spd += 2; // bogged down
     spd += movementPenaltyForTile(game.map[ny][nx]);
+    if ((ter==T_FOREST||ter==T_PINE||ter==T_PALM||ter==T_DEAD_TREE) && e.type == E_KNIGHT) spd += 1;
     if (getSeason(game) == WINTER) spd = std::max(spd, STATS[e.type].speed+1);
     // Weather: rain and storm bog down movement on natural ground.
     if (game.weather != W_CLEAR && (ter==T_GRASS||ter==T_TALL_GRASS||ter==T_FLOWERS
