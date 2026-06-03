@@ -24,6 +24,8 @@ void setInputMode(Game& game, GameMode mode);
 void cancelInputMode(Game& game);
 bool isInputBlockedByMode(GameMode mode);
 void startWallBuildMode(Game& game);
+void startBuildPlacementMode(Game& game, EntityType type);
+EntityType pendingBuildType(const Game& game);
 bool toggleHelpOverlay(Game& game);
 bool controlGroupAssignmentPending(const Game& game);
 std::optional<MapPos> selectedEntityPosition(const Game& game, PlayerId issuer);

@@ -129,7 +129,7 @@ void tickPaving(Game& game) {
                 Tile& t = game.map[ny][nx];
                 Terrain ter = t.terrain;
                 if (ter==T_GRASS||ter==T_TALL_GRASS||ter==T_FLOWERS||ter==T_MEADOW
-                 || ter==T_SAND ||ter==T_DUNES) {
+                 || ter==T_DIRT ||ter==T_SAND ||ter==T_DUNES) {
                     int gain = (ringDist <= 1) ? 5 : (ringDist == 2) ? 3 : 1;
                     if (t.wear < 100) t.wear = std::min(100, t.wear + gain);
                     // Lower threshold so visible haloes appear within ~50 seconds.

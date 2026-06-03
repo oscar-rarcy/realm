@@ -27,6 +27,24 @@ void clampCursorToMap(ViewState& state) {
     state.cursorY = std::max(0, std::min(state.cursorY, MAP_H - 1));
 }
 
+void panViewport(ViewState& state, int dx, int dy) {
+    state.viewX = std::max(0, std::min(state.viewX + dx, MAP_W - state.viewW));
+    state.viewY = std::max(0, std::min(state.viewY + dy, MAP_H - state.viewH));
+}
+
+bool edgeScrollViewport(ViewState& state, int screenX, int screenY, int mapTopY, int edgeMargin, int edgeStep) {
+    int mapScreenY = screenY - mapTopY;
+    int dx = 0;
+    int dy = 0;
+    if (screenX < edgeMargin) dx = -edgeStep;
+    else if (screenX >= state.viewW - edgeMargin) dx = edgeStep;
+    if (mapScreenY < edgeMargin) dy = -edgeStep;
+    else if (mapScreenY >= state.viewH - edgeMargin) dy = edgeStep;
+    if (!dx && !dy) return false;
+    panViewport(state, dx, dy);
+    return true;
+}
+
 ViewportCell viewportCellAt(const ViewState& state, int screenX, int screenY, int mapTopY) {
     int mapScreenY = screenY - mapTopY;
     int mapX = state.viewX + screenX;

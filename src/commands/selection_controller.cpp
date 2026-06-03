@@ -242,6 +242,20 @@ bool selectionContainsMilitary(Game& game, const WorldIndex& world, PlayerId iss
     return entity && entity->owner == issuer && isMilitary(entity->type);
 }
 
+bool selectionContainsLandUnits(Game& game, const WorldIndex& world, PlayerId issuer, const Selection& selection) {
+    if (!validIssuer(issuer)) return false;
+    if (!selection.ids.empty()) {
+        for (EntityId id : selection.ids) {
+            Entity* entity = entityById(game, world, id);
+            if (entity && entity->alive && entity->owner == issuer && isUnit(entity->type) && !isNaval(entity->type))
+                return true;
+        }
+        return false;
+    }
+    Entity* entity = entityById(game, world, selection.primaryId);
+    return entity && entity->alive && entity->owner == issuer && isUnit(entity->type) && !isNaval(entity->type);
+}
+
 bool beginControlGroupAssignment(Game& game, const WorldIndex& world, PlayerId issuer) {
     if (!validIssuer(issuer)) return false;
     Selection selection = currentSelection(game);

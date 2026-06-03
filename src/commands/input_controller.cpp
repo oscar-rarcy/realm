@@ -86,15 +86,6 @@ static bool mouseShiftDown(const MEVENT& event) {
 #endif
 }
 
-static bool selectionHasLandUnit(Game& game, const WorldIndex& world, PlayerId issuer) {
-    for (int id : currentSelection(game).ids) {
-        Entity* entity = findEntity(game, world, id);
-        if (entity && entity->alive && entity->owner == issuer && isUnit(entity->type) && !isNaval(entity->type))
-            return true;
-    }
-    return false;
-}
-
 static void moveCursorToSelected(PlayerId issuer) {
     std::optional<MapPos> pos = selectedEntityPosition(g, issuer);
     if (!pos) return;
@@ -141,8 +132,7 @@ static void handleInputForPlayer(int ch, PlayerId issuer) {
         }
         if (tb == E_NONE) return;
         if (tb != E_NONE) {
-            g.local.buildPending = tb;
-            setInputMode(g, M_BUILD_PLACE);
+            startBuildPlacementMode(g, tb);
             status(std::string("Place ") + STATS[tb].name + ": arrows/mouse then Enter. [Esc]");
         }
         return;
@@ -150,9 +140,8 @@ static void handleInputForPlayer(int ch, PlayerId issuer) {
 
     // Build placement mode: cursor moves freely with a ghost footprint preview.
     if (g.mode == M_BUILD_PLACE) {
-        if (!selectedPeasantCanBuild(g, issuer)) { g.local.buildPending = E_NONE; cancelInputMode(g); return; }
+        if (!selectedPeasantCanBuild(g, issuer)) { cancelInputMode(g); return; }
         if (ch == 27) {
-            g.local.buildPending = E_NONE;
             cancelInputMode(g);
             status("Build cancelled.");
             return;
@@ -162,9 +151,8 @@ static void handleInputForPlayer(int ch, PlayerId issuer) {
         if (ch == KEY_LEFT)  { view.cursorX--; goto clamp; }
         if (ch == KEY_RIGHT) { view.cursorX++; goto clamp; }
         auto commitBuild = [&](int tx, int ty) {
-            EntityType bt = g.local.buildPending;
+            EntityType bt = pendingBuildType(g);
             dispatchCommandForLocalGame(g, gameEvents(), inputCommand(issuer, BuildCommand{ currentSelection(g), bt, {tx, ty} }));
-            g.local.buildPending = E_NONE;
             cancelInputMode(g);
         };
         if (ch == ' ' || ch == '\n' || ch == '\r' || ch == KEY_ENTER) {
@@ -179,7 +167,6 @@ static void handleInputForPlayer(int ch, PlayerId issuer) {
             if (cell.inMap && (me.bstate & (BUTTON1_CLICKED | BUTTON1_RELEASED))) {
                 commitBuild(cell.x, cell.y);
             } else if (me.bstate & (BUTTON3_CLICKED | BUTTON3_PRESSED)) {
-                g.local.buildPending = E_NONE;
                 cancelInputMode(g);
                 status("Build cancelled.");
             }
@@ -499,7 +486,7 @@ static void handleInputForPlayer(int ch, PlayerId issuer) {
 
     case InputIntent::Patrol: {
         const WorldIndex& world = worldForInput();
-        if (selectionHasLandUnit(g, world, issuer)) {
+        if (selectionContainsLandUnits(g, world, issuer, currentSelection(g))) {
             setInputMode(g, M_PATROL_SET);
             status("Patrol: click target. [Esc] cancel");
         } else {
@@ -591,19 +578,7 @@ static void handleInputForPlayer(int ch, PlayerId issuer) {
             lastMx = mapX; lastMy = mapY;
         }
         if (!clickEvt) {
-            const int edgeMargin = 2;
-            const int edgeStep = 2;
-            int mapSX = me.x;
-            int mapSY = me.y - 2;
-            int dx = 0, dy = 0;
-            if (mapSX < edgeMargin) dx = -edgeStep;
-            else if (mapSX >= view.viewW - edgeMargin) dx = edgeStep;
-            if (mapSY < edgeMargin) dy = -edgeStep;
-            else if (mapSY >= view.viewH - edgeMargin) dy = edgeStep;
-            if (dx || dy) {
-                view.viewX = std::max(0, std::min(view.viewX + dx, MAP_W - view.viewW));
-                view.viewY = std::max(0, std::min(view.viewY + dy, MAP_H - view.viewH));
-            }
+            edgeScrollViewport(view, me.x, me.y, 2);
         }
         bool shift = mouseShiftDown(me);
 
@@ -674,4 +649,3 @@ static void handleInputForPlayer(int ch, PlayerId issuer) {
 void handleInput(int ch) {
     handleInputForPlayer(ch, kLocalPlayer);
 }
-

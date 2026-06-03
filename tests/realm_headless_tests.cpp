@@ -2,6 +2,7 @@
 #include "entity_animation.h"
 #include "ai/ai.h"
 #include "commands/command.h"
+#include "commands/command_runner.h"
 #include "commands/input_intent.h"
 #include "commands/input_mode_controller.h"
 #include "input_keys.h"
@@ -34,8 +35,6 @@
 #include <string>
 #include <variant>
 #include <vector>
-
-void handleMobileHudButton(const std::string& id, const WorldIndex& world);
 
 class TestEventSink : public EventSink {
 public:
@@ -3068,17 +3067,50 @@ static void testSaveLoadRoundTrip() {
     // Version 8 uses the pre-waypoint payload and should migrate in place.
     {
         std::ifstream in("build/test-save.realm", std::ios::binary);
-        std::string content((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
-        size_t pos = content.find("REALM_SAVE 10");
-        assert(pos != std::string::npos);
-        content.replace(pos, std::string("REALM_SAVE 10").size(), "REALM_SAVE 8");
-        while ((pos = content.find(" WAYPOINTS ", pos)) != std::string::npos) {
-            size_t lineEnd = content.find('\n', pos);
-            assert(lineEnd != std::string::npos);
-            content.erase(pos, lineEnd - pos);
+        std::vector<std::string> lines;
+        std::string line;
+        while (std::getline(in, line)) {
+            if (line.rfind("REALM_SAVE ", 0) == 0) {
+                lines.push_back("REALM_SAVE 8");
+                continue;
+            }
+            if (line.rfind("GROUP_OWNER ", 0) == 0) {
+                std::istringstream groupLine(line);
+                std::string tag;
+                int owner = -1;
+                int slot = -1;
+                assert(groupLine >> tag >> owner >> slot);
+                if (owner == 0) {
+                    std::string members;
+                    std::getline(groupLine, members);
+                    lines.push_back("GROUP " + std::to_string(slot) + members);
+                }
+                continue;
+            }
+            if (line.rfind("ENTITY ", 0) == 0) {
+                size_t waypointPos = line.find(" WAYPOINTS ");
+                assert(waypointPos != std::string::npos);
+                lines.push_back(line.substr(0, waypointPos));
+                continue;
+            }
+            if (line.rfind("PROJECTILE ", 0) == 0) {
+                std::istringstream projectileLine(line);
+                std::vector<std::string> parts;
+                std::string part;
+                while (projectileLine >> part) parts.push_back(part);
+                assert(parts.size() == 10);
+                std::string rebuilt = parts[0];
+                for (size_t i = 1; i + 1 < parts.size(); i++) rebuilt += " " + parts[i];
+                lines.push_back(rebuilt);
+                continue;
+            }
+            if (line.rfind("WAYPOINTS ", 0) == 0 || line.rfind("PATROL ", 0) == 0) {
+                continue;
+            }
+            lines.push_back(line);
         }
         std::ofstream out("build/test-save-v8.realm", std::ios::binary);
-        out << content;
+        for (const std::string& outputLine : lines) out << outputLine << "\n";
     }
     initGameWithSeed(1, 9998u, 0);
     assert(loadGame(g, "build/test-save-v8.realm"));
@@ -3187,7 +3219,7 @@ static void testLongSimulationAndAIProgression() {
     assertIdsCoherent();
 }
 
-static void testMobileStopDispatchesCommand() {
+static void testStopCurrentSelectionDispatchesCommand() {
     initGameWithSeed(1, 5210u, 0);
     int workerId = spawnEntity(g, E_PEASANT, 0, 24, 24);
     WorldIndex world = buildWorldIndex(g);
@@ -3201,7 +3233,7 @@ static void testMobileStopDispatchesCommand() {
     g.local.selectedIds = { workerId };
 
     drainGameEvents();
-    handleMobileHudButton("stop", world);
+    stopCurrentSelection(g, gameEvents(), 0);
     std::vector<GameEvent> events = drainGameEvents();
 
     assert(worker->state == S_IDLE);
@@ -3264,7 +3296,7 @@ int main() {
     testBuildService();
     testGameEventSink();
     testWorldIndexParity();
-    testMobileStopDispatchesCommand();
+    testStopCurrentSelectionDispatchesCommand();
     testSimulationTickWorldIndexBuildBudget();
     testBerryGatherAndDepletion();
     testMillFoodStockpile();

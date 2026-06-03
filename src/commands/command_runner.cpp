@@ -8,3 +8,10 @@ CommandResult dispatchCommandForLocalGame(Game& game, EventSink& events, const C
     GameContext context{ game, world, events };
     return dispatchCommand(context, command);
 }
+
+CommandResult stopCurrentSelection(Game& game, EventSink& events, PlayerId issuer) {
+    Command command;
+    command.issuer = issuer;
+    command.payload = StopCommand{ currentSelection(game) };
+    return dispatchCommandForLocalGame(game, events, command);
+}

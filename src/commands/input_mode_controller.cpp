@@ -22,6 +22,15 @@ void startWallBuildMode(Game& game) {
     setInputMode(game, M_WALL_DRAG);
 }
 
+void startBuildPlacementMode(Game& game, EntityType type) {
+    game.local.buildPending = type;
+    setInputMode(game, M_BUILD_PLACE);
+}
+
+EntityType pendingBuildType(const Game& game) {
+    return game.local.buildPending;
+}
+
 bool toggleHelpOverlay(Game& game) {
     game.local.helpOverlay = !game.local.helpOverlay;
     return game.local.helpOverlay;

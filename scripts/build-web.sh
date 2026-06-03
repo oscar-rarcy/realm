@@ -185,19 +185,10 @@ COMMON_SOURCES=(
   src/platform/app_config.cpp
   src/platform/game_init.cpp
   src/platform/view_state.cpp
-  src/render/visual_model.cpp
+  src/render/display_model.cpp
+  src/render/entity_visual_defs.cpp
   src/render/render_model.cpp
-  src/render/sdl/camera.cpp
-  src/render/sdl/display_glyphs.cpp
-  src/render/sdl/gfx_renderer.cpp
-  src/render/sdl/hud_renderer.cpp
-  src/render/sdl/issue_capture.cpp
-  src/render/sdl/map_renderer.cpp
-  src/render/sdl/mobile_hud.cpp
-  src/render/sdl/projection.cpp
-  src/render/sdl/sdl_context.cpp
-  src/render/sdl/splash_screen.cpp
-  src/render/sdl/terminal_frame_renderer.cpp
+  src/render/sdl/*.cpp
 )
 
 em++ "${COMMON_SOURCES[@]}" \
@@ -208,6 +199,7 @@ em++ "${COMMON_SOURCES[@]}" \
   -Isrc \
   -sUSE_SDL=2 \
   -sUSE_SDL_TTF=2 \
+  -sUSE_LIBPNG=1 \
   -sALLOW_MEMORY_GROWTH=1 \
   -sSTACK_SIZE=8388608 \
   -sEXIT_RUNTIME=0 \

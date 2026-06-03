@@ -164,6 +164,7 @@ Entity* selectNextUnit(Game& game, const WorldIndex& world, PlayerId issuer, Ent
 Entity* selectHomeBase(Game& game, const WorldIndex& world, PlayerId issuer);
 int selectAllMilitary(Game& game, const WorldIndex& world, PlayerId issuer);
 bool selectionContainsMilitary(Game& game, const WorldIndex& world, PlayerId issuer, const Selection& selection);
+bool selectionContainsLandUnits(Game& game, const WorldIndex& world, PlayerId issuer, const Selection& selection);
 bool beginControlGroupAssignment(Game& game, const WorldIndex& world, PlayerId issuer);
 void clearSelection(Game& game);
 bool assignControlGroup(Game& game, const WorldIndex& world, PlayerId issuer, int slot, const Selection& selection);
