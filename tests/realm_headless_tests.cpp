@@ -370,6 +370,18 @@ static void testVisualTileBridgeMappings() {
     bool sawCobble = false;
     for (VisualDecalType decal : worn.decals) sawCobble = sawCobble || decal == VD_COBBLE_PATCH;
     assert(sawCobble);
+
+    tile.terrain = T_ROAD;
+    tile.preWinterTerrain = T_ROAD;
+    tile.wear = 0;
+    VisualTileParts road = visualPartsForTile(tile);
+    assert(road.ground == G_DIRT);
+    bool sawRoad = false;
+    for (VisualDecalType decal : road.decals) sawRoad = sawRoad || decal == VD_ROAD;
+    assert(sawRoad);
+    assert(tileHasRoadVisual(tile));
+    normalizeLegacyRoadTile(tile);
+    assert(tile.wear == 80);
 }
 
 static void testWeatherSightAndForestMovementPenalties() {
@@ -483,6 +495,7 @@ static void testRenderModelBuildsViewport() {
     g.local.selectedIds = { archerId };
     g.mode = M_BUILD_PLACE;
     g.local.buildPending = E_TOWER;
+    spawnProjectile(g, 12, 12, 14, 14, '-', CP_PROJ_ARROW, PT_ARROW);
     ui.actionMarkers.push_back({ 13, 13, 9, '!' });
     ui.actionMarkers.push_back({ 30, 30, 9, '?' });
 
@@ -492,10 +505,24 @@ static void testRenderModelBuildsViewport() {
     assert(model.mode == M_BUILD_PLACE);
     assert(model.buildPreviewType == E_TOWER);
     assert(model.tiles.size() == 25);
+    assert(model.projectiles.size() == 1);
+    assert(model.projectiles[0].type == PT_ARROW);
+    assert(model.projectiles[0].tileX == 12 && model.projectiles[0].tileY == 12);
+    assert(model.uiOverlays.size() == 1);
+    assert(model.uiOverlays[0].assetId == "attack_marker");
     assert(model.actionMarkers.size() == 1);
     assert(model.actionMarkers[0].x == 13 && model.actionMarkers[0].y == 13);
     assert(model.actionMarkers[0].glyph == '!');
+    bool sawGrassTile = false;
     bool sawHouse = false, sawSelectedArcher = false, sawTransport = false, sawHiddenWolf = false;
+    for (const TileRenderInfo& tileInfo : model.tiles) {
+        if (tileInfo.x == 10 && tileInfo.y == 10) {
+            sawGrassTile = true;
+            assert(tileInfo.visualParts.ground == G_GRASS);
+            assert(tileInfo.visualParts.feature == F_NONE);
+        }
+    }
+    assert(sawGrassTile);
     for (const EntityRenderInfo& entity : model.entities) {
         if (entity.id == houseId) {
             sawHouse = true;
@@ -712,7 +739,7 @@ static void testRecoverableValidation() {
     corrupt.path.push_back({ -2, 3 });
     corrupt.pathIdx = (int)corrupt.path.size() + 5;
     corrupt.garrison.push_back(g.nextId + 103);
-    g.projectiles.push_back({ std::numeric_limits<float>::quiet_NaN(), 2.0f, 3.0f, 4.0f, '-', CP_PROJ_ARROW, 10, true });
+    g.projectiles.push_back({ PT_ARROW, std::numeric_limits<float>::quiet_NaN(), 2.0f, 3.0f, 4.0f, '-', CP_PROJ_ARROW, 10, true });
     std::vector<ValidationIssue> issues = validateGameStateIssues(g);
     assert(!issues.empty());
     assert(issues.front().severity == ValidationSeverity::Recoverable);
@@ -1018,6 +1045,13 @@ static void testSupplyAndTownHallCost() {
     spawnEntity(local, E_HOUSE, 0, 64, 64);
     tickPaving(local);
     assert(local.map[64][63].wear > 0);
+    local.map[64][63].terrain = T_DIRT;
+    local.map[64][63].preWinterTerrain = T_DIRT;
+    local.map[64][63].wear = 79;
+    tickPaving(local);
+    assert(local.map[64][63].terrain == T_ROAD);
+    assert(local.map[64][63].preWinterTerrain == T_ROAD);
+    assert(local.map[64][63].wear >= 80);
     assert(g.map[64][63].terrain == globalTerrainBeforePaving);
     assert(g.map[64][63].wear == globalWearBeforePaving);
 
@@ -2947,6 +2981,40 @@ static void testLocalMapGenerationIsDeterministic() {
     }
 }
 
+static void testMapgenRoadsCarryWear() {
+    Game roadGame{};
+    realmSrand(roadGame, 8123u);
+    roadGame.biomeChoice = B_TEMPERATE;
+    for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
+        roadGame.map[y][x].terrain = T_GRASS;
+        roadGame.map[y][x].preWinterTerrain = T_GRASS;
+        roadGame.map[y][x].biome = B_TEMPERATE;
+        roadGame.map[y][x].resources = 0;
+        roadGame.map[y][x].wear = 0;
+    }
+    MapNoise noise = initMapNoise(roadGame);
+    addRoads(roadGame, noise);
+
+    bool foundRoad = false;
+    int roadX = -1, roadY = -1;
+    for (int y = 0; y < MAP_H && !foundRoad; y++) for (int x = 0; x < MAP_W; x++) {
+        if (roadGame.map[y][x].terrain != T_ROAD) continue;
+        foundRoad = true;
+        roadX = x;
+        roadY = y;
+        assert(roadGame.map[y][x].wear >= 80);
+        assert(roadGame.map[y][x].preWinterTerrain == T_ROAD);
+        assert(tileHasRoadVisual(roadGame.map[y][x]));
+        break;
+    }
+    assert(foundRoad);
+
+    roadGame.tick = 250;
+    tickPaving(roadGame);
+    assert(roadGame.map[roadY][roadX].terrain == T_ROAD);
+    assert(roadGame.map[roadY][roadX].wear == 79);
+}
+
 static void testStartSafetyAcrossSeeds() {
     for (unsigned seed = 1; seed <= 60; seed++) {
         initGameWithSeed(3, seed, (int)(seed % 4));
@@ -3203,6 +3271,7 @@ int main() {
     testWinterPartialWaterFreeze();
     testMapGenerationConfigBiomes();
     testLocalMapGenerationIsDeterministic();
+    testMapgenRoadsCarryWear();
     testStartSafetyAcrossSeeds();
     testMapgenReachabilityAcrossSeeds();
     testSaveLoadRoundTrip();
@@ -3210,4 +3279,3 @@ int main() {
     std::puts("realm_headless_tests: ok");
     return 0;
 }
-

@@ -1,30 +1,30 @@
 {
-  "schema": "realm.terrain_sprite_spec.v1",
+  "schema": "realm.decal_spec.v2",
   "asset_type": "decal",
-  "enum": "T_TALL_GRASS",
+  "id": "tall_grass",
   "slug": "tall_grass",
   "name": "Tall Grass",
-  "ui_name": "Tall Grass",
-  "runtime": {
-    "glyph": "\""
+  "enum": "VD_TALL_GRASS",
+  "render": {
+    "layer": "decal",
+    "projection_mode": "semi_upright_decal",
+    "projection_factor": 0.35,
+    "depth_bucket": "surface_overlay",
+    "anchor": "tile"
   },
-  "art": {
-    "projection": "transparent low ground decal over a top-down source tile",
-    "layer_category": "decals",
-    "terrain_type": "ground + vegetation",
-    "visual_design": "Taller clumps, swaying stems, good concealment feel",
-    "required_variants": "8 clump variants; 4 sway frames; seasonal colour overlays",
-    "runtime_notes": "Can become mud/dirt/road; winter snowed",
-    "team_color_required": false
+  "runtime": {
+    "legacy_terrain_enums": [
+      "T_TALL_GRASS"
+    ],
+    "emission_context": "legacy_terrain_bridge"
   },
   "paths": {
-    "runtime_root": "assets/tiles/terrain/tall_grass",
-    "base": "assets/tiles/terrain/tall_grass.png"
+    "runtime_root": "assets/tiles/decals/tall_grass",
+    "base": "assets/tiles/decals/tall_grass.png"
   },
   "sources": [
-    "include/realm.h",
+    "src/core/game_types.h",
     "src/core/terrain_defs.cpp",
-    "src/render/sdl/display_glyphs.cpp",
-    "docs/tileset/realm_tileset_visual_audit.md"
+    "scripts/export_image_generation_prompts.py"
   ]
 }

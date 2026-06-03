@@ -1,30 +1,42 @@
 {
-  "schema": "realm.terrain_sprite_spec.v1",
+  "schema": "realm.feature_spec.v2",
   "asset_type": "feature",
-  "enum": "T_RUINS",
+  "id": "ruins",
   "slug": "ruins",
   "name": "Ruins",
-  "ui_name": "Ancient Ruins",
-  "runtime": {
-    "glyph": "&"
+  "enum": "F_RUINS",
+  "render": {
+    "layer": "feature",
+    "projection_mode": "upright_world",
+    "projection_factor": 0.0,
+    "depth_bucket": "standing_front",
+    "anchor": "tile_center",
+    "feature_layers": {
+      "split_ready": false
+    }
   },
-  "art": {
-    "projection": "transparent feature sprite anchored over a projected isometric map tile",
-    "layer_category": "features",
-    "terrain_type": "terrain object/ground",
-    "visual_design": "Broken stone, rubble, old foundations",
-    "required_variants": "12 rubble variants; large-building ruin footprints",
-    "runtime_notes": "Created by mapgen and destroyed large buildings",
-    "team_color_required": false
+  "runtime": {
+    "legacy_terrain_enums": [
+      "T_RUINS"
+    ]
+  },
+  "states": [
+    "default",
+    "damaged",
+    "broken"
+  ],
+  "placement": {
+    "footprint": {
+      "w": 1,
+      "h": 1
+    }
   },
   "paths": {
-    "runtime_root": "assets/tiles/terrain/ruins",
-    "base": "assets/tiles/terrain/ruins.png"
+    "runtime_root": "assets/tiles/features/ruins",
+    "manifest": "assets/tiles/features/ruins/manifest.json"
   },
   "sources": [
-    "include/realm.h",
-    "src/core/terrain_defs.cpp",
-    "src/render/sdl/display_glyphs.cpp",
-    "docs/tileset/realm_tileset_visual_audit.md"
+    "src/core/game_types.h",
+    "src/core/terrain_defs.cpp"
   ]
 }

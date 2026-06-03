@@ -1,30 +1,39 @@
 {
-  "schema": "realm.terrain_sprite_spec.v1",
+  "schema": "realm.ground_spec.v2",
   "asset_type": "ground",
-  "enum": "T_MARSH",
+  "id": "marsh",
   "slug": "marsh",
   "name": "Marsh",
-  "ui_name": "Marshland",
-  "runtime": {
-    "glyph": "="
+  "enum": "G_MARSH",
+  "render": {
+    "layer": "ground",
+    "projection_mode": "surface_projected",
+    "projection_factor": 1.0,
+    "depth_bucket": "surface",
+    "anchor": "tile"
   },
-  "art": {
-    "projection": "top-down square source tile, projected into an isometric diamond in-app",
-    "layer_category": "grounds",
-    "terrain_type": "animated wet ground",
-    "visual_design": "Green-brown wet pools, soft mud, algae",
-    "required_variants": "3-loop subtle ripple variants; grass/reed edge masks",
-    "runtime_notes": "Land passable but slow; boats blocked; rain may affect movement",
-    "team_color_required": false
+  "runtime": {
+    "legacy_terrain_enums": [
+      "T_MARSH",
+      "T_REEDS"
+    ]
+  },
+  "gameplay": {
+    "passability": {
+      "land": "passable",
+      "boat": "blocked"
+    },
+    "buildable": false,
+    "needs_design_review": false,
+    "movement_ticks_modifier": 1
   },
   "paths": {
-    "runtime_root": "assets/tiles/terrain/marsh",
-    "base": "assets/tiles/terrain/marsh.png"
+    "runtime_root": "assets/tiles/grounds/marsh",
+    "base": "assets/tiles/grounds/marsh.png"
   },
   "sources": [
-    "include/realm.h",
+    "src/core/game_types.h",
     "src/core/terrain_defs.cpp",
-    "src/render/sdl/display_glyphs.cpp",
-    "docs/tileset/realm_tileset_visual_audit.md"
+    "src/render/sdl/display_glyphs.cpp"
   ]
 }

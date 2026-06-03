@@ -1,30 +1,30 @@
 {
-  "schema": "realm.terrain_sprite_spec.v1",
+  "schema": "realm.decal_spec.v2",
   "asset_type": "decal",
-  "enum": "T_FLOWERS",
+  "id": "flowers",
   "slug": "flowers",
   "name": "Flowers",
-  "ui_name": "Wildflowers",
-  "runtime": {
-    "glyph": "*"
+  "enum": "VD_FLOWERS",
+  "render": {
+    "layer": "decal",
+    "projection_mode": "semi_upright_decal",
+    "projection_factor": 0.35,
+    "depth_bucket": "surface_overlay",
+    "anchor": "tile"
   },
-  "art": {
-    "projection": "transparent low ground decal over a top-down source tile",
-    "layer_category": "decals",
-    "terrain_type": "decorative ground",
-    "visual_design": "Grass with lavender/blue/yellow/red flower clusters",
-    "required_variants": "12 variants split across 4 flower colours; spring bloom overlay; autumn dead-stalk variant",
-    "runtime_notes": "Fades in autumn; winter snowed",
-    "team_color_required": false
+  "runtime": {
+    "legacy_terrain_enums": [
+      "T_FLOWERS"
+    ],
+    "emission_context": "legacy_terrain_bridge"
   },
   "paths": {
-    "runtime_root": "assets/tiles/terrain/flowers",
-    "base": "assets/tiles/terrain/flowers.png"
+    "runtime_root": "assets/tiles/decals/flowers",
+    "base": "assets/tiles/decals/flowers.png"
   },
   "sources": [
-    "include/realm.h",
+    "src/core/game_types.h",
     "src/core/terrain_defs.cpp",
-    "src/render/sdl/display_glyphs.cpp",
-    "docs/tileset/realm_tileset_visual_audit.md"
+    "scripts/export_image_generation_prompts.py"
   ]
 }

@@ -1,30 +1,43 @@
 {
-  "schema": "realm.terrain_sprite_spec.v1",
+  "schema": "realm.feature_spec.v2",
   "asset_type": "feature",
-  "enum": "T_FOREST",
+  "id": "forest",
   "slug": "forest",
   "name": "Forest",
-  "ui_name": "Oak Forest",
-  "runtime": {
-    "glyph": "T"
+  "enum": "F_FOREST",
+  "render": {
+    "layer": "feature",
+    "projection_mode": "upright_world",
+    "projection_factor": 0.0,
+    "depth_bucket": "standing_front",
+    "anchor": "tile_center",
+    "feature_layers": {
+      "split_ready": true
+    }
   },
-  "art": {
-    "projection": "transparent feature sprite anchored over a projected isometric map tile",
-    "layer_category": "features",
-    "terrain_type": "resource object",
-    "visual_design": "Deciduous tree canopy, trunks partly visible; oak/leafy mixed shapes",
-    "required_variants": "16 tree variants; forest edge masks; autumn early/mid/late leaves; winter branch snow",
-    "runtime_notes": "Gatherable wood; depleted to dirt",
-    "team_color_required": false
+  "runtime": {
+    "legacy_terrain_enums": [
+      "T_FOREST"
+    ]
+  },
+  "states": [
+    "full",
+    "mostly_full",
+    "mostly_empty",
+    "depleted"
+  ],
+  "placement": {
+    "footprint": {
+      "w": 1,
+      "h": 1
+    }
   },
   "paths": {
-    "runtime_root": "assets/tiles/terrain/forest",
-    "base": "assets/tiles/terrain/forest.png"
+    "runtime_root": "assets/tiles/features/forest",
+    "manifest": "assets/tiles/features/forest/manifest.json"
   },
   "sources": [
-    "include/realm.h",
-    "src/core/terrain_defs.cpp",
-    "src/render/sdl/display_glyphs.cpp",
-    "docs/tileset/realm_tileset_visual_audit.md"
+    "src/core/game_types.h",
+    "src/core/terrain_defs.cpp"
   ]
 }

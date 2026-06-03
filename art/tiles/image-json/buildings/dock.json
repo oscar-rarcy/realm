@@ -1,9 +1,28 @@
 {
-  "schema": "realm.sprite_spec.v1",
+  "schema": "realm.building_spec.v2",
   "asset_type": "building",
+  "id": "dock",
   "enum": "E_DOCK",
   "slug": "dock",
   "name": "Dock",
+  "render": {
+    "layer": "building",
+    "projection_mode": "upright_world",
+    "projection_factor": 0.0,
+    "depth_bucket": "building",
+    "anchor": "footprint_origin",
+    "directions": [
+      "south"
+    ],
+    "runtime_mirrors_horizontal": false
+  },
+  "placement": {
+    "footprint": {
+      "w": 2,
+      "h": 2
+    },
+    "origin": "south_west"
+  },
   "runtime": {
     "glyph": "D",
     "stats": {
@@ -22,19 +41,20 @@
         "TR_TRAINS_UNITS"
       ]
     },
-    "footprint": {
+    "legacy_footprint": {
       "w": 2,
       "h": 2
-    },
-    "team_color_required": true
+    }
   },
-  "art": {
-    "projection": "upright sprite anchored over projected isometric map tiles",
-    "directions": [
-      "south"
-    ],
-    "runtime_mirrors_horizontal": false,
-    "team_color_slots": [
+  "entity": {
+    "kind": "building",
+    "actor_type": null,
+    "rests_on_tile_center": false,
+    "can_interpolate_between_tiles": false
+  },
+  "team_color": {
+    "required": true,
+    "slots": [
       "flag",
       "sail cloth",
       "awning"
@@ -43,21 +63,42 @@
       "name": "red",
       "hex": "#FF0000"
     },
-    "player_sigil": null,
-    "operated_by_person": false,
-    "operator_contract": "",
-    "ammunition": [],
-    "research_visual_lines": [],
-    "research_visual_variants": [],
+    "player_sigil": null
+  },
+  "combat": {
+    "projectiles": []
+  },
+  "visual_variants": {
+    "research_lines": [],
+    "resolved_variants": []
+  },
+  "operator": {
+    "visible_operator_required": false,
+    "count": 0,
+    "contract": ""
+  },
+  "art": {
+    "legacy_projection": "upright sprite anchored over projected isometric map tiles",
     "visual_design": "Wooden pier/boathouse that has land and water-facing pieces",
     "source_role": "fish drop-off; trains naval units; must touch water"
   },
   "states": [
+    "construction_0_foundation",
+    "construction_1_frame",
+    "construction_2_nearly_complete",
     "complete",
-    "training",
-    "construction",
-    "shoreline variants",
-    "ruin footprint"
+    "damaged",
+    "garrisoned",
+    "garrison_firing",
+    "training_peasant",
+    "training_infantry",
+    "training_cavalry",
+    "training_ship",
+    "researching_iron_weapons",
+    "researching_crossbows",
+    "researching_pikes",
+    "researching_counterweight",
+    "researching_plate_helm"
   ],
   "actions": [
     {

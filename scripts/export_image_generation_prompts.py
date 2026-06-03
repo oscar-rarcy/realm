@@ -12,11 +12,13 @@ from pathlib import Path
 from typing import Any
 
 from export_tile_specs import (
-    AMMUNITION_SPECS,
     ENTITY_RANGES,
+    EFFECT_ASSET_NAMES,
     GAME_TYPES_HEADER,
     PLAYER_SIGIL,
+    PROJECTILE_SPECS,
     ROOT,
+    USER_INTERFACE_ASSET_NAMES,
     ammunition_refs_for_entity,
     category_for_entity,
     clean_cell,
@@ -73,14 +75,6 @@ def ground_specs() -> list[tuple[str, str, str, list[dict[str, str]]]]:
         state_item("winter_frozen", "bare earth in winter, frozen with frost and patchy snow"),
         *rain_frames("rain", "bare earth"),
         *rain_frames("storm", "bare earth"),
-    ]),
-    ("road", "road ground", "top-down square packed road or cobble movement route floor", [
-        state_item("spring_clear", "stone or packed road in clear spring weather"),
-        state_item("summer_dry", "stone or packed road in dry summer weather"),
-        state_item("autumn_leaf_litter", "stone or packed road with autumn leaf litter at the edges"),
-        state_item("winter_snow_edges", "stone or packed road with snow gathered on edges but route still readable"),
-        *rain_frames("rain", "stone or packed road"),
-        *rain_frames("storm", "stone or packed road"),
     ]),
     ("mud", "mud ground", "top-down square wet mud floor with ruts and puddled surface", [
         state_item("clear_wet", "mud terrain in clear weather, wet dark surface and puddles"),
@@ -229,24 +223,26 @@ def feature_specs() -> list[tuple[str, str, str, list[dict[str, str]], bool]]:
 
 def decal_specs() -> list[tuple[str, str, str, list[dict[str, str]]]]:
     return [
-    ("flowers", "flowers decal", "transparent low wildflower overlay that sits flat on grass or meadow", seasonal_items("wildflower ground decal", "winter: dormant flower stems with patchy snow")),
-    ("tall_grass", "tall grass decal", "transparent low/medium grass clump overlay; visual variation, not an independent blocker", seasonal_items("tall grass clumps", "winter: flattened frosted tall grass with patchy snow")),
-    ("grass_tufts", "grass tufts decal", "transparent low grass tuft overlay for natural ground variation", seasonal_items("small grass tufts", "winter: small frosted grass tufts poking through snow")),
-    ("small_stones", "small stones decal", "transparent low scattered-stone overlay for rocky, dirt, and path variation", [state_item("base_clear", "small flat scattered stones"), state_item("frost", "small stones with frost"), state_item("snow_dusted", "small stones with light snow dusting")]),
-    ("puddles", "puddles decal", "transparent flat puddle overlay for rain, marsh, mud, and road edges", [state_item("rain_puddle_small", "small rain puddle"), state_item("rain_puddle_large", "larger rain puddle"), state_item("storm_puddle_choppy", "storm puddle with choppy surface"), state_item("frozen_puddle", "frozen puddle with thin ice")]),
-    ("dirt_scuffs", "dirt scuffs decal", "transparent sparse dirt scuffs for low wear and settlement edges", [state_item("sparse", "sparse dirt scuffs"), state_item("medium", "medium dirt scuffs"), state_item("heavy", "heavy dirt scuffs")]),
-    ("packed_path_marks", "packed path marks decal", "transparent packed dirt path fragments for medium wear", [state_item("short_fragment", "short packed path fragment"), state_item("straight_fragment", "straight packed path fragment"), state_item("corner_fragment", "corner or bend packed path fragment"), state_item("intersection_fragment", "small packed path intersection fragment")]),
-    ("cobble_patches", "cobble patches decal", "transparent cobble or road creep patches for high wear", [state_item("small_patch", "small cobble patch"), state_item("edge_patch", "cobble edge patch"), state_item("dense_patch", "dense cobble patch"), state_item("broken_patch", "broken uneven cobble patch")]),
-    ("wheel_ruts", "wheel ruts decal", "transparent wheel rut overlay for roads, yards, farms, and transport paths", [state_item("light_ruts", "light wheel ruts"), state_item("deep_ruts", "deep wheel ruts"), state_item("muddy_ruts", "muddy wheel ruts"), state_item("snow_ruts", "wheel ruts through snow")]),
-    ("yard_clutter", "yard clutter decal", "transparent settlement clutter overlay that does not block movement", [state_item("small_clutter", "small yard clutter scraps"), state_item("tools_clutter", "tools and small worksite clutter"), state_item("mixed_clutter", "mixed settlement clutter"), state_item("snow_dusted_clutter", "snow-dusted yard clutter")]),
-    ("crates_barrels", "crates and barrels decal", "transparent crates and barrels overlay for market, dock, town, and storage yards", [state_item("crates", "small crates cluster"), state_item("barrels", "small barrels cluster"), state_item("mixed", "mixed crates and barrels"), state_item("snow_dusted", "snow-dusted crates and barrels")]),
-    ("log_piles", "log piles decal", "transparent log-pile overlay for lumber camps and forest work areas", [state_item("small_pile", "small log pile"), state_item("stacked_pile", "stacked log pile"), state_item("split_logs", "split logs and chips"), state_item("snow_dusted", "snow-dusted log pile")]),
-    ("farm_tracks", "farm tracks decal", "transparent farm track and furrow overlay", [state_item("furrows", "simple farm furrows"), state_item("cart_tracks", "farm cart tracks"), state_item("harvest_tracks", "harvested-field tracks"), state_item("snow_dead_tracks", "snowy or winter-dead farm tracks")]),
-    ("muddy_footprints", "muddy footprints decal", "transparent muddy footprint overlay for wet settlement and path wear", [state_item("sparse", "sparse muddy footprints"), state_item("cluster", "cluster of muddy footprints"), state_item("trail", "short footprint trail"), state_item("smudged", "smudged muddy footprints")]),
-    ("snow_trampled_path_marks", "snow-trampled path marks decal", "transparent trampled-snow path overlay", [state_item("light_trample", "light trampled snow path marks"), state_item("packed_trample", "packed trampled snow path marks"), state_item("dirty_trample", "dirty trampled snow with exposed ground"), state_item("wheel_trample", "trampled snow with wheel marks")]),
-    ("ore_bins", "ore bins decal", "transparent ore-bin and rock-pile overlay for mining camps", [state_item("small_ore_bin", "small ore bin"), state_item("ore_pile", "ore pile and bin"), state_item("mixed_rocks", "mixed rocks and ore scraps"), state_item("snow_dusted", "snow-dusted ore bins")]),
-    ("sacks", "sacks decal", "transparent sacks and grain bags overlay for mills, farms, and markets", [state_item("small_sacks", "small sacks cluster"), state_item("grain_bags", "grain bags"), state_item("mixed_sacks", "mixed sacks and small crates"), state_item("snow_dusted", "snow-dusted sacks")]),
-    ("dock_barrels", "dock barrels decal", "transparent dockside barrels, rope, and cargo overlay", [state_item("barrels_rope", "barrels and rope"), state_item("fish_crates", "fish crates and wet dock clutter"), state_item("cargo_stack", "small dock cargo stack"), state_item("snow_dusted", "snow-dusted dock cargo")]),
+("road", "road decal", "transparent packed-road or cobble overlay that sits on top of dirt-like ground", [
+    state_item("spring_clear", "stone or packed road in clear spring weather"),
+    state_item("summer_dry", "stone or packed road in dry summer weather"),
+    state_item("autumn_leaf_litter", "stone or packed road with autumn leaf litter at the edges"),
+    state_item("winter_snow_edges", "stone or packed road with snow gathered on edges but route still readable"),
+    *rain_frames("rain", "stone or packed road"),
+    *rain_frames("storm", "stone or packed road"),
+]),
+("flowers", "flowers decal", "transparent low wildflower overlay that sits flat on grass or meadow", seasonal_items("wildflower ground decal", "winter: dormant flower stems with patchy snow")),
+("tall_grass", "tall grass decal", "transparent low/medium grass clump overlay; visual variation, not an independent blocker", seasonal_items("tall grass clumps", "winter: flattened frosted tall grass with patchy snow")),
+("scuffs", "scuffs decal", "transparent sparse dirt scuffs for low wear and settlement edges", [state_item("sparse", "sparse dirt scuffs"), state_item("medium", "medium dirt scuffs"), state_item("heavy", "heavy dirt scuffs")]),
+("packed_path", "packed path decal", "transparent packed dirt path fragments for medium wear", [state_item("short_fragment", "short packed path fragment"), state_item("straight_fragment", "straight packed path fragment"), state_item("corner_fragment", "corner or bend packed path fragment"), state_item("intersection_fragment", "small packed path intersection fragment")]),
+("cobble_patch", "cobble patch decal", "transparent cobble or road creep patches for high wear", [state_item("small_patch", "small cobble patch"), state_item("edge_patch", "cobble edge patch"), state_item("dense_patch", "dense cobble patch"), state_item("broken_patch", "broken uneven cobble patch")]),
+("wheel_ruts", "wheel ruts decal", "transparent wheel rut overlay for roads, yards, farms, and transport paths", [state_item("light_ruts", "light wheel ruts"), state_item("deep_ruts", "deep wheel ruts"), state_item("muddy_ruts", "muddy wheel ruts"), state_item("snow_ruts", "wheel ruts through snow")]),
+("yard_clutter", "yard clutter decal", "transparent settlement clutter overlay that does not block movement", [state_item("small_clutter", "small yard clutter scraps"), state_item("tools_clutter", "tools and small worksite clutter"), state_item("mixed_clutter", "mixed settlement clutter"), state_item("snow_dusted_clutter", "snow-dusted yard clutter")]),
+("crates_barrels", "crates and barrels decal", "transparent crates and barrels overlay for market, dock, town, and storage yards", [state_item("crates", "small crates cluster"), state_item("barrels", "small barrels cluster"), state_item("mixed", "mixed crates and barrels"), state_item("snow_dusted", "snow-dusted crates and barrels")]),
+("log_piles", "log piles decal", "transparent log-pile overlay for lumber camps and forest work areas", [state_item("small_pile", "small log pile"), state_item("stacked_pile", "stacked log pile"), state_item("split_logs", "split logs and chips"), state_item("snow_dusted", "snow-dusted log pile")]),
+("farm_tracks", "farm tracks decal", "transparent farm track and furrow overlay", [state_item("furrows", "simple farm furrows"), state_item("cart_tracks", "farm cart tracks"), state_item("harvest_tracks", "harvested-field tracks"), state_item("snow_dead_tracks", "snowy or winter-dead farm tracks")]),
+("muddy_footprints", "muddy footprints decal", "transparent muddy footprint overlay for wet settlement and path wear", [state_item("sparse", "sparse muddy footprints"), state_item("cluster", "cluster of muddy footprints"), state_item("trail", "short footprint trail"), state_item("smudged", "smudged muddy footprints")]),
+("snow_trampled_path", "snow trampled path decal", "transparent trampled-snow path overlay", [state_item("light_trample", "light trampled snow path marks"), state_item("packed_trample", "packed trampled snow path marks"), state_item("dirty_trample", "dirty trampled snow with exposed ground"), state_item("wheel_trample", "trampled snow with wheel marks")]),
 ]
 
 
@@ -842,9 +838,9 @@ def production_follow_up(group: str, item_noun: str) -> list[str]:
             "Use transparent background or a flat #ff00ff magenta key background, with one anchored sprite and its contact shadow fully inside the square.",
             "Keep the tile anchor visually stable across depletion, weather, damage, and seasonal variants.",
         ]
-    elif group == "effects-ui":
+    elif group in {"effects", "user_interface"}:
         details = [
-            "Final production effect/UI art should be exported as one standalone square image per accepted item.",
+            "Final production overlay art should be exported as one standalone square image per accepted item.",
             "Use transparent background or a flat #ff00ff magenta key background, with the effect centred and readable over both light and dark terrain.",
             "Keep rings and command markers centred on the tile anchor; keep screen UI markers compact and readable at small scale.",
         ]
@@ -900,18 +896,18 @@ def player_colour_contract(
     return lines
 
 
-def ammunition_contract(enum_name: str) -> list[str]:
+def projectile_contract(enum_name: str) -> list[str]:
     refs = ammunition_refs_for_entity(enum_name)
     if not refs:
         return []
     lines = [
-        "## Ammunition References",
+        "## Projectile References",
         "",
-        "- Unit/building sheets may show ammunition only while it is still loaded, nocked, held, or otherwise not yet released.",
-        "- Released, airborne, or impact ammunition must be generated from the ammunition files below, not baked into the unit/building frame.",
+        "- Unit/building sheets may show a projectile only while it is still loaded, nocked, held, or otherwise not yet released.",
+        "- Released, airborne, or impact projectiles must be generated from the projectile files below, not baked into the unit/building frame.",
     ]
     for slug in refs:
-        lines.append(f"- `{slug}`: `art/tiles/image-spec/ammunition/{slug}.md`")
+        lines.append(f"- `{slug}`: `art/tiles/image-spec/projectiles/{slug}.md`")
     lines.append("")
     return lines
 
@@ -1008,7 +1004,7 @@ def entity_markdown(enum_name: str, category: str, stats: dict[str, Any], audit:
     team_color_required = category in {"units", "buildings"}
     team_slots = split_list(profile.get("team_color_slots", "")) if team_color_required else []
     player_colour = recommended_player_colour(enum_name, stats, audit) if team_color_required else None
-    ammunition_sentence = " Use ammunition reference files for released projectiles." if ammunition_refs_for_entity(enum_name) else ""
+    projectile_sentence = " Use projectile reference files for released projectiles." if ammunition_refs_for_entity(enum_name) else ""
     footprint = stats["footprint"]
 
     direction_sentence = (
@@ -1042,7 +1038,7 @@ def entity_markdown(enum_name: str, category: str, stats: dict[str, Any], audit:
         md_list(team_slots).rstrip(),
         "",
         *player_colour_contract(category, stats, player_colour, team_slots),
-        *ammunition_contract(enum_name),
+        *projectile_contract(enum_name),
         *research_visual_contract(enum_name),
         *entity_direction_contract(category, directions),
         *common_sheet_contract(category, "sprite frame", team_color_required, player_colour),
@@ -1109,7 +1105,7 @@ def entity_markdown(enum_name: str, category: str, stats: dict[str, Any], audit:
                 "and top to bottom within each sheet. Keep the character or building "
                 "consistent across every slot. Use transparent background, or a single flat #ff00ff magenta background "
                 "if transparency is not available. Use clean readable small-RTS proportions, stable anchor, clear gutters, "
-                f"no text labels, no numbers, no watermark, and no cropped artwork.{ammunition_sentence}"
+                f"no text labels, no numbers, no watermark, and no cropped artwork.{projectile_sentence}"
             ),
             "",
             "Slot order:",
@@ -1364,44 +1360,55 @@ def effects_ui_items() -> list[dict[str, str]]:
     ]
 
 
-def ammunition_markdown(spec: dict[str, Any]) -> str:
+def projectile_markdown(spec: dict[str, Any]) -> str:
     return target_asset_markdown(
-        "ammunition",
+        "projectiles",
         spec["slug"],
         spec["name"],
         spec["description"],
         "transparent upright_world projectile sprite or tiny animation",
-        "transparent ammunition sprites after release, separate from unit/building sheets",
-        "ammunition sprite",
+        "transparent projectile sprites after release, separate from unit/building sheets",
+        "projectile sprite",
         spec["states"],
         [
-            "Ammunition art is used only after release. Do not include the firing unit, launcher, building, target, impact burst, water splash, terrain, UI labels, or motion arrows.",
+            "Projectile art is used only after release. Do not include the firing unit, launcher, building, target, impact burst, water splash, terrain, UI labels, or motion arrows.",
             "Keep the sprite compact, centred, readable over light and dark terrain, and suitable for animation between tiles.",
-            "If the ammunition has multiple states, keep the same projectile identity while changing only the animated part such as flame flicker or volley spacing.",
+            "If the projectile has multiple states, keep the same projectile identity while changing only the animated part such as flame flicker or volley spacing.",
         ],
         negative_arrow_phrase="direction arrows",
     )
 
 
-def effects_ui_markdown() -> str:
+def overlay_asset_markdown(group: str, slug: str, description: str) -> str:
+    projection = "transparent upright_world or tile_overlay sprite"
+    generation = "transparent overlay sprites with no terrain, unit, building, or UI chrome baked into the asset"
+    if group == "user_interface":
+        projection = "transparent screen-space UI marker or icon"
+        generation = "transparent screen-space UI sprites that remain readable at small scale"
     return target_asset_markdown(
-        "effects-ui",
-        "effects-ui",
-        "effects UI sprites",
-        "clean readable small-RTS effects that remain legible over terrain and units",
-        "mixed transparent overlays; each item declares tile_overlay, upright_world, or screen_ui",
-        "transparent overlay sprites; do not include terrain, units, buildings, text labels, numbers, watermarks, or cropped artwork",
+        group,
+        slug,
+        slug.replace("_", " "),
+        description,
+        projection,
+        generation,
         "sprite",
-        effects_ui_items(),
+        [state_item("base", description)],
         [
-            "Effects and UI items are separate transparent overlays, not terrain, unit, animal, or building sprites.",
-            "tile_overlay items sit on the map, upright_world items face the camera, and screen_ui items are drawn in interface space.",
-            "Use enough contrast and alpha separation that effects remain readable over grass, snow, water, lava, buildings, and units.",
-            "Selection, range, preview, and command-marker items should align to the tile centre and avoid filled backgrounds.",
+            "This asset should stay isolated from terrain, unit, building, and projectile source art.",
+            "Keep the silhouette compact and readable against both bright and dark backgrounds.",
         ],
     )
 
 
+def effect_specs() -> list[tuple[str, str]]:
+    descriptions = {item["id"]: item["description"] for item in effects_ui_items()}
+    return [(slug, descriptions[slug]) for slug in EFFECT_ASSET_NAMES]
+
+
+def user_interface_specs() -> list[tuple[str, str]]:
+    descriptions = {item["id"]: item["description"] for item in effects_ui_items()}
+    return [(slug, descriptions[slug]) for slug in USER_INTERFACE_ASSET_NAMES]
 def write(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8")
@@ -1422,7 +1429,7 @@ def export_prompts(out_dir: Path, clean: bool) -> dict[str, list[tuple[str, str]
 
     index: dict[str, list[tuple[str, str]]] = {
         "grounds": [], "features": [], "decals": [],
-        "units": [], "animals": [], "buildings": [], "ammunition": [], "effects-ui": [],
+        "units": [], "animals": [], "buildings": [], "projectiles": [], "effects": [], "user_interface": [],
     }
 
     for slug, display_name, visual_design, items in ground_specs():
@@ -1450,14 +1457,22 @@ def export_prompts(out_dir: Path, clean: bool) -> dict[str, list[tuple[str, str]
         write(out_dir / rel, text)
         index[category].append((record["name"], rel.as_posix()))
 
-    for spec in AMMUNITION_SPECS:
-        rel = Path("ammunition") / f"{spec['slug']}.md"
-        write(out_dir / rel, ammunition_markdown(spec))
-        index["ammunition"].append((spec["name"], rel.as_posix()))
+    for spec in PROJECTILE_SPECS:
+        rel = Path("projectiles") / f"{spec['slug']}.md"
+        write(out_dir / rel, projectile_markdown(spec))
+        index["projectiles"].append((spec["name"], rel.as_posix()))
+
+    for slug, description in effect_specs():
+        rel = Path("effects") / f"{slug}.md"
+        write(out_dir / rel, overlay_asset_markdown("effects", slug, description))
+        index["effects"].append((slug.replace("_", " ").title(), rel.as_posix()))
+
+    for slug, description in user_interface_specs():
+        rel = Path("user_interface") / f"{slug}.md"
+        write(out_dir / rel, overlay_asset_markdown("user_interface", slug, description))
+        index["user_interface"].append((slug.replace("_", " ").title(), rel.as_posix()))
 
     write(out_dir / "environment-state-design.md", environment_state_design_markdown())
-    write(out_dir / "effects-ui" / "effects-ui.md", effects_ui_markdown())
-    index["effects-ui"].append(("Effects UI", "effects-ui/effects-ui.md"))
     write(out_dir / "index.md", index_markdown(index))
     return index
 
@@ -1470,15 +1485,15 @@ def index_markdown(index: dict[str, list[tuple[str, str]]]) -> str:
         "",
         "## Generation Contract",
         "",
-        "- Generate groups in this order: grounds, features, decals, units, animals, buildings, ammunition, effects-ui.",
+        "- Generate groups in this order: grounds, features, decals, units, animals, buildings, projectiles, effects, user_interface.",
         "- Generate one image sheet for each `Sheet` section in each prompt.",
         "- When a unit or animal prompt lists multiple directions, generate the full sheet set once per direction.",
         "- Treat these generated sheets as review contact sheets first; once a slot is accepted, generate or crop a standalone square production image for that slot.",
         "- For standalone production images, use transparent background where possible, or a single flat #ff00ff magenta key background for later cleanup.",
         "- Keep emoji, symbol, ASCII, and procedural fallbacks readable until replacement art exists.",
         "- Peasant idle is the only sprite lane assumed to already exist; every other prompt should be treated as needed art.",
-        "- Ground prompts are top-down square tile art. Feature prompts are transparent anchored sprites. Decal prompts are transparent ground overlays. Ammunition and effects/UI prompts are transparent overlays.",
-        "- Unit and building sheets may show ammunition only before release; released projectiles belong in the ammunition prompts.",
+        "- Ground prompts are top-down square tile art. Feature prompts are transparent anchored sprites. Decal prompts are transparent ground overlays. Projectile, effect, and user-interface prompts are transparent overlays.",
+        "- Unit and building sheets may show a projectile only before release; released projectiles belong in the projectile prompts.",
         "- Unit and animal `front` is a three-quarter screen-right RTS angle; `back` is the matching rear-right angle. Do not generate mirrored left-facing source art.",
         "- Do not add text labels, numbers, watermarks, cropped artwork, or baked UI chrome to generated image sheets.",
         "",

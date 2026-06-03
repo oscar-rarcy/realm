@@ -1,9 +1,28 @@
 {
-  "schema": "realm.sprite_spec.v1",
+  "schema": "realm.actor_sprite_spec.v2",
   "asset_type": "animal",
+  "id": "boar",
   "enum": "E_BOAR",
   "slug": "boar",
   "name": "Boar",
+  "render": {
+    "layer": "actor",
+    "projection_mode": "upright_world",
+    "projection_factor": 0.0,
+    "depth_bucket": "actor",
+    "anchor": "tile_center",
+    "directions": [
+      "front",
+      "back"
+    ],
+    "runtime_mirrors_horizontal": true
+  },
+  "placement": {
+    "footprint": {
+      "w": 1,
+      "h": 1
+    }
+  },
   "runtime": {
     "glyph": "o",
     "stats": {
@@ -22,37 +41,46 @@
         "TR_HOSTILE_WILDLIFE"
       ]
     },
-    "footprint": {
+    "legacy_footprint": {
       "w": 1,
       "h": 1
-    },
-    "team_color_required": false
+    }
+  },
+  "entity": {
+    "kind": "actor",
+    "actor_type": "animal",
+    "rests_on_tile_center": true,
+    "can_interpolate_between_tiles": true
+  },
+  "team_color": {
+    "required": false,
+    "slots": [],
+    "recommended_player_colour": null,
+    "player_sigil": null
+  },
+  "combat": {
+    "projectiles": []
+  },
+  "visual_variants": {
+    "research_lines": [],
+    "resolved_variants": []
+  },
+  "operator": {
+    "visible_operator_required": false,
+    "count": 0,
+    "contract": ""
   },
   "art": {
-    "projection": "upright sprite anchored over projected isometric map tiles",
-    "directions": [
-      "front",
-      "back"
-    ],
-    "runtime_mirrors_horizontal": true,
-    "team_color_slots": [],
-    "recommended_player_colour": null,
-    "player_sigil": null,
-    "operated_by_person": false,
-    "operator_contract": "",
-    "ammunition": [],
-    "research_visual_lines": [],
-    "research_visual_variants": [],
+    "legacy_projection": "upright sprite anchored over projected isometric map tiles",
     "visual_design": "Dark brown boar, tusks, heavy body",
     "source_role": "charges nearby units, rampages after hit; food on kill"
   },
   "states": [
-    "idle",
-    "walk",
-    "charge",
-    "attack",
-    "dead",
-    "decayed skeleton"
+    "alive",
+    "dead_unharvested",
+    "partly_harvested",
+    "mostly_harvested",
+    "depleted_skeleton"
   ],
   "actions": [
     {

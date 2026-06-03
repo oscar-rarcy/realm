@@ -1,30 +1,39 @@
 {
-  "schema": "realm.terrain_sprite_spec.v1",
+  "schema": "realm.ground_spec.v2",
   "asset_type": "ground",
-  "enum": "T_SAND",
+  "id": "sand",
   "slug": "sand",
   "name": "Sand",
-  "ui_name": "Sandy Ground",
-  "runtime": {
-    "glyph": "."
+  "enum": "G_SAND",
+  "render": {
+    "layer": "ground",
+    "projection_mode": "surface_projected",
+    "projection_factor": 1.0,
+    "depth_bucket": "surface",
+    "anchor": "tile"
   },
-  "art": {
-    "projection": "top-down square source tile, projected into an isometric diamond in-app",
-    "layer_category": "grounds",
-    "terrain_type": "continuous ground",
-    "visual_design": "Soft tan desert/coast sand, wind grain",
-    "required_variants": "12 variants; dune transition masks; wet edge for shoreline",
-    "runtime_notes": "Slow movement; weather can slow further",
-    "team_color_required": false
+  "runtime": {
+    "legacy_terrain_enums": [
+      "T_SAND",
+      "T_PALM"
+    ]
+  },
+  "gameplay": {
+    "passability": {
+      "land": "passable",
+      "boat": "blocked"
+    },
+    "buildable": true,
+    "needs_design_review": false,
+    "movement_ticks_modifier": 1
   },
   "paths": {
-    "runtime_root": "assets/tiles/terrain/sand",
-    "base": "assets/tiles/terrain/sand.png"
+    "runtime_root": "assets/tiles/grounds/sand",
+    "base": "assets/tiles/grounds/sand.png"
   },
   "sources": [
-    "include/realm.h",
+    "src/core/game_types.h",
     "src/core/terrain_defs.cpp",
-    "src/render/sdl/display_glyphs.cpp",
-    "docs/tileset/realm_tileset_visual_audit.md"
+    "src/render/sdl/display_glyphs.cpp"
   ]
 }

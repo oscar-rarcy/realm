@@ -1,30 +1,40 @@
 {
-  "schema": "realm.terrain_sprite_spec.v1",
+  "schema": "realm.ground_spec.v2",
   "asset_type": "ground",
-  "enum": "T_CASTLE_FLOOR",
+  "id": "castle_floor",
   "slug": "castle_floor",
   "name": "Castle Floor",
-  "ui_name": "Castle Floor",
-  "runtime": {
-    "glyph": "."
+  "enum": "G_CASTLE_FLOOR",
+  "render": {
+    "layer": "ground",
+    "projection_mode": "surface_projected",
+    "projection_factor": 1.0,
+    "depth_bucket": "surface",
+    "anchor": "tile"
   },
-  "art": {
-    "projection": "top-down square source tile, projected into an isometric diamond in-app",
-    "layer_category": "grounds",
-    "terrain_type": "ancient map ruin",
-    "visual_design": "Brown/grey old paving inside castle ruins",
-    "required_variants": "12 variants; dirt/grass invasion overlays",
-    "runtime_notes": "Terrain from mapgen; faster movement like paved ground",
-    "team_color_required": false
+  "runtime": {
+    "legacy_terrain_enums": [
+      "T_CASTLE_FLOOR",
+      "T_CASTLE_WALL",
+      "T_CASTLE_GATE"
+    ]
+  },
+  "gameplay": {
+    "passability": {
+      "land": "passable",
+      "boat": "blocked"
+    },
+    "buildable": true,
+    "needs_design_review": false,
+    "movement_ticks_modifier": -1
   },
   "paths": {
-    "runtime_root": "assets/tiles/terrain/castle_floor",
-    "base": "assets/tiles/terrain/castle_floor.png"
+    "runtime_root": "assets/tiles/grounds/castle_floor",
+    "base": "assets/tiles/grounds/castle_floor.png"
   },
   "sources": [
-    "include/realm.h",
+    "src/core/game_types.h",
     "src/core/terrain_defs.cpp",
-    "src/render/sdl/display_glyphs.cpp",
-    "docs/tileset/realm_tileset_visual_audit.md"
+    "src/render/sdl/display_glyphs.cpp"
   ]
 }

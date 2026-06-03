@@ -2,6 +2,7 @@
 
 #include "core/game_types.h"
 
+#include <string>
 #include <vector>
 
 struct Game;
@@ -10,6 +11,9 @@ struct TileRenderInfo {
     int x = 0;
     int y = 0;
     Terrain terrain = T_GRASS;
+    VisualTileParts visualParts;
+    bool gateOpen = false;
+    bool gateLocked = false;
     bool visible = false;
     bool explored = false;
 };
@@ -51,6 +55,38 @@ struct ActionMarkerRenderInfo {
     char glyph = 0;
 };
 
+struct ProjectileRenderInfo {
+    ProjectileType type = PT_ARROW;
+    float x = 0.0f;
+    float y = 0.0f;
+    float tx = 0.0f;
+    float ty = 0.0f;
+    int tileX = 0;
+    int tileY = 0;
+    char glyph = 0;
+    int color = 0;
+    int life = 0;
+    bool alive = false;
+    bool visible = false;
+};
+
+struct EffectRenderInfo {
+    std::string assetId;
+    int x = 0;
+    int y = 0;
+    int ticks = 0;
+    bool worldSpace = true;
+};
+
+struct UiOverlayRenderInfo {
+    std::string assetId;
+    int x = 0;
+    int y = 0;
+    int ticks = 0;
+    char glyph = 0;
+    bool screenSpace = false;
+};
+
 struct RenderModel {
     int viewX = 0;
     int viewY = 0;
@@ -60,6 +96,9 @@ struct RenderModel {
     EntityType buildPreviewType = E_NONE;
     std::vector<TileRenderInfo> tiles;
     std::vector<EntityRenderInfo> entities;
+    std::vector<ProjectileRenderInfo> projectiles;
+    std::vector<EffectRenderInfo> effects;
+    std::vector<UiOverlayRenderInfo> uiOverlays;
     std::vector<ActionMarkerRenderInfo> actionMarkers;
 };
 

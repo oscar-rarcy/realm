@@ -1,30 +1,38 @@
 {
-  "schema": "realm.terrain_sprite_spec.v1",
+  "schema": "realm.ground_spec.v2",
   "asset_type": "ground",
-  "enum": "T_GRAVEL",
+  "id": "gravel",
   "slug": "gravel",
   "name": "Gravel",
-  "ui_name": "Gravel",
-  "runtime": {
-    "glyph": ":"
+  "enum": "G_GRAVEL",
+  "render": {
+    "layer": "ground",
+    "projection_mode": "surface_projected",
+    "projection_factor": 1.0,
+    "depth_bucket": "surface",
+    "anchor": "tile"
   },
-  "art": {
-    "projection": "top-down square source tile, projected into an isometric diamond in-app",
-    "layer_category": "grounds",
-    "terrain_type": "ground terrain",
-    "visual_design": "Grey pebble field, sparse stones",
-    "required_variants": "8 variants; winter snow overlay",
-    "runtime_notes": "Used in desert/volcanic and winter overlay targets",
-    "team_color_required": false
+  "runtime": {
+    "legacy_terrain_enums": [
+      "T_GRAVEL",
+      "T_RUINS"
+    ]
+  },
+  "gameplay": {
+    "passability": {
+      "land": "passable",
+      "boat": "blocked"
+    },
+    "buildable": true,
+    "needs_design_review": false
   },
   "paths": {
-    "runtime_root": "assets/tiles/terrain/gravel",
-    "base": "assets/tiles/terrain/gravel.png"
+    "runtime_root": "assets/tiles/grounds/gravel",
+    "base": "assets/tiles/grounds/gravel.png"
   },
   "sources": [
-    "include/realm.h",
+    "src/core/game_types.h",
     "src/core/terrain_defs.cpp",
-    "src/render/sdl/display_glyphs.cpp",
-    "docs/tileset/realm_tileset_visual_audit.md"
+    "src/render/sdl/display_glyphs.cpp"
   ]
 }

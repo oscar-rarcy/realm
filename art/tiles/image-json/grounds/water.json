@@ -1,30 +1,38 @@
 {
-  "schema": "realm.terrain_sprite_spec.v1",
+  "schema": "realm.ground_spec.v2",
   "asset_type": "ground",
-  "enum": "T_WATER",
+  "id": "water",
   "slug": "water",
   "name": "Water",
-  "ui_name": "Deep Water",
-  "runtime": {
-    "glyph": "~"
+  "enum": "G_WATER",
+  "render": {
+    "layer": "ground",
+    "projection_mode": "surface_projected",
+    "projection_factor": 1.0,
+    "depth_bucket": "surface",
+    "anchor": "tile"
   },
-  "art": {
-    "projection": "top-down square source tile, projected into an isometric diamond in-app",
-    "layer_category": "grounds",
-    "terrain_type": "animated liquid",
-    "visual_design": "Dark blue deep water with wave bands",
-    "required_variants": "6-loop animation; 12 shoreline masks; night/dawn tint",
-    "runtime_notes": "Blocks land; passable to boats; winter can freeze to ice",
-    "team_color_required": false
+  "runtime": {
+    "legacy_terrain_enums": [
+      "T_WATER",
+      "T_FISH"
+    ]
+  },
+  "gameplay": {
+    "passability": {
+      "land": "blocked",
+      "boat": "passable"
+    },
+    "buildable": false,
+    "needs_design_review": false
   },
   "paths": {
-    "runtime_root": "assets/tiles/terrain/water",
-    "base": "assets/tiles/terrain/water.png"
+    "runtime_root": "assets/tiles/grounds/water",
+    "base": "assets/tiles/grounds/water.png"
   },
   "sources": [
-    "include/realm.h",
+    "src/core/game_types.h",
     "src/core/terrain_defs.cpp",
-    "src/render/sdl/display_glyphs.cpp",
-    "docs/tileset/realm_tileset_visual_audit.md"
+    "src/render/sdl/display_glyphs.cpp"
   ]
 }

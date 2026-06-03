@@ -22,12 +22,12 @@ Generate one Realm sprite reference sheet per direction for **Archer**.
 - Use blue (#00AFFF) for the player-colour areas listed above.
 - Add a white diagonal stripe running from top left to bottom right on the shoulder sash.
 
-## Ammunition References
+## Projectile References
 
-- Unit/building sheets may show ammunition only while it is still loaded, nocked, held, or otherwise not yet released.
-- Released, airborne, or impact ammunition must be generated from the ammunition files below, not baked into the unit/building frame.
-- `arrow`: `art/tiles/image-spec/ammunition/arrow.md`
-- `crossbow_bolt`: `art/tiles/image-spec/ammunition/crossbow_bolt.md`
+- Unit/building sheets may show a projectile only while it is still loaded, nocked, held, or otherwise not yet released.
+- Released, airborne, or impact projectiles must be generated from the projectile files below, not baked into the unit/building frame.
+- `arrow`: `art/tiles/image-spec/projectiles/arrow.md`
+- `crossbow_bolt`: `art/tiles/image-spec/projectiles/crossbow_bolt.md`
 
 ## Research Visual Tiers
 
@@ -92,7 +92,7 @@ Use a **4 by 4** grid for this sheet.
 
 ## Prompt
 
-Generate sprites for my Realm Archer. The footprint is 1 by 1 tile(s). Team colour is required and the recommended preview player colour is blue (#00AFFF). Valid directions are front, back. Produce one sheet at a time for the requested direction, using the same state grid for each direction. Create one frame for each of the 14 listed states. Order states left to right and top to bottom within each sheet. Keep the character or building consistent across every slot. Use transparent background, or a single flat #ff00ff magenta background if transparency is not available. Use clean readable small-RTS proportions, stable anchor, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork. Use ammunition reference files for released projectiles.
+Generate sprites for my Realm Archer. The footprint is 1 by 1 tile(s). Team colour is required and the recommended preview player colour is blue (#00AFFF). Valid directions are front, back. Produce one sheet at a time for the requested direction, using the same state grid for each direction. Create one frame for each of the 14 listed states. Order states left to right and top to bottom within each sheet. Keep the character or building consistent across every slot. Use transparent background, or a single flat #ff00ff magenta background if transparency is not available. Use clean readable small-RTS proportions, stable anchor, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork. Use projectile reference files for released projectiles.
 
 Slot order:
 - Grid: 4 by 4

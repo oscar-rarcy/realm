@@ -95,6 +95,7 @@ enum FeatureTrait : uint32_t {
 };
 
 enum VisualDecalType {
+    VD_ROAD,
     VD_FLOWERS,
     VD_TALL_GRASS,
     VD_SCUFFS,
@@ -107,6 +108,16 @@ enum VisualDecalType {
     VD_FARM_TRACKS,
     VD_MUDDY_FOOTPRINTS,
     VD_SNOW_TRAMPLED_PATH
+};
+
+enum ProjectileType {
+    PT_ARROW,
+    PT_CROSSBOW_BOLT,
+    PT_FLAMING_ARROW,
+    PT_TOWER_BOLT,
+    PT_WARSHIP_ARROW_VOLLEY,
+    PT_CATAPULT_BOULDER,
+    PT_TREBUCHET_BOULDER
 };
 
 enum BuildingVisualState {

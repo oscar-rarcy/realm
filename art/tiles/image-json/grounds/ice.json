@@ -1,30 +1,38 @@
 {
-  "schema": "realm.terrain_sprite_spec.v1",
+  "schema": "realm.ground_spec.v2",
   "asset_type": "ground",
-  "enum": "T_ICE",
+  "id": "ice",
   "slug": "ice",
   "name": "Ice",
-  "ui_name": "Frozen Ice",
-  "runtime": {
-    "glyph": "="
+  "enum": "G_ICE",
+  "render": {
+    "layer": "ground",
+    "projection_mode": "surface_projected",
+    "projection_factor": 1.0,
+    "depth_bucket": "surface",
+    "anchor": "tile"
   },
-  "art": {
-    "projection": "top-down square source tile, projected into an isometric diamond in-app",
-    "layer_category": "grounds",
-    "terrain_type": "continuous ground/liquid replacement",
-    "visual_design": "Blue-white ice, cracks, slick reflections",
-    "required_variants": "8 crack variants; thin/solid ice variants; shore masks",
-    "runtime_notes": "Winter replacement for water/shallows/marsh/reeds; passable to land, blocks boats",
-    "team_color_required": false
+  "runtime": {
+    "legacy_terrain_enums": [
+      "T_ICE"
+    ]
+  },
+  "gameplay": {
+    "passability": {
+      "land": "passable",
+      "boat": "blocked"
+    },
+    "buildable": false,
+    "needs_design_review": false,
+    "movement_ticks_modifier": 1
   },
   "paths": {
-    "runtime_root": "assets/tiles/terrain/ice",
-    "base": "assets/tiles/terrain/ice.png"
+    "runtime_root": "assets/tiles/grounds/ice",
+    "base": "assets/tiles/grounds/ice.png"
   },
   "sources": [
-    "include/realm.h",
+    "src/core/game_types.h",
     "src/core/terrain_defs.cpp",
-    "src/render/sdl/display_glyphs.cpp",
-    "docs/tileset/realm_tileset_visual_audit.md"
+    "src/render/sdl/display_glyphs.cpp"
   ]
 }

@@ -131,9 +131,11 @@ void tickPaving(Game& game) {
                 if (ter==T_GRASS||ter==T_TALL_GRASS||ter==T_FLOWERS||ter==T_MEADOW
                  || ter==T_SAND ||ter==T_DUNES) {
                     int gain = (ringDist <= 1) ? 5 : (ringDist == 2) ? 3 : 1;
-                    if (t.wear < 80) t.wear += gain;
+                    if (t.wear < 100) t.wear = std::min(100, t.wear + gain);
                     // Lower threshold so visible haloes appear within ~50 seconds.
-                    if (t.wear >= 30 && (ter==T_GRASS||ter==T_TALL_GRASS||ter==T_FLOWERS||ter==T_MEADOW)) {
+                    if (t.wear >= 80) {
+                        promoteTileToLegacyRoad(t);
+                    } else if (t.wear >= 30 && (ter==T_GRASS||ter==T_TALL_GRASS||ter==T_FLOWERS||ter==T_MEADOW)) {
                         t.terrain = T_DIRT; t.preWinterTerrain = T_DIRT;
                     }
                 }
@@ -145,8 +147,8 @@ void tickPaving(Game& game) {
         for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
             Tile& t = game.map[y][x];
             if (t.wear > 0) t.wear--;
-            if (t.wear == 0 && t.terrain == T_ROAD) {
-                t.terrain = T_DIRT; t.preWinterTerrain = T_DIRT;
+            if (t.wear == 0 && tileHasRoadVisual(t)) {
+                demoteLegacyRoadToDirt(t);
             }
             // Dirt slowly regrows — patches of grass return after long disuse
             if (t.wear == 0 && t.terrain == T_DIRT && (realmRand(game) % 500) == 0) {

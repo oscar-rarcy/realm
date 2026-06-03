@@ -1,9 +1,28 @@
 {
-  "schema": "realm.sprite_spec.v1",
+  "schema": "realm.actor_sprite_spec.v2",
   "asset_type": "unit",
+  "id": "ram",
   "enum": "E_RAM",
   "slug": "ram",
   "name": "Ram",
+  "render": {
+    "layer": "actor",
+    "projection_mode": "upright_world",
+    "projection_factor": 0.0,
+    "depth_bucket": "actor",
+    "anchor": "tile_center",
+    "directions": [
+      "front",
+      "back"
+    ],
+    "runtime_mirrors_horizontal": true
+  },
+  "placement": {
+    "footprint": {
+      "w": 1,
+      "h": 1
+    }
+  },
   "runtime": {
     "glyph": "-",
     "stats": {
@@ -22,20 +41,20 @@
         "TR_SIEGE"
       ]
     },
-    "footprint": {
+    "legacy_footprint": {
       "w": 1,
       "h": 1
-    },
-    "team_color_required": true
+    }
   },
-  "art": {
-    "projection": "upright sprite anchored over projected isometric map tiles",
-    "directions": [
-      "front",
-      "back"
-    ],
-    "runtime_mirrors_horizontal": true,
-    "team_color_slots": [
+  "entity": {
+    "kind": "actor",
+    "actor_type": "unit",
+    "rests_on_tile_center": true,
+    "can_interpolate_between_tiles": true
+  },
+  "team_color": {
+    "required": true,
+    "slots": [
       "side shield plaques",
       "pennant",
       "cloth trim"
@@ -47,12 +66,22 @@
     "player_sigil": {
       "id": "player-sigil",
       "description": "white diagonal stripe running from top left to bottom right"
-    },
-    "operated_by_person": true,
-    "operator_contract": "Show exactly one visible human operator actively handling, pushing, loading, firing, bracing, or inspecting this movable machine.",
-    "ammunition": [],
-    "research_visual_lines": [],
-    "research_visual_variants": [],
+    }
+  },
+  "combat": {
+    "projectiles": []
+  },
+  "visual_variants": {
+    "research_lines": [],
+    "resolved_variants": []
+  },
+  "operator": {
+    "visible_operator_required": true,
+    "count": 1,
+    "contract": "Show exactly one visible human operator actively handling, pushing, loading, firing, bracing, or inspecting this movable machine."
+  },
+  "art": {
+    "legacy_projection": "upright sprite anchored over projected isometric map tiles",
     "visual_design": "Covered battering ram with log snout, wheels, dark hide/wood cover",
     "source_role": "building-only siege"
   },

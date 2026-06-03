@@ -1,0 +1,10 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Realm feature spec v2",
+  "type": "object",
+  "required": ["schema", "asset_type", "slug", "name", "render", "paths", "sources"],
+  "properties": {
+    "schema": { "const": "realm.feature_spec.v2" },
+    "asset_type": { "const": "feature" }
+  }
+}

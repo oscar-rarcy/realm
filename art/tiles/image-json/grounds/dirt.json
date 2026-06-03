@@ -1,30 +1,38 @@
 {
-  "schema": "realm.terrain_sprite_spec.v1",
+  "schema": "realm.ground_spec.v2",
   "asset_type": "ground",
-  "enum": "T_DIRT",
+  "id": "dirt",
   "slug": "dirt",
   "name": "Dirt",
-  "ui_name": "Bare Earth",
-  "runtime": {
-    "glyph": "."
+  "enum": "G_DIRT",
+  "render": {
+    "layer": "ground",
+    "projection_mode": "surface_projected",
+    "projection_factor": 1.0,
+    "depth_bucket": "surface",
+    "anchor": "tile"
   },
-  "art": {
-    "projection": "top-down square source tile, projected into an isometric diamond in-app",
-    "layer_category": "grounds",
-    "terrain_type": "continuous ground",
-    "visual_design": "Worn brown dirt, trampled grass edges",
-    "required_variants": "12 variants; path-edge masks; wet version",
-    "runtime_notes": "Created by traffic, buildings, resource depletion; can regrow grass",
-    "team_color_required": false
+  "runtime": {
+    "legacy_terrain_enums": [
+      "T_DIRT"
+    ]
+  },
+  "gameplay": {
+    "passability": {
+      "land": "passable",
+      "boat": "blocked"
+    },
+    "buildable": true,
+    "needs_design_review": false,
+    "movement_ticks_modifier": -1
   },
   "paths": {
-    "runtime_root": "assets/tiles/terrain/dirt",
-    "base": "assets/tiles/terrain/dirt.png"
+    "runtime_root": "assets/tiles/grounds/dirt",
+    "base": "assets/tiles/grounds/dirt.png"
   },
   "sources": [
-    "include/realm.h",
+    "src/core/game_types.h",
     "src/core/terrain_defs.cpp",
-    "src/render/sdl/display_glyphs.cpp",
-    "docs/tileset/realm_tileset_visual_audit.md"
+    "src/render/sdl/display_glyphs.cpp"
   ]
 }

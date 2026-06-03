@@ -1,106 +1,120 @@
 {
-  "schema": "realm.tile_specs_index.v1",
+  "schema": "realm.tile_specs_index.v2",
   "generated_by": "scripts/export_tile_specs.py",
+  "schema_version": 2,
+  "compatibility": {
+    "reads_v1": true,
+    "writes_v2": true,
+    "legacy_groups": {
+      "ammunition": "projectiles"
+    }
+  },
   "groups": {
     "grounds": [
       {
-        "enum": "T_GRASS",
+        "enum": "G_GRASS",
         "name": "Grass",
         "slug": "grass",
         "path": "grounds/grass.json"
       },
       {
-        "enum": "T_MEADOW",
+        "enum": "G_MEADOW",
         "name": "Meadow",
         "slug": "meadow",
         "path": "grounds/meadow.json"
       },
       {
-        "enum": "T_HILLS",
-        "name": "Hills",
-        "slug": "hills",
-        "path": "grounds/hills.json"
-      },
-      {
-        "enum": "T_WATER",
-        "name": "Water",
-        "slug": "water",
-        "path": "grounds/water.json"
-      },
-      {
-        "enum": "T_SHALLOWS",
-        "name": "Shallows",
-        "slug": "shallows",
-        "path": "grounds/shallows.json"
-      },
-      {
-        "enum": "T_MARSH",
-        "name": "Marsh",
-        "slug": "marsh",
-        "path": "grounds/marsh.json"
-      },
-      {
-        "enum": "T_SAND",
-        "name": "Sand",
-        "slug": "sand",
-        "path": "grounds/sand.json"
-      },
-      {
-        "enum": "T_DUNES",
-        "name": "Dunes",
-        "slug": "dunes",
-        "path": "grounds/dunes.json"
-      },
-      {
-        "enum": "T_SNOW",
-        "name": "Snow",
-        "slug": "snow",
-        "path": "grounds/snow.json"
-      },
-      {
-        "enum": "T_ICE",
-        "name": "Ice",
-        "slug": "ice",
-        "path": "grounds/ice.json"
-      },
-      {
-        "enum": "T_DIRT",
+        "enum": "G_DIRT",
         "name": "Dirt",
         "slug": "dirt",
         "path": "grounds/dirt.json"
       },
       {
-        "enum": "T_ROAD",
-        "name": "Road",
-        "slug": "road",
-        "path": "grounds/road.json"
-      },
-      {
-        "enum": "T_MUD",
+        "enum": "G_MUD",
         "name": "Mud",
         "slug": "mud",
         "path": "grounds/mud.json"
       },
       {
-        "enum": "T_GRAVEL",
+        "enum": "G_SAND",
+        "name": "Sand",
+        "slug": "sand",
+        "path": "grounds/sand.json"
+      },
+      {
+        "enum": "G_DUNES",
+        "name": "Dunes",
+        "slug": "dunes",
+        "path": "grounds/dunes.json"
+      },
+      {
+        "enum": "G_SNOW",
+        "name": "Snow",
+        "slug": "snow",
+        "path": "grounds/snow.json"
+      },
+      {
+        "enum": "G_TUNDRA",
+        "name": "Tundra",
+        "slug": "tundra",
+        "path": "grounds/tundra.json"
+      },
+      {
+        "enum": "G_ICE",
+        "name": "Ice",
+        "slug": "ice",
+        "path": "grounds/ice.json"
+      },
+      {
+        "enum": "G_WATER",
+        "name": "Water",
+        "slug": "water",
+        "path": "grounds/water.json"
+      },
+      {
+        "enum": "G_SHALLOWS",
+        "name": "Shallows",
+        "slug": "shallows",
+        "path": "grounds/shallows.json"
+      },
+      {
+        "enum": "G_MARSH",
+        "name": "Marsh",
+        "slug": "marsh",
+        "path": "grounds/marsh.json"
+      },
+      {
+        "enum": "G_GRAVEL",
         "name": "Gravel",
         "slug": "gravel",
         "path": "grounds/gravel.json"
       },
       {
-        "enum": "T_LAVA",
-        "name": "Lava",
-        "slug": "lava",
-        "path": "grounds/lava.json"
-      },
-      {
-        "enum": "T_ASH",
+        "enum": "G_ASH",
         "name": "Ash",
         "slug": "ash",
         "path": "grounds/ash.json"
       },
       {
-        "enum": "T_CASTLE_FLOOR",
+        "enum": "G_LAVA",
+        "name": "Lava",
+        "slug": "lava",
+        "path": "grounds/lava.json"
+      },
+      {
+        "enum": "G_HILLS",
+        "name": "Hills",
+        "slug": "hills",
+        "path": "grounds/hills.json"
+      },
+      {
+        "enum": "G_ROCKY",
+        "name": "Rocky",
+        "slug": "rocky",
+        "path": "grounds/rocky.json"
+      },
+      {
+        "enum": "G_CASTLE_FLOOR",
         "name": "Castle Floor",
         "slug": "castle_floor",
         "path": "grounds/castle_floor.json"
@@ -108,85 +122,85 @@
     ],
     "features": [
       {
-        "enum": "T_FOREST",
+        "enum": "F_FOREST",
         "name": "Forest",
         "slug": "forest",
         "path": "features/forest.json"
       },
       {
-        "enum": "T_PINE",
+        "enum": "F_PINE",
         "name": "Pine",
         "slug": "pine",
         "path": "features/pine.json"
       },
       {
-        "enum": "T_PALM",
+        "enum": "F_PALM",
         "name": "Palm",
         "slug": "palm",
         "path": "features/palm.json"
       },
       {
-        "enum": "T_DEAD_TREE",
+        "enum": "F_DEAD_TREE",
         "name": "Dead Tree",
         "slug": "dead_tree",
         "path": "features/dead_tree.json"
       },
       {
-        "enum": "T_MOUNTAIN",
-        "name": "Mountain",
-        "slug": "mountain",
-        "path": "features/mountain.json"
+        "enum": "F_BERRY_BUSH",
+        "name": "Berry Bush",
+        "slug": "berry_bush",
+        "path": "features/berry_bush.json"
       },
       {
-        "enum": "T_STONE",
-        "name": "Stone",
-        "slug": "stone",
-        "path": "features/stone.json"
+        "enum": "F_WHEAT_CROP",
+        "name": "Wheat Crop",
+        "slug": "wheat_crop",
+        "path": "features/wheat_crop.json"
       },
       {
-        "enum": "T_REEDS",
+        "enum": "F_FISH_SHOAL",
+        "name": "Fish Shoal",
+        "slug": "fish_shoal",
+        "path": "features/fish_shoal.json"
+      },
+      {
+        "enum": "F_GOLD_DEPOSIT",
+        "name": "Gold Deposit",
+        "slug": "gold_deposit",
+        "path": "features/gold_deposit.json"
+      },
+      {
+        "enum": "F_STONE_BOULDERS",
+        "name": "Stone Boulders",
+        "slug": "stone_boulders",
+        "path": "features/stone_boulders.json"
+      },
+      {
+        "enum": "F_MOUNTAIN_PEAK",
+        "name": "Mountain Peak",
+        "slug": "mountain_peak",
+        "path": "features/mountain_peak.json"
+      },
+      {
+        "enum": "F_REEDS",
         "name": "Reeds",
         "slug": "reeds",
         "path": "features/reeds.json"
       },
       {
-        "enum": "T_GOLD",
-        "name": "Gold",
-        "slug": "gold",
-        "path": "features/gold.json"
-      },
-      {
-        "enum": "T_WHEAT",
-        "name": "Wheat",
-        "slug": "wheat",
-        "path": "features/wheat.json"
-      },
-      {
-        "enum": "T_BERRY",
-        "name": "Berry",
-        "slug": "berry",
-        "path": "features/berry.json"
-      },
-      {
-        "enum": "T_FISH",
-        "name": "Fish",
-        "slug": "fish",
-        "path": "features/fish.json"
-      },
-      {
-        "enum": "T_RUINS",
+        "enum": "F_RUINS",
         "name": "Ruins",
         "slug": "ruins",
         "path": "features/ruins.json"
       },
       {
-        "enum": "T_CASTLE_WALL",
+        "enum": "F_CASTLE_WALL",
         "name": "Castle Wall",
         "slug": "castle_wall",
         "path": "features/castle_wall.json"
       },
       {
-        "enum": "T_CASTLE_GATE",
+        "enum": "F_CASTLE_GATE",
         "name": "Castle Gate",
         "slug": "castle_gate",
         "path": "features/castle_gate.json"
@@ -194,16 +208,82 @@
     ],
     "decals": [
       {
-        "enum": "T_TALL_GRASS",
+        "enum": "VD_ROAD",
+        "name": "Road",
+        "slug": "road",
+        "path": "decals/road.json"
+      },
+      {
+        "enum": "VD_FLOWERS",
+        "name": "Flowers",
+        "slug": "flowers",
+        "path": "decals/flowers.json"
+      },
+      {
+        "enum": "VD_TALL_GRASS",
         "name": "Tall Grass",
         "slug": "tall_grass",
         "path": "decals/tall_grass.json"
       },
       {
-        "enum": "T_FLOWERS",
-        "name": "Flowers",
-        "slug": "flowers",
-        "path": "decals/flowers.json"
+        "enum": "VD_SCUFFS",
+        "name": "Scuffs",
+        "slug": "scuffs",
+        "path": "decals/scuffs.json"
+      },
+      {
+        "enum": "VD_PACKED_PATH",
+        "name": "Packed Path",
+        "slug": "packed_path",
+        "path": "decals/packed_path.json"
+      },
+      {
+        "enum": "VD_COBBLE_PATCH",
+        "name": "Cobble Patch",
+        "slug": "cobble_patch",
+        "path": "decals/cobble_patch.json"
+      },
+      {
+        "enum": "VD_WHEEL_RUTS",
+        "name": "Wheel Ruts",
+        "slug": "wheel_ruts",
+        "path": "decals/wheel_ruts.json"
+      },
+      {
+        "enum": "VD_YARD_CLUTTER",
+        "name": "Yard Clutter",
+        "slug": "yard_clutter",
+        "path": "decals/yard_clutter.json"
+      },
+      {
+        "enum": "VD_CRATES_BARRELS",
+        "name": "Crates Barrels",
+        "slug": "crates_barrels",
+        "path": "decals/crates_barrels.json"
+      },
+      {
+        "enum": "VD_LOG_PILES",
+        "name": "Log Piles",
+        "slug": "log_piles",
+        "path": "decals/log_piles.json"
+      },
+      {
+        "enum": "VD_FARM_TRACKS",
+        "name": "Farm Tracks",
+        "slug": "farm_tracks",
+        "path": "decals/farm_tracks.json"
+      },
+      {
+        "enum": "VD_MUDDY_FOOTPRINTS",
+        "name": "Muddy Footprints",
+        "slug": "muddy_footprints",
+        "path": "decals/muddy_footprints.json"
+      },
+      {
+        "enum": "VD_SNOW_TRAMPLED_PATH",
+        "name": "Snow Trampled Path",
+        "slug": "snow_trampled_path",
+        "path": "decals/snow_trampled_path.json"
       }
     ],
     "units": [
@@ -398,41 +478,185 @@
         "path": "buildings/dock.json"
       }
     ],
-    "ammunition": [
+    "projectiles": [
       {
         "name": "Arrow",
         "slug": "arrow",
-        "path": "ammunition/arrow.json"
+        "path": "projectiles/arrow.json"
       },
       {
         "name": "Crossbow Bolt",
         "slug": "crossbow_bolt",
-        "path": "ammunition/crossbow_bolt.json"
+        "path": "projectiles/crossbow_bolt.json"
       },
       {
         "name": "Flaming Arrow",
         "slug": "flaming_arrow",
-        "path": "ammunition/flaming_arrow.json"
+        "path": "projectiles/flaming_arrow.json"
       },
       {
         "name": "Tower Bolt",
         "slug": "tower_bolt",
-        "path": "ammunition/tower_bolt.json"
+        "path": "projectiles/tower_bolt.json"
       },
       {
         "name": "Warship Arrow Volley",
         "slug": "warship_arrow_volley",
-        "path": "ammunition/warship_arrow_volley.json"
+        "path": "projectiles/warship_arrow_volley.json"
       },
       {
         "name": "Catapult Boulder",
         "slug": "catapult_boulder",
-        "path": "ammunition/catapult_boulder.json"
+        "path": "projectiles/catapult_boulder.json"
       },
       {
         "name": "Trebuchet Boulder",
         "slug": "trebuchet_boulder",
-        "path": "ammunition/trebuchet_boulder.json"
+        "path": "projectiles/trebuchet_boulder.json"
+      }
+    ],
+    "effects": [
+      {
+        "name": "Melee Hit Spark",
+        "slug": "melee_hit_spark",
+        "path": "effects/melee_hit_spark.json"
+      },
+      {
+        "name": "Arrow Hit",
+        "slug": "arrow_hit",
+        "path": "effects/arrow_hit.json"
+      },
+      {
+        "name": "Boulder Impact",
+        "slug": "boulder_impact",
+        "path": "effects/boulder_impact.json"
+      },
+      {
+        "name": "Boulder Water Splash",
+        "slug": "boulder_water_splash",
+        "path": "effects/boulder_water_splash.json"
+      },
+      {
+        "name": "Building Hit Dust",
+        "slug": "building_hit_dust",
+        "path": "effects/building_hit_dust.json"
+      },
+      {
+        "name": "Rain Frame 1",
+        "slug": "rain_frame_1",
+        "path": "effects/rain_frame_1.json"
+      },
+      {
+        "name": "Rain Frame 2",
+        "slug": "rain_frame_2",
+        "path": "effects/rain_frame_2.json"
+      },
+      {
+        "name": "Storm Rain Frame 1",
+        "slug": "storm_rain_frame_1",
+        "path": "effects/storm_rain_frame_1.json"
+      },
+      {
+        "name": "Storm Rain Frame 2",
+        "slug": "storm_rain_frame_2",
+        "path": "effects/storm_rain_frame_2.json"
+      },
+      {
+        "name": "Snowfall Frame 1",
+        "slug": "snowfall_frame_1",
+        "path": "effects/snowfall_frame_1.json"
+      },
+      {
+        "name": "Snowfall Frame 2",
+        "slug": "snowfall_frame_2",
+        "path": "effects/snowfall_frame_2.json"
+      }
+    ],
+    "user_interface": [
+      {
+        "name": "Move Marker",
+        "slug": "move_marker",
+        "path": "user_interface/move_marker.json"
+      },
+      {
+        "name": "Attack Marker",
+        "slug": "attack_marker",
+        "path": "user_interface/attack_marker.json"
+      },
+      {
+        "name": "Gather Marker",
+        "slug": "gather_marker",
+        "path": "user_interface/gather_marker.json"
+      },
+      {
+        "name": "Build Marker",
+        "slug": "build_marker",
+        "path": "user_interface/build_marker.json"
+      },
+      {
+        "name": "Rally Marker",
+        "slug": "rally_marker",
+        "path": "user_interface/rally_marker.json"
+      },
+      {
+        "name": "Attack Move Marker",
+        "slug": "attack_move_marker",
+        "path": "user_interface/attack_move_marker.json"
+      },
+      {
+        "name": "Hold Position Marker",
+        "slug": "hold_position_marker",
+        "path": "user_interface/hold_position_marker.json"
+      },
+      {
+        "name": "Selection Ring",
+        "slug": "selection_ring",
+        "path": "user_interface/selection_ring.json"
+      },
+      {
+        "name": "Group Selection Ring",
+        "slug": "group_selection_ring",
+        "path": "user_interface/group_selection_ring.json"
+      },
+      {
+        "name": "Range Ring Dot",
+        "slug": "range_ring_dot",
+        "path": "user_interface/range_ring_dot.json"
+      },
+      {
+        "name": "Build Preview Valid",
+        "slug": "build_preview_valid",
+        "path": "user_interface/build_preview_valid.json"
+      },
+      {
+        "name": "Build Preview Invalid",
+        "slug": "build_preview_invalid",
+        "path": "user_interface/build_preview_invalid.json"
+      },
+      {
+        "name": "Wall Preview",
+        "slug": "wall_preview",
+        "path": "user_interface/wall_preview.json"
+      },
+      {
+        "name": "Garrison Indicator",
+        "slug": "garrison_indicator",
+        "path": "user_interface/garrison_indicator.json"
+      },
+      {
+        "name": "Queued Unit Marker",
+        "slug": "queued_unit_marker",
+        "path": "user_interface/queued_unit_marker.json"
+      },
+      {
+        "name": "Research Active Marker",
+        "slug": "research_active_marker",
+        "path": "user_interface/research_active_marker.json"
+      },
+      {
+        "name": "Completed Research Icon Treatment",
+        "slug": "completed_research_icon_treatment",
+        "path": "user_interface/completed_research_icon_treatment.json"
       }
     ]
   }

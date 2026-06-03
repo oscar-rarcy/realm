@@ -300,9 +300,9 @@ void renderMap(const WorldIndex& world) {
                 emojiStr = decayed ? "\xe2\x98\xa0" : "\xe2\x80\xa0"; // ☠ : †
             }
             // Projectile overwrites terrain/entity glyph; keep ASCII char for colour lookup.
-            for (auto& p : g.projectiles) {
+            for (const auto& p : model.projectiles) {
                 if (!p.alive) continue;
-                if ((int)roundf(p.x)==mx && (int)roundf(p.y)==my) {
+                if (p.tileX == mx && p.tileY == my) {
                     ch = p.glyph; cp = p.color; drawCh = (chtype)ch;
                     // Projectile emoji: boulder → ● (solid circle), arrow/bolt → · (dot)
                     emojiStr = (p.color == CP_PROJ_BOULDER)
@@ -416,5 +416,4 @@ void renderMap(const WorldIndex& world) {
 
 // ============================================================
 // UI RENDER
-
 

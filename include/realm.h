@@ -87,8 +87,14 @@ const char* groundTypeName(GroundType g);
 const char* featureTypeName(FeatureType f);
 const char* featureStateName(FeatureState s);
 const char* visualDecalName(VisualDecalType d);
+const char* projectileTypeName(ProjectileType type);
+ProjectileType projectileTypeFromLegacyGlyphColor(char glyph,int color);
 VisualTileParts visualPartsForTile(const Tile& tile);
 VisualTileParts visualPartsForTerrain(Terrain terrain,Biome biome,int resources,int wear,bool gateOpen=false,bool gateLocked=false);
+bool    tileHasRoadVisual(const Tile& tile);
+void    promoteTileToLegacyRoad(Tile& tile);
+void    demoteLegacyRoadToDirt(Tile& tile);
+void    normalizeLegacyRoadTile(Tile& tile);
 uint32_t featureTraits(FeatureType feature);
 bool    featureConceals(FeatureType feature);
 bool    isConcealingTile(int x,int y);
@@ -118,7 +124,7 @@ int     reservedSupply(const Game& game,int owner);
 int     spawnEntity(Game& game,EntityType type,int owner,int x,int y,bool built=true);
 
 // projectiles / pathfinding
-void spawnProjectile(Game& game,int sx,int sy,int tx,int ty,char gl,int col);
+void spawnProjectile(Game& game,int sx,int sy,int tx,int ty,char gl,int col,ProjectileType type=PT_ARROW);
 void tickProjectiles(Game& game);
 std::vector<std::pair<int,int>> findPath(const Game& game,int sx,int sy,int tx,int ty,int maxSteps=300,bool naval=false);
 std::vector<std::pair<int,int>> findPath(const Game& game,const WorldIndex& world,int sx,int sy,int tx,int ty,int maxSteps,bool naval);

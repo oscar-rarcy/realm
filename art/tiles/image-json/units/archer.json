@@ -1,9 +1,28 @@
 {
-  "schema": "realm.sprite_spec.v1",
+  "schema": "realm.actor_sprite_spec.v2",
   "asset_type": "unit",
+  "id": "archer",
   "enum": "E_ARCHER",
   "slug": "archer",
   "name": "Archer",
+  "render": {
+    "layer": "actor",
+    "projection_mode": "upright_world",
+    "projection_factor": 0.0,
+    "depth_bucket": "actor",
+    "anchor": "tile_center",
+    "directions": [
+      "front",
+      "back"
+    ],
+    "runtime_mirrors_horizontal": true
+  },
+  "placement": {
+    "footprint": {
+      "w": 1,
+      "h": 1
+    }
+  },
   "runtime": {
     "glyph": "a",
     "stats": {
@@ -23,20 +42,20 @@
         "TR_RANGED"
       ]
     },
-    "footprint": {
+    "legacy_footprint": {
       "w": 1,
       "h": 1
-    },
-    "team_color_required": true
+    }
   },
-  "art": {
-    "projection": "upright sprite anchored over projected isometric map tiles",
-    "directions": [
-      "front",
-      "back"
-    ],
-    "runtime_mirrors_horizontal": true,
-    "team_color_slots": [
+  "entity": {
+    "kind": "actor",
+    "actor_type": "unit",
+    "rests_on_tile_center": true,
+    "can_interpolate_between_tiles": true
+  },
+  "team_color": {
+    "required": true,
+    "slots": [
       "hood trim",
       "quiver wrap",
       "shoulder sash"
@@ -48,14 +67,16 @@
     "player_sigil": {
       "id": "player-sigil",
       "description": "white diagonal stripe running from top left to bottom right"
-    },
-    "operated_by_person": false,
-    "operator_contract": "",
-    "ammunition": [
+    }
+  },
+  "combat": {
+    "projectiles": [
       "arrow",
       "crossbow_bolt"
-    ],
-    "research_visual_lines": [
+    ]
+  },
+  "visual_variants": {
+    "research_lines": [
       {
         "id": "archer_weapon",
         "name": "archer weapon",
@@ -75,7 +96,7 @@
         ]
       }
     ],
-    "research_visual_variants": [
+    "resolved_variants": [
       {
         "id": "self_bow",
         "name": "Self Bow",
@@ -92,7 +113,15 @@
         ],
         "is_default": false
       }
-    ],
+    ]
+  },
+  "operator": {
+    "visible_operator_required": false,
+    "count": 0,
+    "contract": ""
+  },
+  "art": {
+    "legacy_projection": "upright sprite anchored over projected isometric map tiles",
     "visual_design": "Bow/crossbow-ready archer with hood and quiver",
     "source_role": "ranged infantry; Crossbows research changes range"
   },

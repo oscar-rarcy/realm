@@ -66,6 +66,24 @@ int dumpMissingTilesetAssets() {
             report("decal", name, fs::path("assets") / "tiles" / "decals" / (name + ".png"));
         }
     }
+    for (int ground = (int)G_GRASS; ground <= (int)G_CASTLE_FLOOR; ++ground) {
+        if (sawGround[ground]) continue;
+        sawGround[ground] = true;
+        std::string name = groundTypeName((GroundType)ground);
+        report("ground", name, fs::path("assets") / "tiles" / "grounds" / (name + ".png"));
+    }
+    for (int feature = (int)F_FOREST; feature <= (int)F_CASTLE_GATE; ++feature) {
+        if (sawFeature[feature]) continue;
+        sawFeature[feature] = true;
+        std::string name = featureTypeName((FeatureType)feature);
+        report("feature", name, fs::path("assets") / "tiles" / "features" / name / "manifest.json");
+    }
+    for (int decal = (int)VD_ROAD; decal <= (int)VD_SNOW_TRAMPLED_PATH; ++decal) {
+        if (sawDecal[decal]) continue;
+        sawDecal[decal] = true;
+        std::string name = visualDecalName((VisualDecalType)decal);
+        report("decal", name, fs::path("assets") / "tiles" / "decals" / (name + ".png"));
+    }
 
     const char* effects[] = {
         "arrow_projectile", "tower_bolt_projectile", "warship_shot_projectile",

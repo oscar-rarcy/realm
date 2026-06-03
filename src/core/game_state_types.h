@@ -7,6 +7,7 @@
 #include <vector>
 
 struct Projectile {
+    ProjectileType type = PT_ARROW;
     float x, y, tx, ty;
     char glyph;
     int color, life;

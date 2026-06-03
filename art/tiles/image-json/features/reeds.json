@@ -1,30 +1,40 @@
 {
-  "schema": "realm.terrain_sprite_spec.v1",
+  "schema": "realm.feature_spec.v2",
   "asset_type": "feature",
-  "enum": "T_REEDS",
+  "id": "reeds",
   "slug": "reeds",
   "name": "Reeds",
-  "ui_name": "Reed Bed",
-  "runtime": {
-    "glyph": "|"
+  "enum": "F_REEDS",
+  "render": {
+    "layer": "feature",
+    "projection_mode": "upright_world",
+    "projection_factor": 0.0,
+    "depth_bucket": "standing_front",
+    "anchor": "tile_center",
+    "feature_layers": {
+      "split_ready": true
+    }
   },
-  "art": {
-    "projection": "transparent feature sprite anchored over a projected isometric map tile",
-    "layer_category": "features",
-    "terrain_type": "animated vegetation/water",
-    "visual_design": "Vertical reed strokes, wet ground below",
-    "required_variants": "4 sway frames; 8 clump variants",
-    "runtime_notes": "Land and boats can pass; winter can freeze visually",
-    "team_color_required": false
+  "runtime": {
+    "legacy_terrain_enums": [
+      "T_REEDS"
+    ]
+  },
+  "states": [
+    "default"
+  ],
+  "placement": {
+    "footprint": {
+      "w": 1,
+      "h": 1
+    }
   },
   "paths": {
-    "runtime_root": "assets/tiles/terrain/reeds",
-    "base": "assets/tiles/terrain/reeds.png"
+    "runtime_root": "assets/tiles/features/reeds",
+    "manifest": "assets/tiles/features/reeds/manifest.json"
   },
   "sources": [
-    "include/realm.h",
-    "src/core/terrain_defs.cpp",
-    "src/render/sdl/display_glyphs.cpp",
-    "docs/tileset/realm_tileset_visual_audit.md"
+    "src/core/game_types.h",
+    "src/core/terrain_defs.cpp"
   ]
 }

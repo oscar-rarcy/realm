@@ -37,6 +37,23 @@ static const ActionMarkerRenderInfo* actionMarkerAt(const RenderModel& model, in
     return nullptr;
 }
 
+static const ProjectileRenderInfo* projectileAt(const RenderModel& model, int mx, int my) {
+    for (const ProjectileRenderInfo& projectile : model.projectiles) {
+        if (projectile.tileX == mx && projectile.tileY == my) return &projectile;
+    }
+    return nullptr;
+}
+
+static Color projectileGlyphColor(int colorPair) {
+    switch (colorPair) {
+        case CP_PROJ_BOULDER: return rgb(210, 210, 210);
+        case CP_PROJ_TOWER: return rgb(255, 120, 105);
+        case CP_PROJ_ARROW:
+        default:
+            return rgb(255, 220, 120);
+    }
+}
+
 int keyToInput(SDL_Keycode key) {
     if (key >= SDLK_a && key <= SDLK_z) return 'a' + (int)(key - SDLK_a);
     if (key >= SDLK_0 && key <= SDLK_9) return '0' + (int)(key - SDLK_0);
@@ -124,6 +141,7 @@ struct TileVisual {
     bool cursor = false;
     bool selected = false;
     Entity* ent = nullptr;
+    const ProjectileRenderInfo* projectile = nullptr;
     Color bg = rgb(0,0,0);
     Color fg = rgb(230,230,220);
     std::string glyph;
@@ -141,6 +159,7 @@ TileVisual makeTileVisual(Game& game, const WorldIndex& world, const RenderModel
 
     v.ent = v.visible ? renderEntityAt(game, world, mx, my) : nullptr;
     if (!v.ent && v.visible) v.ent = renderCorpseAt(game, world, mx, my);
+    v.projectile = (v.visible && !v.ent) ? projectileAt(model, mx, my) : nullptr;
     v.cursor = (mx == view.cursorX && my == view.cursorY);
     v.bg = terrainBg(tile, mx, my);
 
@@ -158,6 +177,9 @@ TileVisual makeTileVisual(Game& game, const WorldIndex& world, const RenderModel
         } else if (v.visible && v.ent && v.ent->state == S_DEAD) {
             v.glyph.assign(1, v.ent->deathTicks >= DEATH_DECAY_TICKS ? '*' : '%');
             v.fg = rgb(180,180,170);
+        } else if (v.visible && v.projectile) {
+            v.glyph.assign(1, v.projectile->glyph);
+            v.fg = projectileGlyphColor(v.projectile->color);
         } else if (v.visible) {
             v.glyph.assign(1, terrainAsciiGlyph(tile.terrain));
         } else {
@@ -175,6 +197,11 @@ TileVisual makeTileVisual(Game& game, const WorldIndex& world, const RenderModel
         v.emoji = usesSymbolFont;
         v.fg = rgb(190,190,180);
         v.tint = false;
+    } else if (v.visible && v.projectile) {
+        v.glyph.assign(1, v.projectile->glyph);
+        v.emoji = false;
+        v.tint = false;
+        v.fg = projectileGlyphColor(v.projectile->color);
     } else if (v.visible) {
         logMissingTerrainImageTile(tile.terrain);
         logMissingVisualTileParts(tile);
@@ -187,7 +214,7 @@ TileVisual makeTileVisual(Game& game, const WorldIndex& world, const RenderModel
     v.fg = applyVisionToGlyph(v.fg, mx, my);
 
     v.selected = (v.visible && v.ent && isSelected(v.ent));
-    if (v.visible && !v.ent) {
+    if (v.visible && !v.ent && !v.projectile) {
         const ActionMarkerRenderInfo* marker = actionMarkerAt(model, mx, my);
         if (marker && marker->ticks > 0 && (g.tick % 6) < 4) {
             v.glyph = (marker->glyph == '#') ? u8"■" : (marker->glyph == '!') ? "!" : u8"×";
@@ -438,4 +465,3 @@ void drawMap(const WorldIndex& world) {
     drawMobileBuildPreviewTopDown(world);
     SDL_RenderSetClipRect(s.ren, nullptr);
 }
-

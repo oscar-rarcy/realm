@@ -1,30 +1,45 @@
 {
-  "schema": "realm.terrain_sprite_spec.v1",
+  "schema": "realm.feature_spec.v2",
   "asset_type": "feature",
-  "enum": "T_CASTLE_GATE",
+  "id": "castle_gate",
   "slug": "castle_gate",
   "name": "Castle Gate",
-  "ui_name": "Castle Gate",
-  "runtime": {
-    "glyph": "|"
+  "enum": "F_CASTLE_GATE",
+  "render": {
+    "layer": "feature",
+    "projection_mode": "upright_world",
+    "projection_factor": 0.0,
+    "depth_bucket": "standing_front",
+    "anchor": "tile_center",
+    "feature_layers": {
+      "split_ready": false
+    }
   },
-  "art": {
-    "projection": "transparent feature sprite anchored over a projected isometric map tile",
-    "layer_category": "features",
-    "terrain_type": "ancient map ruin",
-    "visual_design": "Old gate threshold/arch base",
-    "required_variants": "open ruined gate variants",
-    "runtime_notes": "Terrain from mapgen; separate from player E_GATE",
-    "team_color_required": false
+  "runtime": {
+    "legacy_terrain_enums": [
+      "T_CASTLE_GATE"
+    ]
+  },
+  "states": [
+    "default",
+    "open",
+    "closed",
+    "locked",
+    "damaged",
+    "broken"
+  ],
+  "placement": {
+    "footprint": {
+      "w": 1,
+      "h": 1
+    }
   },
   "paths": {
-    "runtime_root": "assets/tiles/terrain/castle_gate",
-    "base": "assets/tiles/terrain/castle_gate.png"
+    "runtime_root": "assets/tiles/features/castle_gate",
+    "manifest": "assets/tiles/features/castle_gate/manifest.json"
   },
   "sources": [
-    "include/realm.h",
-    "src/core/terrain_defs.cpp",
-    "src/render/sdl/display_glyphs.cpp",
-    "docs/tileset/realm_tileset_visual_audit.md"
+    "src/core/game_types.h",
+    "src/core/terrain_defs.cpp"
   ]
 }

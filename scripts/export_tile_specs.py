@@ -130,7 +130,7 @@ BLUE_CONTEXT_KEYWORDS = {
 RED_CONTEXT_KEYWORDS = {"red", "flame", "flaming", "burning", "lava", "ember"}
 RED_CONTEXT_PHRASES = {"fire ship", "fireship"}
 OPERATED_UNIT_ENUMS = {"E_CATAPULT", "E_TREBUCHET", "E_RAM"}
-AMMUNITION_BY_ENTITY = {
+PROJECTILES_BY_ENTITY = {
     "E_ARCHER": ["arrow", "crossbow_bolt"],
     "E_CATAPULT": ["catapult_boulder"],
     "E_TREBUCHET": ["trebuchet_boulder"],
@@ -138,7 +138,8 @@ AMMUNITION_BY_ENTITY = {
     "E_TOWER": ["tower_bolt"],
     "E_CASTLE": ["tower_bolt", "trebuchet_boulder"],
 }
-AMMUNITION_SPECS = [
+AMMUNITION_BY_ENTITY = PROJECTILES_BY_ENTITY
+PROJECTILE_SPECS = [
     {
         "slug": "arrow",
         "name": "Arrow",
@@ -198,6 +199,7 @@ AMMUNITION_SPECS = [
         ],
     },
 ]
+AMMUNITION_SPECS = PROJECTILE_SPECS
 ENTITY_ART_FALLBACKS = {
     "E_ARCHER": {
         "required_states": "idle, walk, aim, release, reload, dead, decayed skeleton with bow and quiver",
@@ -225,6 +227,89 @@ FEATURE_TERRAINS = {
     "T_CASTLE_WALL", "T_CASTLE_GATE",
 }
 DECAL_TERRAINS = {"T_TALL_GRASS", "T_FLOWERS"}
+GROUND_LEGACY_TERRAINS = {
+    "G_GRASS": ["T_GRASS", "T_BERRY"],
+    "G_MEADOW": ["T_MEADOW", "T_WHEAT"],
+    "G_DIRT": ["T_DIRT"],
+    "G_MUD": ["T_MUD"],
+    "G_SAND": ["T_SAND", "T_PALM"],
+    "G_DUNES": ["T_DUNES"],
+    "G_SNOW": [],
+    "G_TUNDRA": ["T_SNOW", "T_PINE"],
+    "G_ICE": ["T_ICE"],
+    "G_WATER": ["T_WATER", "T_FISH"],
+    "G_SHALLOWS": ["T_SHALLOWS"],
+    "G_MARSH": ["T_MARSH", "T_REEDS"],
+    "G_GRAVEL": ["T_GRAVEL", "T_RUINS"],
+    "G_ASH": ["T_ASH", "T_DEAD_TREE"],
+    "G_LAVA": ["T_LAVA"],
+    "G_HILLS": ["T_HILLS"],
+    "G_ROCKY": ["T_MOUNTAIN", "T_STONE", "T_GOLD"],
+    "G_CASTLE_FLOOR": ["T_CASTLE_FLOOR", "T_CASTLE_WALL", "T_CASTLE_GATE"],
+    "G_ROAD": ["T_ROAD"],
+}
+FEATURE_LEGACY_TERRAINS = {
+    "F_FOREST": ["T_FOREST"],
+    "F_PINE": ["T_PINE"],
+    "F_PALM": ["T_PALM"],
+    "F_DEAD_TREE": ["T_DEAD_TREE"],
+    "F_BERRY_BUSH": ["T_BERRY"],
+    "F_WHEAT_CROP": ["T_WHEAT"],
+    "F_FISH_SHOAL": ["T_FISH"],
+    "F_GOLD_DEPOSIT": ["T_GOLD"],
+    "F_STONE_BOULDERS": ["T_STONE"],
+    "F_MOUNTAIN_PEAK": ["T_MOUNTAIN"],
+    "F_REEDS": ["T_REEDS"],
+    "F_RUINS": ["T_RUINS"],
+    "F_CASTLE_WALL": ["T_CASTLE_WALL"],
+    "F_CASTLE_GATE": ["T_CASTLE_GATE"],
+}
+DECAL_LEGACY_TERRAINS = {
+    "VD_ROAD": ["T_ROAD"],
+    "VD_FLOWERS": ["T_FLOWERS"],
+    "VD_TALL_GRASS": ["T_TALL_GRASS"],
+}
+DECAL_RUNTIME_CONTEXT = {
+    "VD_ROAD": "legacy_terrain_bridge",
+    "VD_FLOWERS": "legacy_terrain_bridge",
+    "VD_TALL_GRASS": "legacy_terrain_bridge",
+    "VD_SCUFFS": "wear_threshold_25",
+    "VD_PACKED_PATH": "wear_threshold_55",
+    "VD_COBBLE_PATCH": "wear_threshold_80",
+    "VD_WHEEL_RUTS": "wear_threshold_45_default",
+    "VD_MUDDY_FOOTPRINTS": "wear_threshold_45_on_mud",
+    "VD_SNOW_TRAMPLED_PATH": "wear_threshold_45_on_snow",
+    "VD_YARD_CLUTTER": "future_building_context",
+    "VD_CRATES_BARRELS": "future_building_context",
+    "VD_LOG_PILES": "future_building_context",
+    "VD_FARM_TRACKS": "future_building_context",
+}
+HARVESTABLE_FEATURE_ENUMS = {
+    "F_FOREST", "F_PINE", "F_PALM", "F_DEAD_TREE",
+    "F_BERRY_BUSH", "F_WHEAT_CROP", "F_FISH_SHOAL", "F_GOLD_DEPOSIT",
+}
+SPLIT_FEATURE_ENUMS = {"F_FOREST", "F_PINE", "F_REEDS"}
+PROJECTILE_RUNTIME_ASSETS = {
+    "arrow": "arrow_projectile",
+    "crossbow_bolt": "arrow_projectile",
+    "flaming_arrow": "arrow_projectile",
+    "tower_bolt": "tower_bolt_projectile",
+    "warship_arrow_volley": "warship_shot_projectile",
+    "catapult_boulder": "catapult_boulder_projectile",
+    "trebuchet_boulder": "catapult_boulder_projectile",
+}
+EFFECT_ASSET_NAMES = [
+    "melee_hit_spark", "arrow_hit", "boulder_impact", "boulder_water_splash",
+    "building_hit_dust", "rain_frame_1", "rain_frame_2", "storm_rain_frame_1",
+    "storm_rain_frame_2", "snowfall_frame_1", "snowfall_frame_2",
+]
+USER_INTERFACE_ASSET_NAMES = [
+    "move_marker", "attack_marker", "gather_marker", "build_marker", "rally_marker",
+    "attack_move_marker", "hold_position_marker", "selection_ring", "group_selection_ring",
+    "range_ring_dot", "build_preview_valid", "build_preview_invalid", "wall_preview",
+    "garrison_indicator", "queued_unit_marker", "research_active_marker",
+    "completed_research_icon_treatment",
+]
 
 
 def terrain_layer_group(enum_name: str) -> str:
@@ -283,7 +368,7 @@ def is_operated_unit(enum_name: str) -> bool:
 
 
 def ammunition_refs_for_entity(enum_name: str) -> list[str]:
-    return AMMUNITION_BY_ENTITY.get(enum_name, [])
+    return PROJECTILES_BY_ENTITY.get(enum_name, [])
 
 
 def research_visual_lines_for_entity(enum_name: str) -> list[dict[str, Any]]:
@@ -459,6 +544,16 @@ def parse_terrain_glyphs(source: str) -> dict[str, str]:
     return glyphs
 
 
+def parse_named_cases(source: str, function_name: str) -> dict[str, str]:
+    match = re.search(rf"const\s+char\*\s+{function_name}\([^)]*\)\s*\{{(?P<body>.*?)^\}}", source, re.S | re.M)
+    if not match:
+        raise RuntimeError(f"could not find {function_name}")
+    return {
+        enum_name: value
+        for enum_name, value in re.findall(r"case\s+(\w+):\s*return\s+\"([^\"]+)\";", match.group("body"))
+    }
+
+
 def parse_audit_tables(markdown: str) -> tuple[dict[str, dict[str, str]], dict[str, dict[str, str]]]:
     entities: dict[str, dict[str, str]] = {}
     terrains: dict[str, dict[str, str]] = {}
@@ -544,12 +639,45 @@ def entity_spec(
     team_color_required = category in PLAYER_TEAM_COLOR_CATEGORIES
     player_colour = recommended_player_colour(enum_name, stats, audit) if team_color_required else None
     military_sigil = PLAYER_SIGIL if is_military_unit(category, stats) else None
+    render = {
+        "layer": "building" if category == "buildings" else "actor",
+        "projection_mode": "upright_world",
+        "projection_factor": 0.0,
+        "depth_bucket": "building" if category == "buildings" else "actor",
+        "anchor": "footprint_origin" if category == "buildings" else "tile_center",
+        "directions": ["front", "back"] if category != "buildings" else ["south"],
+        "runtime_mirrors_horizontal": category != "buildings",
+    }
+    placement = {
+        "footprint": stats["footprint"],
+    }
+    if category == "buildings":
+        placement["origin"] = "south_west"
+    states: list[str]
+    if category == "buildings":
+        states = [
+            "construction_0_foundation", "construction_1_frame", "construction_2_nearly_complete",
+            "complete", "damaged", "garrisoned", "garrison_firing", "training_peasant",
+            "training_infantry", "training_cavalry", "training_ship", "researching_iron_weapons",
+            "researching_crossbows", "researching_pikes", "researching_counterweight",
+            "researching_plate_helm",
+        ]
+    elif category == "animals":
+        states = ["alive", "dead_unharvested", "partly_harvested", "mostly_harvested", "depleted_skeleton"]
+    elif enum_name == "E_TRANSPORT":
+        states = ["empty", "loaded_partial", "loaded_full", "load_unload", "wreck", "decayed_wreck"]
+    else:
+        states = split_list(profile.get("required_states", ""))
+    combat_projectiles = ammunition_refs_for_entity(enum_name)
     return {
-        "schema": "realm.sprite_spec.v1",
+        "schema": "realm.building_spec.v2" if category == "buildings" else "realm.actor_sprite_spec.v2",
         "asset_type": category[:-1] if category.endswith("s") else category,
+        "id": stats["slug"],
         "enum": enum_name,
         "slug": stats["slug"],
         "name": stats["name"],
+        "render": render,
+        "placement": placement,
         "runtime": {
             "glyph": stats["glyph"],
             "stats": {
@@ -565,29 +693,42 @@ def entity_spec(
                 "supply_used": stats["supply_used"],
                 "traits": stats["traits"],
             },
-            "footprint": stats["footprint"],
-            "team_color_required": team_color_required,
+            "legacy_footprint": stats["footprint"],
         },
-        "art": {
-            "projection": "upright sprite anchored over projected isometric map tiles",
-            "directions": ["front", "back"] if category != "buildings" else ["south"],
-            "runtime_mirrors_horizontal": category != "buildings",
-            "team_color_slots": split_list(profile.get("team_color_slots", "")) if team_color_required else [],
+        "entity": {
+            "kind": "building" if category == "buildings" else "actor",
+            "actor_type": None if category == "buildings" else category[:-1],
+            "rests_on_tile_center": category != "buildings",
+            "can_interpolate_between_tiles": category != "buildings",
+        },
+        "team_color": {
+            "required": team_color_required,
+            "slots": split_list(profile.get("team_color_slots", "")) if team_color_required else [],
             "recommended_player_colour": player_colour,
             "player_sigil": military_sigil,
-            "operated_by_person": is_operated_unit(enum_name),
-            "operator_contract": (
+        },
+        "combat": {
+            "projectiles": combat_projectiles,
+        },
+        "visual_variants": {
+            "research_lines": research_visual_lines_for_entity(enum_name),
+            "resolved_variants": research_tier_variants_for_entity(enum_name),
+        },
+        "operator": {
+            "visible_operator_required": is_operated_unit(enum_name),
+            "count": 1 if is_operated_unit(enum_name) else 0,
+            "contract": (
                 "Show exactly one visible human operator actively handling, pushing, loading, firing, bracing, or inspecting this movable machine."
                 if is_operated_unit(enum_name)
                 else ""
             ),
-            "ammunition": ammunition_refs_for_entity(enum_name),
-            "research_visual_lines": research_visual_lines_for_entity(enum_name),
-            "research_visual_variants": research_tier_variants_for_entity(enum_name),
+        },
+        "art": {
+            "legacy_projection": "upright sprite anchored over projected isometric map tiles",
             "visual_design": profile.get("visual_design", ""),
             "source_role": profile.get("role", ""),
         },
-        "states": split_list(profile.get("required_states", "")),
+        "states": states,
         "actions": actions,
         "paths": {
             "runtime_root": f"assets/tiles/entities/{stats['slug']}",
@@ -603,15 +744,32 @@ def entity_spec(
 
 def ammunition_spec(spec: dict[str, Any]) -> dict[str, Any]:
     slug = spec["slug"]
+    runtime_asset = PROJECTILE_RUNTIME_ASSETS.get(slug, slug)
     return {
-        "schema": "realm.ammunition_sprite_spec.v1",
-        "asset_type": "ammunition",
+        "schema": "realm.projectile_sprite_spec.v2",
+        "asset_type": "projectile",
+        "id": slug,
         "slug": slug,
         "name": spec["name"],
+        "render": {
+            "layer": "projectile",
+            "projection_mode": "upright_world",
+            "projection_factor": 0.0,
+            "depth_bucket": "projectile",
+            "anchor": "world_position",
+        },
+        "runtime": {
+            "legacy_asset_type": "ammunition",
+            "legacy_runtime_asset": runtime_asset,
+            "glyph_fallback": "-" if "boulder" not in slug else "o",
+        },
+        "projectile": {
+            "is_tile_content": False,
+            "impact_effect": "boulder_impact" if "boulder" in slug else "arrow_hit",
+        },
         "art": {
-            "projection": "transparent upright_world projectile sprite or tiny animation",
+            "legacy_projection": "transparent upright_world projectile sprite or tiny animation",
             "visual_design": spec["description"],
-            "team_color_required": False,
         },
         "states": [state["id"] for state in spec["states"]],
         "actions": [
@@ -624,8 +782,8 @@ def ammunition_spec(spec: dict[str, Any]) -> dict[str, Any]:
             for state in spec["states"]
         ],
         "paths": {
-            "runtime_root": f"assets/tiles/ammunition/{slug}",
-            "manifest": f"assets/tiles/ammunition/{slug}/manifest.json",
+            "runtime_root": f"assets/tiles/effects-ui/{runtime_asset}.png",
+            "manifest": f"assets/tiles/projectiles/{slug}/manifest.json",
         },
         "sources": [
             "scripts/export_tile_specs.py",
@@ -673,6 +831,200 @@ def terrain_spec(
     }
 
 
+def title_from_slug(slug: str) -> str:
+    return slug.replace("_", " ").title()
+
+
+def ground_gameplay(enum_name: str) -> dict[str, Any]:
+    base: dict[str, Any] = {
+        "passability": {"land": "passable", "boat": "blocked"},
+        "buildable": True,
+        "needs_design_review": False,
+    }
+    if enum_name == "G_WATER":
+        base["passability"] = {"land": "blocked", "boat": "passable"}
+        base["buildable"] = False
+    elif enum_name == "G_SHALLOWS":
+        base["passability"] = {"land": "passable", "boat": "passable"}
+        base["buildable"] = False
+        base["movement_ticks_modifier"] = 1
+    elif enum_name in {"G_MARSH", "G_SAND", "G_DUNES", "G_SNOW", "G_TUNDRA", "G_ICE", "G_ASH"}:
+        base["buildable"] = enum_name not in {"G_MARSH", "G_ICE"}
+        base["movement_ticks_modifier"] = 1
+    elif enum_name == "G_MUD":
+        base["buildable"] = False
+        base["movement_ticks_modifier"] = 2
+    elif enum_name == "G_LAVA":
+        base["passability"] = {"land": "blocked", "boat": "blocked"}
+        base["buildable"] = False
+    elif enum_name in {"G_HILLS", "G_ROCKY"}:
+        base["buildable"] = False
+        base["needs_design_review"] = True
+    elif enum_name in {"G_DIRT", "G_CASTLE_FLOOR"}:
+        base["movement_ticks_modifier"] = -1
+    return base
+
+
+def feature_states(enum_name: str) -> list[str]:
+    if enum_name in HARVESTABLE_FEATURE_ENUMS:
+        return ["full", "mostly_full", "mostly_empty", "depleted"]
+    if enum_name == "F_CASTLE_GATE":
+        return ["default", "open", "closed", "locked", "damaged", "broken"]
+    if enum_name in {"F_CASTLE_WALL", "F_RUINS"}:
+        return ["default", "damaged", "broken"]
+    return ["default"]
+
+
+def ground_spec_v2(enum_name: str, slug: str) -> dict[str, Any]:
+    return {
+        "schema": "realm.ground_spec.v2",
+        "asset_type": "ground",
+        "id": slug,
+        "slug": slug,
+        "name": title_from_slug(slug),
+        "enum": enum_name,
+        "render": {
+            "layer": "ground",
+            "projection_mode": "surface_projected",
+            "projection_factor": 1.0,
+            "depth_bucket": "surface",
+            "anchor": "tile",
+        },
+        "runtime": {
+            "legacy_terrain_enums": GROUND_LEGACY_TERRAINS.get(enum_name, []),
+        },
+        "gameplay": ground_gameplay(enum_name),
+        "paths": {
+            "runtime_root": f"assets/tiles/grounds/{slug}",
+            "base": f"assets/tiles/grounds/{slug}.png",
+        },
+        "sources": [
+            "src/core/game_types.h",
+            "src/core/terrain_defs.cpp",
+            "src/render/sdl/display_glyphs.cpp",
+        ],
+    }
+
+
+def feature_spec_v2(enum_name: str, slug: str) -> dict[str, Any]:
+    return {
+        "schema": "realm.feature_spec.v2",
+        "asset_type": "feature",
+        "id": slug,
+        "slug": slug,
+        "name": title_from_slug(slug),
+        "enum": enum_name,
+        "render": {
+            "layer": "feature",
+            "projection_mode": "upright_world",
+            "projection_factor": 0.0,
+            "depth_bucket": "standing_front",
+            "anchor": "tile_center",
+            "feature_layers": {
+                "split_ready": enum_name in SPLIT_FEATURE_ENUMS,
+            },
+        },
+        "runtime": {
+            "legacy_terrain_enums": FEATURE_LEGACY_TERRAINS.get(enum_name, []),
+        },
+        "states": feature_states(enum_name),
+        "placement": {
+            "footprint": {"w": 1, "h": 1},
+        },
+        "paths": {
+            "runtime_root": f"assets/tiles/features/{slug}",
+            "manifest": f"assets/tiles/features/{slug}/manifest.json",
+        },
+        "sources": [
+            "src/core/game_types.h",
+            "src/core/terrain_defs.cpp",
+        ],
+    }
+
+
+def decal_projection_mode(enum_name: str) -> str:
+    if enum_name in {"VD_FLOWERS", "VD_TALL_GRASS"}:
+        return "semi_upright_decal"
+    return "surface_decal"
+
+
+def decal_spec_v2(enum_name: str, slug: str) -> dict[str, Any]:
+    return {
+        "schema": "realm.decal_spec.v2",
+        "asset_type": "decal",
+        "id": slug,
+        "slug": slug,
+        "name": title_from_slug(slug),
+        "enum": enum_name,
+        "render": {
+            "layer": "decal",
+            "projection_mode": decal_projection_mode(enum_name),
+            "projection_factor": 0.35 if enum_name in {"VD_FLOWERS", "VD_TALL_GRASS"} else 1.0,
+            "depth_bucket": "surface_overlay",
+            "anchor": "tile",
+        },
+        "runtime": {
+            "legacy_terrain_enums": DECAL_LEGACY_TERRAINS.get(enum_name, []),
+            "emission_context": DECAL_RUNTIME_CONTEXT.get(enum_name, "runtime"),
+        },
+        "paths": {
+            "runtime_root": f"assets/tiles/decals/{slug}",
+            "base": f"assets/tiles/decals/{slug}.png",
+        },
+        "sources": [
+            "src/core/game_types.h",
+            "src/core/terrain_defs.cpp",
+            "scripts/export_image_generation_prompts.py",
+        ],
+    }
+
+
+def effect_spec_v2(slug: str) -> dict[str, Any]:
+    return {
+        "schema": "realm.effect_spec.v1",
+        "asset_type": "effect",
+        "id": slug,
+        "slug": slug,
+        "name": title_from_slug(slug),
+        "render": {
+            "layer": "effect",
+            "projection_mode": "upright_world",
+            "projection_factor": 0.0,
+            "depth_bucket": "effect",
+            "anchor": "world_position",
+        },
+        "paths": {
+            "runtime_root": f"assets/tiles/effects-ui/{slug}.png",
+        },
+        "sources": [
+            "src/sim/save_load.cpp",
+        ],
+    }
+
+
+def ui_asset_spec_v2(slug: str) -> dict[str, Any]:
+    return {
+        "schema": "realm.ui_asset_spec.v1",
+        "asset_type": "user_interface",
+        "id": slug,
+        "slug": slug,
+        "name": title_from_slug(slug),
+        "render": {
+            "layer": "ui",
+            "projection_mode": "screen_space",
+            "projection_factor": 0.0,
+            "depth_bucket": "ui",
+            "anchor": "screen_position",
+        },
+        "paths": {
+            "runtime_root": f"assets/tiles/effects-ui/{slug}.png",
+        },
+        "sources": [
+            "src/sim/save_load.cpp",
+        ],
+    }
+
+
 def write_json(path: Path, data: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, indent=2, sort_keys=False, ensure_ascii=True) + "\n", encoding="utf-8")
@@ -682,26 +1034,35 @@ def export_specs(out_dir: Path, clean: bool) -> dict[str, Any]:
     game_types_h = read_text(GAME_TYPES_HEADER)
     entity_defs_cpp = read_text(ROOT / "src" / "core" / "entity_defs.cpp")
     terrain_defs_cpp = read_text(ROOT / "src" / "core" / "terrain_defs.cpp")
-    sdl_display_glyphs_cpp = read_text(ROOT / "src" / "render" / "sdl" / "display_glyphs.cpp")
     audit_md = read_text(ROOT / "docs" / "tileset" / "realm_tileset_visual_audit.md")
 
     entity_order = enum_values(game_types_h, "EntityType")
-    terrain_order = enum_values(game_types_h, "Terrain")
+    ground_order = enum_values(game_types_h, "GroundType")
+    feature_order = enum_values(game_types_h, "FeatureType")
+    decal_order = enum_values(game_types_h, "VisualDecalType")
     stats = parse_stats(entity_defs_cpp)
-    terrain_names = parse_terrain_names(terrain_defs_cpp)
-    terrain_glyphs = parse_terrain_glyphs(sdl_display_glyphs_cpp)
-    entity_audit, terrain_audit = parse_audit_tables(audit_md)
+    entity_audit, _terrain_audit = parse_audit_tables(audit_md)
+    ground_names = parse_named_cases(terrain_defs_cpp, "groundTypeName")
+    feature_names = parse_named_cases(terrain_defs_cpp, "featureTypeName")
+    decal_names = parse_named_cases(terrain_defs_cpp, "visualDecalName")
 
     if clean and out_dir.exists():
         shutil.rmtree(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     index: dict[str, Any] = {
-        "schema": "realm.tile_specs_index.v1",
+        "schema": "realm.tile_specs_index.v2",
         "generated_by": "scripts/export_tile_specs.py",
+        "schema_version": 2,
+        "compatibility": {
+            "reads_v1": True,
+            "writes_v2": True,
+            "legacy_groups": {"ammunition": "projectiles"},
+        },
         "groups": {
             "grounds": [], "features": [], "decals": [],
-            "units": [], "animals": [], "buildings": [], "ammunition": [],
+            "units": [], "animals": [], "buildings": [],
+            "projectiles": [], "effects": [], "user_interface": [],
         },
     }
 
@@ -717,26 +1078,59 @@ def export_specs(out_dir: Path, clean: bool) -> dict[str, Any]:
             {"enum": enum_name, "name": record["name"], "slug": record["slug"], "path": rel.as_posix()}
         )
 
-    for spec_record in AMMUNITION_SPECS:
+    for spec_record in PROJECTILE_SPECS:
         spec = ammunition_spec(spec_record)
-        rel = Path("ammunition") / f"{spec_record['slug']}.json"
+        rel = Path("projectiles") / f"{spec_record['slug']}.json"
         write_json(out_dir / rel, spec)
-        index["groups"]["ammunition"].append(
+        index["groups"]["projectiles"].append(
             {"name": spec_record["name"], "slug": spec_record["slug"], "path": rel.as_posix()}
         )
 
-    for enum_name in terrain_order:
-        if enum_name.endswith("_COUNT"):
+    for enum_name in ground_order:
+        if enum_name == "G_ROAD":
             continue
-        runtime_name = terrain_names.get(enum_name, enum_name.removeprefix("T_").replace("_", " ").title())
-        glyph = terrain_glyphs.get(enum_name, "")
-        slug = lower_slug(enum_name.removeprefix("T_"))
-        spec = terrain_spec(enum_name, runtime_name, glyph, terrain_audit.get(enum_name, {}))
-        group = terrain_layer_group(enum_name)
-        rel = Path(group) / f"{slug}.json"
+        slug = ground_names.get(enum_name, lower_slug(enum_name.removeprefix("G_")))
+        spec = ground_spec_v2(enum_name, slug)
+        rel = Path("grounds") / f"{slug}.json"
         write_json(out_dir / rel, spec)
-        index["groups"][group].append(
-            {"enum": enum_name, "name": runtime_name, "slug": slug, "path": rel.as_posix()}
+        index["groups"]["grounds"].append(
+            {"enum": enum_name, "name": spec["name"], "slug": slug, "path": rel.as_posix()}
+        )
+
+    for enum_name in feature_order:
+        if enum_name == "F_NONE":
+            continue
+        slug = feature_names.get(enum_name, lower_slug(enum_name.removeprefix("F_")))
+        spec = feature_spec_v2(enum_name, slug)
+        rel = Path("features") / f"{slug}.json"
+        write_json(out_dir / rel, spec)
+        index["groups"]["features"].append(
+            {"enum": enum_name, "name": spec["name"], "slug": slug, "path": rel.as_posix()}
+        )
+
+    for enum_name in decal_order:
+        slug = decal_names.get(enum_name, lower_slug(enum_name.removeprefix("VD_")))
+        spec = decal_spec_v2(enum_name, slug)
+        rel = Path("decals") / f"{slug}.json"
+        write_json(out_dir / rel, spec)
+        index["groups"]["decals"].append(
+            {"enum": enum_name, "name": spec["name"], "slug": slug, "path": rel.as_posix()}
+        )
+
+    for slug in EFFECT_ASSET_NAMES:
+        spec = effect_spec_v2(slug)
+        rel = Path("effects") / f"{slug}.json"
+        write_json(out_dir / rel, spec)
+        index["groups"]["effects"].append(
+            {"name": spec["name"], "slug": slug, "path": rel.as_posix()}
+        )
+
+    for slug in USER_INTERFACE_ASSET_NAMES:
+        spec = ui_asset_spec_v2(slug)
+        rel = Path("user_interface") / f"{slug}.json"
+        write_json(out_dir / rel, spec)
+        index["groups"]["user_interface"].append(
+            {"name": spec["name"], "slug": slug, "path": rel.as_posix()}
         )
 
     write_json(out_dir / "index.json", index)

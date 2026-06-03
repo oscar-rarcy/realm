@@ -1,30 +1,38 @@
 {
-  "schema": "realm.terrain_sprite_spec.v1",
+  "schema": "realm.ground_spec.v2",
   "asset_type": "ground",
-  "enum": "T_GRASS",
+  "id": "grass",
   "slug": "grass",
   "name": "Grass",
-  "ui_name": "Grassland",
-  "runtime": {
-    "glyph": "."
+  "enum": "G_GRASS",
+  "render": {
+    "layer": "ground",
+    "projection_mode": "surface_projected",
+    "projection_factor": 1.0,
+    "depth_bucket": "surface",
+    "anchor": "tile"
   },
-  "art": {
-    "projection": "top-down square source tile, projected into an isometric diamond in-app",
-    "layer_category": "grounds",
-    "terrain_type": "continuous ground",
-    "visual_design": "Default temperate grass, uneven small blades, no strong pattern",
-    "required_variants": "12 base variants; spring, summer dry, autumn dull, winter mild overlay compatibility",
-    "runtime_notes": "Can wear into dirt/road; winter converts/overlays to snow",
-    "team_color_required": false
+  "runtime": {
+    "legacy_terrain_enums": [
+      "T_GRASS",
+      "T_BERRY"
+    ]
+  },
+  "gameplay": {
+    "passability": {
+      "land": "passable",
+      "boat": "blocked"
+    },
+    "buildable": true,
+    "needs_design_review": false
   },
   "paths": {
-    "runtime_root": "assets/tiles/terrain/grass",
-    "base": "assets/tiles/terrain/grass.png"
+    "runtime_root": "assets/tiles/grounds/grass",
+    "base": "assets/tiles/grounds/grass.png"
   },
   "sources": [
-    "include/realm.h",
+    "src/core/game_types.h",
     "src/core/terrain_defs.cpp",
-    "src/render/sdl/display_glyphs.cpp",
-    "docs/tileset/realm_tileset_visual_audit.md"
+    "src/render/sdl/display_glyphs.cpp"
   ]
 }

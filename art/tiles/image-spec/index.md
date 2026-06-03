@@ -4,15 +4,15 @@ This folder is the complete Realm image-generation specification for the current
 
 ## Generation Contract
 
-- Generate groups in this order: grounds, features, decals, units, animals, buildings, ammunition, effects-ui.
+- Generate groups in this order: grounds, features, decals, units, animals, buildings, projectiles, effects, user_interface.
 - Generate one image sheet for each `Sheet` section in each prompt.
 - When a unit or animal prompt lists multiple directions, generate the full sheet set once per direction.
 - Treat these generated sheets as review contact sheets first; once a slot is accepted, generate or crop a standalone square production image for that slot.
 - For standalone production images, use transparent background where possible, or a single flat #ff00ff magenta key background for later cleanup.
 - Keep emoji, symbol, ASCII, and procedural fallbacks readable until replacement art exists.
 - Peasant idle is the only sprite lane assumed to already exist; every other prompt should be treated as needed art.
-- Ground prompts are top-down square tile art. Feature prompts are transparent anchored sprites. Decal prompts are transparent ground overlays. Ammunition and effects/UI prompts are transparent overlays.
-- Unit and building sheets may show ammunition only before release; released projectiles belong in the ammunition prompts.
+- Ground prompts are top-down square tile art. Feature prompts are transparent anchored sprites. Decal prompts are transparent ground overlays. Projectile, effect, and user-interface prompts are transparent overlays.
+- Unit and building sheets may show a projectile only before release; released projectiles belong in the projectile prompts.
 - Unit and animal `front` is a three-quarter screen-right RTS angle; `back` is the matching rear-right angle. Do not generate mirrored left-facing source art.
 - Do not add text labels, numbers, watermarks, cropped artwork, or baked UI chrome to generated image sheets.
 
@@ -25,7 +25,6 @@ This folder is the complete Realm image-generation specification for the current
 - [grass ground](grounds/grass.md)
 - [meadow ground](grounds/meadow.md)
 - [dirt ground](grounds/dirt.md)
-- [road ground](grounds/road.md)
 - [mud ground](grounds/mud.md)
 - [sand ground](grounds/sand.md)
 - [dunes ground](grounds/dunes.md)
@@ -61,24 +60,19 @@ This folder is the complete Realm image-generation specification for the current
 
 ## Decals
 
+- [road decal](decals/road.md)
 - [flowers decal](decals/flowers.md)
 - [tall grass decal](decals/tall_grass.md)
-- [grass tufts decal](decals/grass_tufts.md)
-- [small stones decal](decals/small_stones.md)
-- [puddles decal](decals/puddles.md)
-- [dirt scuffs decal](decals/dirt_scuffs.md)
-- [packed path marks decal](decals/packed_path_marks.md)
-- [cobble patches decal](decals/cobble_patches.md)
+- [scuffs decal](decals/scuffs.md)
+- [packed path decal](decals/packed_path.md)
+- [cobble patch decal](decals/cobble_patch.md)
 - [wheel ruts decal](decals/wheel_ruts.md)
 - [yard clutter decal](decals/yard_clutter.md)
 - [crates and barrels decal](decals/crates_barrels.md)
 - [log piles decal](decals/log_piles.md)
 - [farm tracks decal](decals/farm_tracks.md)
 - [muddy footprints decal](decals/muddy_footprints.md)
-- [snow-trampled path marks decal](decals/snow_trampled_path_marks.md)
-- [ore bins decal](decals/ore_bins.md)
-- [sacks decal](decals/sacks.md)
-- [dock barrels decal](decals/dock_barrels.md)
+- [snow trampled path decal](decals/snow_trampled_path.md)
 
 ## Units
 
@@ -120,16 +114,46 @@ This folder is the complete Realm image-generation specification for the current
 - [Mill](buildings/mill.md)
 - [Dock](buildings/dock.md)
 
-## Ammunition
+## Projectiles
 
-- [Arrow](ammunition/arrow.md)
-- [Crossbow Bolt](ammunition/crossbow_bolt.md)
-- [Flaming Arrow](ammunition/flaming_arrow.md)
-- [Tower Bolt](ammunition/tower_bolt.md)
-- [Warship Arrow Volley](ammunition/warship_arrow_volley.md)
-- [Catapult Boulder](ammunition/catapult_boulder.md)
-- [Trebuchet Boulder](ammunition/trebuchet_boulder.md)
+- [Arrow](projectiles/arrow.md)
+- [Crossbow Bolt](projectiles/crossbow_bolt.md)
+- [Flaming Arrow](projectiles/flaming_arrow.md)
+- [Tower Bolt](projectiles/tower_bolt.md)
+- [Warship Arrow Volley](projectiles/warship_arrow_volley.md)
+- [Catapult Boulder](projectiles/catapult_boulder.md)
+- [Trebuchet Boulder](projectiles/trebuchet_boulder.md)
 
-## Effects-Ui
+## Effects
 
-- [Effects UI](effects-ui/effects-ui.md)
+- [Melee Hit Spark](effects/melee_hit_spark.md)
+- [Arrow Hit](effects/arrow_hit.md)
+- [Boulder Impact](effects/boulder_impact.md)
+- [Boulder Water Splash](effects/boulder_water_splash.md)
+- [Building Hit Dust](effects/building_hit_dust.md)
+- [Rain Frame 1](effects/rain_frame_1.md)
+- [Rain Frame 2](effects/rain_frame_2.md)
+- [Storm Rain Frame 1](effects/storm_rain_frame_1.md)
+- [Storm Rain Frame 2](effects/storm_rain_frame_2.md)
+- [Snowfall Frame 1](effects/snowfall_frame_1.md)
+- [Snowfall Frame 2](effects/snowfall_frame_2.md)
+
+## User_Interface
+
+- [Move Marker](user_interface/move_marker.md)
+- [Attack Marker](user_interface/attack_marker.md)
+- [Gather Marker](user_interface/gather_marker.md)
+- [Build Marker](user_interface/build_marker.md)
+- [Rally Marker](user_interface/rally_marker.md)
+- [Attack Move Marker](user_interface/attack_move_marker.md)
+- [Hold Position Marker](user_interface/hold_position_marker.md)
+- [Selection Ring](user_interface/selection_ring.md)
+- [Group Selection Ring](user_interface/group_selection_ring.md)
+- [Range Ring Dot](user_interface/range_ring_dot.md)
+- [Build Preview Valid](user_interface/build_preview_valid.md)
+- [Build Preview Invalid](user_interface/build_preview_invalid.md)
+- [Wall Preview](user_interface/wall_preview.md)
+- [Garrison Indicator](user_interface/garrison_indicator.md)
+- [Queued Unit Marker](user_interface/queued_unit_marker.md)
+- [Research Active Marker](user_interface/research_active_marker.md)
+- [Completed Research Icon Treatment](user_interface/completed_research_icon_treatment.md)
