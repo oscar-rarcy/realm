@@ -1,0 +1,4 @@
+interface:
+  display_name: "Realm Tileset From Images"
+  short_description: "Prompt, split, process, and review Realm sprites"
+  default_prompt: "Use $realm-tileset-from-images to create coherent Realm sprite batch prompts, split generated sheets into production sources, process magenta-key frames, assemble manifests, and review isometric placement."

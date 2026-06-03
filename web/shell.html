@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Realm</title>
+  <script>
+    (function () {
+      function hasPathPrefix(path, prefix) {
+        return path === prefix || path.indexOf(prefix + '/') === 0;
+      }
+      var path = location.pathname || '/';
+      var basePath = '/';
+      if (hasPathPrefix(path, '/apps/realm-ascii')) {
+        basePath = '/apps/realm-ascii/';
+      } else if (hasPathPrefix(path, '/apps/realm')) {
+        basePath = '/apps/realm/';
+      }
+      window.realmAssetBase = basePath;
+      document.write('<base href="' + basePath + '">');
+    }());
+  </script>
+  <link rel="icon" href="assets/app-icon.svg" type="image/svg+xml">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #05070a;
+      --muted: #9dafbf;
+    }
+
+    * { box-sizing: border-box; }
+
+    html,
+    body {
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      margin: 0;
+      overflow: hidden;
+      background: var(--bg);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    #canvas-wrap {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      background: #030507;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      outline: none;
+      touch-action: none;
+    }
+
+    #loading {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      color: var(--muted);
+      background: #030507;
+      pointer-events: none;
+      transition: opacity 160ms ease;
+    }
+
+    body.ready #loading { opacity: 0; }
+  </style>
+</head>
+<body>
+  <main id="canvas-wrap">
+    <canvas id="canvas" tabindex="0" oncontextmenu="event.preventDefault()"></canvas>
+    <div id="loading">Starting Realm...</div>
+  </main>
+  <script>
+    const canvas = document.getElementById('canvas');
+    const loadingEl = document.getElementById('loading');
+
+    function viewportSize() {
+      const viewport = window.visualViewport;
+      return {
+        width: Math.max(1, Math.floor(viewport?.width || window.innerWidth || document.documentElement.clientWidth || 320)),
+        height: Math.max(1, Math.floor(viewport?.height || window.innerHeight || document.documentElement.clientHeight || 240))
+      };
+    }
+
+    function fitCanvas() {
+      const { width, height } = viewportSize();
+      const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+      const backingWidth = Math.max(1, Math.floor(width * dpr));
+      const backingHeight = Math.max(1, Math.floor(height * dpr));
+      const wrap = canvas.parentElement;
+      wrap.style.width = `${width}px`;
+      wrap.style.height = `${height}px`;
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+
+      if (canvas.width !== backingWidth || canvas.height !== backingHeight) {
+        canvas.width = backingWidth;
+        canvas.height = backingHeight;
+        if (window.Module && typeof window.Module.setCanvasSize === 'function') {
+          window.Module.setCanvasSize(backingWidth, backingHeight, false);
+        }
+      }
+    }
+
+    function scheduleFitCanvas() {
+      fitCanvas();
+      window.requestAnimationFrame(fitCanvas);
+    }
+
+    async function toggleFullscreen() {
+      const target = document.getElementById('canvas-wrap');
+      try {
+        if (!document.fullscreenElement) {
+          await target.requestFullscreen?.();
+        } else {
+          await document.exitFullscreen?.();
+        }
+      } catch (error) {
+        console.warn(`Fullscreen unavailable: ${error?.message || error}`);
+      } finally {
+        scheduleFitCanvas();
+        canvas.focus();
+      }
+    }
+
+    window.realmToggleFullscreen = toggleFullscreen;
+
+    window.addEventListener('resize', scheduleFitCanvas);
+    window.addEventListener('orientationchange', scheduleFitCanvas);
+    document.addEventListener('fullscreenchange', scheduleFitCanvas);
+    window.visualViewport?.addEventListener('resize', scheduleFitCanvas);
+    fitCanvas();
+
+    window.Module = {
+      canvas,
+      print(text) {
+        console.log(text);
+      },
+      printErr(text) {
+        const message = String(text);
+        if (/failed|error|abort|exception/i.test(message)) console.error(message);
+        else console.log(message);
+        if (/failed|error/i.test(message)) loadingEl.textContent = message;
+      },
+      setStatus(text) {
+        if (text) loadingEl.textContent = text;
+      },
+      onRuntimeInitialized() {
+        fitCanvas();
+        loadingEl.textContent = 'Initializing game...';
+        canvas.focus();
+      }
+    };
+
+    window.addEventListener('realm-ready', () => {
+      fitCanvas();
+      document.body.classList.add('ready');
+      canvas.focus();
+      setTimeout(fitCanvas, 100);
+      setTimeout(fitCanvas, 500);
+    });
+
+    for (const eventName of ['keydown', 'keyup', 'wheel']) {
+      window.addEventListener(eventName, (event) => {
+        if (eventName === 'wheel') {
+          event.preventDefault();
+          return;
+        }
+        if (eventName === 'keydown' && (event.key === 'F11' || (event.altKey && event.key === 'Enter'))) {
+          event.preventDefault();
+          toggleFullscreen();
+          return;
+        }
+        if (event.ctrlKey || event.metaKey || event.altKey) return;
+        const keys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ', 'PageUp', 'PageDown', 'Home', 'End'];
+        const key = event.key;
+        const interceptKey =
+          keys.includes(key) ||
+          (typeof key === 'string' && key.length === 1);
+        if (eventName === 'keydown' && (key === 'q' || key === 'Q')) {
+          event.preventDefault();
+          window.realmPendingResign = true;
+          return;
+        }
+        if (interceptKey) event.preventDefault();
+      }, { passive: false });
+    }
+  </script>
+  {{{ SCRIPT }}}
+</body>
+</html>

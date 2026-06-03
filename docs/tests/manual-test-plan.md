@@ -3,9 +3,8 @@
 Run after material code changes to catch regressions. Each section names the
 behaviour the test guards and the bug it would have caught.
 
-This plan is **not** a substitute for the headless harness called out in
-[ascii-rts-hardening-plan.md](../implementation/ascii-rts-hardening-plan.md)
-Phase 5. It's the floor: what to walk through in a terminal before pushing.
+This plan complements the headless harness in `make test`. It is the floor for
+renderer and feel checks that are still easiest to catch by looking at the game.
 
 ## Status key
 
@@ -25,6 +24,19 @@ Phase 5. It's the floor: what to walk through in a terminal before pushing.
       ignored).
 * [ ] `./realm` launches and shows the opponent-count menu without crashing.
 * [ ] `Q` from the menu exits cleanly.
+* [ ] `make test` passes.
+* [ ] On Windows/MSYS2, `mingw32-make gfx` builds `bin/realm.exe` with no
+      `-Wall -Wextra` warnings.
+* [ ] `REALM_SMOKE_TEST=1 bin/realm.exe` exits 0 and `realm-run.log` reaches
+      `realm: main screen ready`.
+* [ ] `REALM_SMOKE_TEST=match REALM_SEED=2468 REALM_HUMAN_CORNER=1
+      REALM_BIOME=0 bin/realm.exe` exits 0 and `realm-run.log` reaches
+      `realm: match smoke complete tick=60`.
+* [ ] `mingw32-make package` creates `bin/realm-windows.zip`.
+* [ ] Extract `bin/realm-windows.zip` outside the repo and run
+      `REALM_SMOKE_TEST=match REALM_SEED=2468 REALM_HUMAN_CORNER=1
+      REALM_BIOME=0 realm.exe`; it exits 0 and writes the match smoke
+      milestone.
 
 ---
 
@@ -46,6 +58,9 @@ events kept yanking the cursor back, and a selected peasant appeared to
 * [ ] Move the mouse to a new tile. Cursor jumps there exactly once.
 * [ ] Press `Shift+arrows` or `PgUp` / `PgDn` / `Home` / `End`. Cursor jumps
       ~10 tiles.
+* [ ] SDL: middle-button drag pans the map in both top-down and isometric mode.
+* [ ] SDL: mouse-wheel zoom keeps the tile under the mouse stable.
+* [ ] SDL: `F6` switches to top-down and `F7` switches to isometric.
 
 ### 1.2 Box-select keeps the count honest
 
@@ -66,6 +81,12 @@ as casualties piled up.
 
 * [ ] Hover over a peasant — cursor shows `p` on a gold background.
 * [ ] Hover over a town hall — cursor shows `H`.
+* [ ] SDL HUD shows cursor terrain, biome, resource amount, and visible stack
+      whether or not an entity is selected.
+* [ ] Terminal side panel shows equivalent cursor tile and stack context.
+* [ ] Press `?` in SDL and terminal. The help overlay opens, lists shared
+      commands, food/winter notes, owner/animal/combat legend text, and closes
+      with `?`.
 
 ---
 
@@ -267,6 +288,8 @@ the wildlife palette and looked like deer.
 * [ ] Start a 3-AI game. Use Shift+S to reveal map.
 * [ ] All three AI factions render in the enemy red, not animal colours.
 * [ ] Minimap matches.
+* [ ] SDL legend identifies owner colours for player and enemies, neutral
+      animals, resources, `!` combat alerts, and command markers.
 
 ### 5.5 AI doesn't have permanent omniscience
 
@@ -375,6 +398,10 @@ each rain dot replaced the terrain colour beneath it.
 * [ ] Pressing `Q` exits.
 * [ ] The chosen number of corners is occupied; the rest are empty
       (visible via Shift+S).
+* [ ] With `REALM_SEED`, `REALM_HUMAN_CORNER`, and `REALM_BIOME` set, the same
+      map and initial entity summary reproduce across launches.
+* [ ] `realm-run.log` records seed, AI count, human corner, biome, entity count,
+      and projectile count at match start.
 
 ### 8.2 Human defeat ends the match
 
@@ -385,7 +412,7 @@ AIs kept fighting each other. The player just watched a screensaver.
 #### Tests
 
 * [ ] Sacrifice your TC. Within 100 ticks, the screen flips to "DEFEAT!
-      Your kingdom has fallen. [Q] Quit".
+      Your kingdom has fallen. [Enter/Q] Main menu  [X] Exit".
 * [ ] Pressing `Q` exits.
 
 ### 8.3 Victory still works
@@ -418,14 +445,43 @@ trained unit was silently consumed.
       1-supply unit. Status reads "Need more houses!".
 * [ ] Build a house. Queue clears.
 
-### 9.3 Long-game stability
+### 9.3 Save / load round-trip
+
+* [ ] SDL: press `F5`, continue playing briefly, press `F9`. Match state returns
+      to the saved snapshot and play continues.
+* [ ] Terminal: press `V`, continue playing briefly, press `L`. Match state
+      returns to the saved snapshot and play continues.
+* [ ] Corrupt or remove `realm-save.txt`, then load. The game reports failure
+      instead of crashing.
+
+### 9.4 Diagnostics overlay
+
+* [ ] SDL: `F8` toggles diagnostics. It shows tick, mode, entity count,
+      projectile count, seed, and selected entity details.
+* [ ] Terminal: `D` toggles diagnostics and side-panel details update.
+* [ ] Start a second game in the same process. Diagnostics show entity and
+      projectile counts reset rather than growing from the previous match.
+
+### 9.5 Training mode stays open
+
+* [ ] Select a town hall, press `T`, then press `P` repeatedly. Peasants queue
+      repeatedly and the game does not pause until `Esc` leaves train mode.
+* [ ] Repeat from barracks, stable, and dock with their valid unit keys.
+
+### 9.6 Command markers
+
+* [ ] Issue move, gather, attack, build, and rally commands. A short-lived marker
+      appears on empty target tiles and does not hide selected units or combat
+      alerts.
+
+### 9.7 Long-game stability
 
 * [ ] Run a 3-AI game for 30+ minutes (pause, walk away, come back).
 * [ ] No crash. No heap corruption symptoms (units randomly disappearing
       en masse, town halls vanishing without combat).
 * [ ] Entity count stays well under `g.entities.reserve(8192)`.
 
-### 9.4 Gate behaviour
+### 9.8 Gate behaviour
 
 * [ ] Build a gate. By default it auto-opens when an ally is within 2
       tiles, closes otherwise.
@@ -434,7 +490,7 @@ trained unit was silently consumed.
 * [ ] Press `O` a third time → "Gate auto" (back to ally-proximity rule).
 * [ ] Side panel mirrors state and mode correctly throughout.
 
-### 9.5 Right-click symmetry
+### 9.9 Right-click symmetry
 
 #### Problem
 Keyboard `Enter` and mouse right-click each had their own ~50 line block
@@ -468,11 +524,6 @@ A change can ship when:
 
 These are explicit gaps for the next pass.
 
-* No headless test harness yet — every test here is manual. See
-  [hardening plan Phase 5](../implementation/ascii-rts-hardening-plan.md).
-* No deterministic-seed mode, so reproducing AI-progression tests across
-  runs is approximate.
 * No screenshots / golden frames for visual regressions (terrain rendering,
   weather overlay, season transitions).
-* No load-testing for the entity vector (would catch a future regression
-  around the `reserve(8192)` safety net).
+* Terminal/ncurses build is not verified from native Windows; use WSL/Linux/macOS.

@@ -2,11 +2,15 @@
 # Build outputs
 # -------------------------------------------------------------------
 
-/realm
-/realm.exe
-/realm.out
-/realm.app/
-/realm.dSYM/
+/bin/
+/build/
+/dist/
+/out/
+node_modules/
+/.netlify/
+/.emsdk/
+/emsdk/
+/.env.local
 
 *.o
 *.obj
@@ -22,22 +26,37 @@
 *.ilk
 *.idb
 
-# If realm.command is a generated launcher, keep this.
-# If it is a handwritten script you want in git, remove this line.
-/realm.command
-
+/realm
+/realm.exe
+/realm-gfx
+/realm-gfx.exe
+/realm.out
+/realm.app/
+/realm.dSYM/
 
 # -------------------------------------------------------------------
-# Build directories
+# Generated build/runtime logs
 # -------------------------------------------------------------------
 
-/build/
-/dist/
-/out/
-/bin/
-/obj/
-/debug/
-/release/
+*.log
+build-log.txt
+windows-build-log.txt
+windows-gui-build-log.txt
+windows-lab-build-log.txt
+windows-terminal-build-log.txt
+mac-build-log.txt
+mac-gui-build-log.txt
+mac-terminal-build-log.txt
+realm-run.log
+realm-save.txt
+logs/
+tmp/
+temp/
+captures/
+
+# -------------------------------------------------------------------
+# CMake and generated dependency files
+# -------------------------------------------------------------------
 
 cmake-build-*/
 CMakeFiles/
@@ -46,17 +65,10 @@ cmake_install.cmake
 compile_commands.json
 CTestTestfile.cmake
 Testing/
-
-
-# -------------------------------------------------------------------
-# Generated dependency / make files
-# -------------------------------------------------------------------
-
 .deps/
 *.gcda
 *.gcno
 *.gcov
-
 
 # -------------------------------------------------------------------
 # IDEs / editors
@@ -73,6 +85,12 @@ Testing/
 *.tmp
 *.temp
 
+# -------------------------------------------------------------------
+# Language/tool caches
+# -------------------------------------------------------------------
+
+__pycache__/
+*.py[cod]
 
 # -------------------------------------------------------------------
 # OS files
@@ -86,22 +104,10 @@ Thumbs.db
 ehthumbs.db
 Desktop.ini
 
-
 # -------------------------------------------------------------------
-# Logs / runtime junk
-# -------------------------------------------------------------------
-
-*.log
-logs/
-tmp/
-temp/
-
-
-# -------------------------------------------------------------------
-# Local notes / scratch files
+# Local scratch
 # -------------------------------------------------------------------
 
-notes.rtf
 notes.txt
 scratch/
 .junie/

@@ -1,0 +1,66 @@
+# Refactor Roadmap (condensed)
+
+The full, authoritative plan lives in `docs/implementation/refactor-plan.md`. This file is the
+short working checklist and records the established conventions/safety net.
+
+## Safety net (Phase 0)
+- Build + tests: `make test` (Linux/macOS/WSL) or `mingw32-make test` (Windows/MSYS2 UCRT64).
+- Deterministic harness: `initGameWithSeed(numAI, seed, humanCorner)` in
+  `tests/realm_headless_tests.cpp`; covers spawn, resources, commands, ticking, save/load,
+  `validateGameState()`, and mapgen invariants across seeds.
+- Warnings: `-Wall -Wextra` always on (see `Makefile`).
+
+## Architectural rules
+- Platform code reads devices. Input code creates intents/commands. Command/domain code applies
+  player + AI actions. Simulation advances time. Render observes. AI plans (does not mutate
+  directly). Save serializes + migrates.
+- No layer mutates global `g` except through its assigned boundary.
+
+## Input policy (Phase 1.1)
+- `X` = hold position during gameplay.
+- `Q` = resign / return to main menu.
+- `X` exits the application only on the game-over screen; otherwise exit via the menu.
+
+## Progress
+- [x] Phase 0 safety net (pre-existing harness) + roadmap.
+- [x] Phase 1.1 `x`/`X` input conflict.
+- [x] Phase 1.2 wall-line build ownership/cost/validation.
+- [x] Phase 1.3 / 3.3 shared research service (player + AI, AI now pays/uses canonical durations).
+- [x] Phase 3.1 production food cost in `EntityStats` (`costFood`), `orderTrain` switch removed.
+- [x] Phase 3.1/3.2 production and build services (`startTraining`, `startBuild`, `startBuildLine`).
+- [x] Phase 3.4 market trade service (`MarketTrade` command + rate table).
+- [x] Phase 2.1/2.2/2.3 (partial) explicit command payloads for implemented commands, no
+      box-select coordinate packing, group/context execution uses command selection instead of
+      current global selection, dispatcher switch has no silent default.
+- [x] Phase 4 (initial) `GameEvent`/`EventSink`/`LegacyUiEventSink`; command/domain services and
+      order helpers emit events instead of direct `setStatus()` / `addActionMarker()` calls.
+- [x] Phase 5 (initial) `EntityId`/`PlayerId`, `GameContext`, `UiContext`, command dispatcher
+      accepts `GameContext&` with a legacy `Game&` wrapper.
+- [x] Phase 6 (initial) `WorldIndex` with id/owner/tile/occupancy/resource indexes and parity tests.
+- [x] Phase 6/7 `WorldIndex` now drives AI idle resource targeting, including indexed fish
+      targets for boats.
+- [x] Phase 7 (initial) AI action helpers route build/train/research/gather/move/attack/garrison
+      through typed commands; architecture checks prevent direct AI order/service regressions.
+- [x] Phase 8 (initial) save version constant + supported-version gate + migration hook; v8 saves
+      migrate into current v9 format.
+- [x] Phase 8 (split) save loading now separates parse, migrate/hydrate, and validation, preserving
+      the current game on failed load.
+- [x] Phase 9 (initial) structured validation issues distinguish recoverable repair cases from hard
+      invariants.
+- [x] Phase 10 (initial) renderer-neutral `RenderModel` builder for viewport tiles/entities with
+      derived visual states.
+- [x] Phase 11 (initial) map invariant validator runs across seed sweeps; mapgen clears stale
+      resources when terrain passes overwrite resource tiles.
+- [x] Phase 14 (initial) `scripts/check_architecture.py` + `make architecture-check` for migrated
+      command/domain boundaries, coordinate payloads, and AI command routing.
+- [ ] Remaining structural work: thread event sinks instead of using the global legacy sink, deepen
+      AI planner/evaluator decomposition, migrate more query paths to `WorldIndex`, make renderers
+      consume `RenderModel` directly, replace empty wrapper headers, remove legacy wrappers/global
+      `g` use from migrated layers, and continue expanding architecture checks as boundaries mature.
+
+## Notes for continuation
+- Domain services live under `src/core/` (auto-globbed by both `Makefile` and
+  `scripts/build-web.sh`); adding a new top-level `src/` dir requires editing both build files.
+- The `Makefile` does NOT track header dependencies: after editing any header, run
+  `mingw32-make clean` before rebuilding to avoid stale-object struct-layout mismatches.
+- Commit only specific files; the tree has many unrelated staged migration changes.
