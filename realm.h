@@ -58,7 +58,7 @@ enum EntityState {
     S_BUILDING, S_TRAINING, S_RETURNING, S_DEAD,
     S_ENTERING, S_GARRISONED
 };
-enum GameMode  { M_NORMAL, M_BUILD_SELECT, M_BUILD_PLACE, M_TRAIN_SELECT, M_WALL_DRAG, M_PAUSED, M_GAME_OVER, M_RALLY_SET, M_RESEARCH_SELECT, M_ATTACK_MOVE, M_MARKET_TRADE };
+enum GameMode  { M_NORMAL, M_BUILD_SELECT, M_BUILD_PLACE, M_TRAIN_SELECT, M_WALL_DRAG, M_PAUSED, M_GAME_OVER, M_RALLY_SET, M_RESEARCH_SELECT, M_ATTACK_MOVE, M_MARKET_TRADE, M_PATROL_SET };
 
 // Research bits stored in Player.research
 enum Research { R_IRON_WEAPONS = 1, R_CROSSBOWS = 2, R_PIKES = 4, R_COUNTERWEIGHT = 8, R_PLATE_HELM = 16 };
@@ -160,6 +160,8 @@ struct Entity {
     int packTicks;    // E_TREBUCHET: ticks remaining in pack/unpack transition
     std::vector<int> queue;    // pending EntityTypes to train (FIFO, max 5)
     std::vector<int> garrison; // unit ids currently inside this building
+    std::vector<std::pair<int,int>> waypoints; // queued move targets (Shift+RClick) and patrol loop
+    bool patrolMode;           // when true, completed waypoints are re-queued so the unit loops
 };
 
 struct Player {

@@ -1579,8 +1579,10 @@ void renderUI() {
         attroff(A_BOLD);
     } else if (g.groupAssignPending) {
         attron(A_BOLD); mvprintw(botY2, 1, " GROUP ASSIGN: Press [1]-[9] to assign selection to group, [Esc] to cancel "); attroff(A_BOLD);
+    } else if (g.mode == M_PATROL_SET) {
+        mvprintw(botY2, 1, " PATROL: Move cursor + Enter (or click) to set target. [Esc] cancel ");
     } else {
-        mvprintw(botY2, 1, " Arrows:Move  Spc:Select  Enter:Cmd  B:Build  T:Train  A:All Mil  G:Group  1-9:Groups  P:Pause  Q:Quit ");
+        mvprintw(botY2, 1, " Spc:Sel  Enter:Cmd  Shift+RClick:Waypoint  Z:Patrol  B:Build  T:Train  A:All Mil  G:Group  P:Pause  Q:Quit ");
     }
     attroff(COLOR_PAIR(CP_UI_BAR));
 

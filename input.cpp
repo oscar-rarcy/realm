@@ -215,6 +215,59 @@ void handleInput(int ch) {
         return;
     }
 
+    // Patrol target picker.
+    if (g.mode == M_PATROL_SET) {
+        if (ch == 27) { g.mode = M_NORMAL; setStatus("Patrol cancelled."); return; }
+        int tx = -1, ty = -1;
+        if (ch == KEY_UP)    { g.cursorY--; goto clamp; }
+        if (ch == KEY_DOWN)  { g.cursorY++; goto clamp; }
+        if (ch == KEY_LEFT)  { g.cursorX--; goto clamp; }
+        if (ch == KEY_RIGHT) { g.cursorX++; goto clamp; }
+        if (ch == ' ' || ch == '\n' || ch == '\r' || ch == KEY_ENTER) {
+            tx = g.cursorX; ty = g.cursorY;
+        } else if (ch == KEY_MOUSE) {
+            MEVENT me;
+            if (getmouse(&me) != OK) goto clamp;
+            int tileW = (displayMode == DM_EMOJI) ? 2 : 1;
+            int mapSY = me.y - 2;
+            int mapSX = me.x / tileW;
+            int mapX  = g.viewX + mapSX;
+            int mapY  = g.viewY + mapSY;
+            bool inMap = (mapSY >= 0 && g.viewW > 0 && me.x < g.viewW * tileW && inBounds(mapX, mapY));
+            if (!inMap) goto clamp;
+            g.cursorX = mapX; g.cursorY = mapY;
+            if (me.bstate & (BUTTON1_CLICKED | BUTTON1_RELEASED | BUTTON3_CLICKED | BUTTON3_PRESSED)) {
+                tx = mapX; ty = mapY;
+            } else goto clamp;
+        } else return;
+
+        if (tx < 0 || ty < 0) goto clamp;
+        int started = 0;
+        auto setupPatrol = [&](Entity& u){
+            if (u.x == tx && u.y == ty) return; // no-op patrol
+            u.waypoints.clear();
+            u.patrolMode = true;
+            u.waypoints.push_back({tx, ty});       // first leg: out
+            u.waypoints.push_back({u.x, u.y});     // second leg: home
+            u.holdPosition = 0; u.retreating = 0;
+            // Pop the first waypoint and start moving now; patrolMode will re-queue it.
+            auto wp = u.waypoints.front(); u.waypoints.erase(u.waypoints.begin());
+            u.waypoints.push_back(wp);
+            orderMove(u, wp.first, wp.second);
+            started++;
+        };
+        if (!g.selectedIds.empty()) {
+            for (int id : g.selectedIds) { Entity* u = findEntity(id); if (u && u->alive && u->owner==0 && isUnit(u->type) && !isNaval(u->type)) setupPatrol(*u); }
+        } else if (g.selectedId >= 0) {
+            Entity* u = findEntity(g.selectedId);
+            if (u && u->alive && u->owner==0 && isUnit(u->type) && !isNaval(u->type)) setupPatrol(*u);
+        }
+        g.mode = M_NORMAL;
+        if (started > 0) setStatus(std::to_string(started) + " unit(s) on patrol");
+        else             setStatus("No valid units for patrol.");
+        return;
+    }
+
     // Train mode
     if (g.mode == M_TRAIN_SELECT) {
         Entity* sel = findEntity(g.selectedId);
@@ -489,8 +542,24 @@ void handleInput(int ch) {
     }
 
     case '\n': case '\r': case KEY_ENTER: {
+        // Keyboard has no shift modifier here, so always cancel waypoints/patrol.
+        auto clearQ = [](int id){ Entity* u = findEntity(id); if (u && u->alive && u->owner==0) { u->waypoints.clear(); u->patrolMode = false; } };
+        if (!g.selectedIds.empty()) { for (int id : g.selectedIds) clearQ(id); }
+        else if (g.selectedId >= 0) clearQ(g.selectedId);
         if (g.selectedIds.size() > 1) cmdAtTileGroup(g.cursorX, g.cursorY);
         else                          cmdAtTileSingle(findEntity(g.selectedId), g.cursorX, g.cursorY);
+        break;
+    }
+
+    // Patrol: enter targeting mode; next click sets patrol target. Selected
+    // units bounce between their current position and that target indefinitely.
+    case 'Z': case 'z': {
+        bool hasUnit = false;
+        if (!g.selectedIds.empty()) { for (int id : g.selectedIds) { Entity* u = findEntity(id); if (u && u->alive && u->owner==0 && isUnit(u->type) && !isNaval(u->type)) { hasUnit = true; break; } } }
+        else if (g.selectedId >= 0) { Entity* u = findEntity(g.selectedId); if (u && u->alive && u->owner==0 && isUnit(u->type) && !isNaval(u->type)) hasUnit = true; }
+        if (!hasUnit) { setStatus("Select land units to patrol."); break; }
+        g.mode = M_PATROL_SET;
+        setStatus("Patrol: click target — units bounce between current position and target. [Esc] cancel");
         break;
     }
 
@@ -890,10 +959,28 @@ void handleInput(int ch) {
             handleClick();
         }
         else if (me.bstate & (BUTTON3_CLICKED | BUTTON3_PRESSED)) {
-            // Right click: issue command at cursor position
+            // Right click: issue command at cursor position.
+            // Shift+RClick appends a waypoint to every selected unit's queue
+            // without disturbing their current order; a plain RClick clears any
+            // existing waypoints/patrol so the new command is honoured immediately.
             g.dragging = false;
-            if (g.selectedIds.size() > 1) cmdAtTileGroup(mapX, mapY);
-            else                          cmdAtTileSingle(findEntity(g.selectedId), mapX, mapY);
+            auto forEachSelectedUnit = [&](auto fn){
+                if (!g.selectedIds.empty()) {
+                    for (int id : g.selectedIds) { Entity* u = findEntity(id); if (u && u->alive && u->owner==0 && isUnit(u->type)) fn(*u); }
+                } else if (g.selectedId >= 0) {
+                    Entity* u = findEntity(g.selectedId);
+                    if (u && u->alive && u->owner==0 && isUnit(u->type)) fn(*u);
+                }
+            };
+            if (shift) {
+                int added = 0;
+                forEachSelectedUnit([&](Entity& u){ u.waypoints.push_back({mapX, mapY}); added++; });
+                if (added > 0) setStatus("Waypoint queued (" + std::to_string(added) + " units)");
+            } else {
+                forEachSelectedUnit([&](Entity& u){ u.waypoints.clear(); u.patrolMode = false; });
+                if (g.selectedIds.size() > 1) cmdAtTileGroup(mapX, mapY);
+                else                          cmdAtTileSingle(findEntity(g.selectedId), mapX, mapY);
+            }
         }
         // All other events (pure movement): cursor already updated above
         break;

@@ -371,8 +371,10 @@ void updateFog() {
         for (int p = 0; p < MAX_PLAYERS; p++) g.map[y][x].visible[p] = false;
     int nightPen = isNight() ? 2 : (isDusk()||isDawn()) ? 1 : 0;
     if (getSeason() == WINTER) nightPen += 1; // blizzards eat sight
-    if (g.weather == W_STORM) nightPen += 1;
-    else if (g.weather == W_RAIN || g.weather == W_SNOW) nightPen += (nightPen > 0 ? 0 : 1);
+    // Weather always impedes sight, stacking with night and winter — a rainstorm
+    // at night is genuinely dark. Storm is worse than rain/snow.
+    if      (g.weather == W_STORM)                          nightPen += 2;
+    else if (g.weather == W_RAIN || g.weather == W_SNOW)    nightPen += 1;
     for (auto& e : g.entities) {
         if (!e.alive || e.owner >= OWNER_NATURE) continue;
         if (e.state == S_GARRISONED) continue;
@@ -510,6 +512,15 @@ static Entity* findSafeHaven(Entity& e) {
 void tickEntity(Entity& e) {
     if (!e.alive) return;
     if (e.alertTicks > 0) e.alertTicks--;
+    // Pop the next queued waypoint when the unit goes idle.
+    // Patrol mode rotates the waypoint to the back of the queue so the unit loops.
+    if (e.state == S_IDLE && !e.waypoints.empty() && isUnit(e.type) && !isNaval(e.type)
+            && e.holdPosition == 0 && e.retreating == 0) {
+        auto wp = e.waypoints.front();
+        e.waypoints.erase(e.waypoints.begin());
+        if (e.patrolMode) e.waypoints.push_back(wp);
+        orderMove(e, wp.first, wp.second);
+    }
     // Building production
     if (e.producing != E_NONE && !e.underConstruction) {
         int bonus = 0;

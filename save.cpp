@@ -14,7 +14,7 @@
 //   - Skips garbage corrupt files via fread return-value checks
 
 static constexpr char MAGIC[4] = {'R','L','M','2'};
-static constexpr int  SAVE_VERSION = 2;
+static constexpr int  SAVE_VERSION = 3;
 static constexpr int  MAX_ENTITIES = 100000;
 static constexpr int  MAX_VEC_LEN  = 50000;
 
@@ -81,6 +81,9 @@ bool saveGame(const char* path) {
         for (int q : e.queue)    wr(f, q);
         n = (int32_t)e.garrison.size(); wr(f, n);
         for (int gid : e.garrison) wr(f, gid);
+        n = (int32_t)e.waypoints.size(); wr(f, n);
+        for (auto& w : e.waypoints) { wr(f, w.first); wr(f, w.second); }
+        wr(f, e.patrolMode);
     }
 
     // Check the stream is healthy before committing.
@@ -153,6 +156,10 @@ bool loadGame(const char* path) {
         if (!rd(f, n) || n < 0 || n > MAX_VEC_LEN) { fclose(f); return false; }
         e.garrison.reserve(n);
         for (int j = 0; j < n; j++) { int gid; rd(f, gid); e.garrison.push_back(gid); }
+        if (!rd(f, n) || n < 0 || n > MAX_VEC_LEN) { fclose(f); return false; }
+        e.waypoints.reserve(n);
+        for (int j = 0; j < n; j++) { int a, b; rd(f, a); rd(f, b); e.waypoints.push_back({a,b}); }
+        rd(f, e.patrolMode);
         g.entities.push_back(e);
     }
 
