@@ -162,30 +162,46 @@ std::vector<std::pair<std::string, int>> terminalBuildTokens() {
     return buildTokens(true);
 }
 
-std::vector<std::pair<std::string, int>> defaultBottomTokens() {
-    auto tokenFor = [](const char* id) -> std::pair<std::string, int> {
-        int count = 0;
-        const CommandHelpBinding* bindings = gameplayHelpBindings(count);
-        for (int i = 0; i < count; i++) {
-            if (std::string(bindings[i].id) != id || bindings[i].keyCount <= 0) continue;
-            return { std::string(bindings[i].keys) + ":" + bindings[i].label, bindings[i].keyCodes[0] };
-        }
-        return { "", 0 };
+std::pair<std::string, int> helpTokenFor(const char* id) {
+    int count = 0;
+    const CommandHelpBinding* bindings = gameplayHelpBindings(count);
+    for (int i = 0; i < count; i++) {
+        if (std::string(bindings[i].id) != id || bindings[i].keyCount <= 0) continue;
+        return { std::string(bindings[i].keys) + ":" + bindings[i].label, bindings[i].keyCodes[0] };
+    }
+    return { "", 0 };
+}
+
+std::string helpLabelFor(const char* id) {
+    return helpTokenFor(id).first;
+}
+
+std::string joinLabels(std::initializer_list<std::string> parts) {
+    std::string line;
+    for (const std::string& part : parts) {
+        if (part.empty()) continue;
+        if (!line.empty()) line += "  ";
+        line += part;
+    }
+    return line;
+}
+
+std::vector<std::pair<std::string, int>> defaultBottomLine1Tokens() {
+    return {
+        helpTokenFor("select"),
+        helpTokenFor("command"),
+        helpTokenFor("build"),
+        helpTokenFor("train"),
     };
-    std::vector<std::pair<std::string, int>> tokens = {
-        tokenFor("build"),
-        tokenFor("train"),
-        tokenFor("save"),
-        tokenFor("load"),
-        tokenFor("diagnostics"),
-        tokenFor("resign"),
+}
+
+std::vector<std::pair<std::string, int>> defaultBottomLine2Tokens() {
+    return {
+        helpTokenFor("save"),
+        helpTokenFor("load"),
+        helpTokenFor("diagnostics"),
+        helpTokenFor("resign"),
     };
-#if defined(REALM_WEB)
-    return tokens;
-#else
-    tokens.push_back(tokenFor("hold"));
-    return tokens;
-#endif
 }
 
 bool devCaptureEnabled() {
@@ -329,14 +345,21 @@ void drawPanel(const WorldIndex& world) {
 void drawBottom(const WorldIndex& world) {
     SDL_Rect bot{0,s.winH-s.bottomH,s.winW,s.bottomH};
     setDraw(rgb(12,32,58)); SDL_RenderFillRect(s.ren,&bot);
-    std::string controls1 = "Arrows:Move  Space/Click:Select  Enter/R-click:Cmd  B:Build  T:Train";
-    std::string controls2 =
-#if defined(REALM_WEB)
-        "F5-F8:Save  F9-F12:Load  D:Diag  Alt+Enter:Full  +/-:Zoom  Q:Resign";
-#else
-        "F5-F8:Save  F9-F12:Load  D:Diag  Alt+Enter:Full  +/-:Zoom  Q:Resign  X:Exit";
-#endif
-    ;
+    std::string controls1 = joinLabels({
+        "Arrows:Move",
+        helpLabelFor("select"),
+        helpLabelFor("command"),
+        helpLabelFor("build"),
+        helpLabelFor("train"),
+    });
+    std::string controls2 = joinLabels({
+        helpLabelFor("save"),
+        helpLabelFor("load"),
+        helpLabelFor("diagnostics"),
+        "Alt+Enter:Full",
+        "+/-:Zoom",
+        helpLabelFor("resign"),
+    });
     if (g.mode == M_PAUSED) { controls1 = "PAUSED - Press P to resume"; controls2.clear(); }
     else if (g.mode == M_GAME_OVER) {
 #if defined(REALM_WEB)
@@ -381,7 +404,7 @@ void drawBottom(const WorldIndex& world) {
 #endif
                             rgb(230,235,230), topLineW);
     } else {
-        drawKeyTokensInText(10, s.winH-s.bottomH+6, controls1, defaultBottomTokens(),
+        drawKeyTokensInText(10, s.winH-s.bottomH+6, controls1, defaultBottomLine1Tokens(),
                             rgb(230,235,230), topLineW);
     }
     if (ui.statusTimer > 0) {
@@ -391,10 +414,9 @@ void drawBottom(const WorldIndex& world) {
             drawKeyTokensInText(10, s.winH-s.bottomH+26, controls2, desktopBuildTokensLine2(),
                                 rgb(200,213,220), maxW);
         } else {
-            drawKeyTokensInText(10, s.winH-s.bottomH+26, controls2, defaultBottomTokens(),
+            drawKeyTokensInText(10, s.winH-s.bottomH+26, controls2, defaultBottomLine2Tokens(),
                                 rgb(200,213,220), maxW);
         }
     }
 }
-
 

@@ -7,6 +7,15 @@
 ViewState view;
 UiState ui;
 
+namespace {
+
+void clampViewOrigin(ViewState& state) {
+    state.viewX = std::max(0, std::min(state.viewX, MAP_W - state.viewW));
+    state.viewY = std::max(0, std::min(state.viewY, MAP_H - state.viewH));
+}
+
+} // namespace
+
 void resetViewState() {
     view = ViewState{};
 }
@@ -45,12 +54,27 @@ bool handleMinimapClick(ViewState& state, int screenWidth, int mouseX, int mouse
     if (activate && mmW > 0 && mmH > 0) {
         int mx = (mouseX - mmX) * MAP_W / mmW;
         int my = (mouseY - mmY) * MAP_H / mmH;
-        state.viewX = std::max(0, std::min(mx - state.viewW / 2, MAP_W - state.viewW));
-        state.viewY = std::max(0, std::min(my - state.viewH / 2, MAP_H - state.viewH));
+        state.viewX = mx - state.viewW / 2;
+        state.viewY = my - state.viewH / 2;
         state.cursorX = mx;
         state.cursorY = my;
         state.dragging = false;
+        clampViewOrigin(state);
         clampCursorToMap(state);
     }
     return true;
+}
+
+void panViewportAtScreenEdge(ViewState& state, int screenX, int screenY, int mapTopY, int edgeMargin, int edgeStep) {
+    int viewportY = screenY - mapTopY;
+    int dx = 0;
+    int dy = 0;
+    if (screenX < edgeMargin) dx = -edgeStep;
+    else if (screenX >= state.viewW - edgeMargin) dx = edgeStep;
+    if (viewportY < edgeMargin) dy = -edgeStep;
+    else if (viewportY >= state.viewH - edgeMargin) dy = edgeStep;
+    if (!dx && !dy) return;
+    state.viewX += dx;
+    state.viewY += dy;
+    clampViewOrigin(state);
 }

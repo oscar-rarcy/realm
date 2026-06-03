@@ -23,6 +23,8 @@ enum class InputTrainMenuEligibility {
 void setInputMode(Game& game, GameMode mode);
 void cancelInputMode(Game& game);
 bool isInputBlockedByMode(GameMode mode);
+void beginBuildPlacementMode(Game& game, EntityType type);
+std::optional<EntityType> activeBuildType(const Game& game);
 void startWallBuildMode(Game& game);
 bool toggleHelpOverlay(Game& game);
 bool controlGroupAssignmentPending(const Game& game);

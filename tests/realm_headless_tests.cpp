@@ -2,6 +2,7 @@
 #include "entity_animation.h"
 #include "ai/ai.h"
 #include "commands/command.h"
+#include "commands/command_runner.h"
 #include "commands/input_intent.h"
 #include "commands/input_mode_controller.h"
 #include "input_keys.h"
@@ -34,8 +35,6 @@
 #include <string>
 #include <variant>
 #include <vector>
-
-void handleMobileHudButton(const std::string& id, const WorldIndex& world);
 
 class TestEventSink : public EventSink {
 public:
@@ -3001,9 +3000,32 @@ static void testSaveLoadRoundTrip() {
     {
         std::ifstream in("build/test-save.realm", std::ios::binary);
         std::string content((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
-        size_t pos = content.find("REALM_SAVE 10");
+        std::string currentHeader = "REALM_SAVE " + std::to_string(REALM_SAVE_VERSION);
+        size_t pos = content.find(currentHeader);
         assert(pos != std::string::npos);
-        content.replace(pos, std::string("REALM_SAVE 10").size(), "REALM_SAVE 8");
+        content.replace(pos, currentHeader.size(), "REALM_SAVE 8");
+        std::string legacyGroups;
+        for (int i = 0; i < 9; i++) {
+            std::string groupPrefix = "GROUP_OWNER 0 " + std::to_string(i) + " ";
+            size_t groupPos = content.find(groupPrefix);
+            assert(groupPos != std::string::npos);
+            size_t groupLineEnd = content.find('\n', groupPos);
+            assert(groupLineEnd != std::string::npos);
+            legacyGroups += "GROUP " + std::to_string(i) + ' '
+                + content.substr(groupPos + groupPrefix.size(), groupLineEnd - (groupPos + groupPrefix.size()))
+                + "\n";
+        }
+        while ((pos = content.find("GROUP_OWNER ")) != std::string::npos) {
+            size_t lineEnd = content.find('\n', pos);
+            assert(lineEnd != std::string::npos);
+            content.erase(pos, lineEnd - pos + 1);
+        }
+        size_t selectedPos = content.find("SELECTED ");
+        assert(selectedPos != std::string::npos);
+        size_t selectedLineEnd = content.find('\n', selectedPos);
+        assert(selectedLineEnd != std::string::npos);
+        content.insert(selectedLineEnd + 1, legacyGroups);
+        pos = 0;
         while ((pos = content.find(" WAYPOINTS ", pos)) != std::string::npos) {
             size_t lineEnd = content.find('\n', pos);
             assert(lineEnd != std::string::npos);
@@ -3133,7 +3155,7 @@ static void testMobileStopDispatchesCommand() {
     g.local.selectedIds = { workerId };
 
     drainGameEvents();
-    handleMobileHudButton("stop", world);
+    dispatchStopCommandForLocalSelection(g, gameEvents());
     std::vector<GameEvent> events = drainGameEvents();
 
     assert(worker->state == S_IDLE);
@@ -3210,4 +3232,3 @@ int main() {
     std::puts("realm_headless_tests: ok");
     return 0;
 }
-

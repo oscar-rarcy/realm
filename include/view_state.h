@@ -40,3 +40,4 @@ void tickUiState(UiState& state);
 void clampCursorToMap(ViewState& state);
 ViewportCell viewportCellAt(const ViewState& state, int screenX, int screenY, int mapTopY);
 bool handleMinimapClick(ViewState& state, int screenWidth, int mouseX, int mouseY, bool activate);
+void panViewportAtScreenEdge(ViewState& state, int screenX, int screenY, int mapTopY, int edgeMargin, int edgeStep);

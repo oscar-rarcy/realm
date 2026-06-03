@@ -239,10 +239,7 @@ bool parseMobileEntityButtonId(const std::string& id, const char* prefix, Entity
 }
 
 void mobileStopSelection(const WorldIndex&) {
-    Command command;
-    command.issuer = 0;
-    command.payload = StopCommand{ currentSelection(g) };
-    dispatchCommandForLocalGame(g, gameEvents(), command);
+    dispatchStopCommandForLocalSelection(g, gameEvents());
 }
 
 void mobileCancelCommand() {
