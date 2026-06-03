@@ -238,7 +238,7 @@ bool parseMobileEntityButtonId(const std::string& id, const char* prefix, Entity
     return true;
 }
 
-void mobileStopSelection() {
+void mobileStopSelection(const WorldIndex&) {
     Command command;
     command.issuer = 0;
     command.payload = StopCommand{ currentSelection(g) };
@@ -257,15 +257,15 @@ void mobileCancelCommand() {
 void handleMobileHudButton(const std::string& id, const WorldIndex& world) {
     Entity* sel = primaryOwnedSelection(world);
     if (id == "cancel") { mobileCancelCommand(); return; }
-    if (id == "buildmore") { s.mobileBuildPage = 1; return; }
-    if (id == "buildback") { s.mobileBuildPage = 0; return; }
+    if (id == "buildmore") { s.mobileBuildPage++; return; }
+    if (id == "buildback") { s.mobileBuildPage = std::max(0, s.mobileBuildPage - 1); return; }
     if (id == "menu") { g.returnToMenu = true; return; }
     if (id == "pause") { handleInput('p'); return; }
     if (id == "fullscreen") { toggleFullscreen(); return; }
     if (id == "idle") { mobileSelectIdlePeasant(); return; }
     if (id == "help") { g.local.helpOverlay = !g.local.helpOverlay; emitUiStatusEvent(-1, g.local.helpOverlay ? "Help open." : "Help closed."); return; }
     if (id == "selectarmy") { handleInput('A'); return; }
-    if (id == "stop") { mobileStopSelection(); return; }
+    if (id == "stop") { mobileStopSelection(world); return; }
     if (id == "move") { g.mode = M_NORMAL; emitUiStatusEvent(-1, "Tap a destination."); return; }
     if (id == "gather") { g.mode = M_NORMAL; emitUiStatusEvent(-1, "Tap a resource."); return; }
     if (id == "build") {
@@ -803,4 +803,3 @@ bool gfxSaveSplashScreenshot(const std::string& path, int numAIs, int biomeIdx) 
     drawSplash(numAIs, biomeIdx);
     return saveRendererPixels(path);
 }
-
