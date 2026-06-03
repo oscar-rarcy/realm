@@ -1,4 +1,5 @@
 #include "render/sdl/sdl_capture.h"
+#include "realm.h"
 #include "view_state.h"
 
 std::string captureTimestamp() {
@@ -35,7 +36,7 @@ void captureIssueBundle() {
     fs::path shotPath = dir / "screenshot.bmp";
     fs::path infoPath = dir / "capture-info.txt";
 
-    bool saved = saveGame(savePath.string());
+    bool saved = saveGame(g, savePath.string());
     bool shot = gfxSaveScreenshot(shotPath.string());
 
     std::ofstream info(infoPath);

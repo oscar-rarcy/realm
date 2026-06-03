@@ -3,6 +3,7 @@
 #include "gfx_renderer.h"
 #include "env_config.h"
 #include "commands/command.h"
+#include "core/game_context.h"
 
 #include <emscripten/emscripten.h>
 #include <SDL.h>
@@ -28,6 +29,12 @@ enum WebScreen {
 };
 
 WebScreen webScreen = WEB_MENU;
+
+CommandResult dispatchPlatformCommand(Command& command) {
+    WorldIndex world = buildWorldIndex(g);
+    GameContext context{ g, world, gameEvents() };
+    return dispatchCommand(context, command);
+}
 
 int envIntOnly(const char* name, int fallback) {
     const char* v = std::getenv(name);
@@ -78,6 +85,14 @@ bool urlSettingEquals(const char* name, const char* expected) {
         if (raw === null) raw = read(window.location.hash);
         return raw !== null && String(raw).toLowerCase() === expected ? 1 : 0;
     }, name, expected);
+}
+
+bool consumeWebResignRequest() {
+    return EM_ASM_INT({
+        if (typeof window === 'undefined' || !window.realmPendingResign) return 0;
+        window.realmPendingResign = false;
+        return 1;
+    }) != 0;
 }
 
 static bool isEmbedRoute() {
@@ -140,7 +155,7 @@ void startMatch(int numAIs, bool deterministic) {
     if (gfxConsumeLoadGameRequest()) {
         Command command;
         command.payload = LoadCommand{ 0 };
-        if (dispatchCommand(g, command).status == CommandStatus::Accepted) {
+        if (dispatchPlatformCommand(command).status == CommandStatus::Accepted) {
             std::cerr << "realm: loaded realm-save.txt from web menu\n";
         } else {
             std::cerr << "realm: web menu load failed; continuing new game\n";
@@ -188,6 +203,10 @@ void frame() {
 
     bool quit = false;
     gfxPollInput(quit);
+    if (consumeWebResignRequest()) {
+        showMenu();
+        return;
+    }
     if (quit) {
         webScreen = WEB_EXITED;
         setStatus("Realm exited.");
@@ -204,7 +223,7 @@ void frame() {
     while (now >= nextTickMs && safety < 4) {
         nextTickMs += TICK_MS;
         if (g.mode != M_PAUSED && g.mode != M_GAME_OVER) {
-            tickSimulationOnce();
+            tickSimulationOnce(g, true);
         }
         safety++;
     }

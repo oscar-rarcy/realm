@@ -183,6 +183,11 @@
         const interceptKey =
           keys.includes(key) ||
           (typeof key === 'string' && key.length === 1);
+        if (eventName === 'keydown' && (key === 'q' || key === 'Q')) {
+          event.preventDefault();
+          window.realmPendingResign = true;
+          return;
+        }
         if (interceptKey) event.preventDefault();
       }, { passive: false });
     }

@@ -1,4 +1,6 @@
 #include "render/sdl/sdl_map.h"
+#include "realm.h"
+#include "core/world_index.h"
 
 char terrainAscii(Terrain t) {
     switch (t) {
@@ -160,7 +162,8 @@ EntitySpriteSpec entitySpriteSpec(const Entity& e) {
     EntitySpriteSpec spec;
     std::string name = STATS[e.type].name ? STATS[e.type].name : "Unknown";
     std::string slug = lowerSlug(name);
-    if (const EntityActionAnimationSpec* anim = entityActionAnimationSpecFor(e)) {
+    WorldIndex world = buildWorldIndex(g);
+    if (const EntityActionAnimationSpec* anim = entityActionAnimationSpecFor(g, world, e)) {
         std::string action = anim->action;
         std::string direction = entityAnimationDirectionBucket(e);
         spec.frameMs = displayFrameMs(*anim);
@@ -279,7 +282,7 @@ const char* featureOccluderGlyph(FeatureType feature) {
 
 void drawFeatureOccluderIfNeeded(int mx, int my, SDL_Rect rect) {
     if (!inBounds(mx, my) || !g.map[my][mx].visible[0]) return;
-    Entity* ent = entityAt(mx, my);
+    Entity* ent = sdlEntityAt(mx, my);
     if (!ent || !ent->alive || isBuilding(ent->type)) return;
     VisualTileParts parts = visualPartsForTile(g.map[my][mx]);
     if (!featureConceals(parts.feature)) return;
@@ -366,7 +369,8 @@ bool drawEntityImageTile(const Entity& e, SDL_Rect dst, Color modulation,
     if (action && *action) {
         anim = findEntityActionAnimationSpec(e.type, action);
     } else {
-        anim = entityActionAnimationSpecFor(e);
+        WorldIndex world = buildWorldIndex(g);
+        anim = entityActionAnimationSpecFor(g, world, e);
         action = anim ? anim->action : "idle";
     }
     const char* direction = (forcedDirection && *forcedDirection) ? forcedDirection : entityAnimationDirectionBucket(e);
@@ -477,7 +481,7 @@ float torchRadius(EntityType type) {
 
 float torchLightAt(int x, int y) {
     if (!inBounds(x, y) || !g.map[y][x].explored[0]) return 0.0f;
-    float nightNeed = clamp01((0.88f - getBrightness()) / 0.88f);
+    float nightNeed = clamp01((0.88f - getBrightness(g)) / 0.88f);
     if (nightNeed <= 0.02f) return 0.0f;
 
     float light = 0.0f;

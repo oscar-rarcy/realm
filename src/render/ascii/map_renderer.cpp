@@ -18,6 +18,7 @@ void renderMap() {
     view.viewY = std::max(0, std::min(view.viewY, MAP_H - view.viewH));
 
     RenderModel model = buildRenderModel(g, 0, view.viewX, view.viewY, view.viewW, view.viewH);
+    WorldIndex world = buildWorldIndex(g);
     std::vector<const TileRenderInfo*> tileInfos(view.viewW * view.viewH, nullptr);
     for (const TileRenderInfo& tileInfo : model.tiles) {
         int sx = tileInfo.x - view.viewX;
@@ -33,11 +34,11 @@ void renderMap() {
         return tileInfos[sy * view.viewW + sx];
     };
 
-    bool night = isNight();
+    bool night = isNight(g);
 
     // Selected ranged unit/tower: precompute range-ring centre + radius.
     int ringX = -1, ringY = -1, ringR = 0;
-    Entity* selR = findEntity(g.selectedId);
+    Entity* selR = findEntity(g, world, g.selectedId);
     if (selR && selR->alive && selR->owner == 0) {
         int rng = STATS[selR->type].range;
         if (selR->type == E_ARCHER && (g.players[0].research & R_CROSSBOWS)) rng += 2;
@@ -115,25 +116,25 @@ void renderMap() {
             chtype drawCh = (chtype)ch;
             if (wallPrev[my][mx]) drawCh = ACS_CKBOARD;
 
-            Entity* ent = entityAt(mx, my);
-            if (!ent) ent = corpseAt(mx, my);
+            Entity* ent = entityAt(g, world, mx, my);
+            if (!ent) ent = corpseAt(g, world, mx, my);
             // Cloaking: enemy units fade at night/storm unless a friendly eye is close.
             // Wheat fields also conceal enemies — units in crops need close detection.
             bool inCrop = ent && !isBuilding(ent->type) && terrain == T_WHEAT;
             if (ent && ent->alive && ent->owner != 0 && ent->owner < MAX_PLAYERS
-                && (isConcealing() || inCrop) && !isDetectedBy(mx, my, 0)) ent = nullptr;
+                && (isConcealing(g) || inCrop) && !isDetectedBy(g, mx, my, 0)) ent = nullptr;
 
             // Catapult/ram body tile: render the body from the adjacent slot so
             // the normal terrain pass for this cell cannot overwrite it.
             if (displayMode == DM_ASCII && !ent && inBounds(mx-1, my)) {
-                Entity* leftEnt = entityAt(mx-1, my);
+                Entity* leftEnt = entityAt(g, world, mx-1, my);
                 if (leftEnt && leftEnt->alive && !leftEnt->underConstruction
                     && (leftEnt->type == E_CATAPULT || leftEnt->type == E_RAM
                         || (leftEnt->type == E_TREBUCHET && leftEnt->packed == 0 && leftEnt->packTicks == 0))) {
                     const TileRenderInfo* leftTileInfo = tileInfoAt(mx - 1, my);
                     bool inCropLeft = (leftTileInfo ? leftTileInfo->terrain : g.map[my][mx-1].terrain) == T_WHEAT;
                     bool leftCloaked = leftEnt->owner != 0 && leftEnt->owner < MAX_PLAYERS
-                        && (isConcealing() || inCropLeft) && !isDetectedBy(mx-1, my, 0);
+                        && (isConcealing(g) || inCropLeft) && !isDetectedBy(g, mx-1, my, 0);
                     if (!leftCloaked) {
                         char sc = (leftEnt->type == E_CATAPULT) ? 'c' : (leftEnt->type == E_TREBUCHET ? 'q' : 'r');
                         bool bodyIsSel = leftEnt->id == g.selectedId;
@@ -193,7 +194,7 @@ void renderMap() {
                 // no ownership background — they are neutral entities.
                 // Ships keep the wood-deck background for their hull look.
                 if (ent->type == E_FARM && !ent->underConstruction)
-                    cp = (getSeason() == SUMMER) ? CP_WHEAT_GOLD : CP_WHEAT;
+                    cp = (getSeason(g) == SUMMER) ? CP_WHEAT_GOLD : CP_WHEAT;
                 else if (ent->owner == OWNER_NATURE) {
                     if      (ent->type == E_WOLF)  cp = CP_WOLF;
                     else if (ent->type == E_SHEEP) cp = CP_SHEEP;
@@ -308,7 +309,7 @@ void renderMap() {
             bool isSel = false;
 
             // Single selection highlight
-            Entity* sel = findEntity(g.selectedId);
+            Entity* sel = findEntity(g, world, g.selectedId);
             if (sel && !isCur) {
                 auto& ss = STATS[sel->type];
                 if (ss.isBuilding) {
@@ -318,7 +319,7 @@ void renderMap() {
             // Group selection highlight
             if (!isSel && !g.selectedIds.empty()) {
                 for (int sid : g.selectedIds) {
-                    Entity* se = findEntity(sid);
+                    Entity* se = findEntity(g, world, sid);
                     if (se && mx==se->x && my==se->y) { isSel = true; break; }
                 }
             }
@@ -375,7 +376,7 @@ void renderMap() {
             int mx = view.viewX + sx, my = view.viewY + sy;
             const TileRenderInfo* tileInfo = tileInfoAt(mx, my);
             if (!inBounds(mx,my) || !tileInfo || !tileInfo->visible) continue;
-            if (entityAt(mx, my) || corpseAt(mx, my)) continue; // don't paint over units/buildings/corpses
+            if (entityAt(g, world, mx, my) || corpseAt(g, world, mx, my)) continue; // don't paint over units/buildings/corpses
             unsigned h = ((unsigned)(mx*73856093u) ^ (unsigned)(my*19349663u) ^ (unsigned)(frame*83492791u));
             if ((int)(h % 100) >= density) continue;
             if (snowWeather) {

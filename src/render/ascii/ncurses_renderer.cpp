@@ -1,4 +1,5 @@
 #include "realm.h"
+#include "core/game_events.h"
 #include "input_keys.h"
 
 static void renderHelpOverlay() {
@@ -41,4 +42,4 @@ static void renderHelpOverlay() {
     attroff(COLOR_PAIR(CP_UI_HIGH));
 }
 
-void render() { erase(); renderMap(); renderUI(); renderHelpOverlay(); refresh(); }
+void render() { flushGameEventsToUi(g, 0); erase(); renderMap(); renderUI(); renderHelpOverlay(); refresh(); }

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "realm.h"
+#include "core/game_types.h"
 
 // Canonical research catalogue. This is the single source of truth for research
 // cost, duration, the building that performs it, and any required owned building.

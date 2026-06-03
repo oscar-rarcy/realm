@@ -247,9 +247,9 @@ static bool shouldShowSeasonAt(int x, int y, float threshold) {
 }
 
 void getTerrainVisual(Terrain t, int x, int y, char& ch, int& cp) {
-    Season season = getSeason();
-    float sprog   = getSeasonProgress();
-    float bright  = getBrightness();
+    Season season = getSeason(g);
+    float sprog   = getSeasonProgress(g);
+    float bright  = getBrightness(g);
     bool  night   = bright < 0.3f;
     Biome biome   = g.map[y][x].biome;
 

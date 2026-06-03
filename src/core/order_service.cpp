@@ -1,4 +1,5 @@
 #include "order_service.h"
+#include "realm.h"
 #include "core/entity_query.h"
 #include "core/game_events.h"
 #include "core/world_index.h"
@@ -54,7 +55,7 @@ ServiceResult startMove(Game& game, const WorldIndex& world, PlayerId issuer, co
     std::vector<Entity*> units = selectedOwnedUnits(game, world, selection, issuer);
     if (units.empty()) return fail("Selected unit cannot move.");
     if (selection.ids.size() > 1) {
-        orderGroupMove(selection, target.x, target.y, issuer);
+        orderGroupMove(game, world, selection, target.x, target.y, issuer);
         return ok();
     }
     ServiceResult allowed = canMove(game, world, issuer, selection.primaryId, target);
@@ -68,7 +69,7 @@ ServiceResult startAttackMove(Game& game, const WorldIndex& world, PlayerId issu
     std::vector<Entity*> units = selectedOwnedUnits(game, world, selection, issuer);
     if (units.empty()) return fail("Selected unit cannot attack-move.");
     if (selection.ids.size() > 1) {
-        orderGroupAttackMove(selection, target.x, target.y, issuer);
+        orderGroupAttackMove(game, world, selection, target.x, target.y, issuer);
         return ok();
     }
     ServiceResult moved = canMove(game, world, issuer, selection.primaryId, target);
@@ -96,7 +97,7 @@ ServiceResult startAttack(Game& game, const WorldIndex& world, PlayerId issuer, 
     std::vector<Entity*> units = selectedOwnedUnits(game, world, selection, issuer);
     if (units.empty()) return fail("Selected unit cannot attack.");
     if (selection.ids.size() > 1) {
-        orderGroupAttack(selection, targetId, issuer);
+        orderGroupAttack(game, world, selection, targetId, issuer);
         return ok();
     }
     ServiceResult allowed = canAttack(game, world, issuer, selection.primaryId, targetId);

@@ -4,6 +4,7 @@
 
 void renderUI() {
     int maxY, maxX; getmaxyx(stdscr, maxY, maxX);
+    WorldIndex world = buildWorldIndex(g);
     Player& p = g.players[0]; int panelW = 24, panelX = maxX - panelW;
 
     // Top bar
@@ -24,7 +25,7 @@ void renderUI() {
              p.gold, p.wood, p.food, p.supply, p.supplyMax, popForecast, idleCount, idleBldg);
 
     int iconX = maxX - 22;
-    if (getBrightness() > 0.5f) {
+    if (getBrightness(g) > 0.5f) {
         attron(COLOR_PAIR(CP_SUN)|A_BOLD);
         // Emoji mode: ✦ (U+2726 BLACK FOUR POINTED STAR, width-1) for sun.
         mvprintw(0, iconX, (displayMode == DM_EMOJI) ? "\xe2\x9c\xa6" : "*");
@@ -37,7 +38,7 @@ void renderUI() {
     }
     attron(COLOR_PAIR(CP_UI_BAR));
     const char* wn = (g.weather == W_STORM) ? "Storm" : (g.weather == W_RAIN) ? "Rain " : (g.weather == W_SNOW) ? "Snow " : "Clear";
-    mvprintw(0, iconX+1, " %-5s %-6s %s", getTimeName(), getSeasonName(), wn);
+    mvprintw(0, iconX+1, " %-5s %-6s %s", getTimeName(g), getSeasonName(g), wn);
     attroff(COLOR_PAIR(CP_UI_BAR));
 
     // Terrain info bar
@@ -77,15 +78,15 @@ void renderUI() {
             else { mch='.'; mcp=CP_FOG; }
         }
         if (g.map[mapY][mapX].visible[0]) {
-            Entity* ent = entityAt(mapX, mapY);
+            Entity* ent = entityAt(g, world, mapX, mapY);
             // Hide cloaked enemies from the minimap as well.
             if (ent && ent->alive && ent->owner != 0 && ent->owner < MAX_PLAYERS
-                && isConcealing() && !isDetectedBy(mapX, mapY, 0)) ent = nullptr;
+                && isConcealing(g) && !isDetectedBy(g, mapX, mapY, 0)) ent = nullptr;
             if (ent && ent->alive) {
                 // Mirror main-map crop/cloaking on the minimap.
                 bool mmInCrop = !isBuilding(ent->type) && g.map[mapY][mapX].terrain == T_WHEAT;
                 if (ent->owner != 0 && ent->owner < MAX_PLAYERS
-                    && (isConcealing() || mmInCrop) && !isDetectedBy(mapX, mapY, 0))
+                    && (isConcealing(g) || mmInCrop) && !isDetectedBy(g, mapX, mapY, 0))
                     ent = nullptr;
             }
             if (ent && ent->alive) {
@@ -136,7 +137,7 @@ void renderUI() {
         // Multi-unit group summary
         int counts[8] = {0};
         for (int sid : g.selectedIds) {
-            Entity* e = findEntity(sid); if (!e || !e->alive) continue;
+            Entity* e = findEntity(g, world, sid); if (!e || !e->alive) continue;
             switch (e->type) {
             case E_PEASANT:  counts[0]++; break; case E_MILITIA:  counts[1]++; break;
             case E_ARCHER:   counts[2]++; break; case E_KNIGHT:   counts[3]++; break;
@@ -166,7 +167,7 @@ void renderUI() {
         mvprintw(iy++, panelX+1, "[1-9] Groups");
         attroff(COLOR_PAIR(CP_UI_ACCENT));
     } else {
-        Entity* sel = findEntity(g.selectedId);
+        Entity* sel = findEntity(g, world, g.selectedId);
         if (sel) {
             auto& st = STATS[sel->type];
             int nc = (sel->owner == 0) ? CP_PLAYER : CP_ENEMY;
@@ -195,7 +196,7 @@ void renderUI() {
                         else if (sel->cargo.type == CR_FISH) stDesc = "Fishing";
                         else                                stDesc = "Picking berries";
                         break;
-                    case S_BUILDING:  { Entity* b = findEntity(sel->targetId);
+                    case S_BUILDING:  { Entity* b = findEntity(g, world, sel->targetId);
                                         if (b && !b->underConstruction && b->type==E_FARM)
                                             stDesc = "Tending farm";
                                         else
@@ -380,7 +381,7 @@ void renderUI() {
     if (g.mode == M_BUILD_SELECT)
         mvprintw(botY2, 1, " BUILD: [H]ouse [B]arracks [S]table [T]ower [F]arm [W]all [G]ate [A]rmory [C]hurch [M]arket [K]Castle [L]umber [N]mine [I]mill [D]ock [Esc] ");
     else if (g.mode == M_TRAIN_SELECT) {
-        Entity* s2 = findEntity(g.selectedId);
+        Entity* s2 = findEntity(g, world, g.selectedId);
         if (s2) {
             if (s2->type==E_TOWNHALL)  mvprintw(botY2, 1, " TRAIN: [P]easant(50g), repeat keys to queue [Esc] ");
             else if (s2->type==E_BARRACKS) mvprintw(botY2, 1, " TRAIN: [M]ilitia [A]rcher [S]pearman [C]atapult [R]am, repeat keys to queue [Esc] ");

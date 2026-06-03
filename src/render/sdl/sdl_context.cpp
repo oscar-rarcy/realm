@@ -1,4 +1,5 @@
 #include "render/sdl/sdl_text.h"
+#include "realm.h"
 
 Gfx s;
 bool labForcesImageTileset = false;
@@ -185,7 +186,7 @@ int boundaryStrength(int x, int y) {
 }
 
 Color seasonTint(Color base) {
-    switch (getSeason()) {
+    switch (getSeason(g)) {
         case SPRING: return blend(base, rgb(120,190,105), 0.12f);
         case SUMMER: return blend(base, rgb(205,170,80), 0.07f);
         case AUTUMN: return blend(base, rgb(190,115,55), 0.18f);
@@ -195,7 +196,7 @@ Color seasonTint(Color base) {
 }
 
 Color timeTint(Color base) {
-    float b = clamp01(getBrightness());
+    float b = clamp01(getBrightness(g));
     float darkness = clamp01((0.86f - b) / 0.86f);
     float twilight = clamp01(1.0f - std::abs(b - 0.42f) / 0.30f);
 
@@ -246,7 +247,7 @@ Color terrainBg(const Tile& t, int x, int y) {
     }
 
     c = seasonTint(c);
-    float n = noisePatch(x, y, 811u + (unsigned)t.biome*17u + (unsigned)getSeason()*37u);
+    float n = noisePatch(x, y, 811u + (unsigned)t.biome*17u + (unsigned)getSeason(g)*37u);
     float shade = 0.90f + n * 0.22f;
     int edge = boundaryStrength(x,y);
     if (edge) shade += 0.04f * edge;
@@ -440,4 +441,3 @@ void drawCentered(const std::string& text, SDL_Rect rect, Color col, bool emoji,
     SDL_RenderCopy(s.ren, tex, nullptr, &dst);
     SDL_SetTextureColorMod(tex, 255,255,255);
 }
-

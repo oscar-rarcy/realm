@@ -37,14 +37,14 @@ static void planAttackWave(AIContext& context, Player& player, const AIIntel& in
     int idleArmy = 0;
     Entity* anchor = nullptr;
     for (EntityId id : world.unitsByOwner[o]) {
-        Entity* e = entityById(g, world, id);
+        Entity* e = entityById(context.ctx.game, world, id);
         if (!e || !aiCombatUnit(*e, o)) continue;
         idleArmy++;
         if (!anchor) anchor = e;
     }
-    bool lateGame = g.tick > tuning.lateGameTick;
-    bool midGame = g.tick > tuning.midGameTick;
-    int attackThreshold = (g.tick < tuning.attackGraceTicks)
+    bool lateGame = context.ctx.game.tick > tuning.lateGameTick;
+    bool midGame = context.ctx.game.tick > tuning.midGameTick;
+    int attackThreshold = (context.ctx.game.tick < tuning.attackGraceTicks)
         ? 999
         : (lateGame ? tuning.lateAttackThreshold
                     : (midGame ? tuning.midAttackThreshold : tuning.earlyAttackThreshold));
@@ -55,10 +55,10 @@ static void planAttackWave(AIContext& context, Player& player, const AIIntel& in
         if (tid < 0 && intel.playerTownCenterId) tid = *intel.playerTownCenterId;
         if (tid >= 0) {
             for (EntityId id : world.unitsByOwner[o]) {
-                Entity* e = entityById(g, world, id);
+                Entity* e = entityById(context.ctx.game, world, id);
                 if (!e || !aiCombatUnit(*e, o)) continue;
                 int myTarget = (e->type == E_CATAPULT && siegeId >= 0) ? siegeId : tid;
-                Entity* target = entityById(g, world, myTarget);
+                Entity* target = entityById(context.ctx.game, world, myTarget);
                 if (target) aiIssueAttackMove(context, *e, target->x, target->y);
                 else aiIssueAttack(context, *e, myTarget);
             }
@@ -73,15 +73,15 @@ static void planBaseDefense(AIContext& context) {
     const AITuning& tuning = context.tuning;
     // === DEFENSE: respond to threats near any owned TH/Castle ===
     for (EntityId baseId : world.buildingsByOwner[o]) {
-        Entity* base = entityById(g, world, baseId);
+        Entity* base = entityById(context.ctx.game, world, baseId);
         if (!base || (base->type != E_TOWNHALL && base->type != E_CASTLE)) continue;
         bool handledThreat = false;
-        forEachEnemyEntity(g, world, o, [&](Entity& en) {
+        forEachEnemyEntity(context.ctx.game, world, o, [&](Entity& en) {
             if (handledThreat) return;
             if (en.state == S_GARRISONED) return;
             if (dist(en.x, en.y, base->x, base->y) < tuning.defenseThreatRadius) {
                 for (EntityId defenderId : world.unitsByOwner[o]) {
-                    Entity* d = entityById(g, world, defenderId);
+                    Entity* d = entityById(context.ctx.game, world, defenderId);
                     if (d && aiIdleMilitaryUnit(*d, o)) {
                         aiIssueAttackMove(context, *d, en.x, en.y);
                     }
@@ -97,17 +97,17 @@ static void planWorkerDefense(AIContext& context) {
     WorldIndex& world = context.ctx.world;
     // Worker defense: if a peasant was hit, nearest idle military intercepts.
     for (EntityId workerId : world.unitsByOwner[o]) {
-        Entity* worker = entityById(g, world, workerId);
+        Entity* worker = entityById(context.ctx.game, world, workerId);
         if (!worker || !isWorker(worker->type) || worker->alertTicks <= 0) continue;
         Entity* guard = nullptr; int bestD = 99999;
         for (EntityId unitId : world.unitsByOwner[o]) {
-            Entity* u = entityById(g, world, unitId);
+            Entity* u = entityById(context.ctx.game, world, unitId);
             if (!u || u->state != S_IDLE || !isMilitary(u->type) || isNaval(u->type)) continue;
             int d = mdist(u->x, u->y, worker->x, worker->y);
             if (d < bestD) { bestD = d; guard = u; }
         }
         Entity* threat = nullptr; int threatD = 99999;
-        forEachEnemyEntity(g, world, o, [&](Entity& en) {
+        forEachEnemyEntity(context.ctx.game, world, o, [&](Entity& en) {
             int d = mdist(en.x,en.y,worker->x,worker->y);
             if (d < threatD) { threatD = d; threat = &en; }
         });
@@ -126,5 +126,5 @@ void runAIAttackAndDefense(AIContext& context) {
     planWorkerDefense(context);
 
     aiTickTrebuchets(context);
-    if (g.biomeChoice == B_OCEAN) aiTickTransports(context);
+    if (context.ctx.game.biomeChoice == B_OCEAN) aiTickTransports(context);
 }

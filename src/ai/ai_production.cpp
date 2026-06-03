@@ -45,7 +45,7 @@ void runAIProduction(AIContext& context) {
     // Shares the canonical research service so AI now pays resources and uses
     // the same durations as the player (priority: Iron, Crossbows, Pikes, Plate, Counterweight).
     for (EntityId smithId : world.buildingsByOwner[o]) {
-        Entity* smithEntity = entityById(g, world, smithId);
+        Entity* smithEntity = entityById(context.ctx.game, world, smithId);
         if (!smithEntity || smithEntity->type != E_BLACKSMITH || smithEntity->underConstruction) continue;
         Entity& smith = *smithEntity;
         if (smith.researching != 0) break;
@@ -63,7 +63,7 @@ void runAIProduction(AIContext& context) {
     // === MILITARY UNITS — train at every barracks/stable in parallel ===
     bool needCat = (intel.playerCastles > 0 || intel.playerWalls > 6 || intel.playerCatapults > 0);
     for (EntityId barracksId : world.buildingsByOwner[o]) {
-        Entity* barracks = entityById(g, world, barracksId);
+        Entity* barracks = entityById(context.ctx.game, world, barracksId);
         if (!barracks || barracks->type != E_BARRACKS || barracks->underConstruction) continue;
         Entity& br = *barracks;
         if (br.producing != E_NONE) continue;
@@ -76,7 +76,7 @@ void runAIProduction(AIContext& context) {
         if (arch < archCap && p.gold >= 70 && p.food >= 20) { aiIssueTrain(context, br, E_ARCHER);  continue; }
     }
     for (EntityId stableId : world.buildingsByOwner[o]) {
-        Entity* stable = entityById(g, world, stableId);
+        Entity* stable = entityById(context.ctx.game, world, stableId);
         if (!stable || stable->type != E_STABLE || stable->underConstruction) continue;
         Entity& st = *stable;
         if (st.producing != E_NONE) continue;
@@ -84,7 +84,7 @@ void runAIProduction(AIContext& context) {
     }
     bool wantTreb = (intel.playerCastles > 0 || intel.playerWalls > 8 || intel.playerArmy >= 10);
     for (EntityId castleId : world.buildingsByOwner[o]) {
-        Entity* castle = entityById(g, world, castleId);
+        Entity* castle = entityById(context.ctx.game, world, castleId);
         if (!castle || castle->type != E_CASTLE || castle->underConstruction) continue;
         Entity& cs = *castle;
         if (cs.producing != E_NONE) continue;

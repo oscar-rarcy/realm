@@ -1,12 +1,15 @@
 #pragma once
 
-#include "realm.h"
 #include "core/game_context.h"
 #include "core/research_defs.h"
 #include "core/market_service.h"
 
+#include <string>
 #include <type_traits>
 #include <variant>
+#include <vector>
+
+struct Entity;
 
 struct Selection {
     int primaryId = -1;
@@ -162,11 +165,8 @@ struct Command {
     }
 };
 
-Selection currentSelection();
+Selection currentSelection(const Game& game);
 Command resolveContextCommand(const Game& game, const WorldIndex& world, PlayerId issuer, const Selection& selection, MapPos target);
-Command resolveContextCommand(const Game& game, PlayerId issuer, const Selection& selection, MapPos target);
-Command resolveContextCommand(const Game& game, const Selection& selection, MapPos target);
-CommandResult dispatchCommand(Game& game, const Command& command);
 CommandResult dispatchCommand(GameContext& context, const Command& command);
 void selectAtTile(Game& game, int x, int y);
 void selectAtTile(Game& game, const WorldIndex& world, PlayerId issuer, int x, int y);

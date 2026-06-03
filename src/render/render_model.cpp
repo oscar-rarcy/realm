@@ -1,4 +1,5 @@
 #include "render/visual_model.h"
+#include "realm.h"
 
 static bool isAnimalEntityType(EntityType type) {
     return type == E_DEER || type == E_WOLF || type == E_SHEEP || type == E_BOAR;

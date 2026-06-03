@@ -8,18 +8,10 @@ void addActionMarker(int x, int y, char glyph) {
     emitActionMarkerEvent(-1, { x, y }, glyph);
 }
 
-void addPlayerFood(int owner, int amount, Entity* depot) {
-    addPlayerFood(g, owner, amount, depot);
-}
-
 void addPlayerFood(Game& game, int owner, int amount, Entity* depot) {
     if (owner < 0 || owner >= MAX_PLAYERS || amount <= 0) return;
     game.players[owner].food += amount;
     if (depot && depot->type == E_MILL) depot->storedFood += amount;
-}
-
-void spendPlayerFood(int owner, int amount) {
-    spendPlayerFood(g, owner, amount);
 }
 
 void spendPlayerFood(Game& game, int owner, int amount) {
@@ -37,18 +29,8 @@ void spendPlayerFood(Game& game, int owner, int amount) {
     }
 }
 
-Entity* findEntity(int id) {
-    for (auto& e : g.entities) if (e.id == id && e.alive) return &e;
-    return nullptr;
-}
-
 Entity* findEntity(Game& game, const WorldIndex& world, int id) {
     return entityById(game, world, id);
-}
-
-Entity* findDepot(Entity& e) {
-    WorldIndex world = buildWorldIndex(g);
-    return findDepot(g, world, e);
 }
 
 Entity* findDepot(Game& game, const WorldIndex& world, Entity& e) {
@@ -72,43 +54,14 @@ Entity* findDepot(Game& game, const WorldIndex& world, Entity& e) {
     return best;
 }
 
-Entity* entityAt(int x, int y) {
-    for (auto& e : g.entities) {
-        if (!e.alive || e.state == S_GARRISONED) continue;
-        auto& s = STATS[e.type];
-        if (s.isBuilding) { if (x>=e.x && x<e.x+s.sizeW && y>=e.y && y<e.y+s.sizeH) return &e; }
-        else if (e.x == x && e.y == y) return &e;
-    }
-    return nullptr;
-}
-
 Entity* entityAt(Game& game, const WorldIndex& world, int x, int y) {
     EntityId id = topEntityAt(game, world, { x, y });
     return id >= 0 ? entityById(game, world, id) : nullptr;
 }
 
-Entity* entityAtOwner(int x, int y, int owner) {
-    for (auto& e : g.entities) {
-        if (!e.alive || e.owner != owner || e.state == S_GARRISONED) continue;
-        auto& s = STATS[e.type];
-        if (s.isBuilding) { if (x>=e.x && x<e.x+s.sizeW && y>=e.y && y<e.y+s.sizeH) return &e; }
-        else if (e.x == x && e.y == y) return &e;
-    }
-    return nullptr;
-}
-
 Entity* entityAtOwner(Game& game, const WorldIndex& world, int x, int y, int owner) {
     EntityId id = topEntityAtOwner(game, world, { x, y }, owner);
     return id >= 0 ? entityById(game, world, id) : nullptr;
-}
-
-Entity* corpseAt(int x, int y) {
-    Entity* found = nullptr;
-    for (auto& e : g.entities) {
-        if (e.alive || e.state != S_DEAD || !isUnit(e.type) || isBuilding(e.type)) continue;
-        if (e.x == x && e.y == y) found = &e;
-    }
-    return found;
 }
 
 Entity* corpseAt(Game& game, const WorldIndex& world, int x, int y) {
@@ -119,10 +72,6 @@ Entity* corpseAt(Game& game, const WorldIndex& world, int x, int y) {
         found = entity;
     }
     return found;
-}
-
-void buildOccupancyGrid(OccupancyGrid& grid, bool includeUnits, bool includeBuildings, int ignoreEntityId) {
-    buildOccupancyGrid(g, grid, includeUnits, includeBuildings, ignoreEntityId);
 }
 
 void buildOccupancyGrid(const Game& game, OccupancyGrid& grid, bool includeUnits, bool includeBuildings, int ignoreEntityId) {
@@ -161,7 +110,7 @@ static bool isWaterPassableFor(const Game& game, int x, int y) {
 
 bool canPlace(const Game& game, const WorldIndex& world, EntityType type, int x, int y, int owner) {
     (void)owner;
-    // Top-level bounds check protects every g.map read below, including the
+    // Top-level bounds check protects every map read below, including the
     // farm-only terrain read that previously ran before any inBounds check.
     if (!inBounds(x, y)) return false;
     // Farms can only be sown on open ground, not in winter
@@ -193,9 +142,4 @@ bool canPlace(const Game& game, const WorldIndex& world, EntityType type, int x,
         if (!touchesWater) return false;
     }
     return true;
-}
-
-bool canPlace(EntityType type, int x, int y, int owner) {
-    WorldIndex world = buildWorldIndex(g);
-    return canPlace(g, world, type, x, y, owner);
 }

@@ -1,4 +1,5 @@
 #include "ai/ai.h"
+#include "realm.h"
 #include "commands/command.h"
 #include "core/world_index.h"
 
@@ -14,16 +15,6 @@ static Selection aiSelection(Entity& entity) {
 
 static void aiQueue(AIContext& context, Command command) {
     context.plannedCommands.push_back(std::move(command));
-}
-
-static void aiDispatchImmediate(Command command) {
-    const AITuning& tuning = defaultAITuning();
-    AIWorldView view = buildAIWorldView(command.issuer, tuning);
-    WorldIndex world = buildWorldIndex(g);
-    GameContext gameContext{ g, world, gameEvents() };
-    AIContext context{ command.issuer, gameContext, view, tuning, {}, {} };
-    context.plannedCommands.push_back(std::move(command));
-    executeAICommands(context);
 }
 
 void aiIssueBuild(AIContext& context, Entity& builder, EntityType buildingType, int x, int y) {
@@ -125,83 +116,6 @@ static void countRejected(AIContext& context, CommandType type) {
         default:
             break;
     }
-}
-
-void aiIssueBuild(Entity& builder, EntityType buildingType, int x, int y) {
-    Command command;
-    command.issuer = builder.owner;
-    command.payload = BuildCommand{ aiSelection(builder), buildingType, { x, y } };
-    aiDispatchImmediate(std::move(command));
-}
-
-void aiIssueTrain(Entity& producer, EntityType unitType) {
-    Command command;
-    command.issuer = producer.owner;
-    command.payload = TrainCommand{ aiSelection(producer), unitType };
-    aiDispatchImmediate(std::move(command));
-}
-
-void aiIssueResearch(Entity& producer, ResearchId researchId) {
-    Command command;
-    command.issuer = producer.owner;
-    command.payload = ResearchCommand{ aiSelection(producer), researchId };
-    aiDispatchImmediate(std::move(command));
-}
-
-void aiIssueGather(Entity& unit, int x, int y) {
-    Command command;
-    command.issuer = unit.owner;
-    command.payload = GatherCommand{ aiSelection(unit), { x, y } };
-    aiDispatchImmediate(std::move(command));
-}
-
-void aiIssueMove(Entity& unit, int x, int y) {
-    Command command;
-    command.issuer = unit.owner;
-    command.payload = MoveCommand{ aiSelection(unit), { x, y } };
-    aiDispatchImmediate(std::move(command));
-}
-
-void aiIssueAttack(Entity& unit, int targetId) {
-    Command command;
-    command.issuer = unit.owner;
-    command.payload = AttackCommand{ aiSelection(unit), targetId };
-    aiDispatchImmediate(std::move(command));
-}
-
-void aiIssueAttackMove(Entity& unit, int x, int y) {
-    Command command;
-    command.issuer = unit.owner;
-    command.payload = AttackMoveCommand{ aiSelection(unit), { x, y } };
-    aiDispatchImmediate(std::move(command));
-}
-
-void aiIssueGarrison(Entity& unit, int buildingId) {
-    Command command;
-    command.issuer = unit.owner;
-    command.payload = GarrisonCommand{ aiSelection(unit), buildingId };
-    aiDispatchImmediate(std::move(command));
-}
-
-void aiIssueEjectGarrison(Entity& building) {
-    Command command;
-    command.issuer = building.owner;
-    command.payload = EjectGarrisonCommand{ aiSelection(building) };
-    aiDispatchImmediate(std::move(command));
-}
-
-void aiIssueContext(Entity& unit, int x, int y) {
-    Command command;
-    command.issuer = unit.owner;
-    command.payload = ContextCommand{ aiSelection(unit), { x, y } };
-    aiDispatchImmediate(std::move(command));
-}
-
-void aiIssueToggleTrebuchetPacked(Entity& trebuchet) {
-    Command command;
-    command.issuer = trebuchet.owner;
-    command.payload = ToggleTrebuchetPackedCommand{ aiSelection(trebuchet) };
-    aiDispatchImmediate(std::move(command));
 }
 
 void executeAICommands(AIContext& context) {

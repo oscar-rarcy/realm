@@ -1,8 +1,11 @@
 #pragma once
 
-#include "realm.h"
+#include "core/game_types.h"
 
 #include <string>
+#include <vector>
+
+struct Game;
 
 enum class GameEventType {
     StatusMessage,
@@ -38,12 +41,9 @@ public:
     virtual void emit(const GameEvent& event) = 0;
 };
 
-class LegacyUiEventSink : public EventSink {
-public:
-    void emit(const GameEvent& event) override;
-};
-
 EventSink& gameEvents();
+std::vector<GameEvent> drainGameEvents();
+void flushGameEventsToUi(Game& game, int viewerPlayer = 0);
 void emitGameEvent(const GameEvent& event);
 void emitStatusEvent(int player, const std::string& message, GameEventType type = GameEventType::StatusMessage);
 void emitActionMarkerEvent(int player, MapPos tile, char glyph);

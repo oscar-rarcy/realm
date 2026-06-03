@@ -6,6 +6,7 @@
 #include "commands/input_feedback.h"
 #include "commands/input_intent.h"
 #include "commands/input_mode_controller.h"
+#include "core/game_context.h"
 #include "core/market_service.h"
 
 #include <cctype>
@@ -98,28 +99,41 @@ static std::optional<MarketTradeType> tradeMenuSelection(int ch) {
 
 static constexpr PlayerId kLocalPlayer = 0;
 
+static CommandResult dispatchInputCommand(Command& command) {
+    WorldIndex world = buildWorldIndex(g);
+    GameContext context{ g, world, gameEvents() };
+    return dispatchCommand(context, command);
+}
+
+static CommandResult dispatchInputContextCommand(PlayerId issuer, MapPos target) {
+    WorldIndex world = buildWorldIndex(g);
+    GameContext context{ g, world, gameEvents() };
+    Command command = resolveContextCommand(g, world, issuer, currentSelection(g), target);
+    return dispatchCommand(context, command);
+}
+
 static void dispatchBuildCommand(PlayerId issuer, EntityType type, int x, int y, int endX = -1, int endY = -1) {
     Command command;
     command.issuer = issuer;
     if (endX >= 0 && endY >= 0) {
-        command.payload = BuildLineCommand{ currentSelection(), type, {x, y}, {endX, endY} };
+        command.payload = BuildLineCommand{ currentSelection(g), type, {x, y}, {endX, endY} };
     } else {
-        command.payload = BuildCommand{ currentSelection(), type, {x, y} };
+        command.payload = BuildCommand{ currentSelection(g), type, {x, y} };
     }
-    dispatchCommand(g, command);
+    dispatchInputCommand(command);
 }
 
 static void dispatchTrainCommand(PlayerId issuer, EntityType type) {
     Command command;
     command.issuer = issuer;
-    command.payload = TrainCommand{ currentSelection(), type };
-    dispatchCommand(g, command);
+    command.payload = TrainCommand{ currentSelection(g), type };
+    dispatchInputCommand(command);
 }
 
 static void dispatchTileCommand(PlayerId issuer, CommandType type, int x, int y) {
     Command command;
     command.issuer = issuer;
-    Selection selection = currentSelection();
+    Selection selection = currentSelection(g);
     switch (type) {
     case CommandType::Select: command.payload = SelectCommand{ {x, y} }; break;
     case CommandType::SetRally: command.payload = SetRallyCommand{ selection, {x, y} }; break;
@@ -128,13 +142,13 @@ static void dispatchTileCommand(PlayerId issuer, CommandType type, int x, int y)
     case CommandType::Move: command.payload = MoveCommand{ selection, {x, y} }; break;
     default: return;
     }
-    dispatchCommand(g, command);
+    dispatchInputCommand(command);
 }
 
 static void dispatchSimpleCommand(PlayerId issuer, CommandType type) {
     Command command;
     command.issuer = issuer;
-    Selection selection = currentSelection();
+    Selection selection = currentSelection(g);
     switch (type) {
     case CommandType::TogglePause: command.payload = TogglePauseCommand{}; break;
     case CommandType::Resign: command.payload = ResignCommand{}; break;
@@ -147,7 +161,7 @@ static void dispatchSimpleCommand(PlayerId issuer, CommandType type) {
     case CommandType::Stop: command.payload = StopCommand{ selection }; break;
     default: return;
     }
-    dispatchCommand(g, command);
+    dispatchInputCommand(command);
 }
 
 static void dispatchSlotCommand(PlayerId issuer, CommandType type, int slot) {
@@ -156,11 +170,11 @@ static void dispatchSlotCommand(PlayerId issuer, CommandType type, int slot) {
     switch (type) {
     case CommandType::Save: command.payload = SaveCommand{ slot }; break;
     case CommandType::Load: command.payload = LoadCommand{ slot }; break;
-    case CommandType::AssignControlGroup: command.payload = AssignControlGroupCommand{ currentSelection(), slot }; break;
+    case CommandType::AssignControlGroup: command.payload = AssignControlGroupCommand{ currentSelection(g), slot }; break;
     case CommandType::RecallControlGroup: command.payload = RecallControlGroupCommand{ slot }; break;
     default: return;
     }
-    dispatchCommand(g, command);
+    dispatchInputCommand(command);
 }
 
 static void moveCursorToSelected(PlayerId issuer) {
@@ -227,8 +241,8 @@ static void handleInputForPlayer(int ch, PlayerId issuer) {
         auto dispatchTrade = [&](MarketTradeType type) {
             Command command;
             command.issuer = issuer;
-            command.payload = MarketTradeCommand{ currentSelection(), type };
-            dispatchCommand(g, command);
+            command.payload = MarketTradeCommand{ currentSelection(g), type };
+            dispatchInputCommand(command);
             cancelInputMode(g);
         };
         std::optional<MarketTradeType> trade = tradeMenuSelection(ch);
@@ -337,8 +351,8 @@ static void handleInputForPlayer(int ch, PlayerId issuer) {
         auto dispatchResearch = [&](ResearchId id) {
             Command command;
             command.issuer = issuer;
-            command.payload = ResearchCommand{ currentSelection(), id };
-            dispatchCommand(g, command);
+            command.payload = ResearchCommand{ currentSelection(g), id };
+            dispatchInputCommand(command);
             cancelInputMode(g);
         };
         std::optional<ResearchId> research = researchMenuSelection(ch);
@@ -387,7 +401,7 @@ static void handleInputForPlayer(int ch, PlayerId issuer) {
     }
 
     case InputIntent::Confirm: {
-        dispatchCommand(g, resolveContextCommand(g, issuer, currentSelection(), {view.cursorX, view.cursorY}));
+        dispatchInputContextCommand(issuer, {view.cursorX, view.cursorY});
         break;
     }
 
@@ -466,7 +480,7 @@ static void handleInputForPlayer(int ch, PlayerId issuer) {
     //   with military selected → enter attack-move mode (next click = a-move target)
     case InputIntent::AttackMoveOrSelectArmy: {
         WorldIndex world = buildWorldIndex(g);
-        bool hasMilitarySel = selectionContainsMilitary(g, world, issuer, currentSelection());
+        bool hasMilitarySel = selectionContainsMilitary(g, world, issuer, currentSelection(g));
         if (hasMilitarySel) {
             setInputMode(g, M_ATTACK_MOVE);
             inputStatus("Attack-move: click destination. [Esc] cancel");
@@ -571,7 +585,7 @@ static void handleInputForPlayer(int ch, PlayerId issuer) {
             Command command;
             command.issuer = issuer;
             command.payload = SelectAllOfTypeInViewCommand{ {mapX, mapY} };
-            dispatchCommand(g, command);
+            dispatchInputCommand(command);
             view.dragging = false;
             break;
         }
@@ -590,13 +604,13 @@ static void handleInputForPlayer(int ch, PlayerId issuer) {
                     Command command;
                     command.issuer = issuer;
                     command.payload = BoxSelectCommand{ {view.dragStartX, view.dragStartY}, {mapX, mapY} };
-                    dispatchCommand(g, command);
+                    dispatchInputCommand(command);
                 } else {
                     // Click: select entity at cursor
                     Command command;
                     command.issuer = issuer;
                     command.payload = SelectCommand{ {mapX, mapY} };
-                    dispatchCommand(g, command);
+                    dispatchInputCommand(command);
                 }
             }
         }
@@ -606,12 +620,12 @@ static void handleInputForPlayer(int ch, PlayerId issuer) {
             Command command;
             command.issuer = issuer;
             command.payload = SelectCommand{ {mapX, mapY} };
-            dispatchCommand(g, command);
+            dispatchInputCommand(command);
         }
         else if (me.bstate & (BUTTON3_CLICKED | BUTTON3_PRESSED)) {
             // Right click: issue command at cursor position
             view.dragging = false;
-            dispatchCommand(g, resolveContextCommand(g, issuer, currentSelection(), {mapX, mapY}));
+            dispatchInputContextCommand(issuer, {mapX, mapY});
         }
         // All other events (pure movement): cursor already updated above
         break;

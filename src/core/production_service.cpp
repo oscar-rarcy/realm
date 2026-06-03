@@ -1,4 +1,5 @@
 #include "production_service.h"
+#include "realm.h"
 #include "core/entity_query.h"
 #include "core/game_events.h"
 #include "core/world_index.h"

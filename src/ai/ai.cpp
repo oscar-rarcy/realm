@@ -11,37 +11,32 @@ const AITuning& defaultAITuning() {
     return tuning;
 }
 
-AIWorldView buildAIWorldView(int o) {
-    return buildAIWorldView(o, defaultAITuning());
-}
-
-static int indexedAITypeCount(const WorldIndex& world, int owner, EntityType type, bool includeUnderConstruction) {
-    if (owner < 0 || owner > MAX_PLAYERS) return 0;
+static int indexedAITypeCount(Game& game, const WorldIndex& world, int owner, EntityType type, bool includeUnderConstruction) {
+    if (owner < 0 || owner >= MAX_PLAYERS) return 0;
     int count = 0;
     for (EntityId id : world.entitiesByOwner[owner]) {
-        const Entity* entity = entityById(g, world, id);
+        const Entity* entity = entityById(game, world, id);
         if (entity && entity->type == type && (includeUnderConstruction || !entity->underConstruction)) count++;
     }
     return count;
 }
 
-AIWorldView buildAIWorldView(int o, const AITuning& tuning) {
+AIWorldView buildAIWorldView(Game& game, const WorldIndex& world, int o, const AITuning& tuning) {
     AIWorldView view{};
-    WorldIndex world = buildWorldIndex(g);
-    view.peas = indexedAITypeCount(world, o, E_PEASANT, false);
-    view.mil = indexedAITypeCount(world, o, E_MILITIA, false);
-    view.arch = indexedAITypeCount(world, o, E_ARCHER, false);
-    view.kni = indexedAITypeCount(world, o, E_KNIGHT, false);
-    view.spr = indexedAITypeCount(world, o, E_SPEARMAN, false);
-    view.cat = indexedAITypeCount(world, o, E_CATAPULT, true);
-    view.treb = indexedAITypeCount(world, o, E_TREBUCHET, true);
-    view.hous = indexedAITypeCount(world, o, E_HOUSE, true);
-    view.bar = indexedAITypeCount(world, o, E_BARRACKS, false);
-    view.stb = indexedAITypeCount(world, o, E_STABLE, false);
-    view.intel = aiScout(o);
+    view.peas = indexedAITypeCount(game, world, o, E_PEASANT, false);
+    view.mil = indexedAITypeCount(game, world, o, E_MILITIA, false);
+    view.arch = indexedAITypeCount(game, world, o, E_ARCHER, false);
+    view.kni = indexedAITypeCount(game, world, o, E_KNIGHT, false);
+    view.spr = indexedAITypeCount(game, world, o, E_SPEARMAN, false);
+    view.cat = indexedAITypeCount(game, world, o, E_CATAPULT, true);
+    view.treb = indexedAITypeCount(game, world, o, E_TREBUCHET, true);
+    view.hous = indexedAITypeCount(game, world, o, E_HOUSE, true);
+    view.bar = indexedAITypeCount(game, world, o, E_BARRACKS, false);
+    view.stb = indexedAITypeCount(game, world, o, E_STABLE, false);
+    view.intel = aiScout(game, world, o);
     view.peasCap = std::max(tuning.minPeasantCap, view.intel.playerPeasants + tuning.earlyPeasantLead);
-    if (g.tick > tuning.latePeasantCapTick) view.peasCap = std::min(view.peasCap, tuning.latePeasantCap);
-    if (g.tick > tuning.finalPeasantCapTick) view.peasCap = std::min(view.peasCap, tuning.finalPeasantCap);
+    if (game.tick > tuning.latePeasantCapTick) view.peasCap = std::min(view.peasCap, tuning.latePeasantCap);
+    if (game.tick > tuning.finalPeasantCapTick) view.peasCap = std::min(view.peasCap, tuning.finalPeasantCap);
     view.milCap = std::max(tuning.minMilitiaCap, view.intel.playerArmy + tuning.militiaLead);
     view.archCap = std::max(tuning.minArcherCap, view.intel.playerArmy/2 + 3);
     view.kniCap = std::max(tuning.minKnightCap, view.intel.playerArmy/3 + 2);
@@ -49,11 +44,11 @@ AIWorldView buildAIWorldView(int o, const AITuning& tuning) {
     return view;
 }
 
-void tickAIForOwner(int owner) {
+void tickAIForOwner(Game& game, int owner) {
     const AITuning& tuning = defaultAITuning();
-    AIWorldView view = buildAIWorldView(owner, tuning);
-    WorldIndex world = buildWorldIndex(g);
-    GameContext gameContext{ g, world, gameEvents() };
+    WorldIndex world = buildWorldIndex(game);
+    AIWorldView view = buildAIWorldView(game, world, owner, tuning);
+    GameContext gameContext{ game, world, gameEvents() };
     AIContext aiContext{ owner, gameContext, view, tuning, {}, {} };
 
     aiGather(aiContext);
@@ -67,12 +62,12 @@ void tickAIForOwner(int owner) {
     executeAICommands(aiContext);
 }
 
-void tickAI() {
-    g.aiTimer++;
-    if (g.aiTimer < defaultAITuning().aiThinkIntervalTicks) return;
-    g.aiTimer = 0;
+void tickAI(Game& game) {
+    game.aiTimer++;
+    if (game.aiTimer < defaultAITuning().aiThinkIntervalTicks) return;
+    game.aiTimer = 0;
     for (int o = 1; o < MAX_PLAYERS; o++) {
-        if (!g.players[o].alive) continue;
-        tickAIForOwner(o);
+        if (!game.players[o].alive) continue;
+        tickAIForOwner(game, o);
     }
 }

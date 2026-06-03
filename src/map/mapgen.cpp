@@ -4,35 +4,12 @@
 #include <queue>
 #include <utility>
 
-static Game* activeMapGenerationTarget = &g;
-
-Game& mapGenerationTarget() {
-    return *activeMapGenerationTarget;
-}
-
-namespace {
-
-struct ScopedMapGenerationTarget {
-    explicit ScopedMapGenerationTarget(Game& game) : previous(activeMapGenerationTarget) {
-        activeMapGenerationTarget = &game;
-    }
-    ~ScopedMapGenerationTarget() {
-        activeMapGenerationTarget = previous;
-    }
-    Game* previous;
-};
-
-} // namespace
-
-#define g mapGenerationTarget()
-#define realmRand() realmRand(mapGenerationTarget())
-
 static float noiseGrid[32][32];
 
-static void initNoise() {
+static void initNoise(Game& game) {
     for (int y = 0; y < 32; y++)
         for (int x = 0; x < 32; x++)
-            noiseGrid[y][x] = (float)(realmRand() % 1000) / 1000.0f;
+            noiseGrid[y][x] = (float)(realmRand(game) % 1000) / 1000.0f;
 }
 
 static float lerp(float a, float b, float t) { return a + t * (b - a); }
@@ -44,44 +21,44 @@ float sampleNoise(float fx, float fy) {
                 lerp(noiseGrid[y1][x0], noiseGrid[y1][x1], tx), ty);
 }
 
-void clearStartArea(int cx, int cy, int radius) {
+void clearStartArea(Game& game, int cx, int cy, int radius) {
     for (int dy = -radius; dy <= radius+4; dy++) for (int dx = -radius; dx <= radius+4; dx++) {
         int x = cx+dx, y = cy+dy;
-        if (inBounds(x,y) && g.map[y][x].terrain != T_GOLD) {
-            g.map[y][x].terrain = T_GRASS;
-            g.map[y][x].resources = 0;
-            g.map[y][x].preWinterTerrain = T_GRASS;
+        if (inBounds(x,y) && game.map[y][x].terrain != T_GOLD) {
+            game.map[y][x].terrain = T_GRASS;
+            game.map[y][x].resources = 0;
+            game.map[y][x].preWinterTerrain = T_GRASS;
         }
     }
 }
 
-void placeGoldCluster(int cx, int cy, int count) {
+void placeGoldCluster(Game& game, int cx, int cy, int count) {
     for (int i = 0; i < count; i++) {
-        int gx = cx + (realmRand()%7)-3, gy = cy + (realmRand()%5)-2;
-        if (inBounds(gx,gy) && g.map[gy][gx].terrain != T_WATER
-            && g.map[gy][gx].terrain != T_MOUNTAIN && g.map[gy][gx].terrain != T_SHALLOWS) {
-            g.map[gy][gx].terrain = T_GOLD;
-            g.map[gy][gx].resources = 300 + realmRand() % 300;
-            g.map[gy][gx].preWinterTerrain = T_GOLD;
+        int gx = cx + (realmRand(game)%7)-3, gy = cy + (realmRand(game)%5)-2;
+        if (inBounds(gx,gy) && game.map[gy][gx].terrain != T_WATER
+            && game.map[gy][gx].terrain != T_MOUNTAIN && game.map[gy][gx].terrain != T_SHALLOWS) {
+            game.map[gy][gx].terrain = T_GOLD;
+            game.map[gy][gx].resources = 300 + realmRand(game) % 300;
+            game.map[gy][gx].preWinterTerrain = T_GOLD;
         }
     }
 }
 
-void placeCastleRuin(int cx, int cy, int size) {
+void placeCastleRuin(Game& game, int cx, int cy, int size) {
     for (int dy = 0; dy < size; dy++) for (int dx = 0; dx < size; dx++) {
         int x = cx + dx, y = cy + dy;
         if (!inBounds(x, y)) continue;
         bool isEdge   = (dx == 0 || dx == size-1 || dy == 0 || dy == size-1);
         bool isCorner = (dx == 0 || dx == size-1) && (dy == 0 || dy == size-1);
         bool isGate   = !isCorner && isEdge && (dx == size/2 || dy == size/2);
-        if (isGate)       g.map[y][x].terrain = T_CASTLE_GATE;
-        else if (isEdge)  g.map[y][x].terrain = (realmRand() % 4 != 0) ? T_CASTLE_WALL : T_RUINS;
-        else              g.map[y][x].terrain = T_CASTLE_FLOOR;
-        g.map[y][x].resources = 0;
+        if (isGate)       game.map[y][x].terrain = T_CASTLE_GATE;
+        else if (isEdge)  game.map[y][x].terrain = (realmRand(game) % 4 != 0) ? T_CASTLE_WALL : T_RUINS;
+        else              game.map[y][x].terrain = T_CASTLE_FLOOR;
+        game.map[y][x].resources = 0;
     }
     int corners[][2] = {{cx,cy},{cx+size-1,cy},{cx,cy+size-1},{cx+size-1,cy+size-1}};
     for (auto& c : corners)
-        if (inBounds(c[0], c[1])) g.map[c[1]][c[0]].terrain = T_CASTLE_WALL;
+        if (inBounds(c[0], c[1])) game.map[c[1]][c[0]].terrain = T_CASTLE_WALL;
 }
 
 static float edist(int x1, int y1, int x2, int y2) {
@@ -187,10 +164,10 @@ bool validateMapInvariants(const Game& game, std::string* error) {
     return true;
 }
 
-static void generateContinentMap() {
-    int n = 2 + (realmRand() % 2);
+static void generateContinentMap(Game& game) {
+    int n = 2 + (realmRand(game) % 2);
     std::vector<std::pair<int,int>> seeds;
-    auto jitter = [](int v, int amt) { return v + (realmRand() % (2*amt + 1)) - amt; };
+    auto jitter = [&game](int v, int amt) { return v + (realmRand(game) % (2*amt + 1)) - amt; };
     if (n == 2) {
         seeds.push_back({jitter(MAP_W*1/4, 10), jitter(MAP_H/2, MAP_H/6)});
         seeds.push_back({jitter(MAP_W*3/4, 10), jitter(MAP_H/2, MAP_H/6)});
@@ -212,87 +189,87 @@ static void generateContinentMap() {
 
         Biome b; Terrain t;
         if      (adjD < contR - 6) { b = B_TEMPERATE; t = T_GRASS;    }
-        else if (adjD < contR - 3) { b = B_TEMPERATE; t = (realmRand()%3==0) ? T_SAND : T_GRASS; }
+        else if (adjD < contR - 3) { b = B_TEMPERATE; t = (realmRand(game)%3==0) ? T_SAND : T_GRASS; }
         else if (adjD < contR)     { b = B_TEMPERATE; t = T_SAND;     }
         else if (adjD < contR + 3) { b = B_OCEAN;     t = T_SHALLOWS; }
         else                       { b = B_OCEAN;     t = T_WATER;    }
-        g.map[y][x] = {t, 0, {}, {}, b, t, 0};
+        game.map[y][x] = {t, 0, {}, {}, b, t, 0};
     }
 
     for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
-        if (g.map[y][x].biome != B_TEMPERATE || g.map[y][x].terrain != T_GRASS) continue;
-        int r = realmRand() % 100;
-        if      (r < 12) { g.map[y][x].terrain = T_FOREST; g.map[y][x].resources = 100 + realmRand()%100; }
-        else if (r < 16) g.map[y][x].terrain = T_TALL_GRASS;
-        else if (r < 19) g.map[y][x].terrain = T_FLOWERS;
-        else if (r < 21) g.map[y][x].terrain = T_MEADOW;
+        if (game.map[y][x].biome != B_TEMPERATE || game.map[y][x].terrain != T_GRASS) continue;
+        int r = realmRand(game) % 100;
+        if      (r < 12) { game.map[y][x].terrain = T_FOREST; game.map[y][x].resources = 100 + realmRand(game)%100; }
+        else if (r < 16) game.map[y][x].terrain = T_TALL_GRASS;
+        else if (r < 19) game.map[y][x].terrain = T_FLOWERS;
+        else if (r < 21) game.map[y][x].terrain = T_MEADOW;
     }
 
     for (int i = 0; i < 9; i++) {
-        int ix = 15 + realmRand()%(MAP_W-30), iy = 15 + realmRand()%(MAP_H-30);
-        if (g.map[iy][ix].terrain != T_WATER) continue;
-        int sz = 1 + realmRand() % 2;
+        int ix = 15 + realmRand(game)%(MAP_W-30), iy = 15 + realmRand(game)%(MAP_H-30);
+        if (game.map[iy][ix].terrain != T_WATER) continue;
+        int sz = 1 + realmRand(game) % 2;
         for (int dy = -sz-1; dy <= sz+1; dy++) for (int dx = -sz-1; dx <= sz+1; dx++) {
             int nx = ix+dx, ny = iy+dy;
             if (!inBounds(nx,ny)) continue;
             int r2 = dx*dx + dy*dy;
             if (r2 <= sz*sz) {
-                Terrain isle = (realmRand()%3==0) ? T_FOREST : T_GRASS;
-                g.map[ny][nx].terrain = isle;
-                g.map[ny][nx].biome = B_TEMPERATE;
-                if (isle == T_FOREST) g.map[ny][nx].resources = 80 + realmRand()%60;
+                Terrain isle = (realmRand(game)%3==0) ? T_FOREST : T_GRASS;
+                game.map[ny][nx].terrain = isle;
+                game.map[ny][nx].biome = B_TEMPERATE;
+                if (isle == T_FOREST) game.map[ny][nx].resources = 80 + realmRand(game)%60;
             } else if (r2 <= (sz+1)*(sz+1)) {
-                if (g.map[ny][nx].terrain == T_WATER) g.map[ny][nx].terrain = T_SHALLOWS;
+                if (game.map[ny][nx].terrain == T_WATER) game.map[ny][nx].terrain = T_SHALLOWS;
             }
         }
     }
 
     for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
-        Terrain t = g.map[y][x].terrain;
-        if ((t == T_WATER || t == T_SHALLOWS) && realmRand() % 22 == 0) {
-            g.map[y][x].terrain = T_FISH;
-            g.map[y][x].resources = 80 + realmRand() % 70;
+        Terrain t = game.map[y][x].terrain;
+        if ((t == T_WATER || t == T_SHALLOWS) && realmRand(game) % 22 == 0) {
+            game.map[y][x].terrain = T_FISH;
+            game.map[y][x].resources = 80 + realmRand(game) % 70;
         }
     }
     for (int i = 0; i < 14; i++) {
-        int gx = 15 + realmRand()%(MAP_W-30), gy = 15 + realmRand()%(MAP_H-30);
-        if (g.map[gy][gx].biome == B_TEMPERATE) placeGoldCluster(gx, gy, 3 + realmRand()%3);
+        int gx = 15 + realmRand(game)%(MAP_W-30), gy = 15 + realmRand(game)%(MAP_H-30);
+        if (game.map[gy][gx].biome == B_TEMPERATE) placeGoldCluster(game, gx, gy, 3 + realmRand(game)%3);
     }
     for (int i = 0; i < 16; i++) {
-        int bx = 10 + realmRand()%(MAP_W-20), by = 10 + realmRand()%(MAP_H-20);
-        if (g.map[by][bx].biome != B_TEMPERATE) continue;
-        int sz = 1 + realmRand() % 2;
+        int bx = 10 + realmRand(game)%(MAP_W-20), by = 10 + realmRand(game)%(MAP_H-20);
+        if (game.map[by][bx].biome != B_TEMPERATE) continue;
+        int sz = 1 + realmRand(game) % 2;
         for (int dy = -sz; dy <= sz; dy++) for (int dx = -sz; dx <= sz; dx++) {
             int nx = bx+dx, ny = by+dy;
             if (!inBounds(nx,ny)) continue;
-            Terrain o = g.map[ny][nx].terrain;
-            if ((o==T_GRASS||o==T_TALL_GRASS||o==T_MEADOW) && realmRand()%3 != 0) {
-                g.map[ny][nx].terrain = T_BERRY;
-                g.map[ny][nx].resources = 50 + realmRand() % 40;
+            Terrain o = game.map[ny][nx].terrain;
+            if ((o==T_GRASS||o==T_TALL_GRASS||o==T_MEADOW) && realmRand(game)%3 != 0) {
+                game.map[ny][nx].terrain = T_BERRY;
+                game.map[ny][nx].resources = 50 + realmRand(game) % 40;
             }
         }
     }
     for (int i = 0; i < 12; i++) {
-        int wx = 10 + realmRand()%(MAP_W-20), wy = 10 + realmRand()%(MAP_H-20);
-        if (g.map[wy][wx].biome != B_TEMPERATE) continue;
-        int sz = 2 + realmRand() % 3;
+        int wx = 10 + realmRand(game)%(MAP_W-20), wy = 10 + realmRand(game)%(MAP_H-20);
+        if (game.map[wy][wx].biome != B_TEMPERATE) continue;
+        int sz = 2 + realmRand(game) % 3;
         for (int dy = -sz; dy <= sz; dy++) for (int dx = -sz; dx <= sz; dx++) {
             int nx = wx+dx, ny = wy+dy;
-            if (inBounds(nx,ny) && g.map[ny][nx].terrain == T_GRASS && realmRand()%2==0)
-                g.map[ny][nx].terrain = T_WHEAT;
+            if (inBounds(nx,ny) && game.map[ny][nx].terrain == T_GRASS && realmRand(game)%2==0)
+                game.map[ny][nx].terrain = T_WHEAT;
         }
     }
     for (int i = 0; i < 15; i++) {
-        int rx = 10 + realmRand()%(MAP_W-20), ry = 10 + realmRand()%(MAP_H-20);
-        if (g.map[ry][rx].biome != B_TEMPERATE) continue;
-        for (int j = 0; j < 3+realmRand()%4; j++) {
-            int nx = rx + realmRand()%5-2, ny = ry + realmRand()%5-2;
-            if (inBounds(nx,ny) && g.map[ny][nx].terrain == T_GRASS) g.map[ny][nx].terrain = T_RUINS;
+        int rx = 10 + realmRand(game)%(MAP_W-20), ry = 10 + realmRand(game)%(MAP_H-20);
+        if (game.map[ry][rx].biome != B_TEMPERATE) continue;
+        for (int j = 0; j < 3+realmRand(game)%4; j++) {
+            int nx = rx + realmRand(game)%5-2, ny = ry + realmRand(game)%5-2;
+            if (inBounds(nx,ny) && game.map[ny][nx].terrain == T_GRASS) game.map[ny][nx].terrain = T_RUINS;
         }
     }
-    for (auto& s : seeds) placeCastleRuin(s.first - 3, s.second - 3, 6);
+    for (auto& s : seeds) placeCastleRuin(game, s.first - 3, s.second - 3, 6);
     for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++)
-        g.map[y][x].preWinterTerrain = g.map[y][x].terrain;
+        game.map[y][x].preWinterTerrain = game.map[y][x].terrain;
 }
 
 MapGenerationConfig currentMapGenerationConfig() {
@@ -303,35 +280,26 @@ MapGenerationConfig currentMapGenerationConfig(const Game& game) {
     return { game.biomeChoice };
 }
 
-void generateMap(const MapGenerationConfig& config) {
-    g.biomeChoice = (config.biomeChoice >= -1 && config.biomeChoice <= B_OCEAN)
+void generateMap(Game& game, const MapGenerationConfig& config) {
+    game.biomeChoice = (config.biomeChoice >= -1 && config.biomeChoice <= B_OCEAN)
         ? config.biomeChoice
         : -1;
-    initNoise();
-    if (g.biomeChoice == B_OCEAN) {
-        generateContinentMap();
+    initNoise(game);
+    if (game.biomeChoice == B_OCEAN) {
+        generateContinentMap(game);
     } else {
-        assignBiomesAndPaintBaseTerrain();
-        addMountains();
-        addWater();
-        addFish();
-        addGold();
-        addStone();
-        addRoads();
-        addPointsOfInterest();
-        addFoodPatches();
-        snapshotPreWinterTerrain();
+        assignBiomesAndPaintBaseTerrain(game);
+        addMountains(game);
+        addWater(game);
+        addFish(game);
+        addGold(game);
+        addStone(game);
+        addRoads(game);
+        addPointsOfInterest(game);
+        addFoodPatches(game);
+        snapshotPreWinterTerrain(game);
     }
     std::string error;
-    if (!validateMapInvariants(g, &error))
+    if (!validateMapInvariants(game, &error))
         std::cerr << "realm: map invariant failed: " << error << "\n";
-}
-
-void generateMap(Game& game, const MapGenerationConfig& config) {
-    ScopedMapGenerationTarget scoped(game);
-    generateMap(config);
-}
-
-void generateMap() {
-    generateMap(currentMapGenerationConfig());
 }

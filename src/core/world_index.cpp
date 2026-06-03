@@ -1,6 +1,17 @@
 #include "world_index.h"
+#include "realm.h"
 
 #include <cstring>
+
+static int g_worldIndexBuildCount = 0;
+
+void resetWorldIndexBuildCount() {
+    g_worldIndexBuildCount = 0;
+}
+
+int worldIndexBuildCount() {
+    return g_worldIndexBuildCount;
+}
 
 static void indexResourceTile(WorldIndex& world, const Tile& tile, int x, int y) {
     if (tile.resources <= 0) return;
@@ -24,6 +35,7 @@ static void indexEntityTile(WorldIndex& world, const Entity& entity, bool buildi
 }
 
 WorldIndex buildWorldIndex(const Game& game) {
+    g_worldIndexBuildCount++;
     WorldIndex world;
     std::memset(world.unitOccupancy.occupied, 0, sizeof(world.unitOccupancy.occupied));
     std::memset(world.buildingOccupancy.occupied, 0, sizeof(world.buildingOccupancy.occupied));

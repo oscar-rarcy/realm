@@ -8,6 +8,7 @@
 #include "input_keys.h"
 #include "view_state.h"
 #include "core/build_service.h"
+#include "core/game_context.h"
 #include "core/game_events.h"
 #include "core/order_service.h"
 #include "core/production_service.h"
@@ -33,6 +34,47 @@
 #include <sstream>
 #include <string>
 #include <vector>
+
+static CommandResult dispatchTestCommand(const Command& command) {
+    WorldIndex world = buildWorldIndex(g);
+    GameContext context{ g, world, gameEvents() };
+    return dispatchCommand(context, command);
+}
+
+static Entity* testFindEntity(int id) {
+    WorldIndex world = buildWorldIndex(g);
+    return findEntity(g, world, id);
+}
+
+static Entity* testEntityAt(int x, int y) {
+    WorldIndex world = buildWorldIndex(g);
+    return entityAt(g, world, x, y);
+}
+
+static Entity* testEntityAtOwner(int x, int y, int owner) {
+    WorldIndex world = buildWorldIndex(g);
+    return entityAtOwner(g, world, x, y, owner);
+}
+
+static Entity* testCorpseAt(int x, int y) {
+    WorldIndex world = buildWorldIndex(g);
+    return corpseAt(g, world, x, y);
+}
+
+static bool testCanPlace(EntityType type, int x, int y, int owner) {
+    WorldIndex world = buildWorldIndex(g);
+    return canPlace(g, world, type, x, y, owner);
+}
+
+static void runTestAIGather(PlayerId owner) {
+    const AITuning& tuning = defaultAITuning();
+    WorldIndex world = buildWorldIndex(g);
+    GameContext gameContext{ g, world, gameEvents() };
+    AIWorldView view = buildAIWorldView(g, world, owner, tuning);
+    AIContext aiContext{ owner, gameContext, view, tuning, {}, {} };
+    aiGather(aiContext);
+    executeAICommands(aiContext);
+}
 
 static std::string startupSummary() {
     std::map<std::string, int> counts;
@@ -114,7 +156,7 @@ static int countTypeOwner(EntityType t, int owner) {
 static int reachableCountFrom(int sx, int sy, bool wantWood, bool wantFood, bool wantGold) {
     bool seen[MAP_H][MAP_W] = {};
     std::queue<std::pair<int,int>> q;
-    if (!inBounds(sx, sy) || !isPassable(sx, sy)) return 0;
+    if (!inBounds(sx, sy) || !isPassable(g, sx, sy)) return 0;
     seen[sy][sx] = true;
     q.push({sx, sy});
     int found = 0;
@@ -132,7 +174,7 @@ static int reachableCountFrom(int sx, int sy, bool wantWood, bool wantFood, bool
         }
         for (int i = 0; i < 4; i++) {
             int nx = x + dx[i], ny = y + dy[i];
-            if (!inBounds(nx, ny) || seen[ny][nx] || !isPassable(nx, ny)) continue;
+            if (!inBounds(nx, ny) || seen[ny][nx] || !isPassable(g, nx, ny)) continue;
             seen[ny][nx] = true;
             q.push({nx, ny});
         }
@@ -143,7 +185,7 @@ static int reachableCountFrom(int sx, int sy, bool wantWood, bool wantFood, bool
 static int passableAreaFrom(int sx, int sy) {
     bool seen[MAP_H][MAP_W] = {};
     std::queue<std::pair<int,int>> q;
-    if (!inBounds(sx, sy) || !isPassable(sx, sy)) return 0;
+    if (!inBounds(sx, sy) || !isPassable(g, sx, sy)) return 0;
     seen[sy][sx] = true;
     q.push({sx, sy});
     int total = 0;
@@ -155,7 +197,7 @@ static int passableAreaFrom(int sx, int sy) {
         total++;
         for (int i = 0; i < 4; i++) {
             int nx = x + dx[i], ny = y + dy[i];
-            if (!inBounds(nx, ny) || seen[ny][nx] || !isPassable(nx, ny)) continue;
+            if (!inBounds(nx, ny) || seen[ny][nx] || !isPassable(g, nx, ny)) continue;
             seen[ny][nx] = true;
             q.push({nx, ny});
         }
@@ -177,25 +219,25 @@ static void testLocalGameRng() {
 
 static void testPlacementBoundsAndStateNames() {
     initGameWithSeed(1, 1001u, 0);
-    assert(!canPlace(E_FARM, -1, 0, 0));
-    assert(!canPlace(E_FARM, 0, -1, 0));
-    assert(!canPlace(E_HOUSE, MAP_W, 4, 0));
-    assert(!canPlace(E_HOUSE, 4, MAP_H, 0));
+    assert(!testCanPlace(E_FARM, -1, 0, 0));
+    assert(!testCanPlace(E_FARM, 0, -1, 0));
+    assert(!testCanPlace(E_HOUSE, MAP_W, 4, 0));
+    assert(!testCanPlace(E_HOUSE, 4, MAP_H, 0));
     g.map[12][12].terrain = T_FOREST;
     g.map[12][12].resources = 100;
-    assert(isPassable(12, 12));
-    assert(!canPlace(E_HOUSE, 12, 12, 0));
+    assert(isPassable(g, 12, 12));
+    assert(!testCanPlace(E_HOUSE, 12, 12, 0));
     Terrain invalidFoundations[] = {T_SHALLOWS, T_MARSH, T_REEDS, T_ICE};
     for (Terrain t : invalidFoundations) {
         g.map[12][12].terrain = t;
         g.map[12][12].resources = 0;
-        assert(isPassable(12, 12));
-        assert(!canPlace(E_HOUSE, 12, 12, 0));
+        assert(isPassable(g, 12, 12));
+        assert(!testCanPlace(E_HOUSE, 12, 12, 0));
     }
     for (int i = S_IDLE; i <= S_GARRISONED; i++)
         assert(std::string(stateName((EntityState)i)) != "Unknown");
     assert(std::string(stateName((EntityState)999)) == "Unknown");
-    assert(validateGameState(nullptr));
+    assert(validateGameState(g, nullptr));
 
     Entity* th = nullptr;
     Entity* peasant = nullptr;
@@ -205,11 +247,11 @@ static void testPlacementBoundsAndStateNames() {
     }
     assert(th && peasant);
     OccupancyGrid occ{};
-    buildOccupancyGrid(occ, true, true);
+    buildOccupancyGrid(g, occ, true, true);
     assert(isOccupied(occ, th->x, th->y));
     assert(isOccupied(occ, peasant->x, peasant->y));
     peasant->state = S_GARRISONED;
-    buildOccupancyGrid(occ, true, true);
+    buildOccupancyGrid(g, occ, true, true);
     assert(!isOccupied(occ, peasant->x, peasant->y));
     peasant->state = S_IDLE;
 }
@@ -350,9 +392,9 @@ static void testRenderModelBuildsViewport() {
         g.map[y][x].visible[0] = true;
         g.map[y][x].explored[0] = true;
     }
-    int houseId = spawnEntity(E_HOUSE, 0, 11, 11);
-    int archerId = spawnEntity(E_ARCHER, 0, 12, 12);
-    Entity* house = findEntity(houseId);
+    int houseId = spawnEntity(g, E_HOUSE, 0, 11, 11);
+    int archerId = spawnEntity(g, E_ARCHER, 0, 12, 12);
+    Entity* house = testFindEntity(houseId);
     assert(house);
     house->hp = house->maxHp / 2;
     g.selectedId = archerId;
@@ -383,10 +425,10 @@ static void testRenderModelBuildsViewport() {
 
 static void testAnimalCarcassHarvesting() {
     initGameWithSeed(0, 2703u, 0);
-    int pid = spawnEntity(E_PEASANT, 0, 20, 20);
-    int did = spawnEntity(E_DEER, OWNER_NATURE, 21, 20);
-    Entity* peasant = findEntity(pid);
-    Entity* deer = findEntity(did);
+    int pid = spawnEntity(g, E_PEASANT, 0, 20, 20);
+    int did = spawnEntity(g, E_DEER, OWNER_NATURE, 21, 20);
+    Entity* peasant = testFindEntity(pid);
+    Entity* deer = testFindEntity(did);
     assert(peasant && deer);
     deer->alive = false;
     deer->state = S_DEAD;
@@ -397,8 +439,9 @@ static void testAnimalCarcassHarvesting() {
     assert(isHarvestableCarcass(*deer));
     assert(animalCarcassVisualState(*deer) == ACVS_DEAD_UNHARVESTED);
 
-    orderGather(*peasant, deer->x, deer->y);
-    for (int i = 0; i < GATHER_TICKS; i++) tickEntity(*peasant);
+    WorldIndex carcassWorld = buildWorldIndex(g);
+    orderGather(g, carcassWorld, *peasant, deer->x, deer->y);
+    for (int i = 0; i < GATHER_TICKS; i++) tickEntity(g, *peasant);
     assert(peasant->cargo.type == CR_FOOD);
     assert(peasant->cargo.amount > 0);
     assert(deer->carcassFoodRemaining < deer->carcassFoodMax);
@@ -409,8 +452,8 @@ static void testAnimalCarcassHarvesting() {
     deer->carcassFoodRemaining = 0;
     assert(animalCarcassVisualState(*deer) == ACVS_DEPLETED_SKELETON);
 
-    int wid = spawnEntity(E_WOLF, OWNER_NATURE, 24, 20);
-    Entity* wolf = findEntity(wid);
+    int wid = spawnEntity(g, E_WOLF, OWNER_NATURE, 24, 20);
+    Entity* wolf = testFindEntity(wid);
     assert(wolf);
     wolf->alive = false;
     wolf->state = S_DEAD;
@@ -510,7 +553,7 @@ static void testInputModeController() {
     assert(!controlGroupAssignmentPending(game));
 
     initGameWithSeed(0, 1451u, 0);
-    int peasantId = spawnEntity(E_PEASANT, 1, 28, 28);
+    int peasantId = spawnEntity(g, E_PEASANT, 1, 28, 28);
     g.selectedId = peasantId;
     assert(!selectedPeasantCanBuild(g, 0));
     assert(selectedPeasantCanBuild(g, 1));
@@ -518,25 +561,25 @@ static void testInputModeController() {
     assert(selectedPos && selectedPos->x == 28 && selectedPos->y == 28);
     assert(!selectedEntityPosition(g, 0));
 
-    int barracksId = spawnEntity(E_BARRACKS, 1, 30, 28);
+    int barracksId = spawnEntity(g, E_BARRACKS, 1, 30, 28);
     g.selectedId = barracksId;
     assert(selectedProducerCanTrain(g, 1));
     assert(selectedTrainProducerType(g, 1) && *selectedTrainProducerType(g, 1) == E_BARRACKS);
     assert(trainMenuEligibilityForSelected(g, 1) == InputTrainMenuEligibility::CanTrain);
     assert(utilityModeForSelectedBuilding(g, 1) == InputUtilityMode::Rally);
 
-    int marketId = spawnEntity(E_MARKET, 1, 32, 28);
+    int marketId = spawnEntity(g, E_MARKET, 1, 32, 28);
     g.selectedId = marketId;
     assert(selectedMarketCanTrade(g, 1));
     assert(trainMenuEligibilityForSelected(g, 1) == InputTrainMenuEligibility::UnsupportedBuilding);
     assert(utilityModeForSelectedBuilding(g, 1) == InputUtilityMode::MarketTrade);
 
-    int blacksmithId = spawnEntity(E_BLACKSMITH, 1, 34, 28);
+    int blacksmithId = spawnEntity(g, E_BLACKSMITH, 1, 34, 28);
     g.selectedId = blacksmithId;
     assert(selectedBlacksmithCanResearch(g, 1));
     assert(utilityModeForSelectedBuilding(g, 1) == InputUtilityMode::Research);
 
-    int trebId = spawnEntity(E_TREBUCHET, 1, 36, 28);
+    int trebId = spawnEntity(g, E_TREBUCHET, 1, 36, 28);
     g.selectedId = trebId;
     assert(selectedTrebuchetCanToggle(g, 1));
     assert(!selectedTrebuchetCanToggle(g, 0));
@@ -544,6 +587,7 @@ static void testInputModeController() {
 
 static void testInputFeedbackHelper() {
     inputStatus("input feedback smoke");
+    flushGameEventsToUi(g, 0);
     assert(g.statusMsg == "input feedback smoke");
 }
 
@@ -552,7 +596,7 @@ static void testRecoverableValidation() {
     g.selectedId = g.nextId + 99;
     g.selectedIds.push_back(g.nextId + 100);
     g.controlGroups[0].push_back(g.nextId + 101);
-    int wrongOwnerGroupId = spawnEntity(E_MILITIA, 0, 30, 30);
+    int wrongOwnerGroupId = spawnEntity(g, E_MILITIA, 0, 30, 30);
     g.controlGroupsByOwner[1][0].push_back(wrongOwnerGroupId);
     assert(!g.entities.empty());
     Entity& corrupt = g.entities.front();
@@ -565,7 +609,7 @@ static void testRecoverableValidation() {
     corrupt.garrison.push_back(g.nextId + 103);
     g.actionMarkers.push_back({ -1, 2, 5, '!' });
     g.projectiles.push_back({ std::numeric_limits<float>::quiet_NaN(), 2.0f, 3.0f, 4.0f, '-', CP_PROJ_ARROW, 10, true });
-    std::vector<ValidationIssue> issues = validateGameStateIssues();
+    std::vector<ValidationIssue> issues = validateGameStateIssues(g);
     assert(!issues.empty());
     assert(issues.front().severity == ValidationSeverity::Recoverable);
     bool foundTarget = false;
@@ -604,14 +648,14 @@ static void testRecoverableValidation() {
     assert(corrupt.garrison.empty());
     assert(g.actionMarkers.empty());
     assert(!g.projectiles.back().alive);
-    assert(validateGameState(nullptr));
+    assert(validateGameState(g, nullptr));
 
-    assert(validateGameStateIssues().empty());
+    assert(validateGameStateIssues(g).empty());
 
     initGameWithSeed(1, 1502u, 0);
     assert(!g.entities.empty());
     g.entities.front().x = -5;
-    issues = validateGameStateIssues();
+    issues = validateGameStateIssues(g);
     assert(!issues.empty());
     bool foundHardError = false;
     for (const ValidationIssue& issue : issues)
@@ -622,8 +666,8 @@ static void testRecoverableValidation() {
 static void testMatchResetAndDeterminism() {
     initGameWithSeed(2, 2002u, 1);
     std::string first = startupSummary();
-    spawnProjectile(5, 5, 10, 10, '-', CP_PROJ_ARROW);
-    spawnEntity(E_MILITIA, 0, 20, 20);
+    spawnProjectile(g, 5, 5, 10, 10, '-', CP_PROJ_ARROW);
+    spawnEntity(g, E_MILITIA, 0, 20, 20);
     assert(!g.projectiles.empty());
     initGameWithSeed(2, 2002u, 1);
     std::string second = startupSummary();
@@ -640,9 +684,9 @@ static void testSupplyAndTownHallCost() {
         if (e.alive && e.owner == 0 && e.type == E_TOWNHALL) { th = &e; break; }
     assert(th);
     int goldBefore = g.players[0].gold;
-    orderTrain(*th, E_PEASANT);
+    startTraining(g, th->owner, th->id, E_PEASANT);
     assert(g.players[0].gold == goldBefore - STATS[E_PEASANT].costGold);
-    for (int i = 0; i < 30; i++) orderTrain(*th, E_PEASANT);
+    for (int i = 0; i < 30; i++) startTraining(g, th->owner, th->id, E_PEASANT);
     assert(g.players[0].supply + (int)th->queue.size() + (th->producing != E_NONE ? 1 : 0) <= g.players[0].supplyMax);
 
     Game local = g;
@@ -939,7 +983,9 @@ static void testSupplyAndTownHallCost() {
     int localTargetHpBeforeTower = localTowerTarget->hp;
     size_t localProjectilesBeforeTower = local.projectiles.size();
     size_t globalProjectilesBeforeTower = g.projectiles.size();
+    resetWorldIndexBuildCount();
     tickTowers(local);
+    assert(worldIndexBuildCount() == 1);
     assert(localTowerTarget->hp < localTargetHpBeforeTower);
     assert(local.projectiles.size() > localProjectilesBeforeTower);
     assert(g.projectiles.size() == globalProjectilesBeforeTower);
@@ -995,7 +1041,9 @@ static void testSupplyAndTownHallCost() {
     aiWorker->state = S_IDLE;
     local.farmTimer = 39;
     local.seasonPhase = (float)SPRING;
+    resetWorldIndexBuildCount();
     tickFarms(local);
+    assert(worldIndexBuildCount() == 1);
     assert(aiWorker->state == S_BUILDING);
     assert(aiWorker->targetId == aiFarm->id);
 
@@ -1008,7 +1056,9 @@ static void testSupplyAndTownHallCost() {
     localSheep->state = S_IDLE;
     local.animalTimer = 0;
     int globalEntityCountBeforeAnimals = (int)g.entities.size();
+    resetWorldIndexBuildCount();
     tickAnimals(local);
+    assert(worldIndexBuildCount() == 1);
     assert(localSheep->state == S_MOVING);
     assert(!localSheep->path.empty());
     assert((int)g.entities.size() == globalEntityCountBeforeAnimals);
@@ -1077,8 +1127,8 @@ static void testSupplyAndTownHallCost() {
     g.players[0].wood = STATS[E_TOWNHALL].costWood;
     for (int y = 20; y < MAP_H - 5; y++) {
         for (int x = 20; x < MAP_W - 5; x++) {
-            if (!canPlace(E_TOWNHALL, x, y, 0)) continue;
-            orderBuild(*peasant, E_TOWNHALL, x, y);
+            if (!testCanPlace(E_TOWNHALL, x, y, 0)) continue;
+            startBuild(g, peasant->owner, peasant->id, E_TOWNHALL, { x, y });
             assert(g.players[0].gold == 0);
             assert(g.players[0].wood == 0);
             return;
@@ -1106,7 +1156,7 @@ static void testTownHallTrainInputFlow() {
     int goldBefore = g.players[0].gold;
     handleInput('p');
     assert(g.mode == M_TRAIN_SELECT);
-    th = findEntity(g.selectedId);
+    th = testFindEntity(g.selectedId);
     assert(th);
     assert(th->producing == E_PEASANT);
     assert(g.players[0].gold == goldBefore - STATS[E_PEASANT].costGold);
@@ -1116,8 +1166,8 @@ static void testTownHallTrainInputFlow() {
 
 static void testHoldPositionInput() {
     initGameWithSeed(1, 3277u, 0);
-    int id = spawnEntity(E_MILITIA, 0, 30, 30);
-    Entity* m = findEntity(id);
+    int id = spawnEntity(g, E_MILITIA, 0, 30, 30);
+    Entity* m = testFindEntity(id);
     assert(m);
     m->state = S_MOVING;
     m->holdPosition = 0;
@@ -1128,7 +1178,7 @@ static void testHoldPositionInput() {
 
     // 'X' must hold position during gameplay, not exit the application.
     handleInput('X');
-    m = findEntity(id);
+    m = testFindEntity(id);
     assert(m);
     assert(m->state == S_IDLE);
     assert(m->holdPosition == 1);
@@ -1138,7 +1188,7 @@ static void testHoldPositionInput() {
     m->state = S_MOVING;
     m->holdPosition = 0;
     handleInput('x');
-    m = findEntity(id);
+    m = testFindEntity(id);
     assert(m && m->state == S_IDLE && m->holdPosition == 1);
 }
 
@@ -1151,8 +1201,8 @@ static void testWallLineBuild() {
         g.map[40][x].terrain = T_GRASS;
         g.map[40][x].resources = 0;
     }
-    int pid = spawnEntity(E_PEASANT, 0, 39, 40);
-    Entity* peasant = findEntity(pid);
+    int pid = spawnEntity(g, E_PEASANT, 0, 39, 40);
+    Entity* peasant = testFindEntity(pid);
     assert(peasant);
 
     int wallCost = STATS[E_WALL].costWood;
@@ -1162,7 +1212,7 @@ static void testWallLineBuild() {
     g.players[0].gold = 500;
     int woodBefore = g.players[0].wood;
 
-    orderBuildLine(*peasant, E_WALL, 41, 40, 45, 40);
+    startBuildLine(g, peasant->owner, peasant->id, E_WALL, { 41, 40 }, { 45, 40 });
     int wallsBuilt = countTypeOwner(E_WALL, 0);
     assert(wallsBuilt == segments);
     assert(g.players[0].wood == woodBefore - wallCost * segments);
@@ -1174,37 +1224,37 @@ static void testWallLineBuild() {
     // Unaffordable line is rejected entirely (pre-calculated cost).
     initGameWithSeed(1, 3378u, 0);
     for (int x = 40; x <= 46; x++) { g.map[40][x].terrain = T_GRASS; g.map[40][x].resources = 0; }
-    int pid2 = spawnEntity(E_PEASANT, 0, 39, 40);
-    Entity* peasant2 = findEntity(pid2);
+    int pid2 = spawnEntity(g, E_PEASANT, 0, 39, 40);
+    Entity* peasant2 = testFindEntity(pid2);
     assert(peasant2);
     g.players[0].wood = STATS[E_WALL].costWood; // only enough for 1 of 5
     int woodBefore2 = g.players[0].wood;
-    orderBuildLine(*peasant2, E_WALL, 41, 40, 45, 40);
+    startBuildLine(g, peasant2->owner, peasant2->id, E_WALL, { 41, 40 }, { 45, 40 });
     assert(countTypeOwner(E_WALL, 0) == 0);
     assert(g.players[0].wood == woodBefore2);
 
     // Non-human builder spends that player's resources, owner-aware.
     initGameWithSeed(1, 3379u, 0);
     for (int x = 40; x <= 46; x++) { g.map[40][x].terrain = T_GRASS; g.map[40][x].resources = 0; }
-    int aid = spawnEntity(E_PEASANT, 1, 39, 40);
-    Entity* aiPeasant = findEntity(aid);
+    int aid = spawnEntity(g, E_PEASANT, 1, 39, 40);
+    Entity* aiPeasant = testFindEntity(aid);
     assert(aiPeasant);
     g.players[1].wood = STATS[E_WALL].costWood * 3;
     g.players[0].wood = 999;
     int p0WoodBefore = g.players[0].wood;
-    orderBuildLine(*aiPeasant, E_WALL, 41, 40, 43, 40);
+    startBuildLine(g, aiPeasant->owner, aiPeasant->id, E_WALL, { 41, 40 }, { 43, 40 });
     assert(countTypeOwner(E_WALL, 1) == 3);
     assert(g.players[1].wood == 0);
     assert(g.players[0].wood == p0WoodBefore); // human resources untouched
-    assert(validateGameState(nullptr));
+    assert(validateGameState(g, nullptr));
 }
 
 static void testResearchService() {
     // Shared research service: same canonical costs/durations for human and AI,
     // validation rules enforced centrally.
     initGameWithSeed(1, 4501u, 0);
-    int sid = spawnEntity(E_BLACKSMITH, 0, 30, 30); // built=true
-    Entity* smith = findEntity(sid);
+    int sid = spawnEntity(g, E_BLACKSMITH, 0, 30, 30); // built=true
+    Entity* smith = testFindEntity(sid);
     assert(smith && !smith->underConstruction);
 
     const ResearchDef* iron = researchDef(ResearchId::IronWeapons);
@@ -1225,14 +1275,14 @@ static void testResearchService() {
 
     // Complete the research; bit gets set and the smith frees up.
     for (int i = 0; i < iron->ticks + 50; i++) {
-        tickSimulationOnce();
+        tickSimulationOnce(g, true);
         if (g.players[0].research & R_IRON_WEAPONS) break;
     }
     assert(g.players[0].research & R_IRON_WEAPONS);
 
     // Already-researched is rejected even with resources.
     g.players[0].gold = 999; g.players[0].wood = 999;
-    smith = findEntity(sid);
+    smith = testFindEntity(sid);
     assert(smith && smith->researching == 0);
     CanResearchResult again = canResearch(g, 0, *smith, ResearchId::IronWeapons);
     assert(!again.ok);
@@ -1245,17 +1295,17 @@ static void testResearchService() {
     assert(cw && cw->requiredOwnedBuilding == E_CASTLE);
     g.players[0].gold = cw->costGold; g.players[0].wood = cw->costWood;
     assert(!startResearch(g, 0, smith->id, ResearchId::Counterweight));
-    int castleId = spawnEntity(E_CASTLE, 0, 50, 50); // built=true
+    int castleId = spawnEntity(g, E_CASTLE, 0, 50, 50); // built=true
     (void)castleId;
     g.players[0].gold = cw->costGold; g.players[0].wood = cw->costWood;
-    smith = findEntity(sid);
+    smith = testFindEntity(sid);
     assert(startResearch(g, 0, smith->id, ResearchId::Counterweight));
     assert(smith->researching == R_COUNTERWEIGHT);
 
     // AI (owner 1) pays resources through the same service.
     initGameWithSeed(1, 4502u, 0);
-    int asid = spawnEntity(E_BLACKSMITH, 1, 30, 30);
-    Entity* aiSmith = findEntity(asid);
+    int asid = spawnEntity(g, E_BLACKSMITH, 1, 30, 30);
+    Entity* aiSmith = testFindEntity(asid);
     assert(aiSmith && !aiSmith->underConstruction);
     g.players[1].gold = iron->costGold; g.players[1].wood = iron->costWood;
     int p0Gold = g.players[0].gold, p0Wood = g.players[0].wood;
@@ -1267,13 +1317,13 @@ static void testResearchService() {
 
     // Not enough resources is rejected.
     initGameWithSeed(1, 4503u, 0);
-    int psid = spawnEntity(E_BLACKSMITH, 0, 30, 30);
-    Entity* poorSmith = findEntity(psid);
+    int psid = spawnEntity(g, E_BLACKSMITH, 0, 30, 30);
+    Entity* poorSmith = testFindEntity(psid);
     assert(poorSmith);
     g.players[0].gold = 0; g.players[0].wood = 0;
     assert(!startResearch(g, 0, poorSmith->id, ResearchId::IronWeapons));
     assert(poorSmith->researching == 0);
-    assert(validateGameState(nullptr));
+    assert(validateGameState(g, nullptr));
 }
 
 static void testUnitFoodCostTable() {
@@ -1292,24 +1342,24 @@ static void testUnitFoodCostTable() {
 
     // Training deducts food via the table.
     initGameWithSeed(1, 4601u, 0);
-    int bid = spawnEntity(E_BARRACKS, 0, 30, 30);
-    Entity* bar = findEntity(bid);
+    int bid = spawnEntity(g, E_BARRACKS, 0, 30, 30);
+    Entity* bar = testFindEntity(bid);
     assert(bar && !bar->underConstruction);
     g.players[0].gold = 999; g.players[0].wood = 999;
     g.players[0].food = 100;
     g.players[0].supplyMax = 50;
     int foodBefore = g.players[0].food;
-    orderTrain(*bar, E_MILITIA);
+    startTraining(g, bar->owner, bar->id, E_MILITIA);
     assert(bar->producing == E_MILITIA);
     assert(g.players[0].food == foodBefore - STATS[E_MILITIA].costFood);
-    assert(validateGameState(nullptr));
+    assert(validateGameState(g, nullptr));
 }
 
 static void testMarketTradeService() {
     // Shared market service: rates come from one table; validation centralized.
     initGameWithSeed(1, 4701u, 0);
-    int mid = spawnEntity(E_MARKET, 0, 30, 30);
-    Entity* market = findEntity(mid);
+    int mid = spawnEntity(g, E_MARKET, 0, 30, 30);
+    Entity* market = testFindEntity(mid);
     assert(market && !market->underConstruction);
 
     Player& p = g.players[0];
@@ -1343,8 +1393,8 @@ static void testMarketTradeService() {
 
     // Trade against another player's market is rejected.
     initGameWithSeed(1, 4702u, 0);
-    int amid = spawnEntity(E_MARKET, 1, 30, 30);
-    Entity* aiMarket = findEntity(amid);
+    int amid = spawnEntity(g, E_MARKET, 1, 30, 30);
+    Entity* aiMarket = testFindEntity(amid);
     assert(aiMarket);
     g.players[0].gold = 100;
     int p0GoldBefore = g.players[0].gold;
@@ -1355,13 +1405,13 @@ static void testMarketTradeService() {
 
     // Trade against an under-construction market is rejected.
     initGameWithSeed(1, 4703u, 0);
-    int umid = spawnEntity(E_MARKET, 0, 30, 30, false);
-    Entity* uMarket = findEntity(umid);
+    int umid = spawnEntity(g, E_MARKET, 0, 30, 30, false);
+    Entity* uMarket = testFindEntity(umid);
     assert(uMarket && uMarket->underConstruction);
     g.players[0].gold = 100;
     assert(!executeTrade(g, 0, uMarket->id, MarketTradeType::GoldForWood));
     assert(g.players[0].gold == 100);
-    assert(validateGameState(nullptr));
+    assert(validateGameState(g, nullptr));
 }
 
 static void testCommandSelectionDriftProtection() {
@@ -1370,10 +1420,10 @@ static void testCommandSelectionDriftProtection() {
         g.map[y][x].terrain = T_GRASS;
         g.map[y][x].resources = 0;
     }
-    int aid = spawnEntity(E_MILITIA, 0, 30, 30);
-    int bid = spawnEntity(E_MILITIA, 0, 31, 30);
-    Entity* a = findEntity(aid);
-    Entity* b = findEntity(bid);
+    int aid = spawnEntity(g, E_MILITIA, 0, 30, 30);
+    int bid = spawnEntity(g, E_MILITIA, 0, 31, 30);
+    Entity* a = testFindEntity(aid);
+    Entity* b = testFindEntity(bid);
     assert(a && b);
 
     Command move;
@@ -1383,10 +1433,10 @@ static void testCommandSelectionDriftProtection() {
     // use the command payload, not the current UI selection.
     g.selectedId = bid;
     g.selectedIds = { bid };
-    assert(dispatchCommand(g, move).status == CommandStatus::Accepted);
+    assert(dispatchTestCommand(move).status == CommandStatus::Accepted);
 
-    a = findEntity(aid);
-    b = findEntity(bid);
+    a = testFindEntity(aid);
+    b = testFindEntity(bid);
     assert(a && b);
     assert(a->targetX == 35 && a->targetY == 30);
     assert(!(b->targetX == 35 && b->targetY == 30));
@@ -1399,11 +1449,11 @@ static void testCommandSelectionDriftProtection() {
     a->holdPosition = 0;
     Command hold;
     hold.payload = HoldPositionCommand{ Selection{ aid, { aid } } };
-    assert(dispatchCommand(g, hold).status == CommandStatus::Accepted);
+    assert(dispatchTestCommand(hold).status == CommandStatus::Accepted);
 
     assert(a->state == S_IDLE && a->holdPosition == 1 && a->attackMove == 0);
     assert(b->state == S_MOVING && b->holdPosition == 0 && b->attackMove == 1);
-    assert(validateGameState(nullptr));
+    assert(validateGameState(g, nullptr));
 }
 
 static void testContextResolverProducesTypedCommands() {
@@ -1414,29 +1464,30 @@ static void testContextResolverProducesTypedCommands() {
         g.map[y][x].visible[0] = true;
         g.map[y][x].explored[0] = true;
     }
-    int workerId = spawnEntity(E_PEASANT, 0, 30, 30);
-    int enemyId = spawnEntity(E_MILITIA, 1, 33, 30);
-    int aiWorkerId = spawnEntity(E_PEASANT, 1, 31, 31);
+    int workerId = spawnEntity(g, E_PEASANT, 0, 30, 30);
+    int enemyId = spawnEntity(g, E_MILITIA, 1, 33, 30);
+    int aiWorkerId = spawnEntity(g, E_PEASANT, 1, 31, 31);
     Selection workerSelection{ workerId, { workerId } };
     Selection aiWorkerSelection{ aiWorkerId, { aiWorkerId } };
     auto emptyTile = []() {
         for (int y = 28; y <= 34; y++)
             for (int x = 28; x <= 38; x++)
-                if (!entityAt(x, y)) return MapPos{ x, y };
+                if (!testEntityAt(x, y)) return MapPos{ x, y };
         return MapPos{ 35, 30 };
     };
 
     MapPos moveTarget = emptyTile();
-    Command move = resolveContextCommand(g, workerSelection, moveTarget);
+    WorldIndex resolverWorld = buildWorldIndex(g);
+    Command move = resolveContextCommand(g, resolverWorld, 0, workerSelection, moveTarget);
     assert(move.type() == CommandType::Move);
 
-    Command attack = resolveContextCommand(g, workerSelection, { 33, 30 });
+    Command attack = resolveContextCommand(g, resolverWorld, 0, workerSelection, { 33, 30 });
     assert(attack.type() == CommandType::Attack);
     const AttackCommand* attackPayload = std::get_if<AttackCommand>(&attack.payload);
     assert(attackPayload && attackPayload->targetId == enemyId);
 
     g.map[30][30].visible[1] = true;
-    Command aiAttack = resolveContextCommand(g, 1, aiWorkerSelection, { 30, 30 });
+    Command aiAttack = resolveContextCommand(g, resolverWorld, 1, aiWorkerSelection, { 30, 30 });
     assert(aiAttack.issuer == 1);
     assert(aiAttack.type() == CommandType::Attack);
     const AttackCommand* aiAttackPayload = std::get_if<AttackCommand>(&aiAttack.payload);
@@ -1448,112 +1499,117 @@ static void testContextResolverProducesTypedCommands() {
     legacyContext.issuer = 1;
     legacyContext.payload = ContextCommand{ aiWorkerSelection, { 30, 30 } };
     assert(dispatchCommand(context, legacyContext).status == CommandStatus::Accepted);
-    Entity* aiWorker = findEntity(aiWorkerId);
+    Entity* aiWorker = testFindEntity(aiWorkerId);
     assert(aiWorker && aiWorker->targetId == workerId);
 
     MapPos gatherTarget = emptyTile();
     g.map[gatherTarget.y][gatherTarget.x].terrain = T_GOLD;
     g.map[gatherTarget.y][gatherTarget.x].resources = 200;
-    Command gather = resolveContextCommand(g, workerSelection, gatherTarget);
+    resolverWorld = buildWorldIndex(g);
+    Command gather = resolveContextCommand(g, resolverWorld, 0, workerSelection, gatherTarget);
     assert(gather.type() == CommandType::Gather);
 
     MapPos farmTarget = emptyTile();
     g.map[farmTarget.y][farmTarget.x].terrain = T_WHEAT;
     g.map[farmTarget.y][farmTarget.x].resources = 0;
-    Command farm = resolveContextCommand(g, workerSelection, farmTarget);
+    resolverWorld = buildWorldIndex(g);
+    Command farm = resolveContextCommand(g, resolverWorld, 0, workerSelection, farmTarget);
     assert(farm.type() == CommandType::Build);
     const BuildCommand* buildPayload = std::get_if<BuildCommand>(&farm.payload);
     assert(buildPayload && buildPayload->entityType == E_FARM);
 
-    int houseId = spawnEntity(E_HOUSE, 0, 36, 30);
-    Entity* house = findEntity(houseId);
+    int houseId = spawnEntity(g, E_HOUSE, 0, 36, 30);
+    Entity* house = testFindEntity(houseId);
     assert(house);
     house->underConstruction = true;
-    Command help = resolveContextCommand(g, workerSelection, { 36, 30 });
+    resolverWorld = buildWorldIndex(g);
+    Command help = resolveContextCommand(g, resolverWorld, 0, workerSelection, { 36, 30 });
     assert(help.type() == CommandType::Help);
     const HelpCommand* helpPayload = std::get_if<HelpCommand>(&help.payload);
     assert(helpPayload && helpPayload->targetId == houseId);
     Command legacyHelp;
     legacyHelp.payload = ContextCommand{ workerSelection, { 36, 30 } };
-    assert(dispatchCommand(g, legacyHelp).status == CommandStatus::Accepted);
-    Entity* worker = findEntity(workerId);
+    assert(dispatchTestCommand(legacyHelp).status == CommandStatus::Accepted);
+    Entity* worker = testFindEntity(workerId);
     assert(worker && worker->state == S_BUILDING && worker->targetId == houseId);
     house->underConstruction = false;
-    Command garrison = resolveContextCommand(g, workerSelection, { 36, 30 });
+    resolverWorld = buildWorldIndex(g);
+    Command garrison = resolveContextCommand(g, resolverWorld, 0, workerSelection, { 36, 30 });
     assert(garrison.type() == CommandType::Garrison);
-    int farmId = spawnEntity(E_FARM, 0, 38, 30);
-    Entity* existingFarm = findEntity(farmId);
+    int farmId = spawnEntity(g, E_FARM, 0, 38, 30);
+    Entity* existingFarm = testFindEntity(farmId);
     assert(existingFarm);
     existingFarm->underConstruction = false;
-    Command tend = resolveContextCommand(g, workerSelection, { 38, 30 });
+    resolverWorld = buildWorldIndex(g);
+    Command tend = resolveContextCommand(g, resolverWorld, 0, workerSelection, { 38, 30 });
     assert(tend.type() == CommandType::Help);
     const HelpCommand* tendPayload = std::get_if<HelpCommand>(&tend.payload);
     assert(tendPayload && tendPayload->targetId == farmId);
-    assert(validateGameState(nullptr));
+    assert(validateGameState(g, nullptr));
 }
 
 static void testCommandDispatcherAppActions() {
     initGameWithSeed(1, 4802u, 0);
     Command command;
     command.payload = TogglePauseCommand{};
-    dispatchCommand(g, command);
+    dispatchTestCommand(command);
     assert(g.mode == M_PAUSED);
-    dispatchCommand(g, command);
+    dispatchTestCommand(command);
     assert(g.mode == M_NORMAL);
 
     command = Command{};
     command.payload = ToggleDiagnosticsCommand{};
     bool diagnosticsBefore = g.diagnostics;
-    dispatchCommand(g, command);
+    dispatchTestCommand(command);
     assert(g.diagnostics != diagnosticsBefore);
 
     g.map[0][0].visible[0] = false;
     g.map[0][0].explored[0] = false;
     command = Command{};
     command.payload = RevealMapDebugCommand{};
-    dispatchCommand(g, command);
+    dispatchTestCommand(command);
     assert(g.map[0][0].visible[0] && g.map[0][0].explored[0]);
 
-    int gid = spawnEntity(E_GATE, 0, 30, 30);
-    Entity* gate = findEntity(gid);
+    int gid = spawnEntity(g, E_GATE, 0, 30, 30);
+    Entity* gate = testFindEntity(gid);
     assert(gate && !gate->gateLocked);
     command = Command{};
     command.payload = ToggleGateCommand{ Selection{ gid, { gid } } };
-    dispatchCommand(g, command);
+    dispatchTestCommand(command);
     assert(gate->gateLocked && gate->gateOpen);
-    dispatchCommand(g, command);
+    dispatchTestCommand(command);
     assert(gate->gateLocked && !gate->gateOpen);
-    dispatchCommand(g, command);
+    dispatchTestCommand(command);
     assert(!gate->gateLocked);
 
-    int tid = spawnEntity(E_TREBUCHET, 0, 34, 30);
-    Entity* treb = findEntity(tid);
+    int tid = spawnEntity(g, E_TREBUCHET, 0, 34, 30);
+    Entity* treb = testFindEntity(tid);
     assert(treb && treb->packed == 1);
     command = Command{};
     command.payload = ToggleTrebuchetPackedCommand{ Selection{ tid, { tid } } };
-    dispatchCommand(g, command);
+    dispatchTestCommand(command);
     assert(treb->packed == 0 && treb->packTicks == 40);
 
-    int a = spawnEntity(E_MILITIA, 0, 40, 30);
-    int b = spawnEntity(E_ARCHER, 0, 41, 30);
+    int a = spawnEntity(g, E_MILITIA, 0, 40, 30);
+    int b = spawnEntity(g, E_ARCHER, 0, 41, 30);
     command = Command{};
     command.payload = AssignControlGroupCommand{ Selection{ a, { a, b } }, 2 };
-    dispatchCommand(g, command);
+    dispatchTestCommand(command);
     assert(g.controlGroups[2].size() == 2);
     g.selectedId = -1;
     g.selectedIds.clear();
     command = Command{};
     command.payload = RecallControlGroupCommand{ 2 };
-    dispatchCommand(g, command);
+    dispatchTestCommand(command);
     assert(g.selectedId == a);
     assert(g.selectedIds.size() == 2);
 
-    int c = spawnEntity(E_MILITIA, 1, 42, 30);
-    int d = spawnEntity(E_ARCHER, 1, 43, 30);
+    int c = spawnEntity(g, E_MILITIA, 1, 42, 30);
+    int d = spawnEntity(g, E_ARCHER, 1, 43, 30);
     command = Command{};
     command.issuer = 1;
     command.payload = AssignControlGroupCommand{ Selection{ c, { c, d, a } }, 2 };
-    CommandResult ownerGroupResult = dispatchCommand(g, command);
+    CommandResult ownerGroupResult = dispatchTestCommand(command);
     assert(ownerGroupResult.status == CommandStatus::Accepted);
     assert(g.controlGroups[2].size() == 2);
     assert(g.controlGroupsByOwner[1][2].size() == 2);
@@ -1563,31 +1619,31 @@ static void testCommandDispatcherAppActions() {
     command = Command{};
     command.issuer = 1;
     command.payload = RecallControlGroupCommand{ 2 };
-    dispatchCommand(g, command);
+    dispatchTestCommand(command);
     assert(g.selectedId == c);
     assert(g.selectedIds.size() == 2);
     command = Command{};
     command.payload = RecallControlGroupCommand{ 2 };
-    dispatchCommand(g, command);
+    dispatchTestCommand(command);
     assert(g.selectedId == a);
     assert(g.selectedIds.size() == 2);
 
     command = Command{};
     command.payload = SaveCommand{ 7 };
     std::remove("realm-slot7.sav");
-    dispatchCommand(g, command);
+    dispatchTestCommand(command);
     unsigned savedSeed = g.seed;
     initGameWithSeed(1, 4803u, 0);
     command = Command{};
     command.payload = LoadCommand{ 7 };
-    dispatchCommand(g, command);
+    dispatchTestCommand(command);
     assert(g.seed == savedSeed);
     std::remove("realm-slot7.sav");
 
     command = Command{};
     command.payload = ResignCommand{};
     g.returnToMenu = false;
-    dispatchCommand(g, command);
+    dispatchTestCommand(command);
     assert(g.returnToMenu);
 }
 
@@ -1598,104 +1654,104 @@ static void testCommandIssuerOwnerRules() {
         g.map[y][x].resources = 0;
     }
 
-    int mid = spawnEntity(E_MILITIA, 1, 30, 30);
-    Entity* militia = findEntity(mid);
+    int mid = spawnEntity(g, E_MILITIA, 1, 30, 30);
+    Entity* militia = testFindEntity(mid);
     assert(militia);
     Command command;
     command.issuer = 1;
     command.payload = MoveCommand{ Selection{ mid, { mid } }, { 35, 30 } };
-    assert(dispatchCommand(g, command).status == CommandStatus::Accepted);
+    assert(dispatchTestCommand(command).status == CommandStatus::Accepted);
     assert(militia->targetX == 35 && militia->targetY == 30);
 
     command = Command{};
     command.issuer = 0;
     command.payload = MoveCommand{ Selection{ mid, { mid } }, { 36, 30 } };
-    assert(dispatchCommand(g, command).status == CommandStatus::Rejected);
+    assert(dispatchTestCommand(command).status == CommandStatus::Rejected);
     assert(militia->targetX == 35 && militia->targetY == 30);
 
     command = Command{};
     command.issuer = 0;
     command.payload = HoldPositionCommand{ Selection{ mid, { mid } } };
-    assert(dispatchCommand(g, command).status == CommandStatus::Rejected);
+    assert(dispatchTestCommand(command).status == CommandStatus::Rejected);
     assert(militia->holdPosition == 0);
 
     command = Command{};
     command.issuer = 1;
     command.payload = HoldPositionCommand{ Selection{ mid, { mid } } };
-    assert(dispatchCommand(g, command).status == CommandStatus::Accepted);
+    assert(dispatchTestCommand(command).status == CommandStatus::Accepted);
     assert(militia->holdPosition == 1);
 
     command = Command{};
     command.issuer = 1;
     command.payload = StopCommand{ Selection{ mid, { mid } } };
-    assert(dispatchCommand(g, command).status == CommandStatus::Accepted);
+    assert(dispatchTestCommand(command).status == CommandStatus::Accepted);
     assert(militia->holdPosition == 0 && militia->state == S_IDLE);
 
-    int gateId = spawnEntity(E_GATE, 1, 38, 30);
-    Entity* gate = findEntity(gateId);
+    int gateId = spawnEntity(g, E_GATE, 1, 38, 30);
+    Entity* gate = testFindEntity(gateId);
     assert(gate);
     command = Command{};
     command.issuer = 1;
     command.payload = ToggleGateCommand{ Selection{ gateId, { gateId } } };
-    assert(dispatchCommand(g, command).status == CommandStatus::Accepted);
+    assert(dispatchTestCommand(command).status == CommandStatus::Accepted);
     assert(gate->gateLocked && gate->gateOpen);
 
-    int trebId = spawnEntity(E_TREBUCHET, 1, 42, 30);
-    Entity* treb = findEntity(trebId);
+    int trebId = spawnEntity(g, E_TREBUCHET, 1, 42, 30);
+    Entity* treb = testFindEntity(trebId);
     assert(treb && treb->packed == 1);
     command = Command{};
     command.issuer = 1;
     command.payload = ToggleTrebuchetPackedCommand{ Selection{ trebId, { trebId } } };
-    assert(dispatchCommand(g, command).status == CommandStatus::Accepted);
+    assert(dispatchTestCommand(command).status == CommandStatus::Accepted);
     assert(treb->packed == 0 && treb->packTicks == 40);
 
-    int barracksId = spawnEntity(E_BARRACKS, 1, 44, 30);
-    Entity* barracks = findEntity(barracksId);
+    int barracksId = spawnEntity(g, E_BARRACKS, 1, 44, 30);
+    Entity* barracks = testFindEntity(barracksId);
     assert(barracks);
     command = Command{};
     command.issuer = 1;
     command.payload = SetRallyCommand{ Selection{ barracksId, { barracksId } }, { 40, 35 } };
-    assert(dispatchCommand(g, command).status == CommandStatus::Accepted);
+    assert(dispatchTestCommand(command).status == CommandStatus::Accepted);
     assert(barracks->rallySet && barracks->rallyX == 40 && barracks->rallyY == 35);
 
     command = Command{};
     command.issuer = 1;
     command.payload = SelectCommand{ { 30, 30 } };
-    assert(dispatchCommand(g, command).status == CommandStatus::Accepted);
+    assert(dispatchTestCommand(command).status == CommandStatus::Accepted);
     assert(g.selectedId == mid);
 
-    int archerId = spawnEntity(E_ARCHER, 1, 31, 30);
+    int archerId = spawnEntity(g, E_ARCHER, 1, 31, 30);
     command = Command{};
     command.issuer = 1;
     command.payload = BoxSelectCommand{ { 29, 29 }, { 32, 31 } };
-    assert(dispatchCommand(g, command).status == CommandStatus::Accepted);
+    assert(dispatchTestCommand(command).status == CommandStatus::Accepted);
     assert(std::find(g.selectedIds.begin(), g.selectedIds.end(), mid) != g.selectedIds.end());
     assert(std::find(g.selectedIds.begin(), g.selectedIds.end(), archerId) != g.selectedIds.end());
 
     command = Command{};
     command.issuer = 1;
     command.payload = AssignControlGroupCommand{ Selection{ mid, { mid, archerId } }, 4 };
-    assert(dispatchCommand(g, command).status == CommandStatus::Accepted);
+    assert(dispatchTestCommand(command).status == CommandStatus::Accepted);
     g.selectedId = -1;
     g.selectedIds.clear();
     command = Command{};
     command.issuer = 1;
     command.payload = RecallControlGroupCommand{ 4 };
-    assert(dispatchCommand(g, command).status == CommandStatus::Accepted);
+    assert(dispatchTestCommand(command).status == CommandStatus::Accepted);
     assert(g.selectedId == mid);
     assert(g.selectedIds.size() == 2);
-    assert(validateGameState(nullptr));
+    assert(validateGameState(g, nullptr));
 }
 
 static void testSelectionServicesUseIssuer() {
     initGameWithSeed(0, 4850u, 0);
-    int humanPeasant = spawnEntity(E_PEASANT, 0, 24, 24);
-    int firstPeasant = spawnEntity(E_PEASANT, 1, 30, 30);
-    int secondPeasant = spawnEntity(E_PEASANT, 1, 31, 30);
-    int militiaId = spawnEntity(E_MILITIA, 1, 32, 30);
-    int archerId = spawnEntity(E_ARCHER, 1, 33, 30);
-    int enemyMilitia = spawnEntity(E_MILITIA, 0, 34, 30);
-    int townHallId = spawnEntity(E_TOWNHALL, 1, 36, 30);
+    int humanPeasant = spawnEntity(g, E_PEASANT, 0, 24, 24);
+    int firstPeasant = spawnEntity(g, E_PEASANT, 1, 30, 30);
+    int secondPeasant = spawnEntity(g, E_PEASANT, 1, 31, 30);
+    int militiaId = spawnEntity(g, E_MILITIA, 1, 32, 30);
+    int archerId = spawnEntity(g, E_ARCHER, 1, 33, 30);
+    int enemyMilitia = spawnEntity(g, E_MILITIA, 0, 34, 30);
+    int townHallId = spawnEntity(g, E_TOWNHALL, 1, 36, 30);
 
     WorldIndex world = buildWorldIndex(g);
     Entity* selected = selectNextIdleWorker(g, world, 1, firstPeasant);
@@ -1732,7 +1788,7 @@ static void testSelectionServicesUseIssuer() {
     assert(g.selectedIds.size() == 1 && g.selectedIds[0] == militiaId);
     clearSelection(g);
     assert(g.selectedId == -1 && g.selectedIds.empty() && !g.groupAssignPending);
-    assert(validateGameState(nullptr));
+    assert(validateGameState(g, nullptr));
 }
 
 static void testAICommandDispatch() {
@@ -1742,72 +1798,85 @@ static void testAICommandDispatch() {
         g.map[y][x].resources = 0;
     }
 
-    int pid = spawnEntity(E_PEASANT, 1, 30, 30);
-    Entity* peasant = findEntity(pid);
+    WorldIndex world = buildWorldIndex(g);
+    GameContext gameContext{ g, world, gameEvents() };
+    const AITuning& tuning = defaultAITuning();
+    AIWorldView view = buildAIWorldView(g, world, 1, tuning);
+    AIContext aiContext{ 1, gameContext, view, tuning, {}, {} };
+    auto executePlanned = [&]() {
+        aiContext.ctx.world = buildWorldIndex(g);
+        executeAICommands(aiContext);
+    };
+
+    int pid = spawnEntity(g, E_PEASANT, 1, 30, 30);
+    Entity* peasant = testFindEntity(pid);
     assert(peasant);
     g.players[1].wood = STATS[E_HOUSE].costWood;
     g.players[1].gold = STATS[E_HOUSE].costGold;
     int humanWoodBefore = g.players[0].wood;
-    aiIssueBuild(*peasant, E_HOUSE, 34, 34);
-    Entity* house = findEntity(peasant->targetId);
+    aiIssueBuild(aiContext, *peasant, E_HOUSE, 34, 34);
+    executePlanned();
+    Entity* house = testFindEntity(peasant->targetId);
     assert(house && house->type == E_HOUSE && house->owner == 1 && house->underConstruction);
     assert(g.players[1].wood == 0);
     assert(g.players[0].wood == humanWoodBefore);
 
-    int bid = spawnEntity(E_BARRACKS, 1, 42, 30);
-    Entity* barracks = findEntity(bid);
+    int bid = spawnEntity(g, E_BARRACKS, 1, 42, 30);
+    Entity* barracks = testFindEntity(bid);
     assert(barracks && !barracks->underConstruction);
     g.players[1].gold = STATS[E_MILITIA].costGold;
     g.players[1].wood = STATS[E_MILITIA].costWood;
     g.players[1].food = STATS[E_MILITIA].costFood;
     g.players[1].supplyMax = 50;
-    aiIssueTrain(*barracks, E_MILITIA);
+    aiIssueTrain(aiContext, *barracks, E_MILITIA);
+    executePlanned();
     assert(barracks->producing == E_MILITIA);
     assert(g.players[1].gold == 0 && g.players[1].food == 0);
 
-    int sid = spawnEntity(E_BLACKSMITH, 1, 45, 30);
-    Entity* smith = findEntity(sid);
+    int sid = spawnEntity(g, E_BLACKSMITH, 1, 45, 30);
+    Entity* smith = testFindEntity(sid);
     assert(smith && !smith->underConstruction);
     const ResearchDef* iron = researchDef(ResearchId::IronWeapons);
     assert(iron);
     g.players[1].gold = iron->costGold;
     g.players[1].wood = iron->costWood;
-    aiIssueResearch(*smith, ResearchId::IronWeapons);
+    aiIssueResearch(aiContext, *smith, ResearchId::IronWeapons);
+    executePlanned();
     assert(smith->researching == R_IRON_WEAPONS);
     assert(g.players[1].gold == 0 && g.players[1].wood == 0);
 
-    int aid = spawnEntity(E_ARCHER, 1, 48, 30);
-    int enemyId = spawnEntity(E_MILITIA, 0, 50, 30);
-    Entity* archer = findEntity(aid);
+    int aid = spawnEntity(g, E_ARCHER, 1, 48, 30);
+    int enemyId = spawnEntity(g, E_MILITIA, 0, 50, 30);
+    Entity* archer = testFindEntity(aid);
     assert(archer);
-    aiIssueMove(*archer, 49, 32);
+    aiIssueMove(aiContext, *archer, 49, 32);
+    executePlanned();
     assert(archer->targetX == 49 && archer->targetY == 32);
-    aiIssueAttack(*archer, enemyId);
+    aiIssueAttack(aiContext, *archer, enemyId);
+    executePlanned();
     assert(archer->state == S_ATTACKING && archer->targetId == enemyId);
 
-    int towerId = spawnEntity(E_TOWER, 1, 54, 30);
-    Entity* tower = findEntity(towerId);
+    int towerId = spawnEntity(g, E_TOWER, 1, 54, 30);
+    Entity* tower = testFindEntity(towerId);
     assert(tower);
-    aiIssueGarrison(*archer, tower->id);
+    aiIssueGarrison(aiContext, *archer, tower->id);
+    executePlanned();
     assert(archer->state == S_ENTERING && archer->targetId == tower->id);
     tower->garrison.push_back(archer->id);
-    aiIssueEjectGarrison(*tower);
+    aiIssueEjectGarrison(aiContext, *tower);
+    executePlanned();
     assert(tower->garrison.empty());
-    int aiTrebId = spawnEntity(E_TREBUCHET, 1, 56, 30);
-    Entity* aiTreb = findEntity(aiTrebId);
+    int aiTrebId = spawnEntity(g, E_TREBUCHET, 1, 56, 30);
+    Entity* aiTreb = testFindEntity(aiTrebId);
     assert(aiTreb && aiTreb->packed == 1);
-    aiIssueToggleTrebuchetPacked(*aiTreb);
+    aiIssueToggleTrebuchetPacked(aiContext, *aiTreb);
+    executePlanned();
     assert(aiTreb->packed == 0 && aiTreb->packTicks == 40 && aiTreb->targetId == -1);
 
-    WorldIndex world = buildWorldIndex(g);
-    GameContext gameContext{ g, world, gameEvents() };
-    AITuning tuning = defaultAITuning();
-    AIWorldView view = buildAIWorldView(1, tuning);
-    AIContext aiContext{ 1, gameContext, view, tuning, {}, {} };
-    int farmId = spawnEntity(E_FARM, 1, 58, 30);
-    int tenderId = spawnEntity(E_PEASANT, 1, 57, 30);
-    Entity* farm = findEntity(farmId);
-    Entity* tender = findEntity(tenderId);
+    int farmId = spawnEntity(g, E_FARM, 1, 58, 30);
+    int tenderId = spawnEntity(g, E_PEASANT, 1, 57, 30);
+    Entity* farm = testFindEntity(farmId);
+    Entity* tender = testFindEntity(tenderId);
     assert(farm && tender);
     farm->underConstruction = false;
     aiContext.ctx.world = buildWorldIndex(g);
@@ -1830,7 +1899,7 @@ static void testAICommandDispatch() {
     assert(aiContext.rejectedBuildCommands == 1);
     assert(aiContext.rejectedTrainCommands == 1);
     assert(!aiContext.rejectedCommands[0].result.reason.empty());
-    assert(validateGameState(nullptr));
+    assert(validateGameState(g, nullptr));
 }
 
 static void testAIGatherUsesWorldIndex() {
@@ -1844,10 +1913,10 @@ static void testAIGatherUsesWorldIndex() {
     g.map[31][31].terrain = T_GOLD;
     g.map[31][31].resources = 100;
 
-    int pid = spawnEntity(E_PEASANT, 1, 30, 30);
-    Entity* peasant = findEntity(pid);
+    int pid = spawnEntity(g, E_PEASANT, 1, 30, 30);
+    Entity* peasant = testFindEntity(pid);
     assert(peasant);
-    aiGather(1);
+    runTestAIGather(1);
     assert(peasant->state == S_GATHERING);
     assert(peasant->targetX == 31 && peasant->targetY == 31);
 
@@ -1858,19 +1927,19 @@ static void testAIGatherUsesWorldIndex() {
     }
     g.map[20][22].terrain = T_FISH;
     g.map[20][22].resources = 90;
-    int bid = spawnEntity(E_FISHING_BOAT, 1, 20, 20);
-    Entity* boat = findEntity(bid);
+    int bid = spawnEntity(g, E_FISHING_BOAT, 1, 20, 20);
+    Entity* boat = testFindEntity(bid);
     assert(boat);
-    aiGather(1);
+    runTestAIGather(1);
     assert(boat->state == S_GATHERING);
     assert(boat->targetX == 22 && boat->targetY == 20);
-    assert(validateGameState(nullptr));
+    assert(validateGameState(g, nullptr));
 }
 
 static void testProductionService() {
     initGameWithSeed(1, 4901u, 0);
-    int bid = spawnEntity(E_BARRACKS, 0, 30, 30);
-    Entity* bar = findEntity(bid);
+    int bid = spawnEntity(g, E_BARRACKS, 0, 30, 30);
+    Entity* bar = testFindEntity(bid);
     assert(bar && !bar->underConstruction);
     assert(canProducerTrain(E_BARRACKS, E_MILITIA));
     assert(canProducerTrain(E_BARRACKS, E_RAM));
@@ -1897,8 +1966,8 @@ static void testProductionService() {
     assert(!startTraining(g, 0, bar->id, E_ARCHER));
     assert(g.players[0].gold == goldBefore);
 
-    int sid = spawnEntity(E_STABLE, 0, 40, 30);
-    Entity* stable = findEntity(sid);
+    int sid = spawnEntity(g, E_STABLE, 0, 40, 30);
+    Entity* stable = testFindEntity(sid);
     assert(stable);
     goldBefore = g.players[0].gold;
     ServiceResult invalidTraining = startTrainingService(g, 0, stable->id, E_ARCHER);
@@ -1906,8 +1975,8 @@ static void testProductionService() {
     assert(std::string(invalidTraining.reason) == "Cannot train that unit.");
     assert(g.players[0].gold == goldBefore);
 
-    int bid2 = spawnEntity(E_BARRACKS, 0, 45, 30);
-    Entity* poorBar = findEntity(bid2);
+    int bid2 = spawnEntity(g, E_BARRACKS, 0, 45, 30);
+    Entity* poorBar = testFindEntity(bid2);
     assert(poorBar);
     g.players[0].gold = 999;
     g.players[0].wood = 999;
@@ -1916,7 +1985,7 @@ static void testProductionService() {
     assert(!trainRejected.ok);
     assert(trainRejected.reason && std::string(trainRejected.reason).size() > 0);
     assert(poorBar->producing == E_NONE);
-    assert(validateGameState(nullptr));
+    assert(validateGameState(g, nullptr));
 }
 
 static void testBuildService() {
@@ -1925,15 +1994,15 @@ static void testBuildService() {
         g.map[y][x].terrain = T_GRASS;
         g.map[y][x].resources = 0;
     }
-    int pid = spawnEntity(E_PEASANT, 0, 30, 30);
-    Entity* peasant = findEntity(pid);
+    int pid = spawnEntity(g, E_PEASANT, 0, 30, 30);
+    Entity* peasant = testFindEntity(pid);
     assert(peasant);
     g.players[0].gold = STATS[E_HOUSE].costGold;
     g.players[0].wood = STATS[E_HOUSE].costWood;
     assert(startBuild(g, 0, peasant->id, E_HOUSE, { 34, 34 }));
     assert(g.players[0].gold == 0 && g.players[0].wood == 0);
     assert(peasant->state == S_BUILDING);
-    Entity* house = findEntity(peasant->targetId);
+    Entity* house = testFindEntity(peasant->targetId);
     assert(house && house->type == E_HOUSE && house->owner == 0 && house->underConstruction);
 
     // Insufficient resources reject without spawning.
@@ -1942,8 +2011,8 @@ static void testBuildService() {
         g.map[y][x].terrain = T_GRASS;
         g.map[y][x].resources = 0;
     }
-    int pid2 = spawnEntity(E_PEASANT, 0, 30, 30);
-    Entity* peasant2 = findEntity(pid2);
+    int pid2 = spawnEntity(g, E_PEASANT, 0, 30, 30);
+    Entity* peasant2 = testFindEntity(pid2);
     assert(peasant2);
     g.players[0].gold = 0;
     g.players[0].wood = 0;
@@ -1955,8 +2024,8 @@ static void testBuildService() {
     assert(countTypeOwner(E_HOUSE, 0) == housesBefore);
 
     // Non-builders are rejected.
-    int mid = spawnEntity(E_MILITIA, 0, 31, 30);
-    Entity* militia = findEntity(mid);
+    int mid = spawnEntity(g, E_MILITIA, 0, 31, 30);
+    Entity* militia = testFindEntity(mid);
     assert(militia);
     g.players[0].gold = 999;
     g.players[0].wood = 999;
@@ -1965,30 +2034,43 @@ static void testBuildService() {
     // Invalid terrain is rejected.
     g.map[34][36].terrain = T_WATER;
     assert(!startBuild(g, 0, peasant2->id, E_HOUSE, { 36, 34 }));
-    assert(validateGameState(nullptr));
+    assert(validateGameState(g, nullptr));
 }
 
 static void testGameEventSink() {
     initGameWithSeed(1, 5101u, 0);
+    (void)drainGameEvents();
     emitStatusEvent(0, "Human status");
+    flushGameEventsToUi(g, 0);
     assert(g.statusMsg == "Human status");
     emitStatusEvent(1, "AI status");
+    flushGameEventsToUi(g, 0);
     assert(g.statusMsg == "Human status");
+    emitStatusEvent(1, "AI status");
+    flushGameEventsToUi(g, 1);
+    assert(g.statusMsg == "AI status");
 
     size_t markersBefore = g.actionMarkers.size();
     emitActionMarkerEvent(0, { 10, 10 }, '!');
+    flushGameEventsToUi(g, 0);
     assert(g.actionMarkers.size() == markersBefore + 1);
     assert(g.actionMarkers.back().x == 10 && g.actionMarkers.back().y == 10);
     assert(g.actionMarkers.back().glyph == '!');
 
     emitActionMarkerEvent(1, { 11, 11 }, '?');
+    flushGameEventsToUi(g, 0);
     assert(g.actionMarkers.size() == markersBefore + 1);
+    emitActionMarkerEvent(1, { 11, 11 }, '?');
+    flushGameEventsToUi(g, 1);
+    assert(g.actionMarkers.size() == markersBefore + 2);
+    assert(g.actionMarkers.back().x == 11 && g.actionMarkers.back().y == 11);
+    assert(g.actionMarkers.back().glyph == '?');
 
     struct CaptureSink : EventSink {
         std::vector<GameEvent> events;
         void emit(const GameEvent& event) override { events.push_back(event); }
     } sink;
-    int id = spawnEntity(E_MILITIA, 0, 22, 22);
+    int id = spawnEntity(g, E_MILITIA, 0, 22, 22);
     WorldIndex world = buildWorldIndex(g);
     GameContext context{ g, world, sink };
     Command move;
@@ -2035,7 +2117,7 @@ static void testWorldIndexParity() {
 
     for (const auto& e : g.entities) {
         if (!e.alive) continue;
-        assert(entityById(g, world, e.id) == findEntity(e.id));
+        assert(entityById(g, world, e.id) == testFindEntity(e.id));
         if (e.owner >= 0 && e.owner <= MAX_PLAYERS) {
             const auto& ownerList = world.entitiesByOwner[e.owner];
             assert(std::find(ownerList.begin(), ownerList.end(), e.id) != ownerList.end());
@@ -2045,11 +2127,11 @@ static void testWorldIndexParity() {
 
     for (int y = 0; y < MAP_H; y++) {
         for (int x = 0; x < MAP_W; x++) {
-            Entity* legacyTop = entityAt(x, y);
+            Entity* legacyTop = testEntityAt(x, y);
             EntityId indexedTop = topEntityAt(g, world, { x, y });
             assert((legacyTop ? legacyTop->id : -1) == indexedTop);
             assert(entityAt(g, world, x, y) == legacyTop);
-            Entity* legacyOwner = entityAtOwner(x, y, 0);
+            Entity* legacyOwner = testEntityAtOwner(x, y, 0);
             EntityId indexedOwner = topEntityAtOwner(g, world, { x, y }, 0);
             assert((legacyOwner ? legacyOwner->id : -1) == indexedOwner);
             assert(entityAtOwner(g, world, x, y, 0) == legacyOwner);
@@ -2058,8 +2140,8 @@ static void testWorldIndexParity() {
 
     OccupancyGrid unitOcc{};
     OccupancyGrid buildingOcc{};
-    buildOccupancyGrid(unitOcc, true, false);
-    buildOccupancyGrid(buildingOcc, false, true);
+    buildOccupancyGrid(g, unitOcc, true, false);
+    buildOccupancyGrid(g, buildingOcc, false, true);
     for (int y = 0; y < MAP_H; y++) {
         for (int x = 0; x < MAP_W; x++) {
             assert(isOccupied(world, { x, y }, OccupancyLayer::Units) == unitOcc.occupied[y][x]);
@@ -2088,7 +2170,7 @@ static void testWorldIndexParity() {
     for (EntityType type : { E_HOUSE, E_TOWER, E_FARM, E_DOCK }) {
         for (int y = 0; y < MAP_H; y += 5)
             for (int x = 0; x < MAP_W; x += 7)
-                assert(canPlace(g, world, type, x, y, 0) == canPlace(type, x, y, 0));
+                assert(canPlace(g, world, type, x, y, 0) == testCanPlace(type, x, y, 0));
     }
 
     auto local = std::make_unique<Game>(g);
@@ -2100,7 +2182,7 @@ static void testWorldIndexParity() {
         local->map[py + dy][px + dx].terrain = T_GRASS;
         local->map[py + dy][px + dx].resources = 0;
     }
-    assert(!isPassable(px, py));
+    assert(!isPassable(g, px, py));
     assert(isPassable(*local, px, py));
     auto localPath = findPath(*local, px, py, px + 1, py, 300, false);
     assert(!localPath.empty());
@@ -2113,7 +2195,8 @@ static void testWorldIndexParity() {
     assert(localMover->state == S_MOVING);
     assert(!localMover->path.empty());
     assert(localMover->path.back().first == px + 1 && localMover->path.back().second == py);
-    moveAlongPath(*local, *localMover);
+    localMoveWorld = buildWorldIndex(*local);
+    moveAlongPath(*local, localMoveWorld, *localMover);
     assert(localMover->x == px + 1 && localMover->y == py);
     assert(local->map[py][px + 1].wear == 1);
     assert(g.map[py][px + 1].terrain == T_WATER);
@@ -2137,14 +2220,14 @@ static void testWorldIndexParity() {
     localWorld = buildWorldIndex(*local);
     assert(!canPlace(*local, localWorld, E_HOUSE, px, py, 0));
 
-    int corpseId = spawnEntity(E_MILITIA, 0, 20, 20);
-    Entity* corpse = findEntity(corpseId);
+    int corpseId = spawnEntity(g, E_MILITIA, 0, 20, 20);
+    Entity* corpse = testFindEntity(corpseId);
     assert(corpse);
     corpse->alive = false;
     corpse->state = S_DEAD;
     corpse->hp = 0;
     WorldIndex corpseWorld = buildWorldIndex(g);
-    assert(corpseAt(g, corpseWorld, 20, 20) == corpseAt(20, 20));
+    assert(corpseAt(g, corpseWorld, 20, 20) == testCorpseAt(20, 20));
 }
 
 static void testBerryGatherAndDepletion() {
@@ -2160,23 +2243,26 @@ static void testBerryGatherAndDepletion() {
     g.map[by][bx].preWinterTerrain = T_BERRY;
     int foodBefore = g.players[0].food;
     int peasantId = peasant->id;
-    orderGather(*peasant, bx, by);
+    WorldIndex berryWorld = buildWorldIndex(g);
+    orderGather(g, berryWorld, *peasant, bx, by);
     assert(peasant->cargo.type == CR_FOOD);
     assert(peasant->resourceX == bx && peasant->resourceY == by);
     bool depleted = false, delivered = false;
     for (int i = 0; i < 300; i++) {
-        tickSimulationOnce();
+        tickSimulationOnce(g, true);
         if (g.map[by][bx].terrain == T_GRASS && g.map[by][bx].resources == 0) depleted = true;
         if (g.players[0].food > foodBefore) delivered = true;
         if (depleted && delivered) break;
     }
     assert(depleted);
     assert(delivered);
-    peasant = findEntity(peasantId);
+    peasant = testFindEntity(peasantId);
     assert(peasant && peasant->cargo.amount == 0);
 }
 
 static void testEntityAnimationSpecs() {
+    Game animationGame{};
+    WorldIndex animationWorld = buildWorldIndex(animationGame);
     assert(entityActionAnimationSpecCount(E_PEASANT) == 16);
     const EntityActionAnimationSpec* mine = findEntityActionAnimationSpec(E_PEASANT, "mine_gold");
     assert(mine);
@@ -2194,8 +2280,8 @@ static void testEntityAnimationSpecs() {
     e.targetId = -1;
     e.targetX = -1;
     e.targetY = -1;
-    assert(std::string(entityAnimationActionId(e)) == "idle");
-    assert(entityActionAnimationSpecFor(e)->holdLast);
+    assert(std::string(entityAnimationActionId(animationGame, animationWorld, e)) == "idle");
+    assert(entityActionAnimationSpecFor(animationGame, animationWorld, e)->holdLast);
     assert(entityActionAnimationSpecCount(E_MILITIA) == 1);
     const EntityActionAnimationSpec* militiaDeath = findEntityActionAnimationSpec(E_MILITIA, "death");
     assert(militiaDeath);
@@ -2228,46 +2314,46 @@ static void testEntityAnimationSpecs() {
     e.state = S_MOVING;
     e.path = {{11, 10}};
     e.pathIdx = 0;
-    assert(std::string(entityAnimationActionId(e)) == "walk");
+    assert(std::string(entityAnimationActionId(animationGame, animationWorld, e)) == "walk");
     assert(std::string(entityAnimationDirectionBucket(e)) == "front");
     assert(!entityAnimationMirrorHorizontal(e));
 
     e.state = S_RETURNING;
     e.path.clear();
     e.cargo = {CR_WOOD, 10, 3, 4};
-    assert(std::string(entityAnimationActionId(e)) == "carry_wood");
+    assert(std::string(entityAnimationActionId(animationGame, animationWorld, e)) == "carry_wood");
 
     e.alive = false;
-    assert(std::string(entityAnimationActionId(e)) == "death");
+    assert(std::string(entityAnimationActionId(animationGame, animationWorld, e)) == "death");
 
     Entity m{};
     m.type = E_MILITIA;
     m.alive = false;
     m.state = S_DEAD;
-    assert(std::string(entityAnimationActionId(m)) == "death");
-    assert(entityActionAnimationSpecFor(m) == militiaDeath);
+    assert(std::string(entityAnimationActionId(animationGame, animationWorld, m)) == "death");
+    assert(entityActionAnimationSpecFor(animationGame, animationWorld, m) == militiaDeath);
 }
 
 static void testCorpseDecayLifecycle() {
     initGameWithSeed(0, 3903u, 0);
-    int id = spawnEntity(E_MILITIA, 0, 20, 20);
-    Entity* militia = findEntity(id);
+    int id = spawnEntity(g, E_MILITIA, 0, 20, 20);
+    Entity* militia = testFindEntity(id);
     assert(militia);
     militia->alive = false;
     militia->state = S_DEAD;
     militia->hp = 0;
     militia->deathTicks = 0;
 
-    assert(findEntity(id) == nullptr);
-    assert(entityAt(20, 20) == nullptr);
-    assert(corpseAt(20, 20) == militia);
+    assert(testFindEntity(id) == nullptr);
+    assert(testEntityAt(20, 20) == nullptr);
+    assert(testCorpseAt(20, 20) == militia);
 
-    for (int i = 0; i < DEATH_DECAY_TICKS; i++) tickSimulationOnce();
-    Entity* decayed = corpseAt(20, 20);
+    for (int i = 0; i < DEATH_DECAY_TICKS; i++) tickSimulationOnce(g, true);
+    Entity* decayed = testCorpseAt(20, 20);
     assert(decayed && decayed->deathTicks >= DEATH_DECAY_TICKS);
 
-    for (int i = DEATH_DECAY_TICKS; i < CORPSE_REMOVE_TICKS; i++) tickSimulationOnce();
-    assert(corpseAt(20, 20) == nullptr);
+    for (int i = DEATH_DECAY_TICKS; i < CORPSE_REMOVE_TICKS; i++) tickSimulationOnce(g, true);
+    assert(testCorpseAt(20, 20) == nullptr);
 }
 
 static void testMillFoodStockpile() {
@@ -2275,17 +2361,17 @@ static void testMillFoodStockpile() {
     Entity* mill = nullptr;
     for (int y = 20; y < MAP_H - 5 && !mill; y++) {
         for (int x = 20; x < MAP_W - 5 && !mill; x++) {
-            if (!canPlace(E_MILL, x, y, 0)) continue;
-            int id = spawnEntity(E_MILL, 0, x, y);
-            mill = findEntity(id);
+            if (!testCanPlace(E_MILL, x, y, 0)) continue;
+            int id = spawnEntity(g, E_MILL, 0, x, y);
+            mill = testFindEntity(id);
         }
     }
     assert(mill);
     int foodBefore = g.players[0].food;
-    addPlayerFood(0, 40, mill);
+    addPlayerFood(g, 0, 40, mill);
     assert(g.players[0].food == foodBefore + 40);
     assert(mill->storedFood == 40);
-    spendPlayerFood(0, 15);
+    spendPlayerFood(g, 0, 15);
     assert(g.players[0].food == foodBefore + 25);
     assert(mill->storedFood == 25);
 }
@@ -2300,7 +2386,7 @@ static void testWinterPartialWaterFreeze() {
     }
     g.prevSeason = AUTUMN;
     g.seasonPhase = (float)WINTER;
-    tickSeasons();
+    tickSeasons(g);
     int ice = 0, openWater = 0;
     for (int y = 0; y < MAP_H; y++) {
         for (int x = 0; x < MAP_W; x++) {
@@ -2323,7 +2409,7 @@ static void testMapgenReachabilityAcrossSeeds() {
             basePositions.insert({e.x, e.y});
             int sx = e.x + STATS[e.type].sizeW + 1;
             int sy = e.y + STATS[e.type].sizeH + 1;
-            if (!isPassable(sx, sy)) { sx = e.x + STATS[e.type].sizeW + 2; sy = e.y + 1; }
+            if (!isPassable(g, sx, sy)) { sx = e.x + STATS[e.type].sizeW + 2; sy = e.y + 1; }
             assert(reachableCountFrom(sx, sy, true, false, false) >= 1);
             assert(reachableCountFrom(sx, sy, false, true, false) >= 1);
             assert(reachableCountFrom(sx, sy, false, false, true) >= 1);
@@ -2416,9 +2502,9 @@ static void testStartSafetyAcrossSeeds() {
 
 static void testSaveLoadRoundTrip() {
     initGameWithSeed(2, 4004u, 2);
-    for (int i = 0; i < 20; i++) tickSimulationOnce();
+    for (int i = 0; i < 20; i++) tickSimulationOnce(g, true);
     std::string before = startupSummary();
-    assert(saveGame("build/test-save.realm"));
+    assert(saveGame(g, "build/test-save.realm"));
     {
         std::ifstream in("build/test-save.realm");
         std::string tag;
@@ -2431,10 +2517,10 @@ static void testSaveLoadRoundTrip() {
     assert(currentHeader.ok);
     assert(currentHeader.version == REALM_SAVE_VERSION);
     initGameWithSeed(1, 9999u, 0);
-    assert(loadGame("build/test-save.realm"));
+    assert(loadGame(g, "build/test-save.realm"));
     assert(g.seed == 4004u);
     assert(startupSummary() == before);
-    for (int i = 0; i < 20; i++) tickSimulationOnce();
+    for (int i = 0; i < 20; i++) tickSimulationOnce(g, true);
 
     // Version 8 uses the same payload as version 9 and should migrate in place.
     {
@@ -2447,16 +2533,16 @@ static void testSaveLoadRoundTrip() {
         out << content;
     }
     initGameWithSeed(1, 9998u, 0);
-    assert(loadGame("build/test-save-v8.realm"));
+    assert(loadGame(g, "build/test-save-v8.realm"));
     assert(g.seed == 4004u);
 
     initGameWithSeed(2, 4444u, 1);
-    for (int i = 0; i < 250; i++) tickSimulationOnce();
-    assert(saveGame("build/exact-resume.realm"));
-    for (int i = 0; i < 100; i++) tickSimulationOnce();
+    for (int i = 0; i < 250; i++) tickSimulationOnce(g, true);
+    assert(saveGame(g, "build/exact-resume.realm"));
+    for (int i = 0; i < 100; i++) tickSimulationOnce(g, true);
     std::string continuous = fullStateSummary();
-    assert(loadGame("build/exact-resume.realm"));
-    for (int i = 0; i < 100; i++) tickSimulationOnce();
+    assert(loadGame(g, "build/exact-resume.realm"));
+    for (int i = 0; i < 100; i++) tickSimulationOnce(g, true);
     assert(fullStateSummary() == continuous);
 
     FILE* f = std::fopen("build/corrupt-save.realm", "wb");
@@ -2464,7 +2550,7 @@ static void testSaveLoadRoundTrip() {
     std::fputs("not a realm save\n", f);
     std::fclose(f);
     std::string beforeFailedLoad = fullStateSummary();
-    assert(!loadGame("build/corrupt-save.realm"));
+    assert(!loadGame(g, "build/corrupt-save.realm"));
     assert(fullStateSummary() == beforeFailedLoad);
 
     FILE* old = std::fopen("build/unsupported-save.realm", "wb");
@@ -2537,7 +2623,7 @@ static void testLongSimulationAndAIProgression() {
         int requested = std::atoi(env);
         if (requested > 0) longTicks = requested;
     }
-    for (int i = 0; i < longTicks; i++) tickSimulationOnce();
+    for (int i = 0; i < longTicks; i++) tickSimulationOnce(g, true);
     assert(!g.entities.empty());
     assert(g.players[1].supplyMax >= initialAiSupplyMax);
     assert(g.players[1].supplyMax > 10 || countTypeOwner(E_HOUSE, 1) > 0 || countTypeOwner(E_BARRACKS, 1) > 0);

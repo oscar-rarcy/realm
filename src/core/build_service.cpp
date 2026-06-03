@@ -1,4 +1,5 @@
 #include "build_service.h"
+#include "realm.h"
 #include "core/game_events.h"
 
 #include <cstdlib>

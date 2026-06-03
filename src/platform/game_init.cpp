@@ -1,13 +1,19 @@
 #include "realm.h"
+#include "core/world_index.h"
 #include "view_state.h"
 
 #include <iostream>
+
+static bool startupEntityAt(int x, int y) {
+    WorldIndex world = buildWorldIndex(g);
+    return entityAt(g, world, x, y) != nullptr;
+}
 
 static void placeStartResources(int thX, int thY) {
     for (int i = 0; i < 7; i++) {
         int x = std::max(1, std::min(thX + 6 + i % 3, MAP_W - 2));
         int y = std::max(1, std::min(thY + 1 + i / 3, MAP_H - 2));
-        if (!entityAt(x, y)) {
+        if (!startupEntityAt(x, y)) {
             g.map[y][x].terrain = T_FOREST;
             g.map[y][x].resources = 120;
             g.map[y][x].preWinterTerrain = T_FOREST;
@@ -16,7 +22,7 @@ static void placeStartResources(int thX, int thY) {
     for (int i = 0; i < 5; i++) {
         int x = std::max(1, std::min(thX + 1 + i, MAP_W - 2));
         int y = std::max(1, std::min(thY + 7, MAP_H - 2));
-        if (!entityAt(x, y)) {
+        if (!startupEntityAt(x, y)) {
             g.map[y][x].terrain = T_BERRY;
             g.map[y][x].resources = 70;
             g.map[y][x].preWinterTerrain = T_BERRY;
@@ -38,7 +44,7 @@ void initGameWithSeed(int numAIs, unsigned seed, int humanCorner) {
 }
 
 void initGameWithSeed(int numAIs, unsigned seed, int humanCorner, const MapGenerationConfig& mapConfig) {
-    realmSrand(seed);
+    realmSrand(g, seed);
     // `g.entities` is a deque so spawnEntity() can append during a tick without
     // invalidating the Entity references and pointers held by simulation code.
     int matchNumber = g.matchNumber + 1;
@@ -75,7 +81,7 @@ void initGameWithSeed(int numAIs, unsigned seed, int humanCorner, const MapGener
         g.players[p] = {300, 200, 100, 0, 0, true, 0, 0};
     g.players[OWNER_NATURE] = {0, 0, 0, 0, 0, true, 0, 0};
 
-    generateMap(mapConfig);
+    generateMap(g, mapConfig);
 
     struct Spawn { int thX, thY; };
     const int needed = std::min(MAX_PLAYERS, 1 + numAIs);
@@ -114,8 +120,8 @@ void initGameWithSeed(int numAIs, unsigned seed, int humanCorner, const MapGener
     std::vector<Cand> candidates;
     candidates.reserve(260);
     for (int i = 0; i < 260; i++) {
-        int cx = edge + realmRand() % (MAP_W - 2*edge);
-        int cy = edge + realmRand() % (MAP_H - 2*edge);
+        int cx = edge + realmRand(g) % (MAP_W - 2*edge);
+        int cy = edge + realmRand(g) % (MAP_H - 2*edge);
         int s = scoreSpawn(cx, cy);
         if (s > 0) candidates.push_back({cx, cy, s});
     }
@@ -150,8 +156,8 @@ void initGameWithSeed(int numAIs, unsigned seed, int humanCorner, const MapGener
         for (int i = 0; i < needed; i++) spawns.push_back({cornerAnchors[i][0], cornerAnchors[i][1]});
     }
     if (humanCorner < 0 || humanCorner >= 4) {
-        humanCorner = realmRand() % 4;
-        if (spawns.size() > 1) std::swap(spawns[0], spawns[realmRand() % spawns.size()]);
+        humanCorner = realmRand(g) % 4;
+        if (spawns.size() > 1) std::swap(spawns[0], spawns[realmRand(g) % spawns.size()]);
     } else if (spawns.size() > 1) {
         int best = 0;
         for (int i = 1; i < (int)spawns.size(); i++) {
@@ -168,16 +174,16 @@ void initGameWithSeed(int numAIs, unsigned seed, int humanCorner, const MapGener
         int owner = (i == 0) ? 0 : i;
         if (owner >= MAX_PLAYERS) break;
         spawned[owner] = true;
-        clearStartArea(spawns[i].thX - 2, spawns[i].thY - 2, 6);
-        placeGoldCluster(spawns[i].thX + 9, spawns[i].thY + 4, 5);
+        clearStartArea(g, spawns[i].thX - 2, spawns[i].thY - 2, 6);
+        placeGoldCluster(g, spawns[i].thX + 9, spawns[i].thY + 4, 5);
         placeStartResources(spawns[i].thX, spawns[i].thY);
-        spawnEntity(E_TOWNHALL, owner, spawns[i].thX, spawns[i].thY);
+        spawnEntity(g, E_TOWNHALL, owner, spawns[i].thX, spawns[i].thY);
         for (int j = 0; j < 4; j++)
-            spawnEntity(E_PEASANT, owner, spawns[i].thX + 4 + j, spawns[i].thY + 4);
+            spawnEntity(g, E_PEASANT, owner, spawns[i].thX + 4 + j, spawns[i].thY + 4);
     }
     // Mark any non-spawned slots dead so checkWin doesn't wait on them.
     for (int p = 1; p < MAX_PLAYERS; p++) if (!spawned[p]) g.players[p].alive = false;
-    for (int p = 0; p < MAX_PLAYERS; p++) updateSupply(p);
+    for (int p = 0; p < MAX_PLAYERS; p++) updateSupply(g, p);
 
     view.cursorX = spawns[0].thX + 2; view.cursorY = spawns[0].thY + 2;
     view.viewX = std::max(0, spawns[0].thX - 10); view.viewY = std::max(0, spawns[0].thY - 5);
@@ -197,55 +203,54 @@ void initGameWithSeed(int numAIs, unsigned seed, int humanCorner, const MapGener
         for (int h = 0; h < 10 && total < 42; h++) {
             int hx = -1, hy = -1;
             for (int t = 0; t < 300 && hx < 0; t++) {
-                int ax = 10 + realmRand()%(MAP_W-20), ay = 10 + realmRand()%(MAP_H-20);
+                int ax = 10 + realmRand(g)%(MAP_W-20), ay = 10 + realmRand(g)%(MAP_H-20);
                 Terrain tr = g.map[ay][ax].terrain;
                 if ((tr==T_GRASS||tr==T_MEADOW||tr==T_TALL_GRASS||tr==T_FOREST)
                     && farFromAnyBase(ax, ay, 14))
                     { hx=ax; hy=ay; }
             }
             if (hx < 0) continue;
-            int herdSize = 3 + realmRand()%4;
+            int herdSize = 3 + realmRand(g)%4;
             for (int i = 0, t = 0; i < herdSize && t < 100; t++) {
-                int ax = hx+(realmRand()%9)-4, ay = hy+(realmRand()%9)-4;
+                int ax = hx+(realmRand(g)%9)-4, ay = hy+(realmRand(g)%9)-4;
                 ax = std::max(1, std::min(ax, MAP_W-2));
                 ay = std::max(1, std::min(ay, MAP_H-2));
                 Terrain tr = g.map[ay][ax].terrain;
                 if ((tr==T_GRASS||tr==T_MEADOW||tr==T_TALL_GRASS||tr==T_FOREST)
-                    && !entityAt(ax,ay) && farFromAnyBase(ax, ay, 10))
-                    { spawnEntity(E_DEER, OWNER_NATURE, ax, ay); i++; total++; }
+                    && !startupEntityAt(ax,ay) && farFromAnyBase(ax, ay, 10))
+                    { spawnEntity(g, E_DEER, OWNER_NATURE, ax, ay); i++; total++; }
             }
         }
     }
     // Wolves in forested areas
     for (int i = 0, t = 0; i < 7 && t < 600; t++) {
-        int ax = 10 + realmRand()%(MAP_W-20), ay = 10 + realmRand()%(MAP_H-20);
+        int ax = 10 + realmRand(g)%(MAP_W-20), ay = 10 + realmRand(g)%(MAP_H-20);
         Terrain tr = g.map[ay][ax].terrain;
-        if ((tr==T_FOREST||tr==T_PINE||tr==T_TALL_GRASS) && !entityAt(ax,ay)
+        if ((tr==T_FOREST||tr==T_PINE||tr==T_TALL_GRASS) && !startupEntityAt(ax,ay)
             && farFromAnyBase(ax, ay, 16))
-            { spawnEntity(E_WOLF, OWNER_NATURE, ax, ay); i++; }
+            { spawnEntity(g, E_WOLF, OWNER_NATURE, ax, ay); i++; }
     }
     // Boars in temperate woodland and forest biomes
     for (int i = 0, t = 0; i < 18 && t < 800; t++) {
-        int ax = 10 + realmRand()%(MAP_W-20), ay = 10 + realmRand()%(MAP_H-20);
+        int ax = 10 + realmRand(g)%(MAP_W-20), ay = 10 + realmRand(g)%(MAP_H-20);
         Terrain tr = g.map[ay][ax].terrain;
         Biome  b  = g.map[ay][ax].biome;
         if ((tr==T_FOREST||tr==T_PINE||tr==T_TALL_GRASS||tr==T_GRASS)
-            && (b==B_TEMPERATE||b==B_FOREST) && !entityAt(ax,ay)
+            && (b==B_TEMPERATE||b==B_FOREST) && !startupEntityAt(ax,ay)
             && farFromAnyBase(ax, ay, 16))
-            { spawnEntity(E_BOAR, OWNER_NATURE, ax, ay); i++; }
+            { spawnEntity(g, E_BOAR, OWNER_NATURE, ax, ay); i++; }
     }
     // Domestic sheep near each player's town hall (one cluster per chosen spawn)
     for (int i = 0; i < (int)spawns.size() && i <= numAIs; i++) {
         int bx = spawns[i].thX + 4, by = spawns[i].thY + 4;
         for (int i = 0, t = 0; i < 4 && t < 200; t++) {
-            int ax = bx+(realmRand()%7)-3, ay = by+(realmRand()%7)-3;
+            int ax = bx+(realmRand(g)%7)-3, ay = by+(realmRand(g)%7)-3;
             ax = std::max(1, std::min(ax, MAP_W-2)); ay = std::max(1, std::min(ay, MAP_H-2));
-            if (isPassable(ax,ay) && !entityAt(ax,ay)) { spawnEntity(E_SHEEP, OWNER_NATURE, ax, ay); i++; }
+            if (isPassable(g, ax,ay) && !startupEntityAt(ax,ay)) { spawnEntity(g, E_SHEEP, OWNER_NATURE, ax, ay); i++; }
         }
     }
 
-    updateFog();
-    resetDetectMapCache();
+    updateFog(g);
     std::cerr << "realm: match start"
               << " match=" << g.matchNumber
               << " seed=" << g.seed

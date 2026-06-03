@@ -1,12 +1,11 @@
 #pragma once
 
-#include "realm.h"
+#include "core/game_types.h"
 #include "core/service_result.h"
 #include "core/world_index.h"
 
-// Canonical building placement/resource-spend execution path shared by player
-// commands and AI. UI event/status calls stay here temporarily until Phase 4
-// introduces an event sink.
+struct Entity;
+struct Game;
 
 struct CanStartBuildResult {
     bool ok;

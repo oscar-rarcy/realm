@@ -1,6 +1,6 @@
 #pragma once
 
-#include "realm.h"
+#include "core/game_types.h"
 
 #include <SDL.h>
 

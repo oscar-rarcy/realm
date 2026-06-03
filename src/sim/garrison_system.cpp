@@ -38,10 +38,6 @@ static void clearReferencesToEntity(Game& game, int id) {
     }
 }
 
-void ejectGarrison(Entity& bld) {
-    ejectGarrison(g, bld);
-}
-
 void ejectGarrison(Game& game, Entity& bld) {
     if (bld.garrison.empty()) return;
     int bw = STATS[bld.type].sizeW, bh = STATS[bld.type].sizeH;
@@ -80,10 +76,6 @@ void ejectGarrison(Game& game, Entity& bld) {
 }
 
 // Centralized death handler: marks dead, ejects garrison, ruins terrain, updates supply.
-void killEntity(Entity& t) {
-    killEntity(g, t);
-}
-
 void killEntity(Game& game, Entity& t) {
     if (!t.alive) return;
     int id = t.id;
@@ -117,11 +109,6 @@ void killEntity(Game& game, Entity& t) {
     updateSupply(game, t.owner);
 }
 
-void orderGarrison(Entity& e, int buildingId) {
-    WorldIndex world = buildWorldIndex(g);
-    orderGarrison(g, world, e, buildingId);
-}
-
 void orderGarrison(Game& game, const WorldIndex& world, Entity& e, int buildingId) {
     Entity* bld = findEntity(game, world, buildingId);
     if (!bld || !bld->alive || bld->underConstruction) return;
@@ -148,11 +135,6 @@ void orderGarrison(Game& game, const WorldIndex& world, Entity& e, int buildingI
         }
     }
     e.path = findPath(game, e.x, e.y, bestAX, bestAY, 300, isNaval(e.type)); e.pathIdx = 0;
-}
-
-void orderHelp(Entity& e, int buildingId) {
-    WorldIndex world = buildWorldIndex(g);
-    orderHelp(g, world, e, buildingId);
 }
 
 void orderHelp(Game& game, const WorldIndex& world, Entity& e, int buildingId) {

@@ -1,4 +1,5 @@
 #include "command.h"
+#include "realm.h"
 #include "core/entity_query.h"
 #include "core/world_index.h"
 
@@ -97,14 +98,4 @@ Command typedContextCommand(const Game& game, const WorldIndex& world, PlayerId 
 Command resolveContextCommand(const Game& game, const WorldIndex& world, PlayerId issuer, const Selection& selection, MapPos target) {
     if (!inBounds(target.x, target.y)) return Command{};
     return typedContextCommand(game, world, issuer, selection, target);
-}
-
-Command resolveContextCommand(const Game& game, PlayerId issuer, const Selection& selection, MapPos target) {
-    if (!inBounds(target.x, target.y)) return Command{};
-    WorldIndex world = buildWorldIndex(game);
-    return resolveContextCommand(game, world, issuer, selection, target);
-}
-
-Command resolveContextCommand(const Game& game, const Selection& selection, MapPos target) {
-    return resolveContextCommand(game, 0, selection, target);
 }

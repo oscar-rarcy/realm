@@ -1,4 +1,5 @@
 #include "render/sdl/sdl_splash.h"
+#include "realm.h"
 #include "view_state.h"
 
 namespace {
@@ -699,7 +700,7 @@ void drawLabPreview(const LabState& lab, SDL_Rect area, TilesetAssetFrame& asset
         SDL_RenderDrawRect(s.ren, &empty);
     }
 
-    Entity* ent = entityAt(LAB_X, LAB_Y);
+    Entity* ent = sdlEntityAt(LAB_X, LAB_Y);
     if (lab.previewMode != 0 && ent) {
         int spriteSize = 128;
         SDL_Rect dst{cx - spriteSize / 2, cy - spriteSize / 2 - 18, spriteSize, spriteSize};

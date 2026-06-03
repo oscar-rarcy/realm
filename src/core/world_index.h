@@ -1,11 +1,14 @@
 #pragma once
 
-#include "realm.h"
+#include "core/game_types.h"
 #include "core/types.h"
 
 #include <array>
 #include <unordered_map>
 #include <vector>
+
+struct Entity;
+struct Game;
 
 inline int tileKey(int x, int y) {
     return y * MAP_W + x;
@@ -42,6 +45,8 @@ struct WorldIndex {
 };
 
 WorldIndex buildWorldIndex(const Game& game);
+void resetWorldIndexBuildCount();
+int worldIndexBuildCount();
 
 Entity* entityById(Game& game, const WorldIndex& world, EntityId id);
 const Entity* entityById(const Game& game, const WorldIndex& world, EntityId id);

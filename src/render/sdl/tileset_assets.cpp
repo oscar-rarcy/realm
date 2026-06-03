@@ -1,4 +1,5 @@
 #include "tileset_assets.h"
+#include "realm.h"
 
 #include <png.h>
 

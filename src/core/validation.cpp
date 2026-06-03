@@ -110,10 +110,6 @@ std::vector<ValidationIssue> validateGameStateIssues(const Game& game) {
     return issues;
 }
 
-std::vector<ValidationIssue> validateGameStateIssues() {
-    return validateGameStateIssues(g);
-}
-
 static void pruneInvalidEntityIds(Game& game, std::vector<int>& ids) {
     ids.erase(std::remove_if(ids.begin(), ids.end(),
         [&](int id){ return id <= 0 || id >= game.nextId || findEntityIn(game, id) == nullptr; }),
@@ -192,15 +188,11 @@ RecoveryResult recoverGameState(Game& game, const std::vector<ValidationIssue>& 
     return result;
 }
 
-bool validateGameState(std::string* error) {
-    std::vector<ValidationIssue> issues = validateGameStateIssues(g);
+bool validateGameState(const Game& game, std::string* error) {
+    std::vector<ValidationIssue> issues = validateGameStateIssues(game);
     if (issues.empty()) return true;
     if (error) *error = issues.front().message;
     return false;
-}
-
-bool isPassable(int x, int y) {
-    return isPassable(g, x, y);
 }
 
 bool isPassable(const Game& game, int x, int y) {
@@ -211,10 +203,6 @@ bool isPassable(const Game& game, int x, int y) {
     // passable everywhere as a slick. Mountains/stone/walls always block.
     return t != T_MOUNTAIN && t != T_WATER && t != T_STONE && t != T_CASTLE_WALL
         && t != T_FISH && t != T_LAVA;
-}
-
-bool isPassableWater(int x, int y) {
-    return isPassableWater(g, x, y);
 }
 
 bool isPassableWater(const Game& game, int x, int y) {

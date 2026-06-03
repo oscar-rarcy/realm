@@ -1,4 +1,5 @@
 #include "command.h"
+#include "realm.h"
 #include "view_state.h"
 #include "core/game_events.h"
 
@@ -20,10 +21,10 @@ std::vector<int>& controlGroupSlot(Game& game, PlayerId issuer, int slot) {
 
 } // namespace
 
-Selection currentSelection() {
+Selection currentSelection(const Game& game) {
     Selection selection;
-    selection.primaryId = g.selectedId;
-    selection.ids = g.selectedIds;
+    selection.primaryId = game.selectedId;
+    selection.ids = game.selectedIds;
     if (selection.ids.empty() && selection.primaryId >= 0)
         selection.ids.push_back(selection.primaryId);
     return selection;
@@ -199,7 +200,7 @@ bool selectionContainsMilitary(Game& game, const WorldIndex& world, PlayerId iss
 
 bool beginControlGroupAssignment(Game& game, const WorldIndex& world, PlayerId issuer) {
     if (!validIssuer(issuer)) return false;
-    Selection selection = currentSelection();
+    Selection selection = currentSelection(game);
     std::vector<int> filtered;
     for (EntityId id : selection.ids) {
         Entity* entity = entityById(game, world, id);

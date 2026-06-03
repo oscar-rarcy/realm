@@ -1,9 +1,5 @@
 #include "realm.h"
 
-void checkWin() {
-    checkWin(g);
-}
-
 void checkWin(Game& game) {
     int aliveCount = 0; int lastAlive = -1;
     for (int p = 0; p < MAX_PLAYERS; p++) {

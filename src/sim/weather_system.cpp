@@ -1,10 +1,6 @@
 #include "realm.h"
 #include "core/game_events.h"
 
-void tickWeather() {
-    tickWeather(g);
-}
-
 void tickWeather(Game& game) {
     Season s = getSeason(game);
     float sp = getSeasonProgress(game);

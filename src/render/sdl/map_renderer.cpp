@@ -1,8 +1,30 @@
 #include "render/sdl/sdl_map.h"
+#include "realm.h"
+#include "core/world_index.h"
 #include "render/visual_model.h"
 #include "view_state.h"
 
 static const RenderModel* activeRenderModel = nullptr;
+
+Entity* sdlFindEntity(int id) {
+    WorldIndex world = buildWorldIndex(g);
+    return findEntity(g, world, id);
+}
+
+Entity* sdlEntityAt(int x, int y) {
+    WorldIndex world = buildWorldIndex(g);
+    return entityAt(g, world, x, y);
+}
+
+Entity* sdlCorpseAt(int x, int y) {
+    WorldIndex world = buildWorldIndex(g);
+    return corpseAt(g, world, x, y);
+}
+
+bool sdlCanPlace(EntityType type, int x, int y, int owner) {
+    WorldIndex world = buildWorldIndex(g);
+    return canPlace(g, world, type, x, y, owner);
+}
 
 static const TileRenderInfo* activeTileInfoAt(int mx, int my) {
     if (!activeRenderModel) return nullptr;
@@ -44,8 +66,8 @@ int keyToInput(SDL_Keycode key) {
     }
 }
 
-const char* seasonNameSafe() { return getSeasonName(); }
-const char* timeNameSafe() { return getTimeName(); }
+const char* seasonNameSafe() { return getSeasonName(g); }
+const char* timeNameSafe() { return getTimeName(g); }
 const char* weatherName() {
     switch (g.weather) {
         case W_RAIN: return "Rain";
@@ -124,8 +146,8 @@ TileVisual makeTileVisual(int mx, int my) {
     v.explored = tileInfo ? tileInfo->explored : tile.explored[0];
     if (!v.explored) { v.bg = rgb(8,9,12); return v; }
 
-    v.ent = v.visible ? entityAt(mx,my) : nullptr;
-    if (!v.ent && v.visible) v.ent = corpseAt(mx, my);
+    v.ent = v.visible ? sdlEntityAt(mx,my) : nullptr;
+    if (!v.ent && v.visible) v.ent = sdlCorpseAt(mx, my);
     v.cursor = (mx == view.cursorX && my == view.cursorY);
     v.bg = terrainBg(tile, mx, my);
 
@@ -249,7 +271,7 @@ void drawMobileBuildPreviewTopDown() {
     if (!isMobileGui() || s.mobileBuildType == E_NONE) return;
     SDL_Rect mr = mapRect();
     EntityType bt = s.mobileBuildType;
-    bool ok = canPlace(bt, view.cursorX, view.cursorY, 0);
+    bool ok = sdlCanPlace(bt, view.cursorX, view.cursorY, 0);
     SDL_SetRenderDrawBlendMode(s.ren, SDL_BLENDMODE_BLEND);
     Color fill = ok ? rgb(70,210,120,72) : rgb(230,65,65,78);
     Color edge = ok ? rgb(130,255,170,220) : rgb(255,120,110,230);
@@ -269,7 +291,7 @@ void drawMobileBuildPreviewTopDown() {
 void drawMobileBuildPreviewIso() {
     if (!isMobileGui() || s.mobileBuildType == E_NONE) return;
     EntityType bt = s.mobileBuildType;
-    bool ok = canPlace(bt, view.cursorX, view.cursorY, 0);
+    bool ok = sdlCanPlace(bt, view.cursorX, view.cursorY, 0);
     Color fill = ok ? rgb(70,210,120,72) : rgb(230,65,65,78);
     Color edge = ok ? rgb(130,255,170,220) : rgb(255,120,110,230);
     for (int dy = 0; dy < STATS[bt].sizeH; ++dy) {

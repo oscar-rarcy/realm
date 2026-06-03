@@ -30,10 +30,6 @@ static void applyWinter(Game& game) {
     if (game.players[0].alive) emitStatusEvent(0, "Winter falls. The land freezes over.");
 }
 
-void tickSeasons() {
-    tickSeasons(g);
-}
-
 void tickSeasons(Game& game) {
     if (game.attackNotifyCd > 0) game.attackNotifyCd--;
     int s = (int)getSeason(game);
@@ -59,10 +55,6 @@ void tickSeasons(Game& game) {
     }
 }
 
-void tickThaw() {
-    tickThaw(g);
-}
-
 void tickThaw(Game& game) {
     if (game.tick % 5 != 0) return;
     if (getSeason(game) != SPRING) return;
@@ -77,10 +69,6 @@ void tickThaw(Game& game) {
         unsigned h = ((unsigned)x * 73856093u) ^ ((unsigned)y * 19349663u);
         if ((int)(h & 0x3ff) < threshold) t.terrain = t.preWinterTerrain;
     }
-}
-
-void tickWinter() {
-    tickWinter(g);
 }
 
 void tickWinter(Game& game) {
@@ -117,10 +105,6 @@ void tickWinter(Game& game) {
 // ============================================================
 // PAVING — building creep + path wear + decay
 // ============================================================
-void tickPaving() {
-    tickPaving(g);
-}
-
 void tickPaving(Game& game) {
     // Buildings emit creep into adjacent natural ground.
     if (game.tick % 100 == 0) {

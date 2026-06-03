@@ -157,7 +157,7 @@ int main(int argc, char** argv) {
             if (Clock::now() >= nextTick) {
                 nextTick += Ms(TICK_MS);
                 if (g.mode != M_PAUSED && g.mode != M_GAME_OVER) {
-                    tickSimulationOnce();
+                    tickSimulationOnce(g, true);
                 }
                 render();
                 ticked = true;

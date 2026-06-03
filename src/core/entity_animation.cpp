@@ -1,4 +1,6 @@
 #include "entity_animation.h"
+#include "realm.h"
+#include "core/world_index.h"
 
 #include <cstring>
 #include <ostream>
@@ -169,13 +171,13 @@ constexpr EntityActionAnimationSpec PEASANT_ACTIONS[] = {
      PEASANT_DEATH_FRAMES, 2},
 };
 
-const char* peasantCarryAction(const Entity& e) {
+const char* peasantCarryAction(const Game& game, const Entity& e) {
     if (e.cargo.type == CR_WOOD) return "carry_wood";
     if (e.cargo.type == CR_GOLD) return "carry_gold";
     if (e.cargo.type == CR_FISH) return "carry_meat";
     if (e.cargo.type == CR_FOOD) {
         Terrain sourceTerrain = inBounds(e.cargo.sourceX, e.cargo.sourceY)
-            ? g.map[e.cargo.sourceY][e.cargo.sourceX].terrain
+            ? game.map[e.cargo.sourceY][e.cargo.sourceX].terrain
             : T_GRASS;
         if (sourceTerrain == T_BERRY) return "carry_berries";
         if (sourceTerrain == T_WHEAT) return "carry_wheat";
@@ -184,10 +186,10 @@ const char* peasantCarryAction(const Entity& e) {
     return "walk";
 }
 
-const char* peasantGatherAction(const Entity& e) {
+const char* peasantGatherAction(const Game& game, const Entity& e) {
     int rx = inBounds(e.resourceX, e.resourceY) ? e.resourceX : e.targetX;
     int ry = inBounds(e.resourceX, e.resourceY) ? e.resourceY : e.targetY;
-    Terrain targetTerrain = inBounds(rx, ry) ? g.map[ry][rx].terrain : T_GRASS;
+    Terrain targetTerrain = inBounds(rx, ry) ? game.map[ry][rx].terrain : T_GRASS;
     switch (targetTerrain) {
         case T_FOREST:
         case T_PINE:
@@ -207,8 +209,8 @@ const char* peasantGatherAction(const Entity& e) {
     return "gather_berries";
 }
 
-const char* peasantBuildAction(const Entity& e) {
-    Entity* target = findEntity(e.targetId);
+const char* peasantBuildAction(const Game& game, const WorldIndex& world, const Entity& e) {
+    const Entity* target = entityById(game, world, e.targetId);
     if (target && target->type == E_FARM && !target->underConstruction) return "hoe_soil";
     return "build";
 }
@@ -310,22 +312,22 @@ const EntityActionAnimationSpec* findEntityActionAnimationSpec(EntityType type, 
     return nullptr;
 }
 
-const char* entityAnimationActionId(const Entity& e) {
+const char* entityAnimationActionId(const Game& game, const WorldIndex& world, const Entity& e) {
     if (!e.alive || e.state == S_DEAD) return "death";
     if (e.type == E_PEASANT) {
         if (e.cargo.amount > 0 && (e.state == S_RETURNING || e.state == S_MOVING || e.pathIdx < (int)e.path.size()))
-            return peasantCarryAction(e);
+            return peasantCarryAction(game, e);
         if (e.state == S_MOVING || e.state == S_RETURNING || e.pathIdx < (int)e.path.size()) return "walk";
-        if (e.state == S_GATHERING) return peasantGatherAction(e);
-        if (e.state == S_BUILDING) return peasantBuildAction(e);
+        if (e.state == S_GATHERING) return peasantGatherAction(game, e);
+        if (e.state == S_BUILDING) return peasantBuildAction(game, world, e);
         if (e.state == S_ATTACKING) return "club_attack";
         return "idle";
     }
     return "idle";
 }
 
-const EntityActionAnimationSpec* entityActionAnimationSpecFor(const Entity& e) {
-    const char* action = entityAnimationActionId(e);
+const EntityActionAnimationSpec* entityActionAnimationSpecFor(const Game& game, const WorldIndex& world, const Entity& e) {
+    const char* action = entityAnimationActionId(game, world, e);
     return findEntityActionAnimationSpec(e.type, action);
 }
 

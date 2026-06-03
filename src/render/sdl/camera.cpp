@@ -1,4 +1,5 @@
 #include "render/sdl/sdl_terminal.h"
+#include "realm.h"
 #include "view_state.h"
 
 bool mobileForcedByEnv(bool& value) {

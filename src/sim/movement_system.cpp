@@ -1,11 +1,7 @@
 #include "realm.h"
 #include "core/world_index.h"
 
-void moveAlongPath(Entity& e) {
-    moveAlongPath(g, e);
-}
-
-void moveAlongPath(Game& game, Entity& e) {
+void moveAlongPath(Game& game, const WorldIndex& world, Entity& e) {
     if (e.pathIdx >= (int)e.path.size()) {
         e.path.clear(); e.pathIdx = 0;
         e.stuckTicks = 0;
@@ -15,7 +11,6 @@ void moveAlongPath(Game& game, Entity& e) {
     if (e.moveCd > 0) { e.moveCd--; return; }
     auto [nx, ny] = e.path[e.pathIdx];
     // Units share tiles freely; buildings block, except open gates
-    WorldIndex world = buildWorldIndex(game);
     Entity* blk = entityAt(game, world, nx, ny);
     if (blk && blk->id != e.id && isBuilding(blk->type)) {
         bool isOpenGate = (blk->type == E_GATE && blk->gateOpen);
@@ -79,12 +74,7 @@ void moveAlongPath(Game& game, Entity& e) {
     }
 }
 
-// Scan explored/visible tiles for a resource matching the entity cargo type; re-issue gather if found.
-bool findNearbyResource(Entity& e) {
-    return findNearbyResource(g, e);
-}
-
-bool findNearbyResource(Game& game, Entity& e) {
+bool findNearbyResource(Game& game, const WorldIndex& world, Entity& e) {
     if (e.cargo.type == CR_NONE) return false;
     int bestD = 99999, bx = -1, by = -1;
     int r = FOG_RADIUS * 4;
@@ -99,7 +89,6 @@ bool findNearbyResource(Game& game, Entity& e) {
         if (d < bestD) { bestD = d; bx = nx; by = ny; }
     }
     if (bx >= 0) {
-        WorldIndex world = buildWorldIndex(game);
         orderGather(game, world, e, bx, by);
         return true;
     }

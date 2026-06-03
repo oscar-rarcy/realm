@@ -1,8 +1,27 @@
 #include "game_events.h"
+#include "realm.h"
 
-void LegacyUiEventSink::emit(const GameEvent& event) {
-    if (event.player > 0) return;
+namespace {
 
+class QueuedGameEventSink : public EventSink {
+public:
+    void emit(const GameEvent& event) override {
+        events.push_back(event);
+    }
+
+    std::vector<GameEvent> events;
+};
+
+QueuedGameEventSink& eventQueue() {
+    static QueuedGameEventSink sink;
+    return sink;
+}
+
+bool visibleToViewer(const GameEvent& event, int viewerPlayer) {
+    return viewerPlayer < 0 || event.player < 0 || event.player == viewerPlayer;
+}
+
+void applyGameEventToUi(Game& game, const GameEvent& event) {
     switch (event.type) {
         case GameEventType::StatusMessage:
         case GameEventType::CommandAccepted:
@@ -20,22 +39,35 @@ void LegacyUiEventSink::emit(const GameEvent& event) {
         case GameEventType::SaveCompleted:
         case GameEventType::LoadCompleted:
             if (!event.message.empty()) {
-                g.statusMsg = event.message;
-                g.statusTimer = 35;
+                game.statusMsg = event.message;
+                game.statusTimer = 35;
             }
             break;
         case GameEventType::ActionMarker:
             if (event.markerGlyph && inBounds(event.tile.x, event.tile.y)) {
-                g.actionMarkers.push_back({ event.tile.x, event.tile.y, 18, event.markerGlyph });
-                if (g.actionMarkers.size() > 32) g.actionMarkers.erase(g.actionMarkers.begin());
+                game.actionMarkers.push_back({ event.tile.x, event.tile.y, 18, event.markerGlyph });
+                if (game.actionMarkers.size() > 32) game.actionMarkers.erase(game.actionMarkers.begin());
             }
             break;
     }
 }
 
+} // namespace
+
 EventSink& gameEvents() {
-    static LegacyUiEventSink sink;
-    return sink;
+    return eventQueue();
+}
+
+std::vector<GameEvent> drainGameEvents() {
+    std::vector<GameEvent> events;
+    events.swap(eventQueue().events);
+    return events;
+}
+
+void flushGameEventsToUi(Game& game, int viewerPlayer) {
+    for (const GameEvent& event : drainGameEvents()) {
+        if (visibleToViewer(event, viewerPlayer)) applyGameEventToUi(game, event);
+    }
 }
 
 void emitGameEvent(const GameEvent& event) {

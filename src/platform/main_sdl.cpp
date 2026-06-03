@@ -4,6 +4,7 @@
 #include "env_config.h"
 #include "entity_animation.h"
 #include "commands/command.h"
+#include "core/game_context.h"
 
 #include <SDL.h>
 
@@ -19,6 +20,12 @@ static Entity* firstOwned(EntityType type, int owner) {
     for (auto& e : g.entities)
         if (e.alive && e.owner == owner && e.type == type) return &e;
     return nullptr;
+}
+
+static CommandResult dispatchPlatformCommand(Command& command) {
+    WorldIndex world = buildWorldIndex(g);
+    GameContext context{ g, world, gameEvents() };
+    return dispatchCommand(context, command);
 }
 
 static int envIntLocal(const char* name, int fallback) {
@@ -173,7 +180,7 @@ static int runUiTestMode() {
     ok = captureUiFrame((outDir / "06-help-overlay.bmp").string()) && ok;
     g.helpOverlay = false;
 
-    for (int i = 0; i < 60; i++) tickSimulationOnce();
+    for (int i = 0; i < 60; i++) tickSimulationOnce(g, true);
     ok = captureUiFrame((outDir / "07-after-60-ticks.bmp").string()) && ok;
 
     g.selectedId = -1;
@@ -286,7 +293,7 @@ static int runUiTestMode() {
     if (Entity* townHall = firstOwned(E_TOWNHALL, 0)) {
         g.dayPhase = 0.0f;
         g.weather = W_CLEAR;
-        updateFog();
+        updateFog(g);
         view.cursorX = townHall->x + STATS[townHall->type].sizeW / 2;
         view.cursorY = townHall->y + STATS[townHall->type].sizeH / 2;
         gfxSetZoomForTest(26);
@@ -484,7 +491,7 @@ int main(int argc, char** argv) {
         if (gfxConsumeLoadGameRequest()) {
             Command command;
             command.payload = LoadCommand{ 0 };
-            if (dispatchCommand(g, command).status == CommandStatus::Accepted) {
+            if (dispatchPlatformCommand(command).status == CommandStatus::Accepted) {
                 std::cerr << "realm: loaded realm-save.txt from GUI menu\n";
             } else {
                 std::cerr << "realm: GUI menu load failed; continuing new game\n";
@@ -497,7 +504,7 @@ int main(int argc, char** argv) {
         const char* smoke = std::getenv("REALM_SMOKE_TEST");
         if (smoke && std::string(smoke) == "match") {
             for (int i = 0; i < 60; i++) {
-                tickSimulationOnce();
+                tickSimulationOnce(g, true);
                 gfxRender();
                 gfxDelay(1);
             }
@@ -518,7 +525,7 @@ int main(int argc, char** argv) {
             if (Clock::now() >= nextTick) {
                 nextTick += Ms(TICK_MS);
                 if (g.mode != M_PAUSED && g.mode != M_GAME_OVER) {
-                    tickSimulationOnce();
+                    tickSimulationOnce(g, true);
                 }
                 ticked = true;
             }

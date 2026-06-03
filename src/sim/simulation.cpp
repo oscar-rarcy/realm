@@ -47,10 +47,6 @@ static bool validateOrRecoverGameState(Game& game, const char* phase) {
     return ok;
 }
 
-void tickSimulationOnce() {
-    tickSimulationOnceInternal(g, true);
-}
-
 static void pruneDeadReferenceList(Game& game, const WorldIndex& world, std::vector<int>& ids) {
     ids.erase(std::remove_if(ids.begin(), ids.end(),
         [&](int id){ return findEntity(game, world, id) == nullptr; }), ids.end());
@@ -69,7 +65,7 @@ static void tickSimulationOnceInternal(Game& game, bool runAI) {
     tickWeather(game); tickPaving(game);
     tickTowers(game); tickGates(game); tickProjectiles(game); tickFarms(game); tickMarkets(game);
     tickChurches(game); tickAnimals(game);
-    if (runAI) tickAI();
+    if (runAI) tickAI(game);
     tickActionMarkers(game); updateFog(game);
     for (auto& e : game.entities) {
         if (!e.alive && e.state == S_DEAD && e.deathTicks < CORPSE_REMOVE_TICKS)
@@ -99,4 +95,8 @@ static void tickSimulationOnceInternal(Game& game, bool runAI) {
 
 void tickSimulationOnce(Game& game) {
     tickSimulationOnceInternal(game, false);
+}
+
+void tickSimulationOnce(Game& game, bool runAI) {
+    tickSimulationOnceInternal(game, runAI);
 }

@@ -1,6 +1,22 @@
 #include "render/sdl/sdl_splash.h"
+#include "realm.h"
 #include "commands/command.h"
+#include "core/game_context.h"
+#include "core/game_events.h"
 #include "view_state.h"
+
+static CommandResult dispatchGfxCommand(Command& command) {
+    WorldIndex world = buildWorldIndex(g);
+    GameContext context{ g, world, gameEvents() };
+    return dispatchCommand(context, command);
+}
+
+static CommandResult dispatchGfxContextCommand(MapPos target) {
+    WorldIndex world = buildWorldIndex(g);
+    GameContext context{ g, world, gameEvents() };
+    Command command = resolveContextCommand(g, world, 0, currentSelection(g), target);
+    return dispatchCommand(context, command);
+}
 
 bool gfxInit() {
     SDL_SetHint(SDL_HINT_MOUSE_TOUCH_EVENTS, "1");
@@ -192,12 +208,12 @@ void gfxOnNewGame() {
 Entity* primaryOwnedSelection() {
     if (!g.selectedIds.empty()) {
         for (int id : g.selectedIds) {
-            Entity* e = findEntity(id);
+            Entity* e = sdlFindEntity(id);
             if (e && e->alive && e->owner == 0) return e;
         }
         return nullptr;
     }
-    Entity* e = findEntity(g.selectedId);
+    Entity* e = sdlFindEntity(g.selectedId);
     return (e && e->alive && e->owner == 0) ? e : nullptr;
 }
 
@@ -232,8 +248,8 @@ void mobileStopSelection() {
         e->attackMove = 0;
         n++;
     };
-    if (!g.selectedIds.empty()) for (int id : g.selectedIds) stopOne(findEntity(id));
-    else stopOne(findEntity(g.selectedId));
+    if (!g.selectedIds.empty()) for (int id : g.selectedIds) stopOne(sdlFindEntity(id));
+    else stopOne(sdlFindEntity(g.selectedId));
     if (n) setStatus("Stopped.");
 }
 
@@ -317,8 +333,8 @@ void handleMobileHudButton(const std::string& id) {
             EntityType tt = mobileDefaultTrainType(sel->type);
             if (tt != E_NONE) {
                 Command command;
-                command.payload = TrainCommand{ currentSelection(), tt };
-                dispatchCommand(g, command);
+                command.payload = TrainCommand{ currentSelection(g), tt };
+                dispatchGfxCommand(command);
             }
         }
         return;
@@ -376,13 +392,13 @@ bool handleKeyHitAt(int px, int py) {
         if (globalShortcut && (hit.ch == 'v' || hit.ch == 'V')) {
             Command command;
             command.payload = SaveCommand{ 0 };
-            dispatchCommand(g, command);
+            dispatchGfxCommand(command);
         } else if (globalShortcut && (hit.ch == 'd' || hit.ch == 'D')) {
             g.diagnostics = !g.diagnostics;
         } else if (globalShortcut && (hit.ch == 'l' || hit.ch == 'L')) {
             Command command;
             command.payload = LoadCommand{ 0 };
-            if (dispatchCommand(g, command).status == CommandStatus::Accepted) updateViewMetrics(true);
+            if (dispatchGfxCommand(command).status == CommandStatus::Accepted) updateViewMetrics(true);
         } else {
             handleInput(hit.ch);
         }
@@ -406,7 +422,7 @@ bool screenToMapWithTolerance(int px, int py, int& mx, int& my) {
 void mobileInspectAt(int mx, int my) {
     view.cursorX = mx;
     view.cursorY = my;
-    Entity* e = entityAt(mx, my);
+    Entity* e = sdlEntityAt(mx, my);
     if (e && e->alive && g.map[my][mx].visible[0]) {
         std::ostringstream ss;
         ss << STATS[e->type].name << " HP " << e->hp << "/" << e->maxHp << " " << stateName(e->state);
@@ -429,13 +445,13 @@ void mobileTapMap(int px, int py) {
             s.mobileBuildType = E_NONE;
             return;
         }
-        if (!canPlace(s.mobileBuildType, mx, my, 0)) {
+        if (!sdlCanPlace(s.mobileBuildType, mx, my, 0)) {
             setStatus("Cannot build there.");
             return;
         }
         Command command;
-        command.payload = BuildCommand{ currentSelection(), s.mobileBuildType, {mx, my} };
-        dispatchCommand(g, command);
+        command.payload = BuildCommand{ currentSelection(g), s.mobileBuildType, {mx, my} };
+        dispatchGfxCommand(command);
         s.mobileBuildType = E_NONE;
         g.mode = M_NORMAL;
         setStatus("Building placed.");
@@ -446,11 +462,11 @@ void mobileTapMap(int px, int py) {
         return;
     }
     if (primaryOwnedSelection() && (isUnit(primaryOwnedSelection()->type) || !g.selectedIds.empty())) {
-        dispatchCommand(g, resolveContextCommand(g, currentSelection(), {mx, my}));
+        dispatchGfxContextCommand({mx, my});
     } else {
         Command command;
         command.payload = SelectCommand{ {mx, my} };
-        dispatchCommand(g, command);
+        dispatchGfxCommand(command);
     }
 }
 
@@ -595,7 +611,7 @@ void gfxPollInput(bool& quitRequested) {
                     if (e.button.clicks >= 2) {
                         Command command;
                         command.payload = SelectAllOfTypeInViewCommand{ {mx, my} };
-                        dispatchCommand(g, command);
+                        dispatchGfxCommand(command);
                     }
                     else {
                         s.leftDown = true;
@@ -606,7 +622,7 @@ void gfxPollInput(bool& quitRequested) {
                         view.dragging = true;
                     }
                 } else if (e.button.button == SDL_BUTTON_RIGHT) {
-                    dispatchCommand(g, resolveContextCommand(g, currentSelection(), {mx, my}));
+                    dispatchGfxContextCommand({mx, my});
                 }
             }
         }
@@ -646,11 +662,11 @@ void gfxPollInput(bool& quitRequested) {
                     if (moved) {
                         Command command;
                         command.payload = BoxSelectCommand{ {s.dragStartX, s.dragStartY}, {mx, my} };
-                        dispatchCommand(g, command);
+                        dispatchGfxCommand(command);
                     } else {
                         Command command;
                         command.payload = SelectCommand{ {mx, my} };
-                        dispatchCommand(g, command);
+                        dispatchGfxCommand(command);
                     }
                 }
                 s.leftDown = false; view.dragging = false;
@@ -675,14 +691,14 @@ void gfxPollInput(bool& quitRequested) {
                 int slot = (int)(k - SDLK_F5) + 1;
                 Command command;
                 command.payload = SaveCommand{ slot };
-                dispatchCommand(g, command);
+                dispatchGfxCommand(command);
                 continue;
             }
             if (k >= SDLK_F9 && k <= SDLK_F12) {
                 int slot = (int)(k - SDLK_F9) + 1;
                 Command command;
                 command.payload = LoadCommand{ slot };
-                if (dispatchCommand(g, command).status == CommandStatus::Accepted) updateViewMetrics(true);
+                if (dispatchGfxCommand(command).status == CommandStatus::Accepted) updateViewMetrics(true);
                 continue;
             }
             if (devCaptureEnabled() && k == SDLK_y) { captureIssueBundle(); continue; }
@@ -718,6 +734,7 @@ void drawFrame(bool present) {
 }
 
 void gfxRender() {
+    flushGameEventsToUi(g, 0);
     drawFrame(true);
 }
 

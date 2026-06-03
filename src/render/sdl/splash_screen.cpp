@@ -1,4 +1,5 @@
 #include "render/sdl/sdl_splash.h"
+#include "realm.h"
 
 bool saveRendererPixels(const std::string& path) {
     SDL_Surface* surface = SDL_CreateRGBSurfaceWithFormat(0, s.winW, s.winH, 32, SDL_PIXELFORMAT_ARGB8888);

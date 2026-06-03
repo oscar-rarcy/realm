@@ -3,10 +3,6 @@
 #include "core/entity_query.h"
 #include "core/world_index.h"
 
-void tickProduction(Entity& e) {
-    tickProduction(g, e);
-}
-
 void tickProduction(Game& game, Entity& e) {
     if (e.producing != E_NONE && !e.underConstruction) {
         int bonus = 0;
@@ -52,10 +48,6 @@ void tickProduction(Game& game, Entity& e) {
             }
         }
     }
-}
-
-void tickResearch(Entity& e) {
-    tickResearch(g, e);
 }
 
 void tickResearch(Game& game, Entity& e) {

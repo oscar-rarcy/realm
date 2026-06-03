@@ -1,15 +1,7 @@
 #include "realm.h"
 
-std::vector<std::pair<int,int>> findPathFor(Entity& e, int tx, int ty) {
-    return findPathFor(g, e, tx, ty);
-}
-
 std::vector<std::pair<int,int>> findPathFor(const Game& game, Entity& e, int tx, int ty) {
     return findPath(game, e.x, e.y, tx, ty, 300, isNaval(e.type));
-}
-
-std::vector<std::pair<int,int>> findPath(int sx, int sy, int tx, int ty, int /*maxSteps*/, bool naval) {
-    return findPath(g, sx, sy, tx, ty, 300, naval);
 }
 
 std::vector<std::pair<int,int>> findPath(const Game& game, int sx, int sy, int tx, int ty, int /*maxSteps*/, bool naval) {

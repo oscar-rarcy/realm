@@ -1,11 +1,13 @@
 #pragma once
 
-#include "realm.h"
+#include "core/game_types.h"
 #include "core/service_result.h"
 
 // Canonical training rules and execution path shared by player commands and AI.
 
 struct WorldIndex;
+struct Entity;
+struct Game;
 
 struct ProductionRule {
     EntityType producer;

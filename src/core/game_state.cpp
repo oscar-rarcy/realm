@@ -2,10 +2,6 @@
 
 Game g;
 
-int spawnEntity(EntityType type, int owner, int x, int y, bool built) {
-    return spawnEntity(g, type, owner, x, y, built);
-}
-
 int spawnEntity(Game& game, EntityType type, int owner, int x, int y, bool built) {
     Entity e{};
     e.id = game.nextId++; e.type = type; e.owner = owner; e.x = x; e.y = y;
@@ -28,10 +24,6 @@ int spawnEntity(Game& game, EntityType type, int owner, int x, int y, bool built
     updateSupply(game, owner);
     return e.id;
 }
-void tickActionMarkers() {
-    tickActionMarkers(g);
-}
-
 void tickActionMarkers(Game& game) {
     for (auto& m : game.actionMarkers) if (m.ticks > 0) m.ticks--;
     game.actionMarkers.erase(std::remove_if(game.actionMarkers.begin(), game.actionMarkers.end(),

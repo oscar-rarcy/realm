@@ -1,9 +1,5 @@
 #include "realm.h"
 
-void spawnProjectile(int sx, int sy, int tx, int ty, char gl, int col) {
-    spawnProjectile(g, sx, sy, tx, ty, gl, col);
-}
-
 void spawnProjectile(Game& game, int sx, int sy, int tx, int ty, char gl, int col) {
     float dx = (float)(tx-sx), dy = (float)(ty-sy);
     float len = sqrtf(dx*dx + dy*dy);
@@ -12,10 +8,6 @@ void spawnProjectile(Game& game, int sx, int sy, int tx, int ty, char gl, int co
     p.x = (float)sx; p.y = (float)sy; p.tx = (float)tx; p.ty = (float)ty;
     p.glyph = gl; p.color = col; p.life = (int)(len/1.5f)+2; p.alive = true;
     game.projectiles.push_back(p);
-}
-
-void tickProjectiles() {
-    tickProjectiles(g);
 }
 
 void tickProjectiles(Game& game) {

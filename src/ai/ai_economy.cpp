@@ -22,7 +22,7 @@ void runAIEconomy(AIContext& context) {
     // === ECONOMY: peasants from every TH/Castle ===
     if (peas < peasCap) {
         for (EntityId id : world.buildingsByOwner[o]) {
-            Entity* entity = entityById(g, world, id);
+            Entity* entity = entityById(context.ctx.game, world, id);
             if (!entity) continue;
             Entity& th = *entity;
             if (th.underConstruction) continue;
@@ -67,18 +67,19 @@ void runAIFoodEconomy(AIContext& context) {
         Entity* b = aiWorker(context);
         if (b) { int bx=-1,by=-1; aiBuildSpot(context,E_MILL,bx,by); if(bx>=0) aiIssueBuild(context, *b,E_MILL,bx,by); }
     }
-    int wantFarms = (getSeason() == AUTUMN) ? tuning.autumnFarmCount : (getSeason() == WINTER ? 0 : tuning.normalFarmCount);
-    if (aiCountAll(context,E_MILL) > 0 && aiCountAll(context,E_FARM) < wantFarms && getSeason() != WINTER) {
+    Season season = getSeason(context.ctx.game);
+    int wantFarms = (season == AUTUMN) ? tuning.autumnFarmCount : (season == WINTER ? 0 : tuning.normalFarmCount);
+    if (aiCountAll(context,E_MILL) > 0 && aiCountAll(context,E_FARM) < wantFarms && season != WINTER) {
         Entity* b = aiWorker(context);
         if (b) { int bx=-1,by=-1; aiBuildSpot(context,E_FARM,bx,by); if(bx>=0) aiIssueBuild(context, *b,E_FARM,bx,by); }
     }
     for (EntityId farmId : world.buildingsByOwner[o]) {
-        Entity* farmEntity = entityById(g, world, farmId);
+        Entity* farmEntity = entityById(context.ctx.game, world, farmId);
         if (!farmEntity || farmEntity->type != E_FARM || farmEntity->underConstruction) continue;
         Entity& farm = *farmEntity;
         bool tended = false;
         for (EntityId unitId : world.unitsByOwner[o]) {
-            Entity* u = entityById(g, world, unitId);
+            Entity* u = entityById(context.ctx.game, world, unitId);
             if (u && u->state == S_BUILDING && u->targetId == farm.id) {
                 tended = true;
                 break;
@@ -111,14 +112,14 @@ void runAINaval(AIContext& context) {
         }
     }
     for (EntityId dockId : world.buildingsByOwner[o]) {
-        Entity* dock = entityById(g, world, dockId);
+        Entity* dock = entityById(context.ctx.game, world, dockId);
         if (!dock || dock->type != E_DOCK || dock->underConstruction) continue;
         Entity& dk = *dock;
         if (dk.producing != E_NONE) continue;
         // Fishing boats first for food, then a couple of warships for coastline pressure.
         if (aiCount(context,E_FISHING_BOAT) < tuning.fishingBoatCap && p.gold >= 80 && p.wood >= 50) { aiIssueTrain(context, dk, E_FISHING_BOAT); continue; }
         if (aiCount(context,E_WARSHIP) < tuning.warshipCap && p.gold >= 150 && p.wood >= 80 && p.food >= 20) { aiIssueTrain(context, dk, E_WARSHIP); continue; }
-        if (g.biomeChoice == B_OCEAN && aiCount(context,E_TRANSPORT) < tuning.transportCap
+        if (context.ctx.game.biomeChoice == B_OCEAN && aiCount(context,E_TRANSPORT) < tuning.transportCap
             && p.gold >= 80 && p.wood >= 40 && p.food >= 10) { aiIssueTrain(context, dk, E_TRANSPORT); continue; }
     }
 }
@@ -152,14 +153,14 @@ void runAIExpansion(AIContext& context) {
 
     // === GARRISON: pack archers into the nearest tower/TH/Castle ===
     for (EntityId buildingId : world.buildingsByOwner[o]) {
-        Entity* building = entityById(g, world, buildingId);
+        Entity* building = entityById(context.ctx.game, world, buildingId);
         if (!building || building->underConstruction) continue;
         Entity& bld = *building;
         if (!canGarrisonIn(bld.type)) continue;
         if ((int)bld.garrison.size() >= garrisonCap(bld.type)) continue;
         Entity* archer = nullptr; int bestD = 99999;
         for (EntityId unitId : world.unitsByOwner[o]) {
-            Entity* unit = entityById(g, world, unitId);
+            Entity* unit = entityById(context.ctx.game, world, unitId);
             if (!unit || unit->state != S_IDLE) continue;
             if (!isRanged(unit->type) || isSiege(unit->type) || isNaval(unit->type)) continue;
             int d = mdist(unit->x, unit->y, bld.x, bld.y);
@@ -169,7 +170,7 @@ void runAIExpansion(AIContext& context) {
     }
 
     // === FORWARD AGGRESSION: mid-game outpost near the player base ===
-    if (g.tick > tuning.expansionTick && intel.playerTownCenterPos && (mil + arch + kni + spr) >= tuning.forwardAggressionArmy) {
+    if (context.ctx.game.tick > tuning.expansionTick && intel.playerTownCenterPos && (mil + arch + kni + spr) >= tuning.forwardAggressionArmy) {
         Entity* home = aiBldg(context, E_TOWNHALL);
         if (!home) home = aiBldg(context, E_CASTLE);
         if (home) {
@@ -178,7 +179,7 @@ void runAIExpansion(AIContext& context) {
             int fy = home->y + (playerBase.y - home->y) * tuning.forwardAggressionPercent / 100;
             Entity* anchor = nullptr;
             for (EntityId buildingId : world.buildingsByOwner[o]) {
-                Entity* e = entityById(g, world, buildingId);
+                Entity* e = entityById(context.ctx.game, world, buildingId);
                 if (!e || (e->type != E_CASTLE && e->type != E_TOWNHALL)) continue;
                 if (dist(e->x, e->y, home->x, home->y) < tuning.forwardHomeExclusionRadius) continue;
                 if (dist(e->x, e->y, fx, fy) < tuning.forwardAnchorRadius) { anchor = e; break; }
@@ -189,7 +190,7 @@ void runAIExpansion(AIContext& context) {
             } else if (anchor) {
                 bool hasBarr = false;
                 for (EntityId buildingId : world.buildingsByOwner[o]) {
-                    Entity* e = entityById(g, world, buildingId);
+                    Entity* e = entityById(context.ctx.game, world, buildingId);
                     if (e && e->type == E_BARRACKS && dist(e->x,e->y,anchor->x,anchor->y) < tuning.forwardHomeExclusionRadius)
                         { hasBarr = true; break; }
                 }
@@ -202,19 +203,19 @@ void runAIExpansion(AIContext& context) {
     }
 
     // === COASTAL BEACHHEAD: landed peasant starts a forward Castle ===
-    if (g.biomeChoice == B_OCEAN && intel.playerTownCenterPos && p.gold >= 100 && p.wood >= 250) {
+    if (context.ctx.game.biomeChoice == B_OCEAN && intel.playerTownCenterPos && p.gold >= 100 && p.wood >= 250) {
         Entity* home = aiBldg(context, E_TOWNHALL);
         if (!home) home = aiBldg(context, E_CASTLE);
         MapPos playerBase = *intel.playerTownCenterPos;
         for (EntityId unitId : world.unitsByOwner[o]) {
-            Entity* unit = entityById(g, world, unitId);
+            Entity* unit = entityById(context.ctx.game, world, unitId);
             if (!unit || !isWorker(unit->type) || unit->state != S_IDLE) continue;
             Entity& u = *unit;
             if (home && mdist(u.x,u.y,home->x,home->y) < tuning.beachheadHomeExclusionRadius) continue;
             if (mdist(u.x,u.y,playerBase.x,playerBase.y) > tuning.beachheadPlayerRadius) continue;
             bool hasBase = false;
             for (EntityId buildingId : world.buildingsByOwner[o]) {
-                Entity* b = entityById(g, world, buildingId);
+                Entity* b = entityById(context.ctx.game, world, buildingId);
                 if (b && isBuilding(b->type) && mdist(b->x,b->y,u.x,u.y) < tuning.beachheadBaseRadius)
                     { hasBase = true; break; }
             }

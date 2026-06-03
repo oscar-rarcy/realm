@@ -1,4 +1,5 @@
 #include "render/sdl/sdl_terminal.h"
+#include "realm.h"
 #include "view_state.h"
 
 void isoTileCenterFromScreenOffset(int sx, int sy, int& cx, int& cy) {

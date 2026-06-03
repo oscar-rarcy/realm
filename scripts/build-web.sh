@@ -209,6 +209,7 @@ em++ "${COMMON_SOURCES[@]}" \
   -sUSE_SDL=2 \
   -sUSE_SDL_TTF=2 \
   -sALLOW_MEMORY_GROWTH=1 \
+  -sSTACK_SIZE=8388608 \
   -sEXIT_RUNTIME=0 \
   -sASSERTIONS=1 \
   -sEXPORTED_FUNCTIONS='["_main","_realm_web_tick","_realm_web_entity_count","_realm_web_selected_id","_realm_web_selected_count","_realm_web_view_x","_realm_web_view_y","_realm_web_view_w","_realm_web_view_h","_realm_web_cursor_x","_realm_web_cursor_y","_realm_web_first_owned_unit_x","_realm_web_first_owned_unit_y","_realm_web_screen_x_for_tile","_realm_web_screen_y_for_tile","_realm_web_screen","_realm_web_ascii_only","_realm_web_display_mode"]' \

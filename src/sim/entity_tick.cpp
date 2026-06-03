@@ -13,42 +13,35 @@ static void tickAlert(Entity& e) {
 
 
 
-static Entity* findEntityForTick(Game& game, int id) {
-    WorldIndex world = buildWorldIndex(game);
+static Entity* findEntityForTick(Game& game, const WorldIndex& world, int id) {
     return findEntity(game, world, id);
 }
 
-static Entity* entityAtForTick(Game& game, int x, int y) {
-    WorldIndex world = buildWorldIndex(game);
+static Entity* entityAtForTick(Game& game, const WorldIndex& world, int x, int y) {
     return entityAt(game, world, x, y);
 }
 
-static Entity* corpseAtForTick(Game& game, int x, int y) {
-    WorldIndex world = buildWorldIndex(game);
+static Entity* corpseAtForTick(Game& game, const WorldIndex& world, int x, int y) {
     return corpseAt(game, world, x, y);
 }
 
-static Entity* findDepotForTick(Game& game, Entity& e) {
-    WorldIndex world = buildWorldIndex(game);
+static Entity* findDepotForTick(Game& game, const WorldIndex& world, Entity& e) {
     return findDepot(game, world, e);
 }
 
-static void orderAttackForTick(Game& game, Entity& e, int targetId) {
-    WorldIndex world = buildWorldIndex(game);
+static void orderAttackForTick(Game& game, const WorldIndex& world, Entity& e, int targetId) {
     orderAttack(game, world, e, targetId);
 }
 
-static void orderGatherForTick(Game& game, Entity& e, int x, int y) {
-    WorldIndex world = buildWorldIndex(game);
+static void orderGatherForTick(Game& game, const WorldIndex& world, Entity& e, int x, int y) {
     orderGather(game, world, e, x, y);
 }
 
-static void orderHelpForTick(Game& game, Entity& e, int buildingId) {
-    WorldIndex world = buildWorldIndex(game);
+static void orderHelpForTick(Game& game, const WorldIndex& world, Entity& e, int buildingId) {
     orderHelp(game, world, e, buildingId);
 }
 
-static bool tickConstruction(Game& game, Entity& e) {
+static bool tickConstruction(Game& game, const WorldIndex& world, Entity& e) {
     if (e.underConstruction) {
         bool hasBuilder = false;
         for (auto& o : game.entities) {
@@ -77,7 +70,7 @@ static bool tickConstruction(Game& game, Entity& e) {
                         int d = mdist(o.x, o.y, b.x, b.y);
                         if (d < bestD) { bestD = d; next = &b; }
                     }
-                    if (next) orderHelpForTick(game, o, next->id);
+                    if (next) orderHelpForTick(game, world, o, next->id);
                     else o.state = S_IDLE;
                 }
             }
@@ -118,7 +111,7 @@ static void tickRetreat(Game& game, Entity& e) {
     }
 }
 
-static void tickUnitState(Game& game, Entity& e) {
+static void tickUnitState(Game& game, const WorldIndex& world, Entity& e) {
     switch (e.state) {
     case S_IDLE:
         // Military auto-engages anything visible within fog radius — units now
@@ -130,13 +123,13 @@ static void tickUnitState(Game& game, Entity& e) {
             // instant magnetic battles where everyone charges across the map.
             int aggroRange = isRanged(e.type) ? std::max(FOG_RADIUS, unitRange(game, e)+1) : 5;
             Entity* en = findNearestEnemy(game, e, aggroRange);
-            if (en) orderAttackForTick(game, e, en->id);
+            if (en) orderAttackForTick(game, world, e, en->id);
         }
         // Boats auto-fish when idle — find a fish shoal, gather, return to dock.
         if (e.type == E_FISHING_BOAT && (game.tick + e.id) % 12 == 0) {
             // If carrying fish but no dock when we landed here, retry now (player may have rebuilt).
             if (e.cargo.amount > 0) {
-                Entity* dep = findDepotForTick(game, e);
+                Entity* dep = findDepotForTick(game, world, e);
                 if (dep) {
                     e.state = S_RETURNING; e.targetId = dep->id;
                     e.targetX = dep->x; e.targetY = dep->y;
@@ -144,22 +137,22 @@ static void tickUnitState(Game& game, Entity& e) {
                     break;
                 }
             }
-            findNearbyResource(game, e);
+            findNearbyResource(game, world, e);
         }
         break;
     case S_MOVING:
         // Attack-move: engage anything in range while marching toward the destination.
         if (e.attackMove && STATS[e.type].atk > 0 && !(e.type == E_TREBUCHET && e.packed == 1)) {
             Entity* en = findNearestEnemy(game, e, unitRange(game, e)+1);
-            if (en) { orderAttackForTick(game, e, en->id); break; }
+            if (en) { orderAttackForTick(game, world, e, en->id); break; }
         }
-        moveAlongPath(game, e);
+        moveAlongPath(game, world, e);
         if (e.path.empty() || e.pathIdx >= (int)e.path.size()) {
             e.state = S_IDLE; e.attackMove = 0;
         }
         break;
     case S_ATTACKING: {
-        Entity* t = findEntityForTick(game, e.targetId);
+        Entity* t = findEntityForTick(game, world, e.targetId);
         if (!t || !t->alive) { e.state = S_IDLE; break; }
         // Target ducked into a building — they're untouchable, go idle. Without
         // this the attacker keeps swinging at the garrisoned position and the
@@ -210,9 +203,10 @@ static void tickUnitState(Game& game, Entity& e) {
                         && (t->type == E_DEER || t->type == E_SHEEP || t->type == E_BOAR);
                     int cx = t->x, cy = t->y;
                     killEntity(game, *t);
-                    Entity* carcass = corpseAtForTick(game, cx, cy);
+                    WorldIndex afterDeathWorld = buildWorldIndex(game);
+                    Entity* carcass = corpseAtForTick(game, afterDeathWorld, cx, cy);
                     if (startCarcassHarvest && carcass && isHarvestableCarcass(*carcass)) {
-                        orderGatherForTick(game, e, cx, cy);
+                        orderGatherForTick(game, afterDeathWorld, e, cx, cy);
                         if (e.owner >= 0 && e.owner < OWNER_NATURE) emitStatusEvent(e.owner, "Harvesting carcass.", GameEventType::UnitOrdered);
                     } else if (e.cargo.amount <= 0) {
                         e.state = S_IDLE;
@@ -230,14 +224,14 @@ static void tickUnitState(Game& game, Entity& e) {
                 e.path = findPathFor(game, e, t->x, t->y); e.pathIdx = 0;
                 if (e.path.empty()) { e.state = S_IDLE; e.targetId = -1; break; }
             }
-            moveAlongPath(game, e);
+            moveAlongPath(game, world, e);
         }
         break;
     }
     case S_GATHERING: {
         int d = dist(e.x, e.y, e.targetX, e.targetY);
         if (d <= 1) {
-            Entity* carcass = corpseAtForTick(game, e.targetX, e.targetY);
+            Entity* carcass = corpseAtForTick(game, world, e.targetX, e.targetY);
             if (carcass && e.type == E_PEASANT && e.cargo.type == CR_FOOD) {
                 if (isHarvestableCarcass(*carcass)) {
                     e.gatherCd++;
@@ -248,7 +242,7 @@ static void tickUnitState(Game& game, Entity& e) {
                         carcass->carcassFoodRemaining -= amt;
                         e.cargo.amount += amt;
                         if (e.cargo.amount >= CARRY_MAX || carcass->carcassFoodRemaining <= 0) {
-                            Entity* dep = findDepotForTick(game, e);
+                            Entity* dep = findDepotForTick(game, world, e);
                             if (dep && e.cargo.amount > 0) {
                                 e.state = S_RETURNING; e.targetId = dep->id;
                                 e.targetX = dep->x; e.targetY = dep->y;
@@ -261,7 +255,7 @@ static void tickUnitState(Game& game, Entity& e) {
                         }
                     }
                 } else {
-                    Entity* dep = e.cargo.amount > 0 ? findDepotForTick(game, e) : nullptr;
+                    Entity* dep = e.cargo.amount > 0 ? findDepotForTick(game, world, e) : nullptr;
                     if (dep) {
                         e.state = S_RETURNING; e.targetId = dep->id;
                         e.targetX = dep->x; e.targetY = dep->y;
@@ -286,7 +280,7 @@ static void tickUnitState(Game& game, Entity& e) {
                     if (tile.resources <= 0)
                         tile.terrain = isFishT ? T_WATER : isBerry ? T_GRASS : T_DIRT;
                     if (e.cargo.amount >= CARRY_MAX || tile.resources <= 0) {
-                        Entity* dep = findDepotForTick(game, e);
+                        Entity* dep = findDepotForTick(game, world, e);
                         if (dep) {
                             e.state = S_RETURNING; e.targetId = dep->id;
                             e.targetX = dep->x; e.targetY = dep->y;
@@ -296,10 +290,10 @@ static void tickUnitState(Game& game, Entity& e) {
                 }
             } else {
                 // Tile depleted (beaten to it) — seek another nearby node
-                if (!findNearbyResource(game, e)) e.state = S_IDLE;
+                if (!findNearbyResource(game, world, e)) e.state = S_IDLE;
             }
         } else {
-            moveAlongPath(game, e);
+            moveAlongPath(game, world, e);
             if (e.path.empty() && dist(e.x,e.y,e.targetX,e.targetY) > 1) {
                 e.path = findPathFor(game, e, e.targetX, e.targetY); e.pathIdx = 0;
                 if (e.path.empty()) e.state = S_IDLE;
@@ -308,9 +302,9 @@ static void tickUnitState(Game& game, Entity& e) {
         break;
     }
     case S_RETURNING: {
-        Entity* dep = findEntityForTick(game, e.targetId);
+        Entity* dep = findEntityForTick(game, world, e.targetId);
         if (!dep || !dep->alive) {
-            dep = findDepotForTick(game, e);
+            dep = findDepotForTick(game, world, e);
             if (!dep) { e.state = S_IDLE; break; }
             e.targetId = dep->id; e.targetX = dep->x; e.targetY = dep->y;
             e.path = findPathFor(game, e, dep->x, dep->y); e.pathIdx = 0;
@@ -323,7 +317,7 @@ static void tickUnitState(Game& game, Entity& e) {
             e.cargo.amount = 0;
             // Farm courier: cargo source stores the farm we came from; return and resume tending.
             if (e.cargo.type == CR_FOOD && inBounds(e.cargo.sourceX, e.cargo.sourceY)) {
-                Entity* home = entityAtForTick(game, e.cargo.sourceX, e.cargo.sourceY);
+                Entity* home = entityAtForTick(game, world, e.cargo.sourceX, e.cargo.sourceY);
                 if (home && home->alive && home->type == E_FARM
                     && home->owner == e.owner && !home->underConstruction) {
                     e.state = S_BUILDING; e.targetId = home->id;
@@ -333,9 +327,9 @@ static void tickUnitState(Game& game, Entity& e) {
                 }
             }
             if (!inBounds(e.resourceX, e.resourceY)) { e.state = S_IDLE; break; }
-            Entity* carcass = corpseAtForTick(game, e.resourceX, e.resourceY);
+            Entity* carcass = corpseAtForTick(game, world, e.resourceX, e.resourceY);
             if (carcass && isHarvestableCarcass(*carcass)) {
-                orderGatherForTick(game, e, e.resourceX, e.resourceY);
+                orderGatherForTick(game, world, e, e.resourceX, e.resourceY);
                 break;
             }
             Tile& rt = game.map[e.resourceY][e.resourceX];
@@ -347,10 +341,10 @@ static void tickUnitState(Game& game, Entity& e) {
                 e.path = findPathFor(game, e, e.resourceX, e.resourceY); e.pathIdx = 0;
             } else {
                 // Rally point depleted — seek another nearby node of the same type
-                if (!findNearbyResource(game, e)) e.state = S_IDLE;
+                if (!findNearbyResource(game, world, e)) e.state = S_IDLE;
             }
         } else {
-            moveAlongPath(game, e);
+            moveAlongPath(game, world, e);
             if (e.path.empty() && dist(e.x,e.y,dep->x,dep->y) > STATS[dep->type].sizeW+1) {
                 e.path = findPathFor(game, e, dep->x, dep->y); e.pathIdx = 0;
             }
@@ -358,7 +352,7 @@ static void tickUnitState(Game& game, Entity& e) {
         break;
     }
     case S_ENTERING: {
-        Entity* bld = findEntityForTick(game, e.targetId);
+        Entity* bld = findEntityForTick(game, world, e.targetId);
         if (!bld || !bld->alive || bld->underConstruction || !canGarrisonIn(bld->type) || bld->owner != e.owner) {
             e.state = S_IDLE; break;
         }
@@ -378,7 +372,7 @@ static void tickUnitState(Game& game, Entity& e) {
                 e.state = S_IDLE;
             }
         } else {
-            moveAlongPath(game, e);
+            moveAlongPath(game, world, e);
             if (e.path.empty()) {
                 int bestAX = bld->x-1, bestAY = bld->y, bestAD = 99999;
                 for (int dy = -1; dy <= bh; dy++) for (int dx = -1; dx <= bw; dx++) {
@@ -398,7 +392,7 @@ static void tickUnitState(Game& game, Entity& e) {
     case S_GARRISONED:
         break; // Stays inside; building handles its own attacks.
     case S_BUILDING: {
-        Entity* bld = findEntityForTick(game, e.targetId);
+        Entity* bld = findEntityForTick(game, world, e.targetId);
         if (!bld || !bld->alive) { e.state = S_IDLE; break; }
         // Tending a completed farm — stay adjacent and ferry ripe harvest to a depot
         if (!bld->underConstruction && bld->type == E_FARM) {
@@ -409,7 +403,7 @@ static void tickUnitState(Game& game, Entity& e) {
                 e.cargo = {CR_FOOD, take, bld->x, bld->y};
                 e.resourceX = bld->x; e.resourceY = bld->y;
                 bld->storedFood -= take;
-                Entity* dep = findDepotForTick(game, e);
+                Entity* dep = findDepotForTick(game, world, e);
                 if (dep) {
                     e.state = S_RETURNING;
                     e.targetId = dep->id; e.targetX = dep->x; e.targetY = dep->y;
@@ -421,7 +415,7 @@ static void tickUnitState(Game& game, Entity& e) {
                 break;
             }
             if (d > 1) {
-                moveAlongPath(game, e);
+                moveAlongPath(game, world, e);
                 if (e.path.empty()) { e.path = findPathFor(game, e, bld->x, bld->y); e.pathIdx = 0; }
             }
             break;
@@ -431,7 +425,7 @@ static void tickUnitState(Game& game, Entity& e) {
         int cx = std::max(bld->x, std::min(e.x, bx2));
         int cy = std::max(bld->y, std::min(e.y, by2));
         if (dist(e.x, e.y, cx, cy) > 1) {
-            moveAlongPath(game, e);
+            moveAlongPath(game, world, e);
             if (e.path.empty()) {
                 // Re-scan for the nearest free adjacent tile
                 int bestAX = bld->x-1, bestAY = bld->y, bestAD = 99999;
@@ -453,18 +447,15 @@ static void tickUnitState(Game& game, Entity& e) {
     }
 }
 
-void tickEntity(Entity& e) {
-    tickEntity(g, e);
-}
-
 void tickEntity(Game& game, Entity& e) {
     if (!e.alive) return;
     tickAlert(e);
     tickProduction(game, e);
     tickResearch(game, e);
-    if (tickConstruction(game, e)) return;
+    WorldIndex world = buildWorldIndex(game);
+    if (tickConstruction(game, world, e)) return;
     if (!isUnit(e.type)) return;
     if (tickPackedTrebuchet(e)) return;
     tickRetreat(game, e);
-    tickUnitState(game, e);
+    tickUnitState(game, world, e);
 }

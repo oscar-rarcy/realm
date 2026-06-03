@@ -1,6 +1,11 @@
 #pragma once
 
-#include "realm.h"
+#include "core/game_types.h"
+
+#include <cstdint>
+
+struct Game;
+struct Tile;
 
 const TerrainDefinition& terrainDef(Terrain type);
 const char* terrainName(Terrain terrain);
@@ -18,7 +23,5 @@ uint32_t featureTraits(FeatureType feature);
 bool featureConceals(FeatureType feature);
 bool isConcealingTile(int x, int y);
 int movementPenaltyForTile(const Tile& tile);
-bool isPassable(int x, int y);
 bool isPassable(const Game& game, int x, int y);
-bool isPassableWater(int x, int y);
 bool isPassableWater(const Game& game, int x, int y);

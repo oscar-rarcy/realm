@@ -65,6 +65,171 @@ RULES: list[tuple[str, list[str], re.Pattern[str]]] = [
         re.compile(r"\b(setStatus|addActionMarker)\s*\("),
     ),
     (
+        "game event handling must queue events instead of using the legacy UI sink",
+        [
+            "src/core/game_events.h",
+            "src/core/game_events.cpp",
+        ],
+        re.compile(r"\bLegacyUiEventSink\b|\bevent\.player\s*>\s*0\b|\bg\s*\.\s*(statusMsg|statusTimer|actionMarkers)\b"),
+    ),
+    (
+        "core simulation AI and map code must use explicit Game state instead of global g",
+        [
+            "src/ai/*.cpp",
+            "src/core/*.cpp",
+            "src/sim/*.cpp",
+            "src/map/*.cpp",
+        ],
+        re.compile(r"\bg\s*\."),
+    ),
+    (
+        "validation APIs must receive explicit Game state instead of using global wrappers",
+        [
+            "include/realm.h",
+            "src/core/validation.h",
+            "src/core/validation.cpp",
+        ],
+        re.compile(
+            r"\bvalidateGameStateIssues\s*\(\s*\)"
+            r"|\bvalidateGameState\s*\(\s*std::string\s*\*"
+        ),
+    ),
+    (
+        "terrain/movement APIs must receive explicit Game state instead of using global wrappers",
+        [
+            "include/realm.h",
+            "src/core/terrain_defs.h",
+            "src/core/entity_query.h",
+            "src/core/validation.cpp",
+            "src/sim/movement_system.cpp",
+            "src/sim/fog_system.cpp",
+        ],
+        re.compile(
+            r"\bisPassable(?:Water)?\s*\(\s*int\s+"
+            r"|\bmoveAlongPath\s*\(\s*Entity&"
+            r"|\bisConcealing\s*\(\s*\)"
+            r"|\bisDetectedBy\s*\(\s*int\s+"
+            r"|\bresetDetectMapCache\b"
+            r"|\bis(Night|Dusk|Dawn)\s*\(\s*\)"
+        ),
+    ),
+    (
+        "movement/resource helpers must receive caller-provided WorldIndex",
+        [
+            "include/realm.h",
+            "src/sim/movement_system.cpp",
+        ],
+        re.compile(
+            r"\bmoveAlongPath\s*\(\s*Game&\s+\w+\s*,\s*Entity&"
+            r"|\bfindNearbyResource\s*\(\s*Game&\s+\w+\s*,\s*Entity&"
+            r"|\bbuildWorldIndex\s*\("
+        ),
+    ),
+    (
+        "time/season APIs must receive explicit Game state instead of using global wrappers",
+        [
+            "include/realm.h",
+            "src/sim/time_system.cpp",
+        ],
+        re.compile(r"\b(getBrightness|getSeason|getSeasonProgress|getSeasonName|getTimeName)\s*\(\s*\)"),
+    ),
+    (
+        "simulation subsystem APIs must receive explicit Game state instead of using global tick wrappers",
+        [
+            "include/realm.h",
+            "src/core/game_state.cpp",
+            "src/sim/*.cpp",
+        ],
+        re.compile(
+            r"\bvoid\s+(tickProjectiles|tickTowers|tickGates|tickFarms|tickMarkets|"
+            r"tickChurches|tickAnimals|tickSeasons|tickThaw|tickWinter|tickPaving|"
+            r"tickWeather|checkWin|updateFog|tickActionMarkers)\s*\(\s*\)"
+        ),
+    ),
+    (
+        "top-level simulation tick must receive explicit Game state",
+        [
+            "include/realm.h",
+            "src/sim/simulation.cpp",
+        ],
+        re.compile(r"^\s*void\s+tickSimulationOnce\s*\(\s*\)"),
+    ),
+    (
+        "save/load APIs must receive explicit Game state instead of using global wrappers",
+        [
+            "include/realm.h",
+            "src/sim/save_load.cpp",
+        ],
+        re.compile(r"^\s*bool\s+(saveGame|loadGame)\s*\(\s*const\s+std::string&"),
+    ),
+    (
+        "entity tick APIs must receive explicit Game state instead of using global wrappers",
+        [
+            "include/realm.h",
+            "src/sim/entity_tick.cpp",
+            "src/sim/production_system.cpp",
+        ],
+        re.compile(r"^\s*void\s+(tickEntity|tickProduction|tickResearch)\s*\(\s*(?!Game&)"),
+    ),
+    (
+        "resource and spawn APIs must receive explicit Game state instead of using global wrappers",
+        [
+            "include/realm.h",
+            "src/core/game_state.h",
+            "src/core/game_state.cpp",
+            "src/core/entity_query.cpp",
+            "src/sim/economy_system.cpp",
+        ],
+        re.compile(r"^\s*(?:void|int)\s+(addPlayerFood|spendPlayerFood|updateSupply|reservedSupply|spawnEntity)\s*\(\s*(?!Game&|const\s+Game&)"),
+    ),
+    (
+        "RNG APIs must receive explicit Game state instead of using global wrappers",
+        [
+            "include/realm.h",
+            "src/core/rng.h",
+            "src/core/rng.cpp",
+        ],
+        re.compile(r"^\s*(?:void|int)\s+realm(?:Srand|Rand)\s*\(\s*(?!Game&)"),
+    ),
+    (
+        "entity query APIs must receive explicit Game and WorldIndex instead of using global wrappers",
+        [
+            "include/realm.h",
+            "src/core/entity_query.h",
+            "src/core/entity_query.cpp",
+        ],
+        re.compile(
+            r"^\s*(?:Entity\*|bool|void)\s+"
+            r"(findEntity|findDepot|entityAt|entityAtOwner|corpseAt|canPlace|buildOccupancyGrid)"
+            r"\s*\(\s*(?!Game&|const\s+Game&)"
+        ),
+    ),
+    (
+        "simulation helper APIs must receive explicit Game state instead of using global wrappers",
+        [
+            "include/realm.h",
+            "src/sim/*.cpp",
+        ],
+        re.compile(
+            r"^\s*(?:void|int|Entity\*|std::vector<.*?>)\s+"
+            r"(spawnProjectile|findPath|findPathFor|findNearestEnemy|unitAtk|unitRange|"
+            r"damageVs|killEntity|orderHelp|orderGarrison|findNearbyResource|ejectGarrison)"
+            r"\s*\(\s*(?!const\s+Game&|Game&)"
+        ),
+    ),
+    (
+        "raw order APIs must receive explicit Game state instead of using global wrappers",
+        [
+            "include/realm.h",
+            "src/commands/orders.cpp",
+        ],
+        re.compile(
+            r"^\s*void\s+(orderMove|orderAttack|orderGather|orderBuild|orderBuildLine|"
+            r"orderTrain|orderGroupMove|orderGroupAttack|orderGroupAttackMove)"
+            r"\s*\(\s*(?!Game&)"
+        ),
+    ),
+    (
         "dispatcher must delegate control-group state changes to the selection service",
         [
             "src/commands/command_dispatcher.cpp",
@@ -77,6 +242,13 @@ RULES: list[tuple[str, list[str], re.Pattern[str]]] = [
             "src/core/*_service.cpp",
         ],
         re.compile(r"\bfindEntity\s*\(\s*(?!game\s*,)"),
+    ),
+    (
+        "entity animation helpers must receive explicit Game state instead of reading global g",
+        [
+            "src/core/entity_animation.cpp",
+        ],
+        re.compile(r"\bg\s*\."),
     ),
     (
         "core services must spawn entities into the supplied Game",
@@ -100,6 +272,43 @@ RULES: list[tuple[str, list[str], re.Pattern[str]]] = [
         re.compile(r"\border(Build|Train|Attack|Gather|Move|Garrison)\s*\(|\bspawnEntity\s*\("),
     ),
     (
+        "input controller must build an explicit GameContext instead of using legacy dispatchCommand(Game&, ...)",
+        [
+            "src/commands/input_controller.cpp",
+        ],
+        re.compile(r"\bdispatchCommand\s*\(\s*g\s*,"),
+    ),
+    (
+        "selection helpers must read selection from explicit Game state",
+        [
+            "src/commands/selection_controller.cpp",
+        ],
+        re.compile(r"\bg\s*\."),
+    ),
+    (
+        "migrated module headers must not include the realm umbrella",
+        [
+            "include/entity_animation.h",
+            "include/tileset_assets.h",
+            "src/ai/ai.h",
+            "src/commands/command.h",
+            "src/commands/input_mode_controller.h",
+            "src/core/build_service.h",
+            "src/core/entity_defs.h",
+            "src/core/game_context.h",
+            "src/core/game_events.h",
+            "src/core/market_service.h",
+            "src/core/production_service.h",
+            "src/core/research_defs.h",
+            "src/core/terrain_defs.h",
+            "src/core/validation.h",
+            "src/core/world_index.h",
+            "src/render/sdl/sdl_common.h",
+            "src/render/visual_model.h",
+        ],
+        re.compile(r'#include\s+"realm\.h"'),
+    ),
+    (
         "context command resolution must create farms through typed BuildCommand/build service",
         [
             "src/commands/command_resolver.cpp",
@@ -114,11 +323,27 @@ RULES: list[tuple[str, list[str], re.Pattern[str]]] = [
         re.compile(r"\border(Move|Attack|Gather|Garrison|Help|GroupMove|GroupAttack)\s*\(|\bemitStatusEvent\s*\("),
     ),
     (
+        "context command resolution must receive caller-provided WorldIndex",
+        [
+            "src/commands/command.h",
+            "src/commands/command_resolver.cpp",
+        ],
+        re.compile(r"\bresolveContextCommand\s*\(\s*const\s+Game&\s+\w+\s*,(?!\s*const\s+WorldIndex\s*&)"),
+    ),
+    (
         "dispatcher must not fall back to legacy context tile order helpers",
         [
             "src/commands/command_dispatcher.cpp",
         ],
         re.compile(r"\bcmdAtTile(Single|Group)\s*\("),
+    ),
+    (
+        "command dispatch callers must provide an explicit GameContext",
+        [
+            "src/commands/command.h",
+            "src/commands/command_dispatcher.cpp",
+        ],
+        re.compile(r"\bdispatchCommand\s*\(\s*Game\s*&"),
     ),
     (
         "input controller must not mutate player resources directly",
@@ -195,6 +420,22 @@ RULES: list[tuple[str, list[str], re.Pattern[str]]] = [
         re.compile(r"\bdispatchCommand\s*\(\s*g\s*,"),
     ),
     (
+        "AI tick must receive explicit Game state instead of reading global g",
+        [
+            "include/realm.h",
+            "src/ai/ai.cpp",
+            "src/sim/simulation.cpp",
+        ],
+        re.compile(r"\btickAI\s*\(\s*\)|\bg\s*\.\s*(aiTimer|players)\b"),
+    ),
+    (
+        "AI planners must use context Game state for time and season queries",
+        [
+            "src/ai/*.cpp",
+        ],
+        re.compile(r"\bget(Brightness|Season|SeasonProgress|SeasonName|TimeName)\s*\(\s*\)"),
+    ),
+    (
         "AI planners must pass AIContext explicitly instead of using an active-context shim",
         [
             "src/ai/*.h",
@@ -202,6 +443,34 @@ RULES: list[tuple[str, list[str], re.Pattern[str]]] = [
             "tests/*.cpp",
         ],
         re.compile(r"\b(activeAIContext|setActiveAIContext)\b"),
+    ),
+    (
+        "AI command helpers must require AIContext instead of no-context immediate dispatch shims",
+        [
+            "src/ai/*.h",
+            "src/ai/*.cpp",
+        ],
+        re.compile(r"\baiDispatchImmediate\b|\bvoid\s+aiIssue\w+\s*\(\s*Entity&"),
+    ),
+    (
+        "AI query/planner helpers must require AIContext or explicit Game/WorldIndex",
+        [
+            "src/ai/*.h",
+            "src/ai/*.cpp",
+        ],
+        re.compile(
+            r"\b(aiCount|aiCountAll|aiIdle|aiBldg|aiWorker|aiIdlePeasant|aiGather|"
+            r"aiBuildSpotNear|aiBuildSpotWide|aiBuildSpot|aiScout|aiTickTrebuchets|"
+            r"aiTickTransports|aiPickTarget|aiPickSiegeTarget|buildAIWorldView)"
+            r"\s*\(\s*int\b"
+        ),
+    ),
+    (
+        "AI query helpers must reuse caller-provided WorldIndex instead of rebuilding global g",
+        [
+            "src/ai/ai_query.cpp",
+        ],
+        re.compile(r"\bbuildWorldIndex\s*\(\s*g\s*\)|\bGameContext\s+\w+\s*\{\s*g\s*,"),
     ),
     (
         "local save/load overloads must not swap through global g",
@@ -218,11 +487,28 @@ RULES: list[tuple[str, list[str], re.Pattern[str]]] = [
         re.compile(r"\bstd::swap\s*\(\s*g\s*,\s*game\s*\)"),
     ),
     (
-        "legacy GameContext adapters must not own a static WorldIndex",
+        "map generation passes must receive Game explicitly instead of using target macros",
+        [
+            "src/map/mapgen.cpp",
+            "src/map/mapgen_passes.cpp",
+            "include/realm.h",
+        ],
+        re.compile(r"\bmapGenerationTarget\b|#define\s+g\b|#define\s+realmRand\b"),
+    ),
+    (
+        "map generation callers must provide explicit Game state",
+        [
+            "include/realm.h",
+            "src/map/mapgen.cpp",
+        ],
+        re.compile(r"\bgenerateMap\s*\(\s*(?:const\s+MapGenerationConfig&\s+\w+)?\s*\)"),
+    ),
+    (
+        "legacy GameContext adapters must not return to core context headers",
         [
             "src/core/game_context.h",
         ],
-        re.compile(r"\bstatic\s+WorldIndex\b"),
+        re.compile(r"\bstatic\s+WorldIndex\b|\blegacy(Game|Ui)Context\b"),
     ),
     (
         "save orchestration must delegate parsing to save_reader",
@@ -254,6 +540,15 @@ RULES: list[tuple[str, list[str], re.Pattern[str]]] = [
             "src/ai/ai_production.cpp",
         ],
         re.compile(r"\bg\s*\.\s*entities\b"),
+    ),
+    (
+        "context-based AI planner modules must use AIContext game state instead of global g",
+        [
+            "src/ai/ai_combat.cpp",
+            "src/ai/ai_economy.cpp",
+            "src/ai/ai_production.cpp",
+        ],
+        re.compile(r"\bg\s*\.|\bentityById\s*\(\s*g\s*,|\bforEachEnemyEntity\s*\(\s*g\s*,"),
     ),
     (
         "production tick system must use local Game-aware query/spawn/resource paths",
@@ -313,6 +608,8 @@ RULES: list[tuple[str, list[str], re.Pattern[str]]] = [
             "src/core/types.h",
             "src/core/rng.h",
             "src/core/game_state.h",
+            "src/core/entity_query.h",
+            "src/core/game_context.h",
             "src/sim/save_reader.h",
             "src/sim/save_migration.h",
             "src/sim/save_writer.h",

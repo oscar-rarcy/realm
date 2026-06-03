@@ -5,13 +5,10 @@
 // ============================================================
 // PASSIVE BUILDING TICKS
 // ============================================================
-void tickTowers() {
-    tickTowers(g);
-}
-
 void tickTowers(Game& game) {
     // Towers always defend. Town Hall/Castle/House defend only when garrisoned.
     // Garrisoned archers add ranged punch; militia/knights add a smaller bonus.
+    WorldIndex world = buildWorldIndex(game);
     for (auto& e : game.entities) {
         if (!e.alive || e.underConstruction) continue;
         if (!isBuilding(e.type)) continue;
@@ -47,7 +44,6 @@ void tickTowers(Game& game) {
 
         int archers = 0, fighters = 0;
         for (int uid : e.garrison) {
-            WorldIndex world = buildWorldIndex(game);
             Entity* u = findEntity(game, world, uid);
             if (!u || !u->alive) continue;
             if (u->type == E_ARCHER) archers++;
@@ -79,10 +75,6 @@ void tickTowers(Game& game) {
     }
 }
 
-void tickGates() {
-    tickGates(g);
-}
-
 void tickGates(Game& game) {
     for (auto& gate : game.entities) {
         if (!gate.alive || gate.type != E_GATE || gate.underConstruction) continue;
@@ -94,10 +86,6 @@ void tickGates(Game& game) {
         }
         gate.gateOpen = allyNear;
     }
-}
-
-void tickFarms() {
-    tickFarms(g);
 }
 
 void tickFarms(Game& game) {
@@ -112,6 +100,7 @@ void tickFarms(Game& game) {
         return;
     }
 
+    WorldIndex world = buildWorldIndex(game);
     const int FARM_CAP = 20;
     int bonus = (getSeason(game) == SUMMER) ? 1 : 0;
     for (int p = 0; p < MAX_PLAYERS; p++) {
@@ -153,17 +142,12 @@ void tickFarms(Game& game) {
                         if (d <= 12 && d < bestD) { bestD = d; best = &u; }
                     }
                     if (best) {
-                        WorldIndex world = buildWorldIndex(game);
                         orderHelp(game, world, *best, farm.id);
                     }
                 }
             }
         }
     }
-}
-
-void tickMarkets() {
-    tickMarkets(g);
 }
 
 void tickMarkets(Game& game) {
@@ -173,10 +157,6 @@ void tickMarkets(Game& game) {
         for (auto& e : game.entities) if (e.alive && e.owner==p && e.type==E_MARKET && !e.underConstruction) m++;
         game.players[p].gold += m * 5;
     }
-}
-
-void tickChurches() {
-    tickChurches(g);
 }
 
 void tickChurches(Game& game) {

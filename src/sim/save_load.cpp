@@ -106,10 +106,6 @@ int dumpMissingTilesetAssets() {
     return 0;
 }
 
-bool saveGame(const std::string& path) {
-    return writeSaveFile(g, path);
-}
-
 bool saveGame(Game& game, const std::string& path) {
     return writeSaveFile(game, path);
 }
@@ -134,7 +130,6 @@ static bool hydrateLoadedGameInto(Game& target, Game&& ng, int version) {
     recalculateSupply(ng);
     if (!validateOrRecoverLoadedGame(ng)) return false;
     target = std::move(ng);
-    if (&target == &g) resetDetectMapCache();
     return true;
 }
 
@@ -142,19 +137,7 @@ static bool loadParsedGame(const std::string& path, Game& parsed, int& version) 
     return readSaveFile(path, parsed, version);
 }
 
-static bool hydrateLoadedGame(Game&& ng, int version) {
-    return hydrateLoadedGameInto(g, std::move(ng), version);
-}
-
-bool loadGame(const std::string& path) {
-    auto parsed = std::make_unique<Game>();
-    int version = 0;
-    if (!loadParsedGame(path, *parsed, version)) return false;
-    return hydrateLoadedGame(std::move(*parsed), version);
-}
-
 bool loadGame(Game& game, const std::string& path) {
-    if (&game == &g) return loadGame(path);
     auto parsed = std::make_unique<Game>();
     int version = 0;
     if (!loadParsedGame(path, *parsed, version)) return false;

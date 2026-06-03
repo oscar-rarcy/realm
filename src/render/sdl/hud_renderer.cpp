@@ -1,4 +1,5 @@
 #include "render/sdl/sdl_hud.h"
+#include "realm.h"
 #include "view_state.h"
 
 void drawMiniMap(int x, int y, int w, int h) {
@@ -9,7 +10,7 @@ void drawMiniMap(int x, int y, int w, int h) {
             int mx = xx * MAP_W / std::max(1,w);
             const Tile& t = g.map[my][mx];
             Color c = t.explored[0] ? terrainBg(t,mx,my) : rgb(5,5,8);
-            Entity* e = t.visible[0] ? entityAt(mx,my) : nullptr;
+            Entity* e = t.visible[0] ? sdlEntityAt(mx,my) : nullptr;
             if (e && e->alive && e->owner != OWNER_NATURE) c = ownerBg(e->owner);
             setDraw(c); SDL_RenderDrawPoint(s.ren, x+xx, y+yy);
         }
@@ -198,7 +199,7 @@ void drawPanel() {
         ds2 << "Ent " << g.entities.size() << " Proj " << g.projectiles.size()
             << " Seed " << g.seed;
         drawTextFit(x, y, trimPanelLine(ds2.str()), rgb(255,210,120), textW); y += 20;
-        if (Entity* selDiag = findEntity(g.selectedId)) {
+        if (Entity* selDiag = sdlFindEntity(g.selectedId)) {
             std::ostringstream ds3;
             ds3 << "Sel #" << selDiag->id << ' ' << STATS[selDiag->type].name
                 << ' ' << stateName(selDiag->state);
@@ -206,7 +207,7 @@ void drawPanel() {
         }
     }
 
-    Entity* sel = findEntity(g.selectedId);
+    Entity* sel = sdlFindEntity(g.selectedId);
     if (!g.selectedIds.empty()) {
         std::ostringstream gs; gs << "Group: " << g.selectedIds.size() << " units";
         drawTextFit(x, y, gs.str(), rgb(255,230,135), textW); y += 22;
@@ -279,7 +280,7 @@ void drawBottom() {
         controls2.clear();
     }
     else if (g.mode == M_BUILD_SELECT) { controls1 = "BUILD: H House, B Barracks, S Stable, T Tower, F Farm, W Wall, K Castle"; controls2 = "G Gate  A Armory  C Church  M Market  L Lumber  N Mine  I Mill  D Dock  Esc"; }
-    else if (g.mode == M_TRAIN_SELECT) { controls1 = trainPromptFor(findEntity(g.selectedId)); controls2.clear(); }
+    else if (g.mode == M_TRAIN_SELECT) { controls1 = trainPromptFor(sdlFindEntity(g.selectedId)); controls2.clear(); }
     else if (g.mode == M_MARKET_TRADE) { controls1 = "MARKET: G 40g->30w  W 40w->30g  F 50g->30f  V 40f->30g"; controls2 = "Esc cancel"; }
     int hintX = s.winW - 14;
     if (devCaptureEnabled()) {
@@ -295,7 +296,7 @@ void drawBottom() {
         drawKeyTokensInText(10, s.winH-s.bottomH+6, controls1, desktopBuildTokensLine1(),
                             rgb(230,235,230), topLineW);
     } else if (g.mode == M_TRAIN_SELECT) {
-        Entity* sel = findEntity(g.selectedId);
+        Entity* sel = sdlFindEntity(g.selectedId);
         drawKeyTokensInText(10, s.winH-s.bottomH+6, controls1,
                             sel ? trainOptionTokensFor(sel->type) : std::vector<std::pair<std::string, int>>{{"Esc", 27}},
                             rgb(230,235,230), topLineW);

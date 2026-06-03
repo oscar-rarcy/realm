@@ -1,10 +1,14 @@
 #pragma once
 
-#include "realm.h"
 #include "commands/command.h"
 #include "core/research_defs.h"
 
 #include <optional>
+#include <vector>
+
+struct Entity;
+struct Game;
+struct WorldIndex;
 
 struct AIIntel {
     int playerArmy;
@@ -97,31 +101,21 @@ struct AIContext {
     int rejectedAttackCommands = 0;
 };
 
-Entity* aiWorker(int owner);
 Entity* aiWorker(AIContext& context);
-Entity* aiIdlePeasant(int owner);
 Entity* aiIdlePeasant(AIContext& context);
-void aiGather(int owner);
 void aiGather(AIContext& context);
 int aiCount(AIContext& context, EntityType type);
 int aiCountAll(AIContext& context, EntityType type);
 Entity* aiBldg(AIContext& context, EntityType type);
-void aiBuildSpotNear(int owner, EntityType type, int cx, int cy, int& ox, int& oy);
 void aiBuildSpotNear(AIContext& context, EntityType type, int cx, int cy, int& ox, int& oy);
 void aiBuildSpot(AIContext& context, EntityType type, int& ox, int& oy);
-void aiBuildSpotWide(int owner, EntityType type, int& ox, int& oy);
 void aiBuildSpotWide(AIContext& context, EntityType type, int& ox, int& oy);
-AIIntel aiScout(int owner);
-void aiTickTrebuchets(int owner);
+AIIntel aiScout(Game& game, const WorldIndex& world, int owner);
 void aiTickTrebuchets(AIContext& context);
-void aiTickTransports(int owner);
 void aiTickTransports(AIContext& context);
-int aiPickTarget(int owner, Entity* attacker);
 int aiPickTarget(AIContext& context, Entity* attacker);
-int aiPickSiegeTarget(int owner, Entity* attacker);
 int aiPickSiegeTarget(AIContext& context, Entity* attacker);
-AIWorldView buildAIWorldView(int owner);
-AIWorldView buildAIWorldView(int owner, const AITuning& tuning);
+AIWorldView buildAIWorldView(Game& game, const WorldIndex& world, int owner, const AITuning& tuning);
 void runAIEconomy(AIContext& context);
 void runAIProduction(AIContext& context);
 void runAIDefenseInfrastructure(AIContext& context);
@@ -129,7 +123,7 @@ void runAIFoodEconomy(AIContext& context);
 void runAINaval(AIContext& context);
 void runAIExpansion(AIContext& context);
 void runAIAttackAndDefense(AIContext& context);
-void tickAIForOwner(int owner);
+void tickAIForOwner(Game& game, int owner);
 
 void aiIssueBuild(AIContext& context, Entity& builder, EntityType buildingType, int x, int y);
 void aiIssueTrain(AIContext& context, Entity& producer, EntityType unitType);
@@ -142,15 +136,4 @@ void aiIssueGarrison(AIContext& context, Entity& unit, int buildingId);
 void aiIssueEjectGarrison(AIContext& context, Entity& building);
 void aiIssueContext(AIContext& context, Entity& unit, int x, int y);
 void aiIssueToggleTrebuchetPacked(AIContext& context, Entity& trebuchet);
-void aiIssueBuild(Entity& builder, EntityType buildingType, int x, int y);
-void aiIssueTrain(Entity& producer, EntityType unitType);
-void aiIssueResearch(Entity& producer, ResearchId researchId);
-void aiIssueGather(Entity& unit, int x, int y);
-void aiIssueMove(Entity& unit, int x, int y);
-void aiIssueAttack(Entity& unit, int targetId);
-void aiIssueAttackMove(Entity& unit, int x, int y);
-void aiIssueGarrison(Entity& unit, int buildingId);
-void aiIssueEjectGarrison(Entity& building);
-void aiIssueContext(Entity& unit, int x, int y);
-void aiIssueToggleTrebuchetPacked(Entity& trebuchet);
 void executeAICommands(AIContext& context);

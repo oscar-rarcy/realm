@@ -1,6 +1,7 @@
 #pragma once
 
-#include "realm.h"
+#include "core/game_types.h"
+#include "display.h"
 #include "input_keys.h"
 #include "gfx_renderer.h"
 #include "entity_animation.h"
@@ -29,6 +30,8 @@
 #if defined(REALM_WEB)
 #include <emscripten/emscripten.h>
 #endif
+
+struct Tile;
 
 struct Color { Uint8 r, g, b, a; };
 

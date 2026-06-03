@@ -1,9 +1,11 @@
 #pragma once
 
-#include "realm.h"
 #include "core/types.h"
+#include "core/game_types.h"
 
 #include <optional>
+
+struct Game;
 
 enum class InputUtilityMode {
     None,

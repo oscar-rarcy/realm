@@ -1,12 +1,14 @@
 #pragma once
 
-#include "realm.h"
+#include "core/game_types.h"
 #include "core/service_result.h"
 
 // Single source of truth for market exchange rates, shared by input handling and
 // any future AI trading (see docs/implementation/refactor-plan.md phase 3.4).
 
 struct WorldIndex;
+struct Entity;
+struct Game;
 
 enum class TradeResource { Gold, Wood, Food };
 

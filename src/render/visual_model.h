@@ -1,8 +1,10 @@
 #pragma once
 
-#include "realm.h"
+#include "core/game_types.h"
 
 #include <vector>
+
+struct Game;
 
 struct TileRenderInfo {
     int x = 0;

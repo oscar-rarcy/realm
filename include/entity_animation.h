@@ -1,8 +1,12 @@
 #pragma once
 
-#include "realm.h"
+#include "core/game_types.h"
 
 #include <iosfwd>
+
+struct Entity;
+struct Game;
+struct WorldIndex;
 
 enum class ActionTargetRelation {
     SelfTile,
@@ -38,8 +42,8 @@ struct EntityActionAnimationSpec {
 const char* actionTargetRelationId(ActionTargetRelation relation);
 EntityType entityTypeForAnimationSlug(const char* slug);
 const EntityActionAnimationSpec* findEntityActionAnimationSpec(EntityType type, const char* action);
-const EntityActionAnimationSpec* entityActionAnimationSpecFor(const Entity& e);
-const char* entityAnimationActionId(const Entity& e);
+const EntityActionAnimationSpec* entityActionAnimationSpecFor(const Game& game, const WorldIndex& world, const Entity& e);
+const char* entityAnimationActionId(const Game& game, const WorldIndex& world, const Entity& e);
 const char* entityAnimationDirectionBucket(const Entity& e);
 bool entityAnimationMirrorHorizontal(const Entity& e);
 int entityActionAnimationSpecCount(EntityType type);

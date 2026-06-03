@@ -1,6 +1,8 @@
 #pragma once
 
-#include "realm.h"
+#include "core/game_types.h"
+
+struct Entity;
 
 const EntityDefinition& entityDef(EntityType type);
 const char* stateName(EntityState state);

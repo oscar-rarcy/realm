@@ -11,10 +11,6 @@ void updateSupply(Game& game, int owner) {
     game.players[owner].supply    = used;
 }
 
-void updateSupply(int owner) {
-    updateSupply(g, owner);
-}
-
 // Supply already in use plus everything currently producing or queued. Used by
 // orderTrain so a flurry of queued units can't push live supply over the cap
 // once they all spawn.
@@ -29,8 +25,4 @@ int reservedSupply(const Game& game, int owner) {
         }
     }
     return used;
-}
-
-int reservedSupply(int owner) {
-    return reservedSupply(g, owner);
 }

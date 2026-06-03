@@ -1,4 +1,5 @@
 #include "command.h"
+#include "realm.h"
 #include "core/build_service.h"
 #include "core/order_service.h"
 #include "core/production_service.h"
@@ -239,10 +240,4 @@ CommandResult dispatchCommand(GameContext& context, const Command& command) {
             return accepted(context, issuer);
         }
     }, command.payload);
-}
-
-CommandResult dispatchCommand(Game& game, const Command& command) {
-    WorldIndex world;
-    GameContext context = legacyGameContext(game, world);
-    return dispatchCommand(context, command);
 }

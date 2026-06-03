@@ -6,6 +6,8 @@
 // Single validation + execution path for research, shared by player input and AI.
 
 struct WorldIndex;
+struct Entity;
+struct Game;
 
 struct CanResearchResult {
     bool ok;

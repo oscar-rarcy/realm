@@ -1,12 +1,9 @@
 #include "realm.h"
 #include "core/world_index.h"
 
-void tickAnimals() {
-    tickAnimals(g);
-}
-
 void tickAnimals(Game& game) {
     game.animalTimer++;
+    WorldIndex world = buildWorldIndex(game);
     for (auto& e : game.entities) {
         if (!e.alive || e.owner != OWNER_NATURE) continue;
 
@@ -61,7 +58,6 @@ void tickAnimals(Game& game) {
                     if (!o.alive || o.owner == OWNER_NATURE || !isUnit(o.type)) continue;
                     if (o.state == S_GARRISONED) continue;
                     if (dist(e.x, e.y, o.x, o.y) <= chargeRange) {
-                        WorldIndex world = buildWorldIndex(game);
                         orderAttack(game, world, e, o.id);
                         break;
                     }
@@ -97,7 +93,6 @@ void tickAnimals(Game& game) {
                     if (!o.alive || o.owner==OWNER_NATURE || !isUnit(o.type)) continue;
                     if (o.state == S_GARRISONED) continue;
                     if (dist(e.x, e.y, o.x, o.y) <= huntRange) {
-                        WorldIndex world = buildWorldIndex(game);
                         orderAttack(game, world, e, o.id);
                         break;
                     }

@@ -1,4 +1,5 @@
 #include "commands/input_mode_controller.h"
+#include "realm.h"
 
 void setInputMode(Game& game, GameMode mode) {
     game.mode = mode;

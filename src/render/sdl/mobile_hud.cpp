@@ -1,4 +1,5 @@
 #include "render/sdl/sdl_hud.h"
+#include "realm.h"
 
 int mobileButtonH() {
     return std::max(44, (int)std::lround(48.0f * s.mobileUiScale));
@@ -55,7 +56,7 @@ std::string mobileSelectionSummary() {
     if (!g.selectedIds.empty()) {
         int idle = 0, gathering = 0, military = 0;
         for (int id : g.selectedIds) {
-            Entity* e = findEntity(id);
+            Entity* e = sdlFindEntity(id);
             if (!e || !e->alive) continue;
             if (e->state == S_IDLE) idle++;
             if (e->state == S_GATHERING) gathering++;
@@ -66,7 +67,7 @@ std::string mobileSelectionSummary() {
         if (idle || gathering || military) ss << "  " << idle << " idle  " << gathering << " gathering";
         return ss.str();
     }
-    Entity* sel = findEntity(g.selectedId);
+    Entity* sel = sdlFindEntity(g.selectedId);
     if (!sel) return "No selection";
     std::ostringstream ss;
     ss << STATS[sel->type].name << "  HP " << sel->hp << "/" << sel->maxHp;
@@ -86,24 +87,24 @@ std::string mobileSelectionSummary() {
 bool mobileHasSelectedWorker() {
     if (!g.selectedIds.empty()) {
         for (int id : g.selectedIds) {
-            Entity* e = findEntity(id);
+            Entity* e = sdlFindEntity(id);
             if (e && e->alive && e->owner == 0 && canBuild(e->type)) return true;
         }
         return false;
     }
-    Entity* e = findEntity(g.selectedId);
+    Entity* e = sdlFindEntity(g.selectedId);
     return e && e->alive && e->owner == 0 && canBuild(e->type);
 }
 
 bool mobileHasSelectedMilitary() {
     if (!g.selectedIds.empty()) {
         for (int id : g.selectedIds) {
-            Entity* e = findEntity(id);
+            Entity* e = sdlFindEntity(id);
             if (e && e->alive && e->owner == 0 && isMilitary(e->type)) return true;
         }
         return false;
     }
-    Entity* e = findEntity(g.selectedId);
+    Entity* e = sdlFindEntity(g.selectedId);
     return e && e->alive && e->owner == 0 && isMilitary(e->type);
 }
 
@@ -152,7 +153,7 @@ std::vector<MobileButton> mobileHudButtons() {
                    {"build:mill", "Mill"}, {"build:dock", "Dock"}, {"buildback", "Back"}};
         }
     } else {
-        Entity* sel = findEntity(g.selectedId);
+        Entity* sel = sdlFindEntity(g.selectedId);
         if (mobileHasSelectedWorker()) {
             cmd = {{"move", "Move"}, {"gather", "Gather"}, {"build", "Build"}, {"stop", "Stop"}};
         } else if (mobileHasSelectedMilitary()) {

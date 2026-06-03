@@ -1,4 +1,5 @@
 #include "save_service.h"
+#include "realm.h"
 #include "core/game_events.h"
 #include "sim/save_reader.h"
 #include "sim/save_schema.h"

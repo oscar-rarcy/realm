@@ -1,13 +1,7 @@
 #include "realm.h"
 #include "commands/command.h"
-#include "core/build_service.h"
 #include "core/game_events.h"
-#include "core/production_service.h"
 #include "core/world_index.h"
-
-void orderMove(Entity& e, int tx, int ty) {
-    orderMove(g, e, tx, ty);
-}
 
 void orderMove(Game& game, Entity& e, int tx, int ty) {
     if (e.type == E_TREBUCHET && e.packed == 0) {
@@ -26,14 +20,9 @@ void orderMove(Game& game, Entity& e, int tx, int ty) {
     }
 }
 
-static void orderAttackMove(Entity& e, int tx, int ty) {
-    orderMove(e, tx, ty);
+static void orderAttackMove(Game& game, Entity& e, int tx, int ty) {
+    orderMove(game, e, tx, ty);
     e.attackMove = 1;
-}
-
-void orderAttack(Entity& e, int tid) {
-    WorldIndex world = buildWorldIndex(g);
-    orderAttack(g, world, e, tid);
 }
 
 void orderAttack(Game& game, const WorldIndex& world, Entity& e, int tid) {
@@ -48,11 +37,6 @@ void orderAttack(Game& game, const WorldIndex& world, Entity& e, int tid) {
     e.holdPosition = 0;
     e.state = S_ATTACKING; e.targetId = tid;
     emitActionMarkerEvent(e.owner, { t->x, t->y }, '!');
-}
-
-void orderGather(Entity& e, int tx, int ty) {
-    WorldIndex world = buildWorldIndex(g);
-    orderGather(g, world, e, tx, ty);
 }
 
 void orderGather(Game& game, const WorldIndex& world, Entity& e, int tx, int ty) {
@@ -111,23 +95,6 @@ void orderGather(Game& game, const WorldIndex& world, Entity& e, int tx, int ty)
     e.gatherCd = 0; e.cargo.amount = 0;
 }
 
-void orderBuild(Entity& e, EntityType bt, int bx, int by) {
-    startBuild(g, e.owner, e.id, bt, { bx, by });
-}
-
-// Place a straight line of identical buildings (used for wall lines) using the
-// same ownership, cost, and placement rules as orderBuild(). Cost is
-// pre-calculated for every valid segment; if the builder's owner cannot afford
-// the whole affordable line, nothing is placed. The builder is then ordered to
-// help-complete the first placed segment.
-void orderBuildLine(Entity& e, EntityType bt, int x0, int y0, int x1, int y1) {
-    startBuildLine(g, e.owner, e.id, bt, { x0, y0 }, { x1, y1 });
-}
-
-void orderTrain(Entity& bld, EntityType ut) {
-    startTraining(g, bld.owner, bld.id, ut);
-}
-
 static int rolePriority(EntityType t) {
     switch (t) {
         case E_KNIGHT:   return 0;
@@ -141,10 +108,10 @@ static int rolePriority(EntityType t) {
     }
 }
 
-static void groupMoveCore(const Selection& selection, int tx, int ty, bool attackMove, int owner) {
+static void groupMoveCore(Game& game, const WorldIndex& world, const Selection& selection, int tx, int ty, bool attackMove, int owner) {
     std::vector<Entity*> units;
     for (int id : selection.ids) {
-        Entity* e = findEntity(id);
+        Entity* e = findEntity(game, world, id);
         if (e && e->alive && e->owner == owner && isUnit(e->type))
             units.push_back(e);
     }
@@ -178,20 +145,25 @@ static void groupMoveCore(const Selection& selection, int tx, int ty, bool attac
         }
     }
     for (int i = 0; i < N && i < (int)slots.size(); i++) {
-        if (attackMove) orderAttackMove(*units[i], slots[i].first, slots[i].second);
-        else            orderMove(*units[i], slots[i].first, slots[i].second);
+        if (attackMove) orderAttackMove(game, *units[i], slots[i].first, slots[i].second);
+        else            orderMove(game, *units[i], slots[i].first, slots[i].second);
     }
     emitStatusEvent(owner, attackMove ? "Attack-move in formation!" : "Group moving in formation...");
 }
 
-void orderGroupMove(const Selection& selection, int tx, int ty, int owner)        { groupMoveCore(selection, tx, ty, false, owner); }
-void orderGroupAttackMove(const Selection& selection, int tx, int ty, int owner)  { groupMoveCore(selection, tx, ty, true, owner); }
+void orderGroupMove(Game& game, const WorldIndex& world, const Selection& selection, int tx, int ty, int owner) {
+    groupMoveCore(game, world, selection, tx, ty, false, owner);
+}
 
-void orderGroupAttack(const Selection& selection, int tid, int owner) {
+void orderGroupAttackMove(Game& game, const WorldIndex& world, const Selection& selection, int tx, int ty, int owner) {
+    groupMoveCore(game, world, selection, tx, ty, true, owner);
+}
+
+void orderGroupAttack(Game& game, const WorldIndex& world, const Selection& selection, int tid, int owner) {
     for (int id : selection.ids) {
-        Entity* e = findEntity(id);
+        Entity* e = findEntity(game, world, id);
         if (e && e->alive && e->owner == owner && isUnit(e->type))
-            orderAttack(*e, tid);
+            orderAttack(game, world, *e, tid);
     }
     emitStatusEvent(owner, "Group attacking!");
 }

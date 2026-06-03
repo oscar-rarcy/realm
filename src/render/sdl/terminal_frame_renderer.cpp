@@ -1,4 +1,5 @@
 #include "render/sdl/sdl_terminal.h"
+#include "realm.h"
 #include "view_state.h"
 
 Color termBg() { return rgb(3, 5, 8); }
@@ -127,7 +128,7 @@ TerminalCell terminalMapCell(int mx, int my) {
     cell.fg = tile.visible[0] ? glyphColorForTerrain(tile, mx, my) : rgb(95, 95, 105);
     cell.bg = tile.visible[0] ? scale(terrainBg(tile, mx, my), 0.35f) : rgb(8, 9, 12);
 
-    Entity* ent = tile.visible[0] ? entityAt(mx, my) : nullptr;
+    Entity* ent = tile.visible[0] ? sdlEntityAt(mx, my) : nullptr;
     if (ent && ent->alive) {
         cell.ch = STATS[ent->type].glyph;
         cell.fg = ownerTermFg(ent->owner);
@@ -189,7 +190,7 @@ void terminalDrawTop(TerminalFrame& frame) {
     std::string weather = (g.weather == W_STORM) ? "Storm" : (g.weather == W_RAIN) ? "Rain" :
                           (g.weather == W_SNOW) ? "Snow" : "Clear";
     std::ostringstream right;
-    right << (getBrightness() > 0.5f ? "*" : "o") << " " << timeNameSafe()
+    right << (getBrightness(g) > 0.5f ? "*" : "o") << " " << timeNameSafe()
           << " " << seasonNameSafe() << " " << weather;
     int rx = std::max(0, frame.cols - (int)right.str().size() - 1);
     termPutString(frame, rx, 0, right.str(), termFg(), termBar());
@@ -240,7 +241,7 @@ void terminalDrawMinimap(TerminalFrame& frame, int panelX, int panelW) {
                 else { ch = '.'; fg = rgb(90, 135, 90); }
             }
             if (g.map[mapY][mapX].visible[0]) {
-                Entity* ent = entityAt(mapX, mapY);
+                Entity* ent = sdlEntityAt(mapX, mapY);
                 if (ent && ent->alive) {
                     ch = isBuilding(ent->type) ? '#' : '*';
                     fg = ownerTermFg(ent->owner);
@@ -304,7 +305,7 @@ void terminalDrawSelection(TerminalFrame& frame, int panelX, int panelW, int sta
         return;
     }
 
-    Entity* sel = findEntity(g.selectedId);
+    Entity* sel = sdlFindEntity(g.selectedId);
     if (!sel) {
         line("No selection", termDim());
         y++;
@@ -398,7 +399,7 @@ void terminalDrawBottom(TerminalFrame& frame) {
     if (g.mode == M_BUILD_SELECT)
         line = " BUILD: [H]ouse [B]arracks [S]table [T]ower [F]arm [W]all [G]ate [A]rmory [C]hurch [M]arket [K]Castle [L]umber [N]mine [I]mill [D]ock [Esc] ";
     else if (g.mode == M_TRAIN_SELECT)
-        line = trainPromptFor(findEntity(g.selectedId));
+        line = trainPromptFor(sdlFindEntity(g.selectedId));
     else if (g.mode == M_MARKET_TRADE)
         line = " MARKET: [G] 40g->30w  [W] 40w->30g  [F] 50g->30f  [V] 40f->30g  [Esc] ";
     else if (g.mode == M_PAUSED)
@@ -426,7 +427,7 @@ void registerTerminalKeyTokens(const TerminalFrame& frame) {
         line = " BUILD: [H]ouse [B]arracks [S]table [T]ower [F]arm [W]all [G]ate [A]rmory [C]hurch [M]arket [K]Castle [L]umber [N]mine [I]mill [D]ock [Esc] ";
         tokens = terminalBuildTokens();
     } else if (g.mode == M_TRAIN_SELECT) {
-        Entity* sel = findEntity(g.selectedId);
+        Entity* sel = sdlFindEntity(g.selectedId);
         line = trainPromptFor(sel);
         tokens = sel ? trainOptionTokensFor(sel->type) : std::vector<std::pair<std::string, int>>{{"Esc", 27}};
     } else if (g.mode == M_MARKET_TRADE) {
@@ -632,7 +633,7 @@ void drawAsciiMobileMiniMapText(SDL_Rect r) {
                 else { ch = '.'; fg = rgb(90, 135, 90); }
             }
             if (g.map[my][mx].visible[0]) {
-                Entity* ent = entityAt(mx, my);
+                Entity* ent = sdlEntityAt(mx, my);
                 if (ent && ent->alive) {
                     ch = isBuilding(ent->type) ? '#' : '*';
                     fg = ownerTermFg(ent->owner);

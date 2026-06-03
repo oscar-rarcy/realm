@@ -2,10 +2,6 @@
 
 // ============================================================
 // Research-aware combat stats.
-int unitAtk(const Entity& e) {
-    return unitAtk(g, e);
-}
-
 int unitAtk(const Game& game, const Entity& e) {
     int a = STATS[e.type].atk;
     int r = game.players[e.owner].research;
@@ -22,10 +18,6 @@ int unitAtk(const Game& game, const Entity& e) {
 }
 // Building-damage multiplier: catapults are siege specialists, everyone else
 // is bad at chewing through walls. Returns the damage actually applied.
-int damageVs(EntityType attacker, EntityType target, int rawDmg, int targetOwner) {
-    return damageVs(g, attacker, target, rawDmg, targetOwner);
-}
-
 int damageVs(const Game& game, EntityType attacker, EntityType target, int rawDmg, int targetOwner) {
     if ((target == E_WALL || target == E_GATE) && !isSiege(attacker)) return 0;
     if (attacker == E_SPEARMAN && target == E_KNIGHT) rawDmg += 14;
@@ -44,20 +36,12 @@ int damageVs(const Game& game, EntityType attacker, EntityType target, int rawDm
     if (attacker == E_CATAPULT) return (rawDmg * 3) / 2; // 1.5x
     return std::max(1, rawDmg / 2);                       // 0.5x, floor 1
 }
-int unitRange(const Entity& e) {
-    return unitRange(g, e);
-}
-
 int unitRange(const Game& game, const Entity& e) {
     int rng = STATS[e.type].range;
     int r = game.players[e.owner].research;
     if (e.type == E_ARCHER && (r & R_CROSSBOWS)) rng += 2;
     if (e.type == E_SPEARMAN && (r & R_PIKES)) rng += 1;
     return rng;
-}
-
-Entity* findNearestEnemy(Entity& e, int range) {
-    return findNearestEnemy(g, e, range);
 }
 
 Entity* findNearestEnemy(Game& game, Entity& e, int range) {
