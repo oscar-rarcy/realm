@@ -123,6 +123,10 @@ packs it into Emscripten's virtual filesystem at `/assets/fonts`. Save/load uses
 Emscripten's in-memory filesystem for now, so browser saves are not yet
 persistent after refresh.
 
+User preferences are separate from match saves. Browser preferences, such as the
+main-menu player colour and ASCII map-cell shape, use `localStorage` under
+`realm.settings.v1`.
+
 ## Web controls
 
 - `Q` resigns the active match and returns to the web main menu.

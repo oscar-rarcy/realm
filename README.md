@@ -32,10 +32,18 @@ C:\msys64
 Then double-click or run:
 
 ```text
-scripts\windows-build-and-run-gui.bat
+scripts\windows-gui-build-and-run.bat
 ```
 
 That script installs/checks the needed MSYS2 packages, builds the graphical game, and starts it.
+It uses an incremental rebuild by default. If you edited headers, switched build environments,
+or the build is acting strange, run a clean build with:
+
+```text
+scripts\windows-gui-build-and-run.bat --clean
+```
+
+The same `--clean` flag works with the other build-and-run helper scripts.
 
 For the local tileset lab, use:
 
@@ -118,7 +126,6 @@ Windows MSYS2 UCRT64 graphical build:
 
 ```sh
 pacman -S --needed mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-make mingw-w64-ucrt-x86_64-pkgconf mingw-w64-ucrt-x86_64-SDL2 mingw-w64-ucrt-x86_64-SDL2_ttf mingw-w64-ucrt-x86_64-libpng
-mingw32-make clean
 mingw32-make gfx
 ./bin/realm.exe
 ```
@@ -126,7 +133,6 @@ mingw32-make gfx
 Linux/macOS graphical build:
 
 ```sh
-make clean
 make gfx
 ./bin/realm-gfx
 ```
@@ -134,12 +140,13 @@ make gfx
 Linux/macOS terminal build:
 
 ```sh
-make clean
 make terminal
 ./bin/realm
 ```
 
 When switching between Windows/MSYS2 and WSL/Linux/macOS builds, run `make clean` or `mingw32-make clean` first. They share `build/obj`, and mixed object files can cause confusing errors.
+Also run clean after editing headers or changing compiler flags, because this simple Makefile
+does not track header dependencies.
 
 ## Web Build
 
@@ -223,6 +230,16 @@ During a match:
 - Terminal version: `V` saves, `L` loads.
 
 The default save file is `realm-save.txt`, which is ignored by git.
+
+## User Settings
+
+Realm keeps player preferences separate from match saves.
+
+For example, the player colour and ASCII map-cell shape chosen on the main menu
+are remembered for the next session. Player colour also applies when loading an
+older save. On desktop this is stored in your user profile, such as
+`%APPDATA%\Realm\settings.txt` on Windows. In the browser it is stored in the
+browser's local storage for the Realm site.
 
 ## Packaging
 

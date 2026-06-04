@@ -88,12 +88,20 @@ Units should remain mostly neutral. Put team colour only on high-readability, no
 - Peasant: tunic strip, belt sash, small shoulder cloth.
 - Militia: shield face, tabard stripe, helmet plume.
 - Archer: hood trim, quiver wrap, small shoulder sash.
-- Knight: shield, caparison, lance pennant, saddle cloth.
+- Knight: shield face, horse bridle/headstall/face straps, reins; saddle/saddle cloth only with Plate Helm; small lance pennant only with Iron Weapons; girth/belly strap stays dark brown leather and never blue.
 - Catapult/ram: small pennants, shield plaques, crew cloth, wheel hub mark.
 - Ships: sail panels, pennants, stern flag; hull stays brown/black.
 - Buildings: flags, awnings, banners, door cloths, shield signs, roof trim. Avoid colouring the whole building body.
 
 Neutral animals and neutral terrain objects must not use team masks.
+
+### Image-generation aspect ratios
+
+Default image-generation sheets use the **Square** preset at **1:1**.
+
+- Spearman/Pikes sheets use **Story** at **16:9** so long spear and pike silhouettes have horizontal room.
+- Knight cavalry sheets use **Portrait** at **4:3** by default so the horse and rider silhouette has more vertical room.
+- Knight Iron Weapons lance tiers use **Story** at **16:9** because lance states need extra horizontal room.
 
 ---
 
@@ -108,7 +116,7 @@ There are 29 renderable entity types plus `E_NONE`. All player-owned units/build
 | `E_PEASANT` | Peasant | 1×1 | worker, builder, gatherer, basic attacker | Hooded medieval labourer with tunic, belt, simple tool; neutral cloth/leather | tunic strip, belt sash, shoulder cloth | idle, walk, mine gold, chop wood, pick berries, build/scaffold hammering, tend farm, carry gold, carry wood, carry food, weak attack, dead, decayed skeleton |
 | `E_MILITIA` | Militia | 1×1 | melee infantry | Swordsman with simple helmet, round shield in team color, rough gambeson in team color | shield face, tabard stripe, plume | idle, walk, attack swing/thrust, hold-position, hit/alert, dead, decayed skeleton with armour and weapons |
 | `E_ARCHER` | Archer | 1×1 | ranged infantry; Crossbows research changes range | Bow/crossbow-ready archer with hood and quiver | hood trim, quiver wrap, shoulder sash | idle, walk, aim, release, reload; optional upgraded crossbow variant, dead, decayed skeleton with bow and quiver |
-| `E_KNIGHT` | Knight | 1×1 | fast heavy cavalry | Armoured rider on horse; should read as cavalry even at small size | shield, saddle cloth, pennant | idle, trot, charge/strike, hit/alert, dead, decayed skeleton with armour, horse gear, and weapon |
+| `E_KNIGHT` | Knight | 1×1 | fast heavy cavalry | Armoured rider on horse; should read as cavalry even at small size | shield face, horse bridle/headstall/face straps, reins; saddle/saddle cloth only with Plate Helm; small lance pennant only with Iron Weapons; girth/belly strap stays dark brown leather and never blue | idle, trot, charge/strike, hit/alert, dead, decayed skeleton with armour, horse gear, and weapon |
 | `E_CATAPULT` | Catapult | 1×1 logical; may overhang | siege ranged, splash, standoff | Wood-and-iron torsion/sling machine; exaggerated throwing arm | small pennants, side shield plaques, crew cloth | idle, roll, load, fire, recoil, damaged/alert, destroyed wreck, decayed wreckage |
 | `E_RAM` | Ram | 1×1 logical; may overhang | building-only siege | Covered battering ram with log snout, wheels, dark hide/wood cover | side shield plaques, pennant, cloth trim | idle, roll, impact/ramming, damaged/alert, destroyed wreck, decayed wreckage |
 | `E_FISHING_BOAT` | Fishing Boat | 1×1 water | gathers fish, returns to dock | Small brown skiff/canoe with net or fish line | tiny flag or sail patch | idle, row/sail, fish/net cast, carrying fish, destroyed wreck, decayed wreckage |
@@ -139,6 +147,8 @@ Buildings use multi-tile footprints from the stats table. The future tileset sho
 | `E_MINING_CAMP` | Mining Camp | 2×2 | gold drop-off | Mine hut, timber supports, ore carts, lantern | small banner, cart flag | complete, active/deposit, construction, ruin footprint |
 | `E_MILL` | Mill | 2×2 | food drop-off and enables farm harvest | Windmill or waterless hand-mill with grain sacks | sail/cloth accents, door banner | complete, operating, construction, ruin footprint |
 | `E_DOCK` | Dock | 2×2 | fish drop-off; trains naval units; must touch water | Wooden pier/boathouse that has land and water-facing pieces | flag, sail cloth, awning | complete, training, construction, shoreline variants, ruin footprint |
+| `E_WOODEN_BRIDGE` | Wooden Bridge | 1×1 | short player-built bridge over a single water tile; auto-oriented between opposite land banks | Simple wooden plank bridge laid across water with visible end boards landing on both banks | small red pennant or painted end marker | span_single_east_west, span_single_north_south, construction, damaged, broken |
+| `E_STONE_BRIDGE` | Stone Bridge | 1×1 | stronger player-built bridge segment; can bridge one water tile alone or join two half-spans across a two-tile gap | Low stone arch or slab bridge segment with distinct half-span and joined-span readings | small red pennant, keystone paint, or end marker | span_single_east_west, span_single_north_south, span_half_east_west, span_half_north_south, span_joined_east_west, span_joined_north_south, construction, damaged, broken |
 
 #### Building slicing rules
 
@@ -393,7 +403,7 @@ The build and train options actually exposed by input should drive icon producti
 
 Player build menu includes:
 
-`House`, `Barracks`, `Stable`, `Tower`, `Farm`, `Wall`, `Gate`, `Blacksmith`, `Church`, `Market`, `Castle`, `Lumber Camp`, `Mining Camp`, `Mill`, `Dock`.
+`House`, `Barracks`, `Stable`, `Tower`, `Farm`, `Wall`, `Gate`, `Blacksmith`, `Church`, `Market`, `Castle`, `Lumber Camp`, `Mining Camp`, `Mill`, `Dock`, `Wooden Bridge`, `Stone Bridge`.
 
 `Town Hall` exists, spawns at game start, and AI can build forward town halls, but it is not currently in the player build menu.
 
@@ -466,6 +476,8 @@ Required building prefabs:
 - Mining Camp 2×2
 - Mill 2×2
 - Dock 2×2 shore variants
+- Wooden Bridge 1×1 single-water span, horizontal and vertical orientations
+- Stone Bridge 1×1 single, half-span, and joined-span states, horizontal and vertical orientations
 
 For each: `complete`, `construction_0`, `construction_1`, `construction_2`, `damaged`, and `snowcap_light/heavy` overlay. For area ≥4, include ruin footprint.
 

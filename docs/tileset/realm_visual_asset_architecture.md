@@ -444,6 +444,42 @@ This keeps the map looking settled without requiring a unique ground tile for ev
 
 Final game-loadable tileset assets live under `assets/tiles/`. `assets/tiles/entities/<entity>/manifest.json` and its referenced `*_base.png` / `*_teammask.png` files are the runtime contract.
 
+## Runtime Placement Contract
+
+Any runtime asset that is not a full tile-space ground should declare how it is positioned. The normal rule is:
+
+```text
+source-pixel anchor -> projected world or screen anchor -> derived draw rectangle
+```
+
+Callers should not guess sprite rectangles. They should provide the semantic anchor point, such as a tile centre, footprint origin, projectile world position, or screen UI point. The renderer derives the draw rectangle from the manifest placement and selected frame.
+
+Actor-like manifests use a top-level `placement` block:
+
+```json
+{
+  "projection": "upright_world",
+  "anchor_kind": "feet",
+  "source_size": [48, 48],
+  "anchor": [24, 39],
+  "scale_policy": "entity_tile_zoom_1_55",
+  "footprint": [1, 1],
+  "depth": "entity"
+}
+```
+
+Frame entries may override `anchor` only when that frame genuinely differs. `final_bbox` and `anchor_offset` are QA metadata, not placement instructions.
+
+Accepted upright assets must pass the generic placement verifier:
+
+```powershell
+python .agents\skills\realm-tileset-from-images\scripts\realm_tileset.py verify-placement `
+  --manifest assets\tiles\entities\<slug>\manifest.json `
+  --review-out build\tileset-review\<slug>-placement
+```
+
+The review output includes a bullseye placement sheet that proves the manifest anchor lands on the intended tile/world anchor.
+
 Generated image-planning and production-workspace artifacts live under:
 
 - `art/tiles/image-spec`: human-readable Markdown image specifications and generation prompts.
