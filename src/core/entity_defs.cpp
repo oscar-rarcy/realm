@@ -33,6 +33,8 @@ const EntityStats STATS[E_TYPE_COUNT] = {
     {"Wolf",       'w',  35, 4,1,2,8,  0,  0,  0,  0, 1,1,  0,0, false, TR_WILD_ANIMAL|TR_HOSTILE_WILDLIFE},
     {"Sheep",      's',  12, 0,0,3,0,  0,  0,  0,  0, 1,1,  0,0, false, TR_WILD_ANIMAL},
     {"Boar",       'o',  25, 3,1,2,6,  0,  0,  0,  0, 1,1,  0,0, false, TR_WILD_ANIMAL|TR_HOSTILE_WILDLIFE},
+    {"Wooden Bridge",'=',60, 0,0,0,0,  0, 25,  0, 20, 1,1,  0,0, true, 0},
+    {"Stone Bridge",'=',140, 0,0,0,0, 30, 60,  0, 35, 1,1,  0,0, true, 0},
 };
 
 static_assert(sizeof(STATS) / sizeof(STATS[0]) == E_TYPE_COUNT, "STATS must match EntityType");
@@ -40,6 +42,10 @@ static_assert(sizeof(STATS) / sizeof(STATS[0]) == E_TYPE_COUNT, "STATS must matc
 const EntityDefinition& entityDef(EntityType type) {
     if (type < E_NONE || type >= E_TYPE_COUNT) return STATS[E_NONE];
     return STATS[type];
+}
+
+bool isCompletedBridge(const Entity& e) {
+    return isBridge(e.type) && e.alive && !e.underConstruction && e.hp > 0;
 }
 
 BuildingVisualState buildingVisualState(const Entity& e) {

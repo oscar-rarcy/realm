@@ -101,6 +101,10 @@ bool    isConcealingTile(int x,int y);
 bool    isConcealingTile(const Game& game,int x,int y);
 int     movementPenaltyForTile(const Tile& tile);
 BuildingVisualState buildingVisualState(const Entity& e);
+bool    isCompletedBridge(const Entity& e);
+bool    isCompletedBridgeAt(const Game& game,const WorldIndex& world,int x,int y);
+bool    isLandPassableWithBridges(const Game& game,const WorldIndex& world,int x,int y);
+bool    buildingBlocksLandMovement(const Entity& e);
 AnimalCarcassVisualState animalCarcassVisualState(const Entity& e);
 TransportVisualState transportVisualState(const Entity& e);
 const char* buildingVisualStateName(BuildingVisualState s);
@@ -122,6 +126,10 @@ bool    canPlace(const Game& game,const WorldIndex& world,EntityType type,int x,
 void    updateSupply(Game& game,int owner);
 int     reservedSupply(const Game& game,int owner);
 int     spawnEntity(Game& game,EntityType type,int owner,int x,int y,bool built=true);
+int     normalizePlayerColorHue(int hue);
+int     playerColorHueForOwner(int humanHue,int numAIs,int owner);
+void    setHumanPlayerColorHue(Game& game,int hue);
+void    configurePlayerColorHues(Game& game,int numAIs);
 
 // projectiles / pathfinding
 void spawnProjectile(Game& game,int sx,int sy,int tx,int ty,char gl,int col,ProjectileType type=PT_ARROW);

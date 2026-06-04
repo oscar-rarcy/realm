@@ -293,7 +293,7 @@ const char* actionTargetRelationId(ActionTargetRelation relation) {
 
 EntityType entityTypeForAnimationSlug(const char* slug) {
     if (slug && std::strcmp(slug, "villager") == 0) return E_PEASANT;
-    for (int i = E_PEASANT; i <= E_BOAR; ++i) {
+    for (int i = E_PEASANT; i < E_TYPE_COUNT; ++i) {
         EntityType type = (EntityType)i;
         if (slug && std::strcmp(slug, entitySlug(type)) == 0) return type;
     }
