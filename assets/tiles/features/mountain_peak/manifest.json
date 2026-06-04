@@ -1,0 +1,12 @@
+{
+  "schema": "realm.feature_tileset.placeholder.v1",
+  "feature": "mountain_peak",
+  "placeholder": true,
+  "temporary": true,
+  "states": {
+    "default": {
+      "base": "default/base.png"
+    }
+  },
+  "notes": "Temporary runtime placeholder feature art; replace with authored tileset layers."
+}

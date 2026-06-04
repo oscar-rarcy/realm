@@ -67,8 +67,10 @@ pick_make_cmd() {
 
 MAKE_CMD="$(pick_make_cmd)"
 GUI_TARGET="gfx"
+GUI_BINARY="./bin/realm-gfx"
 if [[ "${OS:-}" == "Windows_NT" ]]; then
   GUI_TARGET="bin/realm.exe"
+  GUI_BINARY="./bin/realm.exe"
 fi
 
 echo "Running architecture check..."
@@ -78,6 +80,8 @@ echo "Running clean native validation with $MAKE_CMD..."
 "$MAKE_CMD" clean
 "$MAKE_CMD" test
 "$MAKE_CMD" "$GUI_TARGET"
+echo "Checking tileset asset registry..."
+"$GUI_BINARY" --dump-missing-tileset-assets
 
 case "$WEB_MODE" in
   1|true|TRUE|yes|YES)

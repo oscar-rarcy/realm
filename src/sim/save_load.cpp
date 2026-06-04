@@ -31,6 +31,30 @@ static std::string lowerAssetSlug(const std::string& text) {
     return out.empty() ? "unknown" : out;
 }
 
+static bool featureUsesHarvestStates(FeatureType feature) {
+    switch (feature) {
+        case F_FOREST:
+        case F_PINE:
+        case F_PALM:
+        case F_DEAD_TREE:
+        case F_BERRY_BUSH:
+        case F_WHEAT_CROP:
+        case F_FISH_SHOAL:
+        case F_GOLD_DEPOSIT:
+            return true;
+        default:
+            return false;
+    }
+}
+
+static std::vector<const char*> featureAuditStates(FeatureType feature) {
+    if (featureUsesHarvestStates(feature)) {
+        return {"full", "mostly_full", "mostly_empty", "depleted"};
+    }
+    if (feature == F_CASTLE_GATE) return {"open", "closed", "locked"};
+    return {"default"};
+}
+
 int dumpMissingTilesetAssets() {
     namespace fs = std::filesystem;
     int missing = 0;
@@ -57,7 +81,17 @@ int dumpMissingTilesetAssets() {
         if (parts.feature != F_NONE && !sawFeature[(int)parts.feature]) {
             sawFeature[(int)parts.feature] = true;
             std::string name = featureTypeName(parts.feature);
-            report("feature", name, fs::path("assets") / "tiles" / "features" / name / "manifest.json");
+            fs::path featureRoot = fs::path("assets") / "tiles" / "features" / name;
+            report("feature", name, featureRoot / "manifest.json");
+            for (const char* state : featureAuditStates(parts.feature)) {
+                fs::path stateRoot = featureRoot / state;
+                if (featureConceals(parts.feature)) {
+                    report("feature", name + "/" + state + "/back", stateRoot / "back.png");
+                    report("feature", name + "/" + state + "/front_occluder", stateRoot / "front_occluder.png");
+                } else {
+                    report("feature", name + "/" + state, stateRoot / "base.png");
+                }
+            }
         }
         for (VisualDecalType decal : parts.decals) {
             if (sawDecal[(int)decal]) continue;
@@ -75,14 +109,34 @@ int dumpMissingTilesetAssets() {
     for (int feature = (int)F_FOREST; feature <= (int)F_CASTLE_GATE; ++feature) {
         if (sawFeature[feature]) continue;
         sawFeature[feature] = true;
-        std::string name = featureTypeName((FeatureType)feature);
-        report("feature", name, fs::path("assets") / "tiles" / "features" / name / "manifest.json");
+        FeatureType featureType = (FeatureType)feature;
+        std::string name = featureTypeName(featureType);
+        fs::path featureRoot = fs::path("assets") / "tiles" / "features" / name;
+        report("feature", name, featureRoot / "manifest.json");
+        for (const char* state : featureAuditStates(featureType)) {
+            fs::path stateRoot = featureRoot / state;
+            if (featureConceals(featureType)) {
+                report("feature", name + "/" + state + "/back", stateRoot / "back.png");
+                report("feature", name + "/" + state + "/front_occluder", stateRoot / "front_occluder.png");
+            } else {
+                report("feature", name + "/" + state, stateRoot / "base.png");
+            }
+        }
     }
     for (int decal = (int)VD_ROAD; decal <= (int)VD_SNOW_TRAMPLED_PATH; ++decal) {
         if (sawDecal[decal]) continue;
         sawDecal[decal] = true;
         std::string name = visualDecalName((VisualDecalType)decal);
         report("decal", name, fs::path("assets") / "tiles" / "decals" / (name + ".png"));
+    }
+
+    const char* projectileSlugs[] = {
+        "arrow", "crossbow_bolt", "flaming_arrow", "tower_bolt",
+        "warship_arrow_volley", "catapult_boulder", "trebuchet_boulder"
+    };
+    for (const char* projectile : projectileSlugs) {
+        report("projectile", projectile,
+               fs::path("assets") / "tiles" / "projectiles" / projectile / "manifest.json");
     }
 
     const char* effects[] = {
@@ -103,6 +157,8 @@ int dumpMissingTilesetAssets() {
     for (int type = E_PEASANT; type <= E_BOAR; ++type) {
         EntityType entityType = (EntityType)type;
         std::string slug = lowerAssetSlug(STATS[entityType].name ? STATS[entityType].name : "unknown");
+        fs::path entityRoot = fs::path("assets") / "tiles" / "entities" / slug;
+        report("entity", slug, entityRoot / "manifest.json");
         int count = entityActionAnimationSpecCount(entityType);
         for (int i = 0; i < count; ++i) {
             const EntityActionAnimationSpec* spec = entityActionAnimationSpecAt(entityType, i);
@@ -112,8 +168,7 @@ int dumpMissingTilesetAssets() {
                 for (int f = 0; f < std::max(1, spec->frameCount); ++f) {
                     std::ostringstream frame;
                     frame << "frame_" << (f < 10 ? "0" : "") << f << "_base.png";
-                    fs::path path = fs::path("assets") / "tiles" / "entities" / slug
-                        / spec->action / dir / frame.str();
+                    fs::path path = entityRoot / spec->action / dir / frame.str();
                     report("entity", slug + "/" + spec->action + "/" + dir, path);
                 }
             }
@@ -121,7 +176,7 @@ int dumpMissingTilesetAssets() {
     }
 
     std::cout << "missing_tileset_assets=" << missing << "\n";
-    return 0;
+    return missing == 0 ? 0 : 1;
 }
 
 bool saveGame(Game& game, const std::string& path) {

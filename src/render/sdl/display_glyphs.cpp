@@ -3,6 +3,8 @@
 #include "core/world_index.h"
 #include "render/entity_visual_defs.h"
 
+#include <filesystem>
+
 const char* terrainGlyph(const Tile& t, int x, int y) {
     unsigned h = hash2(x, y, 1200u + (unsigned)g.tick/16u);
     switch (t.terrain) {
@@ -79,6 +81,42 @@ struct EntitySpriteSpec {
     bool holdLast = false;
 };
 
+[[maybe_unused]] static int animationFrameForEntity(const Entity& e, const EntityActionAnimationSpec* anim,
+                                                    int explicitFrame);
+
+static std::string entityFrameAssetPath(EntityType type, const std::string& action,
+                                        const std::string& direction, int frameIndex) {
+    std::ostringstream ss;
+    ss << "frame_";
+    if (frameIndex < 10) ss << '0';
+    ss << std::max(0, frameIndex) << "_base.png";
+    return (std::filesystem::path("assets") / "tiles" / "entities" / entityAssetSlug(type)
+        / action / direction / ss.str()).generic_string();
+}
+
+static std::filesystem::path groundTilePath(GroundType ground) {
+    return std::filesystem::path("assets") / "tiles" / "grounds"
+        / (std::string(groundTypeName(ground)) + ".png");
+}
+
+static std::filesystem::path featureManifestPath(FeatureType feature) {
+    return std::filesystem::path("assets") / "tiles" / "features"
+        / featureTypeName(feature) / "manifest.json";
+}
+
+static std::filesystem::path decalTilePath(VisualDecalType decal) {
+    return std::filesystem::path("assets") / "tiles" / "decals"
+        / (std::string(visualDecalName(decal)) + ".png");
+}
+
+static bool runtimeAssetExists(const std::filesystem::path& path) {
+    if (std::filesystem::exists(path)) return true;
+#if defined(REALM_WEB)
+    if (!path.is_absolute()) return std::filesystem::exists(std::filesystem::path("/") / path);
+#endif
+    return false;
+}
+
 int displayFrameMs(const EntityActionAnimationSpec& anim) {
     if (anim.frameCount <= 0) return 250;
     for (int i = 0; i < anim.frameCount; ++i) {
@@ -94,6 +132,7 @@ EntitySpriteSpec entitySpriteSpec(const Game& game, const WorldIndex& world, con
     if (const EntityActionAnimationSpec* anim = entityActionAnimationSpecFor(game, world, e)) {
         std::string action = anim->action;
         std::string direction = entityAnimationDirectionBucket(e);
+        int frameIndex = animationFrameForEntity(e, anim, -1);
         spec.frameMs = displayFrameMs(*anim);
         spec.frames = anim->frameCount;
         spec.loop = anim->loop;
@@ -101,22 +140,18 @@ EntitySpriteSpec entitySpriteSpec(const Game& game, const WorldIndex& world, con
         spec.description = anim->description;
         spec.key = slug + "/" + action + "/" + direction;
         spec.displayName = name + " " + action + " " + direction;
-        spec.suggestedAsset = "assets/tiles/entities/" + spec.key + "/frame_00_base.png";
+        spec.suggestedAsset = entityFrameAssetPath(e.type, action, direction, frameIndex);
         return spec;
     }
     spec.key = slug;
     spec.displayName = name;
-    spec.suggestedAsset = "assets/tiles/entities/" + slug + ".png";
+    spec.suggestedAsset = (std::filesystem::path("assets") / "tiles" / "entities" / slug
+        / "manifest.json").generic_string();
     return spec;
 }
 
-bool hasEntityImageTile(EntityType type) {
-#if !defined(REALM_WEB)
-    return tilesetEntityFrameExists(type, "idle", "front", 0);
-#else
-    (void)type;
-    return false;
-#endif
+bool hasEntityImageTile(const Game& game, const WorldIndex& world, const Entity& e) {
+    return runtimeAssetExists(std::filesystem::path(entitySpriteSpec(game, world, e).suggestedAsset));
 }
 
 std::string terrainAssetKey(Terrain terrain) {
@@ -138,26 +173,18 @@ std::string effectAssetKey(const std::string& effectName) {
 }
 
 bool hasTerrainImageTile(Terrain terrain) {
-#if !defined(REALM_WEB)
     Tile tile{};
     tile.terrain = terrain;
     tile.biome = (terrain == T_SNOW || terrain == T_PINE) ? B_SNOW : B_TEMPERATE;
     tile.resources = 100;
     VisualTileParts parts = visualPartsForTile(tile);
-    namespace fs = std::filesystem;
-    fs::path ground = fs::path("assets") / "tiles" / "grounds" / (std::string(groundTypeName(parts.ground)) + ".png");
-    if (!fs::exists(ground)) return false;
+    if (!runtimeAssetExists(groundTilePath(parts.ground))) return false;
     if (parts.feature == F_NONE) return true;
-    fs::path feature = fs::path("assets") / "tiles" / "features" / featureTypeName(parts.feature) / "manifest.json";
-    return fs::exists(feature);
-#else
-    (void)terrain;
-    return false;
-#endif
+    return runtimeAssetExists(featureManifestPath(parts.feature));
 }
 
 void logMissingEntityImageTile(const Game& game, const WorldIndex& world, const Entity& e) {
-    if (hasEntityImageTile(e.type)) return;
+    if (hasEntityImageTile(game, world, e)) return;
     EntitySpriteSpec spec = entitySpriteSpec(game, world, e);
     logMissingTile("entity", entityAssetKey(e.type) + "." + spec.key, spec.displayName,
                    std::string(1, STATS[e.type].glyph),
@@ -183,19 +210,25 @@ void logMissingTerrainImageTile(Terrain t) {
 void logMissingVisualTileParts(const Tile& tile) {
     VisualTileParts parts = visualPartsForTile(tile);
     std::string ground = groundTypeName(parts.ground);
-    logMissingTile("ground", std::string("ground.") + ground, ground,
-                   std::string(1, terrainAsciiGlyph(tile.terrain)),
-                   "assets/tiles/grounds/" + ground + ".png");
+    if (!runtimeAssetExists(groundTilePath(parts.ground))) {
+        logMissingTile("ground", std::string("ground.") + ground, ground,
+                       std::string(1, terrainAsciiGlyph(tile.terrain)),
+                       "assets/tiles/grounds/" + ground + ".png");
+    }
     if (parts.feature != F_NONE) {
         std::string feature = featureTypeName(parts.feature);
         std::string fallback = featureConceals(parts.feature) ? "front/back symbolic occluder" : terrainGlyph(tile, 0, 0);
-        logMissingTile("feature", std::string("feature.") + feature, feature, fallback,
-                       "assets/tiles/features/" + feature + "/manifest.json");
+        if (!runtimeAssetExists(featureManifestPath(parts.feature))) {
+            logMissingTile("feature", std::string("feature.") + feature, feature, fallback,
+                           "assets/tiles/features/" + feature + "/manifest.json");
+        }
     }
     for (VisualDecalType decal : parts.decals) {
         std::string name = visualDecalName(decal);
-        logMissingTile("decal", std::string("decal.") + name, name, "procedural wear/decal fallback",
-                       "assets/tiles/decals/" + name + ".png");
+        if (!runtimeAssetExists(decalTilePath(decal))) {
+            logMissingTile("decal", std::string("decal.") + name, name, "procedural wear/decal fallback",
+                           "assets/tiles/decals/" + name + ".png");
+        }
     }
 }
 
@@ -511,5 +544,3 @@ void applyTerrainTexture(SDL_Rect r, const Tile& t, int x, int y) {
         default: break;
     }
 }
-
-

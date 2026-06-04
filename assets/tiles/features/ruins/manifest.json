@@ -1,0 +1,18 @@
+{
+  "schema": "realm.feature_tileset.placeholder.v1",
+  "feature": "ruins",
+  "placeholder": true,
+  "temporary": true,
+  "states": {
+    "default": {
+      "base": "default/base.png"
+    },
+    "damaged": {
+      "base": "damaged/base.png"
+    },
+    "broken": {
+      "base": "broken/base.png"
+    }
+  },
+  "notes": "Temporary runtime placeholder feature art; replace with authored tileset layers."
+}

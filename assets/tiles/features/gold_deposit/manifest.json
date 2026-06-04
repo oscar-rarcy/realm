@@ -1,0 +1,21 @@
+{
+  "schema": "realm.feature_tileset.placeholder.v1",
+  "feature": "gold_deposit",
+  "placeholder": true,
+  "temporary": true,
+  "states": {
+    "full": {
+      "base": "full/base.png"
+    },
+    "mostly_full": {
+      "base": "mostly_full/base.png"
+    },
+    "mostly_empty": {
+      "base": "mostly_empty/base.png"
+    },
+    "depleted": {
+      "base": "depleted/base.png"
+    }
+  },
+  "notes": "Temporary runtime placeholder feature art; replace with authored tileset layers."
+}

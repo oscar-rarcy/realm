@@ -1,0 +1,25 @@
+{
+  "schema": "realm.feature_tileset.placeholder.v1",
+  "feature": "pine",
+  "placeholder": true,
+  "temporary": true,
+  "states": {
+    "full": {
+      "back": "full/back.png",
+      "front_occluder": "full/front_occluder.png"
+    },
+    "mostly_full": {
+      "back": "mostly_full/back.png",
+      "front_occluder": "mostly_full/front_occluder.png"
+    },
+    "mostly_empty": {
+      "back": "mostly_empty/back.png",
+      "front_occluder": "mostly_empty/front_occluder.png"
+    },
+    "depleted": {
+      "back": "depleted/back.png",
+      "front_occluder": "depleted/front_occluder.png"
+    }
+  },
+  "notes": "Temporary runtime placeholder feature art; replace with authored tileset layers."
+}

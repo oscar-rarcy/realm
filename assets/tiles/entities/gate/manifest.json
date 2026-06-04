@@ -1,0 +1,88 @@
+{
+  "schema": "realm.entity_tileset.v1",
+  "entity": "gate",
+  "sprite_size": 48,
+  "placeholder": true,
+  "temporary": true,
+  "directions": [
+    "south"
+  ],
+  "actions": {
+    "closed": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "closed",
+      "directions": {
+        "south": [
+          {
+            "base": "placeholder/south/frame_00_base.png",
+            "team_mask": "placeholder/south/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "open": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "open",
+      "directions": {
+        "south": [
+          {
+            "base": "placeholder/south/frame_00_base.png",
+            "team_mask": "placeholder/south/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "locked_open": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "locked-open",
+      "directions": {
+        "south": [
+          {
+            "base": "placeholder/south/frame_00_base.png",
+            "team_mask": "placeholder/south/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "locked_closed": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "locked-closed",
+      "directions": {
+        "south": [
+          {
+            "base": "placeholder/south/frame_00_base.png",
+            "team_mask": "placeholder/south/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "construction": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "construction",
+      "directions": {
+        "south": [
+          {
+            "base": "placeholder/south/frame_00_base.png",
+            "team_mask": "placeholder/south/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    }
+  },
+  "notes": "Temporary runtime placeholder entity tileset; replace with authored action frames."
+}

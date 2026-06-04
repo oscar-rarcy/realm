@@ -1,0 +1,103 @@
+{
+  "schema": "realm.entity_tileset.v1",
+  "entity": "wall",
+  "sprite_size": 48,
+  "placeholder": true,
+  "temporary": true,
+  "directions": [
+    "south"
+  ],
+  "actions": {
+    "straight": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "straight",
+      "directions": {
+        "south": [
+          {
+            "base": "placeholder/south/frame_00_base.png",
+            "team_mask": "placeholder/south/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "corner": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "corner",
+      "directions": {
+        "south": [
+          {
+            "base": "placeholder/south/frame_00_base.png",
+            "team_mask": "placeholder/south/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "t_junction": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "T-junction",
+      "directions": {
+        "south": [
+          {
+            "base": "placeholder/south/frame_00_base.png",
+            "team_mask": "placeholder/south/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "cross": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "cross",
+      "directions": {
+        "south": [
+          {
+            "base": "placeholder/south/frame_00_base.png",
+            "team_mask": "placeholder/south/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "end_cap": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "end-cap",
+      "directions": {
+        "south": [
+          {
+            "base": "placeholder/south/frame_00_base.png",
+            "team_mask": "placeholder/south/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "construction": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "construction",
+      "directions": {
+        "south": [
+          {
+            "base": "placeholder/south/frame_00_base.png",
+            "team_mask": "placeholder/south/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    }
+  },
+  "notes": "Temporary runtime placeholder entity tileset; replace with authored action frames."
+}

@@ -135,6 +135,7 @@ fi
 
 mkdir -p "$BUILD_DIR" "$DIST_DIR" "$ASSET_DIR" "$FONT_DIR"
 find "$DIST_DIR" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+rm -rf "$ASSET_DIR/tiles"
 
 copy_first_font() {
   local dest="$1"
@@ -172,6 +173,11 @@ fi
 if [[ -f assets/app-icon.svg ]]; then
   mkdir -p "$ASSET_DIR"
   cp assets/app-icon.svg "$ASSET_DIR/app-icon.svg"
+fi
+
+if [[ -d assets/tiles ]]; then
+  mkdir -p "$ASSET_DIR"
+  cp -R assets/tiles "$ASSET_DIR/tiles"
 fi
 
 COMMON_SOURCES=(

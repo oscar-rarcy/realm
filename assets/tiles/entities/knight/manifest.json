@@ -1,0 +1,814 @@
+{
+  "schema": "realm.entity_tileset.v1",
+  "entity": "knight",
+  "sprite_size": 48,
+  "placeholder": true,
+  "temporary": true,
+  "directions": [
+    "front",
+    "back"
+  ],
+  "actions": {
+    "basic_weapons__open_helmet__idle": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Basic weapons + Open Helmet: idle; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "basic_weapons__open_helmet__trot": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Basic weapons + Open Helmet: trot; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "basic_weapons__open_helmet__charge_strike": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Basic weapons + Open Helmet: charge/strike; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "basic_weapons__open_helmet__hit_alert": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Basic weapons + Open Helmet: hit/alert; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "basic_weapons__open_helmet__dead": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Basic weapons + Open Helmet: dead; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "basic_weapons__open_helmet__decayed_skeleton_with_armour_horse_gear_and_weapon": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Basic weapons + Open Helmet: decayed skeleton with armour horse gear and weapon; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "basic_weapons__plate_helm__idle": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Basic weapons + Plate Helm: idle; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "basic_weapons__plate_helm__trot": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Basic weapons + Plate Helm: trot; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "basic_weapons__plate_helm__charge_strike": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Basic weapons + Plate Helm: charge/strike; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "basic_weapons__plate_helm__hit_alert": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Basic weapons + Plate Helm: hit/alert; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "basic_weapons__plate_helm__dead": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Basic weapons + Plate Helm: dead; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "basic_weapons__plate_helm__decayed_skeleton_with_armour_horse_gear_and_weapon": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Basic weapons + Plate Helm: decayed skeleton with armour horse gear and weapon; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "iron_weapons__open_helmet__idle": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Iron Weapons + Open Helmet: idle; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "iron_weapons__open_helmet__trot": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Iron Weapons + Open Helmet: trot; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "iron_weapons__open_helmet__charge_strike": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Iron Weapons + Open Helmet: charge/strike; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "iron_weapons__open_helmet__hit_alert": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Iron Weapons + Open Helmet: hit/alert; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "iron_weapons__open_helmet__dead": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Iron Weapons + Open Helmet: dead; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "iron_weapons__open_helmet__decayed_skeleton_with_armour_horse_gear_and_weapon": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Iron Weapons + Open Helmet: decayed skeleton with armour horse gear and weapon; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "iron_weapons__plate_helm__idle": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Iron Weapons + Plate Helm: idle; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "iron_weapons__plate_helm__trot": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Iron Weapons + Plate Helm: trot; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "iron_weapons__plate_helm__charge_strike": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Iron Weapons + Plate Helm: charge/strike; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "iron_weapons__plate_helm__hit_alert": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Iron Weapons + Plate Helm: hit/alert; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "iron_weapons__plate_helm__dead": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Iron Weapons + Plate Helm: dead; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "iron_weapons__plate_helm__decayed_skeleton_with_armour_horse_gear_and_weapon": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Iron Weapons + Plate Helm: decayed skeleton with armour horse gear and weapon; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "death": {
+      "frame_ms": 30000,
+      "loop": false,
+      "hold_last": true,
+      "description": "Runtime-compatible death placeholder frames.",
+      "directions": {
+        "front": [
+          {
+            "base": "death/front/frame_00_base.png",
+            "team_mask": "death/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "death/front/frame_01_base.png",
+            "team_mask": "death/front/frame_01_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "death/back/frame_00_base.png",
+            "team_mask": "death/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "death/back/frame_01_base.png",
+            "team_mask": "death/back/frame_01_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    }
+  },
+  "notes": "Temporary runtime placeholder entity tileset; replace with authored action frames."
+}

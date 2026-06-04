@@ -1,0 +1,103 @@
+{
+  "schema": "realm.entity_tileset.v1",
+  "entity": "farm",
+  "sprite_size": 48,
+  "placeholder": true,
+  "temporary": true,
+  "directions": [
+    "south"
+  ],
+  "actions": {
+    "sowing": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "sowing",
+      "directions": {
+        "south": [
+          {
+            "base": "placeholder/south/frame_00_base.png",
+            "team_mask": "placeholder/south/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "growing": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "growing",
+      "directions": {
+        "south": [
+          {
+            "base": "placeholder/south/frame_00_base.png",
+            "team_mask": "placeholder/south/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "ripe": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "ripe",
+      "directions": {
+        "south": [
+          {
+            "base": "placeholder/south/frame_00_base.png",
+            "team_mask": "placeholder/south/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "tended": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "tended",
+      "directions": {
+        "south": [
+          {
+            "base": "placeholder/south/frame_00_base.png",
+            "team_mask": "placeholder/south/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "winter_dead_snowed": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "winter-dead/snowed",
+      "directions": {
+        "south": [
+          {
+            "base": "placeholder/south/frame_00_base.png",
+            "team_mask": "placeholder/south/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "depleted_dead": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "depleted/dead",
+      "directions": {
+        "south": [
+          {
+            "base": "placeholder/south/frame_00_base.png",
+            "team_mask": "placeholder/south/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    }
+  },
+  "notes": "Temporary runtime placeholder entity tileset; replace with authored action frames."
+}

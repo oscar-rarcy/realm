@@ -1,0 +1,73 @@
+{
+  "schema": "realm.entity_tileset.v1",
+  "entity": "church",
+  "sprite_size": 48,
+  "placeholder": true,
+  "temporary": true,
+  "directions": [
+    "south"
+  ],
+  "actions": {
+    "complete": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "complete",
+      "directions": {
+        "south": [
+          {
+            "base": "placeholder/south/frame_00_base.png",
+            "team_mask": "placeholder/south/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "healing_aura": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "healing aura",
+      "directions": {
+        "south": [
+          {
+            "base": "placeholder/south/frame_00_base.png",
+            "team_mask": "placeholder/south/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "construction": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "construction",
+      "directions": {
+        "south": [
+          {
+            "base": "placeholder/south/frame_00_base.png",
+            "team_mask": "placeholder/south/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "ruin_footprint": {
+      "frame_ms": 250,
+      "loop": false,
+      "hold_last": true,
+      "description": "ruin footprint",
+      "directions": {
+        "south": [
+          {
+            "base": "placeholder/south/frame_00_base.png",
+            "team_mask": "placeholder/south/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    }
+  },
+  "notes": "Temporary runtime placeholder entity tileset; replace with authored action frames."
+}

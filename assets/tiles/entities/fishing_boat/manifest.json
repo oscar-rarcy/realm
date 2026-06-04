@@ -1,0 +1,238 @@
+{
+  "schema": "realm.entity_tileset.v1",
+  "entity": "fishing_boat",
+  "sprite_size": 48,
+  "placeholder": true,
+  "temporary": true,
+  "directions": [
+    "front",
+    "back"
+  ],
+  "actions": {
+    "idle": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "idle",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "row_sail": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "row/sail",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "fish_net_cast": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "fish/net cast",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "carrying_fish": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "carrying fish",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "destroyed_wreck": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "destroyed wreck",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "decayed_wreckage": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "decayed wreckage",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "death": {
+      "frame_ms": 30000,
+      "loop": false,
+      "hold_last": true,
+      "description": "Runtime-compatible death placeholder frames.",
+      "directions": {
+        "front": [
+          {
+            "base": "death/front/frame_00_base.png",
+            "team_mask": "death/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "death/front/frame_01_base.png",
+            "team_mask": "death/front/frame_01_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "death/back/frame_00_base.png",
+            "team_mask": "death/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "death/back/frame_01_base.png",
+            "team_mask": "death/back/frame_01_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    }
+  },
+  "notes": "Temporary runtime placeholder entity tileset; replace with authored action frames."
+}

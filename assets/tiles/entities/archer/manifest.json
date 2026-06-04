@@ -1,0 +1,494 @@
+{
+  "schema": "realm.entity_tileset.v1",
+  "entity": "archer",
+  "sprite_size": 48,
+  "placeholder": true,
+  "temporary": true,
+  "directions": [
+    "front",
+    "back"
+  ],
+  "actions": {
+    "self_bow__idle": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Self Bow: idle; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "self_bow__walk": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Self Bow: walk; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "self_bow__aim": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Self Bow: aim; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "self_bow__release": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Self Bow: release; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "self_bow__reload": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Self Bow: reload; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "self_bow__dead": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Self Bow: dead; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "self_bow__decayed_skeleton_with_bow_and_quiver": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Self Bow: decayed skeleton with bow and quiver; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "crossbow__idle": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Crossbows: idle; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "crossbow__walk": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Crossbows: walk; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "crossbow__aim": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Crossbows: aim; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "crossbow__release": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Crossbows: release; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "crossbow__reload": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Crossbows: reload; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "crossbow__dead": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Crossbows: dead; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "crossbow__decayed_skeleton_with_bow_and_quiver": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Crossbows: decayed skeleton with bow and quiver; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "death": {
+      "frame_ms": 30000,
+      "loop": false,
+      "hold_last": true,
+      "description": "Runtime-compatible death placeholder frames.",
+      "directions": {
+        "front": [
+          {
+            "base": "death/front/frame_00_base.png",
+            "team_mask": "death/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "death/front/frame_01_base.png",
+            "team_mask": "death/front/frame_01_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "death/back/frame_00_base.png",
+            "team_mask": "death/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "death/back/frame_01_base.png",
+            "team_mask": "death/back/frame_01_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    }
+  },
+  "notes": "Temporary runtime placeholder entity tileset; replace with authored action frames."
+}

@@ -1,0 +1,494 @@
+{
+  "schema": "realm.entity_tileset.v1",
+  "entity": "militia",
+  "sprite_size": 48,
+  "placeholder": true,
+  "temporary": true,
+  "directions": [
+    "front",
+    "back"
+  ],
+  "actions": {
+    "basic_weapons__idle": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Basic weapons: idle; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "basic_weapons__walk": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Basic weapons: walk; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "basic_weapons__attack_swing_thrust": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Basic weapons: attack swing/thrust; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "basic_weapons__hold_position": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Basic weapons: hold-position; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "basic_weapons__hit_alert": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Basic weapons: hit/alert; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "basic_weapons__dead": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Basic weapons: dead; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "basic_weapons__decayed_skeleton_with_armour_and_weapons": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Basic weapons: decayed skeleton with armour and weapons; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "iron_weapons__idle": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Iron Weapons: idle; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "iron_weapons__walk": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Iron Weapons: walk; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "iron_weapons__attack_swing_thrust": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Iron Weapons: attack swing/thrust; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "iron_weapons__hold_position": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Iron Weapons: hold-position; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "iron_weapons__hit_alert": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Iron Weapons: hit/alert; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "iron_weapons__dead": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Iron Weapons: dead; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "iron_weapons__decayed_skeleton_with_armour_and_weapons": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Iron Weapons: decayed skeleton with armour and weapons; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "death": {
+      "frame_ms": 30000,
+      "loop": false,
+      "hold_last": true,
+      "description": "Runtime-compatible death placeholder frames.",
+      "directions": {
+        "front": [
+          {
+            "base": "death/front/frame_00_base.png",
+            "team_mask": "death/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "death/front/frame_01_base.png",
+            "team_mask": "death/front/frame_01_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "death/back/frame_00_base.png",
+            "team_mask": "death/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "death/back/frame_01_base.png",
+            "team_mask": "death/back/frame_01_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    }
+  },
+  "notes": "Temporary runtime placeholder entity tileset; replace with authored action frames."
+}

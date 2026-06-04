@@ -1,0 +1,494 @@
+{
+  "schema": "realm.entity_tileset.v1",
+  "entity": "spearman",
+  "sprite_size": 48,
+  "placeholder": true,
+  "temporary": true,
+  "directions": [
+    "front",
+    "back"
+  ],
+  "actions": {
+    "short_spear__idle": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Short Spear: idle; starting spear equipment with a medium wooden spear and small iron or bronze spearhead",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "short_spear__walk": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Short Spear: walk; starting spear equipment with a medium wooden spear and small iron or bronze spearhead",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "short_spear__spear_thrust": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Short Spear: spear thrust; starting spear equipment with a medium wooden spear and small iron or bronze spearhead",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "short_spear__brace_hold_position": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Short Spear: brace/hold-position; starting spear equipment with a medium wooden spear and small iron or bronze spearhead",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "short_spear__hit_alert": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Short Spear: hit/alert; starting spear equipment with a medium wooden spear and small iron or bronze spearhead",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "short_spear__dead": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Short Spear: dead; starting spear equipment with a medium wooden spear and small iron or bronze spearhead",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "short_spear__decayed_skeleton_with_spear_and_shield": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Short Spear: decayed skeleton with spear and shield; starting spear equipment with a medium wooden spear and small iron or bronze spearhead",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "pike__idle": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Pikes: idle; upgraded spear equipment with a much longer pike shaft, larger iron pike head, and stronger bracing pose",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "pike__walk": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Pikes: walk; upgraded spear equipment with a much longer pike shaft, larger iron pike head, and stronger bracing pose",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "pike__spear_thrust": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Pikes: spear thrust; upgraded spear equipment with a much longer pike shaft, larger iron pike head, and stronger bracing pose",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "pike__brace_hold_position": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Pikes: brace/hold-position; upgraded spear equipment with a much longer pike shaft, larger iron pike head, and stronger bracing pose",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "pike__hit_alert": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Pikes: hit/alert; upgraded spear equipment with a much longer pike shaft, larger iron pike head, and stronger bracing pose",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "pike__dead": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Pikes: dead; upgraded spear equipment with a much longer pike shaft, larger iron pike head, and stronger bracing pose",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "pike__decayed_skeleton_with_spear_and_shield": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Pikes: decayed skeleton with spear and shield; upgraded spear equipment with a much longer pike shaft, larger iron pike head, and stronger bracing pose",
+      "directions": {
+        "front": [
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/front/frame_00_base.png",
+            "team_mask": "placeholder/front/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "placeholder/back/frame_00_base.png",
+            "team_mask": "placeholder/back/frame_00_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    },
+    "death": {
+      "frame_ms": 30000,
+      "loop": false,
+      "hold_last": true,
+      "description": "Runtime-compatible death placeholder frames.",
+      "directions": {
+        "front": [
+          {
+            "base": "death/front/frame_00_base.png",
+            "team_mask": "death/front/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "death/front/frame_01_base.png",
+            "team_mask": "death/front/frame_01_teammask.png",
+            "placeholder": true
+          }
+        ],
+        "back": [
+          {
+            "base": "death/back/frame_00_base.png",
+            "team_mask": "death/back/frame_00_teammask.png",
+            "placeholder": true
+          },
+          {
+            "base": "death/back/frame_01_base.png",
+            "team_mask": "death/back/frame_01_teammask.png",
+            "placeholder": true
+          }
+        ]
+      }
+    }
+  },
+  "notes": "Temporary runtime placeholder entity tileset; replace with authored action frames."
+}
