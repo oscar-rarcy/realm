@@ -1,7 +1,9 @@
 #include "realm.h"
 #include "view_state.h"
 #include "gfx_renderer.h"
+#include "render/sdl/sdl_map.h"
 #include "env_config.h"
+#include "user_settings.h"
 #include "commands/command.h"
 #include "commands/command_runner.h"
 #include "core/game_events.h"
@@ -299,6 +301,32 @@ int realm_web_first_owned_unit_y() {
 }
 
 EMSCRIPTEN_KEEPALIVE
+int realm_web_selected_target_x() {
+    WorldIndex world = buildWorldIndex(g);
+    Entity* selected = findEntity(g, world, g.local.selectedId);
+    return selected ? selected->targetX : -1;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int realm_web_selected_target_y() {
+    WorldIndex world = buildWorldIndex(g);
+    Entity* selected = findEntity(g, world, g.local.selectedId);
+    return selected ? selected->targetY : -1;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int realm_web_minimap_x_for_screen(int px, int py) {
+    int mx = 0, my = 0;
+    return screenToMiniMapTile(px, py, mx, my) ? mx : -1;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int realm_web_minimap_y_for_screen(int px, int py) {
+    int mx = 0, my = 0;
+    return screenToMiniMapTile(px, py, mx, my) ? my : -1;
+}
+
+EMSCRIPTEN_KEEPALIVE
 int realm_web_screen_x_for_tile(int mx, int my) {
     int px = 0, py = 0;
     return gfxScreenCenterForMapTileForTest(mx, my, px, py) ? px : -1;
@@ -325,10 +353,22 @@ int realm_web_display_mode() {
     return displayMode == DM_ASCII ? 0 : 1;
 }
 
+EMSCRIPTEN_KEEPALIVE
+int realm_web_context_menu_open() {
+    return commandContextMenuIsOpen() ? 1 : 0;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int realm_web_context_menu_option_count() {
+    return commandContextMenuOptionCount();
+}
+
 }
 
 int main() {
     forceUtf8Locale();
+    UserSettings settings = loadUserSettings();
+    applyUserSettingsToGame(g, settings);
     asciiOnlySurface = isAsciiOnlySurface() || realmVisualModeIsAsciiOnly();
     displayMode = asciiOnlySurface ? DM_ASCII : DM_EMOJI;
     if (!asciiOnlySurface && (urlSettingEquals("display", "ascii") || urlSettingEquals("visual", "ascii"))) {
@@ -345,7 +385,9 @@ int main() {
         return 1;
     }
 
+    gfxSetAsciiSquareMapCells(settings.asciiSquareMapCells);
     gfxSetAsciiOnly(asciiOnlySurface);
+    gfxResetZoomForDisplayMode();
     gfxSetProjection(true);
 
     int numAIs = settingInt("REALM_WEB_AIS", "ais", 1);

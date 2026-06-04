@@ -101,6 +101,76 @@ struct Command {
     CommandPayload payload{};
 };
 
+enum class CommandActionKind {
+    None,
+    Context,
+    Move,
+    Waypoint,
+    Patrol,
+    Attack,
+    FirePosition,
+    AttackMove,
+    Gather,
+    Build,
+    BuildLine,
+    Train,
+    Research,
+    MarketTrade,
+    Help,
+    Garrison,
+    EjectGarrison,
+    SetRally,
+    HoldPosition,
+    Stop,
+    CancelProduction,
+    Select,
+    BoxSelect,
+    SelectAllOfTypeInView,
+    AssignControlGroup,
+    RecallControlGroup,
+    TogglePause,
+    Save,
+    Load,
+    Resign,
+    ToggleGate,
+    ToggleTrebuchetPacked,
+    ToggleDiagnostics,
+    RevealMapDebug,
+    Invalid,
+};
+
+enum class CommandPreviewMode {
+    Context,
+    Waypoint,
+    BuildPlace,
+    Rally,
+    AttackMove,
+    Patrol,
+};
+
+struct CommandPreviewRequest {
+    PlayerId issuer = 0;
+    Selection selection{};
+    MapPos target{-1, -1};
+    CommandPreviewMode mode = CommandPreviewMode::Context;
+    EntityType buildType = E_NONE;
+};
+
+struct CommandOption {
+    CommandActionKind kind = CommandActionKind::None;
+    Command command{};
+    std::string label;
+    int priority = 0;
+    bool recommended = false;
+    bool enabled = true;
+    std::string disabledReason;
+};
+
+struct CommandOptions {
+    std::vector<CommandOption> options;
+    int recommendedIndex = -1;
+};
+
 template <typename Payload>
 inline bool commandHasPayload(const Command& command) {
     return std::holds_alternative<Payload>(command.payload);
@@ -112,6 +182,46 @@ inline bool commandIsEmpty(const Command& command) {
 
 inline bool commandIsContext(const Command& command) {
     return commandHasPayload<ContextCommand>(command);
+}
+
+inline CommandActionKind commandActionKind(const Command& command) {
+    return std::visit([](const auto& p) -> CommandActionKind {
+        using T = std::decay_t<decltype(p)>;
+        if constexpr (std::is_same_v<T, std::monostate>) return CommandActionKind::None;
+        else if constexpr (std::is_same_v<T, ContextCommand>) return CommandActionKind::Context;
+        else if constexpr (std::is_same_v<T, MoveCommand>) return CommandActionKind::Move;
+        else if constexpr (std::is_same_v<T, WaypointCommand>) return CommandActionKind::Waypoint;
+        else if constexpr (std::is_same_v<T, PatrolCommand>) return CommandActionKind::Patrol;
+        else if constexpr (std::is_same_v<T, AttackCommand>) return CommandActionKind::Attack;
+        else if constexpr (std::is_same_v<T, AttackMoveCommand>) return CommandActionKind::AttackMove;
+        else if constexpr (std::is_same_v<T, GatherCommand>) return CommandActionKind::Gather;
+        else if constexpr (std::is_same_v<T, BuildCommand>) return CommandActionKind::Build;
+        else if constexpr (std::is_same_v<T, BuildLineCommand>) return CommandActionKind::BuildLine;
+        else if constexpr (std::is_same_v<T, TrainCommand>) return CommandActionKind::Train;
+        else if constexpr (std::is_same_v<T, ResearchCommand>) return CommandActionKind::Research;
+        else if constexpr (std::is_same_v<T, MarketTradeCommand>) return CommandActionKind::MarketTrade;
+        else if constexpr (std::is_same_v<T, HelpCommand>) return CommandActionKind::Help;
+        else if constexpr (std::is_same_v<T, GarrisonCommand>) return CommandActionKind::Garrison;
+        else if constexpr (std::is_same_v<T, EjectGarrisonCommand>) return CommandActionKind::EjectGarrison;
+        else if constexpr (std::is_same_v<T, SetRallyCommand>) return CommandActionKind::SetRally;
+        else if constexpr (std::is_same_v<T, HoldPositionCommand>) return CommandActionKind::HoldPosition;
+        else if constexpr (std::is_same_v<T, StopCommand>) return CommandActionKind::Stop;
+        else if constexpr (std::is_same_v<T, CancelProductionCommand>) return CommandActionKind::CancelProduction;
+        else if constexpr (std::is_same_v<T, SelectCommand>) return CommandActionKind::Select;
+        else if constexpr (std::is_same_v<T, BoxSelectCommand>) return CommandActionKind::BoxSelect;
+        else if constexpr (std::is_same_v<T, SelectAllOfTypeInViewCommand>) return CommandActionKind::SelectAllOfTypeInView;
+        else if constexpr (std::is_same_v<T, AssignControlGroupCommand>) return CommandActionKind::AssignControlGroup;
+        else if constexpr (std::is_same_v<T, RecallControlGroupCommand>) return CommandActionKind::RecallControlGroup;
+        else if constexpr (std::is_same_v<T, TogglePauseCommand>) return CommandActionKind::TogglePause;
+        else if constexpr (std::is_same_v<T, SaveCommand>) return CommandActionKind::Save;
+        else if constexpr (std::is_same_v<T, LoadCommand>) return CommandActionKind::Load;
+        else if constexpr (std::is_same_v<T, ResignCommand>) return CommandActionKind::Resign;
+        else if constexpr (std::is_same_v<T, ToggleGateCommand>) return CommandActionKind::ToggleGate;
+        else if constexpr (std::is_same_v<T, ToggleTrebuchetPackedCommand>) return CommandActionKind::ToggleTrebuchetPacked;
+        else if constexpr (std::is_same_v<T, ToggleDiagnosticsCommand>) return CommandActionKind::ToggleDiagnostics;
+        else if constexpr (std::is_same_v<T, RevealMapDebugCommand>) return CommandActionKind::RevealMapDebug;
+        else return CommandActionKind::Invalid;
+    }, command.payload);
 }
 
 inline const char* commandPayloadName(const Command& command) {
@@ -154,6 +264,12 @@ inline const char* commandPayloadName(const Command& command) {
 }
 
 Selection currentSelection(const Game& game);
+const char* commandActionKindName(CommandActionKind kind);
+int commandActionPriority(CommandActionKind kind);
+const CommandOption* recommendedCommandOption(const CommandOptions& options);
+CommandOptions resolveCommandOptions(const Game& game, const WorldIndex& world, const CommandPreviewRequest& request);
+CommandOptions resolveContextCommandOptions(const Game& game, const WorldIndex& world, PlayerId issuer, const Selection& selection, MapPos target);
+Command resolveRecommendedCommand(const Game& game, const WorldIndex& world, const CommandPreviewRequest& request);
 Command resolveContextCommand(const Game& game, const WorldIndex& world, PlayerId issuer, const Selection& selection, MapPos target);
 CommandResult dispatchCommand(GameContext& context, const Command& command);
 void selectAtTile(Game& game, const WorldIndex& world, EventSink& events, PlayerId issuer, int x, int y, bool toggle = false);
