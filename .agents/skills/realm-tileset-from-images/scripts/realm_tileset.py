@@ -8,6 +8,7 @@ import colorsys
 import html
 import json
 import math
+import re
 import shutil
 import subprocess
 from collections import deque
@@ -26,255 +27,98 @@ FIT_PROFILES: dict[str, dict[str, Any]] = {
     "wide_tool": {"max_w": 44, "max_h": 42, "anchor": [24, 39], "padding": 2},
     "kneeling": {"max_w": 40, "max_h": 35, "anchor": [24, 40], "padding": 3},
     "lying": {"max_w": 44, "max_h": 25, "anchor": [24, 42], "padding": 2},
+    "full_tile": {"max_w": 46, "max_h": 46, "anchor": [24, 44], "padding": 1},
+    "surface": {"max_w": 48, "max_h": 48, "anchor": [24, 44], "padding": 0},
 }
 
-PEASANT_ACTIONS: list[dict[str, Any]] = [
-    {
-        "id": "idle",
-        "frame_ms": 20000,
-        "loop": False,
-        "hold_last": True,
-        "transition_after_ms": 20000,
-        "family": "idle",
-        "target_relation": SELF_TILE,
-        "fit_profile": "standing",
-        "phases": [
-            "relaxed idle, arms at sides, both feet planted",
-            "long-idle hold pose, arms crossed, both feet planted",
-        ],
-    },
-    {
-        "id": "walk",
-        "frame_ms": 180,
-        "loop": True,
-        "family": "gait",
-        "target_relation": SELF_TILE,
-        "fit_profile": "standing",
-        "phases": [
-            "walking gait with the front/near leg forward and the rear/far leg back",
-            "walking gait with the rear/far leg forward and the front/near leg back",
-        ],
-    },
-    {
-        "id": "chop_wood",
-        "frame_ms": 320,
-        "loop": True,
-        "family": "swing",
-        "target_relation": ADJACENT_TARGET,
-        "fit_profile": "wide_tool",
-        "tool": "wood axe",
-        "phases": [
-            "axe at the bottom/contact part of the chop, axe head low and forward",
-            "axe raised high at the top of the swing",
-        ],
-    },
-    {
-        "id": "mine_gold",
-        "frame_ms": 320,
-        "loop": True,
-        "family": "swing",
-        "target_relation": ADJACENT_TARGET,
-        "fit_profile": "wide_tool",
-        "tool": "pickaxe",
-        "phases": [
-            "pickaxe at the bottom/contact part of the mining swing, pick head low and forward",
-            "pickaxe raised high at the top of the swing",
-        ],
-    },
-    {
-        "id": "gather_berries",
-        "frame_ms": 700,
-        "loop": True,
-        "family": "gather",
-        "target_relation": ADJACENT_TARGET,
-        "fit_profile": "kneeling",
-        "phases": [
-            "one hand reaching out toward berries beside a basket",
-            "hand back in the basket with berries",
-        ],
-    },
-    {
-        "id": "hoe_soil",
-        "frame_ms": 520,
-        "loop": True,
-        "family": "work_stroke",
-        "target_relation": ADJACENT_TARGET,
-        "fit_profile": "wide_tool",
-        "tool": "long-handled farming hoe with a small flat rectangular blade, not an axe or pickaxe",
-        "phases": [
-            "arms outstretched with the hoe extended away from the body",
-            "arms pulled in after the hoe stroke while still holding the same farming hoe",
-        ],
-    },
-    {
-        "id": "gather_wheat",
-        "frame_ms": 520,
-        "loop": True,
-        "family": "gather",
-        "target_relation": ADJACENT_TARGET,
-        "fit_profile": "wide_tool",
-        "tool": "sickle",
-        "phases": [
-            "using a sickle to cut wheat",
-            "still holding the sickle while the free hand reaches for wheat",
-        ],
-    },
-    {
-        "id": "build",
-        "frame_ms": 300,
-        "loop": True,
-        "family": "hammer",
-        "target_relation": ADJACENT_TARGET,
-        "fit_profile": "kneeling",
-        "tool": "hammer",
-        "phases": [
-            "kneeling builder with hammer raised up",
-            "kneeling builder with hammer down",
-        ],
-    },
-    {
-        "id": "carry_wood",
-        "frame_ms": 180,
-        "loop": True,
-        "family": "carry_gait",
-        "target_relation": SELF_TILE,
-        "fit_profile": "standing",
-        "carry": "bundled logs held securely in both arms",
-        "phases": [
-            "carrying bundled logs while walking, front/near leg forward",
-            "carrying bundled logs while walking, rear/far leg forward",
-        ],
-    },
-    {
-        "id": "carry_gold",
-        "frame_ms": 180,
-        "loop": True,
-        "family": "carry_gait",
-        "target_relation": SELF_TILE,
-        "fit_profile": "standing",
-        "carry": "pile of grey stones and yellow gold ore held in both arms",
-        "phases": [
-            "carrying stones and gold ore while walking, front/near leg forward",
-            "carrying stones and gold ore while walking, rear/far leg forward",
-        ],
-    },
-    {
-        "id": "carry_berries",
-        "frame_ms": 180,
-        "loop": True,
-        "family": "carry_gait",
-        "target_relation": SELF_TILE,
-        "fit_profile": "standing",
-        "carry": "basket of red berries held in both arms",
-        "phases": [
-            "carrying berries while walking, front/near leg forward",
-            "carrying berries while walking, rear/far leg forward",
-        ],
-    },
-    {
-        "id": "carry_wheat",
-        "frame_ms": 180,
-        "loop": True,
-        "family": "carry_gait",
-        "target_relation": SELF_TILE,
-        "fit_profile": "standing",
-        "carry": "bundle of wheat held securely in both arms",
-        "phases": [
-            "carrying wheat while walking, front/near leg forward",
-            "carrying wheat while walking, rear/far leg forward",
-        ],
-    },
-    {
-        "id": "gather_meat",
-        "frame_ms": 520,
-        "loop": True,
-        "family": "gather",
-        "target_relation": ADJACENT_TARGET,
-        "fit_profile": "kneeling",
-        "tool": "knife",
-        "phases": [
-            "holding a knife while actively cutting or reaching toward meat",
-            "still holding the knife while taking meat with the free hand",
-        ],
-    },
-    {
-        "id": "carry_meat",
-        "frame_ms": 180,
-        "loop": True,
-        "family": "carry_gait",
-        "target_relation": SELF_TILE,
-        "fit_profile": "standing",
-        "carry": "large cut of meat held in both arms",
-        "phases": [
-            "carrying meat while walking, front/near leg forward",
-            "carrying meat while walking, rear/far leg forward",
-        ],
-    },
-    {
-        "id": "club_attack",
-        "frame_ms": 260,
-        "loop": True,
-        "family": "swing",
-        "target_relation": ADJACENT_TARGET,
-        "fit_profile": "wide_tool",
-        "tool": "wooden club",
-        "phases": [
-            "club at the top of the attack swing, held overhead but still inside the tile",
-            "club at the bottom/contact part of the attack swing, still fully inside the tile",
-        ],
-    },
-    {
-        "id": "death",
-        "frame_ms": 30000,
-        "loop": False,
-        "hold_last": True,
-        "family": "one_shot",
-        "target_relation": SELF_TILE,
-        "fit_profile": "lying",
-        "phases": [
-            "dead villager body lying on the ground, not a skeleton",
-            "skeleton remains of the same villager in the same ground area, with small clothing scraps",
-        ],
-    },
-]
-
-PEASANT_ACTION_BY_ID = {action["id"]: action for action in PEASANT_ACTIONS}
+def slug_id(text: str) -> str:
+    value = re.sub(r"[^A-Za-z0-9]+", "_", text.strip().lower()).strip("_")
+    return value or "default"
 
 
-def fallback_unit_spec(entity: str) -> dict[str, Any]:
-    return {
-        "schema": "realm.unit_animation_spec.fallback.v1",
-        "entity": entity,
-        "directions": ["front", "back"],
-        "runtime_mirrors_horizontal": True,
-        "projection": "isometric terrain diamonds with upright sprites",
-        "actions": PEASANT_ACTIONS,
-        "source": "python-fallback",
-    }
+def spec_asset_type(spec: dict[str, Any]) -> str:
+    return str(spec.get("asset_type") or spec.get("entity", {}).get("actor_type") or "asset")
+
+
+def default_fit_profile_for_action(action: dict[str, Any], asset_spec: dict[str, Any]) -> str:
+    text = " ".join(str(action.get(key, "")) for key in ("id", "description", "family")).lower()
+    asset_type = spec_asset_type(asset_spec)
+    if any(word in text for word in ("dead", "decay", "skeleton", "wreck", "destroyed", "ruin")):
+        return "lying"
+    if asset_type == "building":
+        return "full_tile"
+    if asset_type in {"feature", "decal"}:
+        return "full_tile"
+    if asset_type == "ground":
+        return "surface"
+    return "standing"
+
+
+def action_frames_recommended(action: dict[str, Any], asset_type: str) -> int:
+    try:
+        count = int(action.get("frames_recommended", 0))
+    except (TypeError, ValueError):
+        count = 0
+    if count > 0:
+        return count
+    if asset_type in {"building", "ground", "feature", "decal", "effect", "user_interface", "projectile"}:
+        return 1
+    return 2
+
+
+def default_actions_from_states(raw: dict[str, Any]) -> list[dict[str, Any]]:
+    asset_type = spec_asset_type(raw)
+    states = raw.get("states")
+    if not isinstance(states, list) or not states:
+        states = ["default"]
+    actions = []
+    for state in states:
+        description = str(state)
+        actions.append(
+            {
+                "id": slug_id(description),
+                "description": description,
+                "source": "art/tiles/image-json states",
+                "frames_recommended": 1 if asset_type in {"building", "ground", "feature", "decal", "effect", "user_interface", "projectile"} else 2,
+            }
+        )
+    return actions
 
 
 def normalize_unit_spec(raw: dict[str, Any], source: str) -> dict[str, Any]:
+    asset_type = spec_asset_type(raw)
+    raw_actions = raw.get("actions", [])
+    if not isinstance(raw_actions, list) or not raw_actions:
+        raw_actions = default_actions_from_states(raw)
     actions = []
-    for action in raw.get("actions", []):
+    for action in raw_actions:
         frames = action.get("frames", [])
         phases = action.get("phases")
         if phases is None:
             phases = [str(frame.get("description", "")) for frame in frames]
+        if not phases:
+            description = str(action.get("description") or action.get("id") or "default")
+            phases = [
+                description if index == 0 else f"{description} frame {index + 1}"
+                for index in range(action_frames_recommended(action, asset_type))
+            ]
         durations = action.get("frame_durations_ms")
         if durations is None:
             durations = [int(frame.get("duration_ms", 0)) for frame in frames]
+        if not durations:
+            durations = [0 for _ in phases]
         frame_ms = int(action.get("frame_ms", next((d for d in durations if d > 0), 250)))
         normalized = {
-            "id": action.get("id") or action.get("action"),
+            "id": slug_id(str(action.get("id") or action.get("action") or action.get("description") or "default")),
             "description": action.get("description", ""),
             "frame_ms": frame_ms,
-            "loop": bool(action.get("loop", False)),
+            "loop": bool(action.get("loop", len(phases) > 1 and asset_type not in {"building", "ground", "decal", "feature"})),
             "hold_last": bool(action.get("hold_last", False)),
             "transition_after_ms": int(action.get("transition_after_ms", 0)),
-            "family": action.get("family", ""),
+            "family": action.get("family", asset_type),
             "target_relation": action.get("target_relation", SELF_TILE),
             "range_tiles": int(action.get("range_tiles", 0)),
-            "fit_profile": action.get("fit_profile", "standing"),
+            "fit_profile": action.get("fit_profile", default_fit_profile_for_action(action, raw)),
             "phases": phases,
             "frame_durations_ms": durations,
         }
@@ -285,6 +129,18 @@ def normalize_unit_spec(raw: dict[str, Any], source: str) -> dict[str, Any]:
         actions.append(normalized)
     raw["actions"] = actions
     raw["source"] = source
+    if "entity" not in raw:
+        raw["entity"] = raw.get("slug") or raw.get("id", "asset")
+    if "directions" not in raw:
+        render_directions = raw.get("render", {}).get("directions")
+        if isinstance(render_directions, list) and render_directions:
+            raw["directions"] = [str(direction) for direction in render_directions]
+        elif asset_type in {"building"}:
+            raw["directions"] = ["south"]
+        elif asset_type in {"ground", "decal", "effect", "user_interface", "projectile"}:
+            raw["directions"] = ["default"]
+        else:
+            raw["directions"] = ["front", "back"]
     return raw
 
 
@@ -293,6 +149,98 @@ def default_spec_binary() -> Path | None:
         if candidate.exists():
             return candidate
     return None
+
+
+def run_repo_script(script: str) -> None:
+    script_path = REPO_ROOT / script
+    result = subprocess.run(
+        ["python", str(script_path), "--clean"],
+        cwd=REPO_ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        details = (result.stderr or result.stdout).strip()
+        raise SystemExit(f"could not regenerate {script}: {details}")
+
+
+def slug_variants(raw: str) -> list[str]:
+    value = IMAGE_SPEC_ALIASES.get(raw.strip().lower(), raw.strip())
+    return list(dict.fromkeys([value, value.replace("-", "_"), value.replace("_", "-"), slug_id(value)]))
+
+
+def resolve_generated_spec_path(raw: str, root: Path, suffix: str, refresh_script: str | None = None) -> Path:
+    explicit = Path(raw.strip())
+    if explicit.suffix == suffix:
+        candidates = [explicit, root / explicit]
+    else:
+        candidates = []
+        for slug in slug_variants(raw):
+            candidates.append(root / f"{slug}{suffix}")
+            candidates.extend(sorted(root.rglob(f"{slug}{suffix}")))
+
+    matches: list[Path] = []
+    for candidate in candidates:
+        path = candidate if candidate.is_absolute() else (REPO_ROOT / candidate)
+        if path.exists() and path not in matches:
+            matches.append(path)
+
+    if not matches and refresh_script:
+        run_repo_script(refresh_script)
+        return resolve_generated_spec_path(raw, root, suffix, None)
+    if not matches:
+        raise SystemExit(f"no generated spec found for '{raw}' under {root}")
+    if len(matches) > 1:
+        options = "\n".join(f"- {path}" for path in matches)
+        raise SystemExit(f"multiple generated specs matched '{raw}'. Pass a relative {suffix} path:\n{options}")
+    return matches[0]
+
+
+def generated_json_is_stale(path: Path) -> bool:
+    try:
+        spec_mtime = path.stat().st_mtime
+    except OSError:
+        return True
+    exporter = REPO_ROOT / "scripts" / "export_tile_specs.py"
+    if exporter.exists() and exporter.stat().st_mtime > spec_mtime:
+        return True
+    try:
+        spec = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return True
+    for source in spec.get("sources", []):
+        source_path = REPO_ROOT / str(source)
+        if source_path.exists() and source_path.stat().st_mtime > spec_mtime:
+            return True
+    return False
+
+
+def generated_markdown_is_stale(path: Path) -> bool:
+    try:
+        spec_mtime = path.stat().st_mtime
+    except OSError:
+        return True
+    for rel in (
+        "scripts/export_image_generation_prompts.py",
+        "scripts/export_tile_specs.py",
+        "src/core/game_types.h",
+        "src/core/entity_defs.cpp",
+        "src/core/terrain_defs.cpp",
+        "docs/tileset/realm_tileset_visual_audit.md",
+    ):
+        source_path = REPO_ROOT / rel
+        if source_path.exists() and source_path.stat().st_mtime > spec_mtime:
+            return True
+    return False
+
+
+def resolve_image_json_path(raw: str) -> Path:
+    path = resolve_generated_spec_path(raw, IMAGE_JSON_DIR, ".json", "scripts/export_tile_specs.py")
+    if generated_json_is_stale(path):
+        run_repo_script("scripts/export_tile_specs.py")
+        path = resolve_generated_spec_path(raw, IMAGE_JSON_DIR, ".json", None)
+    return path
 
 
 def load_code_unit_spec(entity: str, binary: str | None = None) -> dict[str, Any] | None:
@@ -314,58 +262,50 @@ def load_unit_spec(entity: str, source: str = "auto", binary: str | None = None,
     if spec_json:
         path = Path(spec_json)
         return normalize_unit_spec(json.loads(path.read_text(encoding="utf-8")), f"json:{path}")
+    if source in {"auto", "image-json"}:
+        try:
+            path = resolve_image_json_path(entity)
+            return normalize_unit_spec(json.loads(path.read_text(encoding="utf-8")), f"image-json:{path}")
+        except SystemExit:
+            if source == "image-json":
+                raise
     if source in {"auto", "code"}:
         loaded = load_code_unit_spec(entity, binary)
         if loaded is not None:
             return loaded
         if source == "code":
             raise SystemExit("could not load animation spec from game binary; build Realm or pass --spec-source fallback")
-    return fallback_unit_spec(entity)
+    return normalize_unit_spec(
+        {
+            "schema": "realm.generated_asset_spec.fallback.v1",
+            "id": entity,
+            "slug": entity,
+            "asset_type": "asset",
+            "states": ["default"],
+            "render": {"directions": ["front", "back"]},
+        },
+        "python-generic-fallback",
+    )
 
 
 def spec_actions(unit_spec: dict[str, Any] | None = None) -> list[dict[str, Any]]:
-    return unit_spec["actions"] if unit_spec else PEASANT_ACTIONS
+    return unit_spec["actions"] if unit_spec else []
 
-PEASANT_STATE_DESCRIPTIONS = {
-    1: [
-        "idle: standing idle, relaxed arms at sides, both feet planted.",
-        "walk: walking with the front/near leg forward and the rear/far leg back.",
-        "chop_wood: chopping wood at the bottom of the axe swing, axe head low and forward.",
-        "mine_gold: mining at the bottom of the pickaxe swing, pickaxe head low and forward.",
-        "gather_berries: gathering berries with one hand reaching out toward a basket or bush-side basket.",
-        "hoe_soil: hoeing soil with arms outstretched and a long-handled farming hoe extended away from the body; the hoe has a small flat rectangular blade and is not an axe or pickaxe.",
-        "gather_wheat: gathering wheat using a sickle, sickle actively cutting wheat.",
-        "build: kneeling builder, hammer raised up.",
-        "carry_wood: carrying bundled logs while walking, front/near leg forward.",
-        "carry_gold: carrying a pile of stones and gold ore while walking, front/near leg forward.",
-        "carry_berries: carrying a basket of red berries while walking, front/near leg forward.",
-        "carry_wheat: carrying a bundle of wheat while walking, front/near leg forward.",
-        "gather_meat: gathering meat while holding a knife, knife actively cutting or reaching toward meat.",
-        "carry_meat: carrying a large cut of meat while walking, front/near leg forward.",
-        "club_attack: club attack with the club at the top of the swing, held overhead.",
-        "death: dead villager body lying on the ground, not a skeleton.",
-    ],
-    2: [
-        "idle: standing with arms crossed.",
-        "walk: walking with the rear/far leg forward and the front/near leg back.",
-        "chop_wood: axe at the top of the swing.",
-        "mine_gold: pickaxe at the top of the swing.",
-        "gather_berries: hand in basket with berries.",
-        "hoe_soil: arms pulled in after the hoe stroke, still holding the long-handled farming hoe with a small flat rectangular blade; not an axe or pickaxe.",
-        "gather_wheat: still holding the sickle while the free hand reaches for wheat.",
-        "build: kneeling builder, hammer down.",
-        "carry_wood: carrying bundled logs while walking, rear/far leg forward.",
-        "carry_gold: carrying stones and gold ore while walking, rear/far leg forward.",
-        "carry_berries: carrying berries while walking, rear/far leg forward.",
-        "carry_wheat: carrying wheat while walking, rear/far leg forward.",
-        "gather_meat: still holding the knife while taking meat with the free hand.",
-        "carry_meat: carrying meat while walking, rear/far leg forward.",
-        "club_attack: club at the bottom of the swing.",
-        "death: skeleton remains of the same villager in the same pose area, with clothing scraps visible enough to read as the same unit.",
-    ],
+
+def spec_directions(unit_spec: dict[str, Any] | None = None) -> list[str]:
+    if not unit_spec:
+        return ["front", "back"]
+    directions = unit_spec.get("directions") or unit_spec.get("render", {}).get("directions")
+    if isinstance(directions, list) and directions:
+        return [str(direction) for direction in directions]
+    return ["front", "back"]
+
+REPO_ROOT = Path(__file__).resolve().parents[4]
+IMAGE_SPEC_DIR = REPO_ROOT / "art" / "tiles" / "image-spec"
+IMAGE_JSON_DIR = REPO_ROOT / "art" / "tiles" / "image-json"
+IMAGE_SPEC_ALIASES = {
+    "villager": "peasant",
 }
-
-PROMPT_PATH = Path(__file__).resolve().parents[1] / "references" / "villager-peasant-sheet.md"
 
 
 def parse_color(raw: str) -> tuple[int, int, int]:
@@ -716,7 +656,8 @@ def action_spec(action_id: str, unit_spec: dict[str, Any] | None = None) -> dict
         if action["id"] == action_id:
             return action
     known = ", ".join(action["id"] for action in spec_actions(unit_spec))
-    raise SystemExit(f"unknown peasant action '{action_id}'. Known actions: {known}")
+    entity = unit_spec.get("slug") or unit_spec.get("id") or unit_spec.get("entity") if unit_spec else "asset"
+    raise SystemExit(f"unknown action '{action_id}' for {entity}. Known actions: {known}")
 
 
 def action_index(action_id: str, unit_spec: dict[str, Any] | None = None) -> int:
@@ -761,7 +702,11 @@ def direction_text(direction: str) -> str:
             "back plus the screen-right side of the helmet, tunic, pouch, sleeve, and boot closer to "
             "the camera, with the far side partly hidden. Not a flat straight-on rear diagram."
         )
-    raise SystemExit("direction must be front or back")
+    if direction == "south":
+        return "Realm south building view: the canonical readable isometric-facing building/source view used by the runtime."
+    if direction == "default":
+        return "Realm default view: use the projection, anchor, and layer contract from the generated image-json spec."
+    return f"Realm `{direction}` view: use the projection, anchor, and layer contract from the generated image-json spec."
 
 
 def alpha_bbox(img: Image.Image, alpha_threshold: int = 8) -> tuple[int, int, int, int] | None:
@@ -899,10 +844,20 @@ def frame_workbench_dir(root: Path, entity: str, action_id: str, direction: str,
     return root / entity / action_id / direction / f"frame_{frame:02d}"
 
 
-def default_batch_slots(entity: str, action_id: str) -> list[tuple[str, int]]:
+def default_batch_slots(entity: str, action_id: str, unit_spec: dict[str, Any], cols: int, rows: int) -> list[tuple[str, int]]:
     if entity == "peasant" and action_id == "idle":
         return [("front", 0), ("back", 0), ("front", 1), ("back", 1)]
-    raise SystemExit("pass --slot direction:frame for this batch source")
+    spec = action_spec(action_id, unit_spec)
+    directions = spec_directions(unit_spec)
+    frames = range(len(spec.get("phases", [])) or 1)
+    slots = [(direction, frame) for direction in directions for frame in frames]
+    expected = cols * rows
+    if len(slots) == expected:
+        return slots
+    raise SystemExit(
+        f"pass --slot direction:frame for this batch source; {entity}/{action_id} has "
+        f"{len(slots)} default direction/frame slots but the grid is {cols}x{rows}"
+    )
 
 
 def parse_batch_slot(raw: str) -> tuple[str, int]:
@@ -910,8 +865,8 @@ def parse_batch_slot(raw: str) -> tuple[str, int]:
     if len(parts) != 2:
         raise SystemExit(f"invalid --slot {raw!r}; expected direction:frame, for example front:0")
     direction = parts[0].strip().lower()
-    if direction not in {"front", "back"}:
-        raise SystemExit(f"invalid direction in --slot {raw!r}; expected front or back")
+    if not re.fullmatch(r"[a-z0-9_-]+", direction):
+        raise SystemExit(f"invalid direction in --slot {raw!r}")
     frame_raw = parts[1].strip().lower().removeprefix("frame_")
     try:
         frame = int(frame_raw)
@@ -1076,23 +1031,45 @@ def frame_prompt_text(
     references: list[str] | None = None,
     unit_spec: dict[str, Any] | None = None,
 ) -> str:
-    if entity.lower() not in {"peasant", "villager"}:
-        raise SystemExit("only the peasant/villager prompt is bundled so far")
     spec = action_spec(action_id, unit_spec)
+    asset_name = str(unit_spec.get("name") or unit_spec.get("slug") or entity) if unit_spec else entity
+    asset_type = spec_asset_type(unit_spec or {})
+    art = unit_spec.get("art", {}) if unit_spec else {}
+    team = unit_spec.get("team_color", {}) if unit_spec else {}
+    team_line = ""
+    if team.get("required"):
+        colour = team.get("recommended_player_colour") or {}
+        slots = ", ".join(str(slot) for slot in team.get("slots", [])) or "the declared team-colour slots"
+        team_line = f" Use {colour.get('name', 'blue')} ({colour.get('hex', '#00AFFF')}) only in maskable areas: {slots}."
+    design_line = "; ".join(
+        part for part in (
+            str(art.get("source_role", "")).strip(),
+            str(art.get("visual_design", "")).strip(),
+            str(art.get("legacy_projection", "")).strip(),
+        )
+        if part
+    ) or "Use the generated Realm image-json spec for the asset identity, projection, and gameplay role."
     refs = references or []
-    ref_lines = "\n".join(f"- Use visual reference: {ref}" for ref in refs) or "- No external reference image was provided; use the peasant registry and any user-pasted reference."
+    ref_lines = "\n".join(f"- Use visual reference: {ref}" for ref in refs) or "- No external reference image was provided; use the generated image-json/image-spec contract and any user-pasted reference."
     tool_line = f"\nTool/object constraint: show a {spec['tool']}." if "tool" in spec else ""
     carry_line = f"\nCarried object constraint: keep the {spec['carry']} stable and readable across gait phases." if "carry" in spec else ""
-    target_line = (
-        "The sprite is anchored on the unit's own tile. The work target is adjacent; include only small carried/tool cues, not a full separate resource tile, unless a reference explicitly includes it."
-        if spec["target_relation"] == ADJACENT_TARGET
-        else "The sprite belongs on the unit's own tile; do not include a separate adjacent target tile."
-    )
+    if asset_type in {"ground", "decal"}:
+        target_line = "This is surface artwork; do not include upright units, buildings, UI labels, or unrelated neighbouring tiles."
+    elif asset_type in {"feature", "building"}:
+        target_line = "The asset is anchored to its declared tile footprint; do not include unrelated adjacent terrain patches or helper characters."
+    elif asset_type in {"projectile", "effect", "user_interface"}:
+        target_line = "Generate only the declared standalone visual element; do not include its launcher, target, UI frame, terrain, or impact context unless the action says so."
+    else:
+        target_line = (
+            "The sprite is anchored on the unit's own tile. The work target is adjacent; include only small carried/tool cues, not a full separate resource tile, unless a reference explicitly includes it."
+            if spec["target_relation"] == ADJACENT_TARGET
+            else "The sprite belongs on the unit's own tile; do not include a separate adjacent target tile."
+        )
     return f"""Use case: stylized-concept
 Asset type: single production source sprite for a 2D RTS game tileset
-Primary request: Generate exactly one square 1024x1024 image for Realm {entity} action `{action_id}`, direction `{direction}`, frame {frame}.
+Primary request: Generate exactly one square 1024x1024 image for Realm {asset_name} ({asset_type}) action `{action_id}`, direction `{direction}`, frame {frame}.
 
-Style reference: rounded cartoon RTS sprite, compact medieval male peasant/villager, blue helmet and blue tunic accents for player colour, brown leather boots and belt, tan skin, dark beard, thick clean outline, readable at 48x48 pixels. Keep the same camera angle, scale, lighting, palette, outline thickness, outfit, helmet, beard, and proportions as the supplied peasant references.
+Style and identity: {sentence(design_line)} Keep the same Realm small-RTS camera angle, scale, lighting, palette, outline thickness, and readable 48x48 silhouette across frames.{team_line}
 
 Action meaning: {spec.get("description", "")}
 
@@ -1101,7 +1078,7 @@ Reference continuity:
 
 Canvas: the entire image is one flat, perfectly uniform #ff00ff magenta square tile background. No white gutter, no grid, no transparency, no labels, no text, no numbers, no watermark. Put exactly one complete sprite on the magenta tile.
 
-Pose: {direction_text(direction)}. The exact animation phase is: {sentence(phase_text(spec, frame))}{tool_line}{carry_line}
+Pose: {sentence(direction_text(direction))} The exact animation phase is: {sentence(phase_text(spec, frame))}{tool_line}{carry_line}
 
 Tile-fit requirements: keep the complete sprite, all limbs, held objects, tools, weapons, baskets, logs, meat, wheat, and motion arcs fully inside the magenta square with generous padding. If the pose would be too wide, make the pose more compact rather than letting anything leave the tile. The sprite may be lower in the frame for lying/dead poses, but it must still fit fully inside the tile.
 
@@ -1137,6 +1114,20 @@ def relative_to(path: Path, root: Path) -> str:
     return path.relative_to(root).as_posix()
 
 
+def runtime_output_root(args: argparse.Namespace, unit_spec: dict[str, Any] | None = None) -> Path:
+    configured = getattr(args, "out", None)
+    paths = (unit_spec or {}).get("paths", {})
+    runtime_root = paths.get("runtime_root")
+    if runtime_root and Path(str(runtime_root)).suffix:
+        manifest_path = paths.get("manifest")
+        runtime_root = str(Path(str(manifest_path)).parent) if manifest_path else str(Path(str(runtime_root)).parent)
+    if runtime_root and (configured in {None, "assets/tiles/entities"} or spec_asset_type(unit_spec or {}) not in {"unit", "animal", "building"}):
+        return REPO_ROOT / str(runtime_root)
+    if configured:
+        return Path(configured) / args.entity
+    return REPO_ROOT / str(runtime_root or f"assets/tiles/entities/{args.entity}")
+
+
 def copy_missing_source(
     sheets: dict[tuple[str, int], list[Image.Image]],
     methods: dict[tuple[str, int], str],
@@ -1162,7 +1153,39 @@ def copy_missing_source(
             )
 
 
+def default_manifest_placement(asset_type: str, size: int) -> dict[str, Any]:
+    size = max(1, int(size))
+    placement = {
+        "projection": "upright_world",
+        "anchor_kind": "feet",
+        "source_size": [size, size],
+        "anchor": [size // 2, int(round(size * 39 / 48))],
+        "scale_policy": "entity_tile_zoom_1_55",
+        "footprint": [1, 1],
+        "depth": "entity",
+    }
+    if asset_type in {"building", "buildings"}:
+        placement.update(
+            {
+                "projection": "footprint_world",
+                "anchor_kind": "footprint_origin",
+                "depth": "entity",
+            }
+        )
+    elif asset_type in {"projectile", "projectiles"}:
+        placement.update(
+            {
+                "projection": "projectile_world",
+                "anchor_kind": "world_position",
+                "scale_policy": "projectile",
+                "depth": "projectile",
+            }
+        )
+    return placement
+
+
 def build_manifest(args: argparse.Namespace, assumptions: list[str], unit_spec: dict[str, Any] | None = None) -> dict[str, Any]:
+    directions = spec_directions(unit_spec)
     actions = {}
     for spec in spec_actions(unit_spec):
         entry = {
@@ -1175,7 +1198,7 @@ def build_manifest(args: argparse.Namespace, assumptions: list[str], unit_spec: 
             "range_tiles": spec.get("range_tiles", 0),
             "fit_profile": spec["fit_profile"],
             "anchor": FIT_PROFILES[spec["fit_profile"]]["anchor"],
-            "directions": {"front": [], "back": []},
+            "directions": {direction: [] for direction in directions},
         }
         durations = spec.get("frame_durations_ms") or []
         if durations:
@@ -1183,13 +1206,16 @@ def build_manifest(args: argparse.Namespace, assumptions: list[str], unit_spec: 
         if "transition_after_ms" in spec:
             entry["transition_after_ms"] = spec["transition_after_ms"]
         actions[spec["id"]] = entry
+    asset_type = spec_asset_type(unit_spec or {})
     return {
         "schema": "realm.entity_tileset.v1",
         "entity": args.entity,
+        "asset_type": asset_type,
         "sprite_size": args.size,
         "team_color_source": getattr(args, "team_color", "#0088cc"),
         "source_key_color": getattr(args, "magenta", "#ff00ff"),
-        "directions": ["front", "back"],
+        "placement": default_manifest_placement(asset_type, args.size),
+        "directions": directions,
         "actions": actions,
         "assumptions": assumptions,
         "source_workflow": getattr(args, "source_workflow", "sheet"),
@@ -1199,10 +1225,12 @@ def build_manifest(args: argparse.Namespace, assumptions: list[str], unit_spec: 
 
 def command_extract(args: argparse.Namespace) -> None:
     entity = args.entity.strip().lower().replace("_", "-")
-    if entity != "peasant":
-        raise SystemExit("this first extractor knows the peasant/villager 16-square action order")
     unit_spec = load_unit_spec(entity, args.spec_source, args.spec_binary, args.spec_json)
     actions = spec_actions(unit_spec)
+    if any(direction not in {"front", "back"} for direction in spec_directions(unit_spec)):
+        raise SystemExit("legacy extract supports only front/back sheet sources; use split-batch-source and process-frame for this asset")
+    if len(actions) > args.cols * args.rows:
+        raise SystemExit(f"legacy extract sheet has {args.cols * args.rows} slots but {entity} has {len(actions)} actions")
 
     key_color = parse_color(args.magenta)
     team_color = parse_color(args.team_color)
@@ -1219,7 +1247,7 @@ def command_extract(args: argparse.Namespace) -> None:
 
     copy_missing_source(sheets, methods, assumptions)
 
-    out_root = Path(args.out) / entity
+    out_root = runtime_output_root(args, unit_spec)
     if out_root.exists() and args.clean:
         shutil.rmtree(out_root)
     out_root.mkdir(parents=True, exist_ok=True)
@@ -1397,12 +1425,30 @@ def isometric_tile_preview(
     mask_path: Path,
     team_color: tuple[int, int, int],
     anchor: list[int] | tuple[int, int] | None = None,
+    *,
+    bullseye: bool = False,
 ) -> Image.Image:
     canvas = Image.new("RGBA", (128, 112), (31, 35, 40, 255))
     draw = ImageDraw.Draw(canvas)
     cx, cy = 64, 74
     hw, hh = 48, 24
-    draw.polygon([(cx, cy - hh), (cx + hw, cy), (cx, cy + hh), (cx - hw, cy)], fill=(70, 106, 70, 255))
+    draw.polygon([(cx, cy - hh), (cx + hw, cy), (cx, cy + hh), (cx - hw, cy)], fill=(236, 230, 198, 255) if bullseye else (70, 106, 70, 255))
+    if bullseye:
+        for frac, colour in (
+            (0.78, (176, 36, 35, 255)),
+            (0.55, (236, 230, 198, 255)),
+            (0.32, (176, 36, 35, 255)),
+            (0.08, (32, 36, 42, 255)),
+        ):
+            draw.polygon(
+                [
+                    (cx, cy - max(2, int(round(hh * frac)))),
+                    (cx + max(3, int(round(hw * frac))), cy),
+                    (cx, cy + max(2, int(round(hh * frac)))),
+                    (cx - max(3, int(round(hw * frac))), cy),
+                ],
+                fill=colour,
+            )
     draw.line([(cx, cy - hh), (cx + hw, cy), (cx, cy + hh), (cx - hw, cy), (cx, cy - hh)], fill=(175, 205, 155, 230), width=1)
     draw.line([(cx - hw, cy), (cx + hw, cy)], fill=(255, 255, 255, 75), width=1)
     draw.line([(cx, cy - hh), (cx, cy + hh)], fill=(255, 255, 255, 60), width=1)
@@ -1488,6 +1534,24 @@ def safe_int(value: Any, default: int = 0) -> int:
         return default
 
 
+def resolved_row_placement(manifest: dict[str, Any], action: dict[str, Any], frame: dict[str, Any]) -> dict[str, Any]:
+    size = int(manifest.get("sprite_size", 48) or 48)
+    placement = default_manifest_placement(str(manifest.get("asset_type", "unit")), size)
+    if isinstance(manifest.get("placement"), dict):
+        placement.update(manifest["placement"])
+    if isinstance(action.get("placement"), dict):
+        placement.update(action["placement"])
+    if isinstance(frame.get("placement"), dict):
+        placement.update(frame["placement"])
+
+    anchor = frame.get("anchor") or action.get("anchor") or placement.get("anchor")
+    if isinstance(anchor, (list, tuple)) and len(anchor) == 2:
+        placement["anchor"] = [int(anchor[0]), int(anchor[1])]
+    placement.setdefault("source_size", [size, size])
+    placement.setdefault("footprint", [1, 1])
+    return placement
+
+
 def manifest_frame_rows(manifest_path: Path) -> list[dict[str, Any]]:
     root = manifest_path.parent
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -1495,7 +1559,8 @@ def manifest_frame_rows(manifest_path: Path) -> list[dict[str, Any]]:
     for action_id, action in manifest["actions"].items():
         for direction, frames in action["directions"].items():
             for index, frame in enumerate(frames):
-                anchor = frame.get("anchor") or action.get("anchor") or FIT_PROFILES.get(action.get("fit_profile", "standing"), FIT_PROFILES["standing"])["anchor"]
+                placement = resolved_row_placement(manifest, action, frame)
+                anchor = placement.get("anchor") or FIT_PROFILES.get(action.get("fit_profile", "standing"), FIT_PROFILES["standing"])["anchor"]
                 rows.append(
                     {
                         "action": action_id,
@@ -1509,6 +1574,7 @@ def manifest_frame_rows(manifest_path: Path) -> list[dict[str, Any]]:
                         "hold_last": action.get("hold_last", False),
                         "target_relation": action.get("target_relation", ""),
                         "fit_profile": action.get("fit_profile", frame.get("fit_profile", "")),
+                        "placement": placement,
                         "anchor": anchor,
                         "phase": frame.get("phase", ""),
                         "source_bbox": frame.get("source_bbox"),
@@ -1593,10 +1659,12 @@ def write_review(manifest_path: Path, review_dir: Path, qa_frames: list[dict[str
     overlay_sheet = Image.new("RGBA", (cols * cell_w, row_count * cell_h), (35, 38, 42, 255))
     iso_w, iso_h = 128, 148
     iso_sheet = Image.new("RGBA", (cols * iso_w, row_count * iso_h), (29, 32, 36, 255))
+    placement_sheet = Image.new("RGBA", (cols * iso_w, row_count * iso_h), (29, 32, 36, 255))
     draw = ImageDraw.Draw(sheet)
     alpha_draw = ImageDraw.Draw(alpha_sheet)
     overlay_draw = ImageDraw.Draw(overlay_sheet)
     iso_draw = ImageDraw.Draw(iso_sheet)
+    placement_draw = ImageDraw.Draw(placement_sheet)
     font = ImageFont.load_default()
     qa_out = []
     for idx, row in enumerate(rows):
@@ -1622,8 +1690,11 @@ def write_review(manifest_path: Path, review_dir: Path, qa_frames: list[dict[str
         alpha_draw.text((x + 2, y + thumb + 2), label[:28], fill=(235, 235, 225, 255), font=font)
         overlay_draw.text((x + 2, y + thumb + 2), label[:28], fill=(235, 235, 225, 255), font=font)
         iso_sheet.alpha_composite(isometric_tile_preview(base_path, mask_path, team_color, row.get("anchor")), (ix, iy))
+        placement_sheet.alpha_composite(isometric_tile_preview(base_path, mask_path, team_color, row.get("anchor"), bullseye=True), (ix, iy))
         iso_draw.text((ix + 4, iy + 114), label[:24], fill=(235, 235, 225, 255), font=font)
         iso_draw.text((ix + 4, iy + 128), str(row.get("fit_profile", ""))[:24], fill=(180, 190, 185, 255), font=font)
+        placement_draw.text((ix + 4, iy + 114), label[:24], fill=(235, 235, 225, 255), font=font)
+        placement_draw.text((ix + 4, iy + 128), str(row.get("fit_profile", ""))[:24], fill=(180, 190, 185, 255), font=font)
         holes = transparent_holes(base_path)
         edge_pixels = edge_opaque_pixels(base_path)
         qa = {k: v for k, v in row.items() if k not in {"base", "team_mask"}}
@@ -1635,10 +1706,12 @@ def write_review(manifest_path: Path, review_dir: Path, qa_frames: list[dict[str
 
     contact_path = review_dir / "contact_sheet.png"
     iso_contact_path = review_dir / "isometric_contact_sheet.png"
+    placement_path = review_dir / "bullseye_placement_sheet.png"
     alpha_mask_path = review_dir / "alpha_mask_sheet.png"
     overlay_path = review_dir / "bbox_anchor_overlay.png"
     sheet.save(contact_path)
     iso_sheet.save(iso_contact_path)
+    placement_sheet.save(placement_path)
     alpha_sheet.save(alpha_mask_path)
     overlay_sheet.save(overlay_path)
     (review_dir / "qa.json").write_text(json.dumps(qa_out, indent=2) + "\n", encoding="utf-8")
@@ -1654,6 +1727,12 @@ def write_review(manifest_path: Path, review_dir: Path, qa_frames: list[dict[str
         edge_pixels = safe_int(qa.get("edge_opaque_pixels", "0"))
         if edge_pixels:
             warnings.append(f"{qa['action']} {qa['direction']} f{qa['frame']}: {edge_pixels} opaque pixels touch the crop edge")
+        anchor = qa.get("anchor")
+        if not (isinstance(anchor, (list, tuple)) and len(anchor) == 2):
+            warnings.append(f"{qa['action']} {qa['direction']} f{qa['frame']}: missing resolved placement anchor")
+        placement = qa.get("placement")
+        if isinstance(placement, dict) and not placement.get("source_size"):
+            warnings.append(f"{qa['action']} {qa['direction']} f{qa['frame']}: missing placement source_size")
     warnings.extend(frame_consistency_warnings(qa_out))
 
     html_rows = "\n".join(
@@ -1690,6 +1769,8 @@ th {{ background: #30363d; }}
 <p><img src="contact_sheet.png" alt="contact sheet"></p>
 <h2>Isometric Tile Placement</h2>
 <p><img src="isometric_contact_sheet.png" alt="isometric tile placement contact sheet"></p>
+<h2>Bullseye Placement</h2>
+<p><img src="bullseye_placement_sheet.png" alt="bullseye placement sheet"></p>
 <h2>Alpha And Mask</h2>
 <p><img src="alpha_mask_sheet.png" alt="alpha and team mask sheet"></p>
 <h2>Bounding Boxes And Anchors</h2>
@@ -1708,6 +1789,68 @@ th {{ background: #30363d; }}
 def command_review(args: argparse.Namespace) -> None:
     write_review(Path(args.manifest), Path(args.review_out))
     print(f"wrote review: {Path(args.review_out) / 'review.html'}")
+
+
+def placement_validation_failures(rows: list[dict[str, Any]], max_anchor_coordinate_drift: int = 0) -> list[str]:
+    failures: list[str] = []
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for row in rows:
+        label = f"{row.get('action')} {row.get('direction')} f{row.get('frame')}"
+        base = Path(row.get("base", ""))
+        mask = Path(row.get("team_mask", ""))
+        if not base.exists():
+            failures.append(f"{label}: missing base image {base}")
+        if not mask.exists():
+            failures.append(f"{label}: missing team mask image {mask}")
+        placement = row.get("placement")
+        if not isinstance(placement, dict):
+            failures.append(f"{label}: missing resolved placement")
+            continue
+        anchor = placement.get("anchor") or row.get("anchor")
+        source_size = placement.get("source_size")
+        if not (isinstance(anchor, (list, tuple)) and len(anchor) == 2):
+            failures.append(f"{label}: missing placement anchor")
+        if not (isinstance(source_size, (list, tuple)) and len(source_size) == 2):
+            failures.append(f"{label}: missing placement source_size")
+        if placement.get("projection") not in {"upright_world", "footprint_world", "projectile_world", "tile_overlay", "tile_space", "screen_ui"}:
+            failures.append(f"{label}: unknown placement projection {placement.get('projection')!r}")
+        grouped.setdefault(str(row.get("action", "")), []).append(row)
+
+    for action_id, action_rows in grouped.items():
+        anchors = []
+        for row in action_rows:
+            placement = row.get("placement")
+            if isinstance(placement, dict):
+                anchor = placement.get("anchor") or row.get("anchor")
+                if isinstance(anchor, (list, tuple)) and len(anchor) == 2:
+                    anchors.append((int(anchor[0]), int(anchor[1])))
+        if len(anchors) >= 2:
+            dx = max(x for x, _ in anchors) - min(x for x, _ in anchors)
+            dy = max(y for _, y in anchors) - min(y for _, y in anchors)
+            if dx > max_anchor_coordinate_drift or dy > max_anchor_coordinate_drift:
+                failures.append(f"{action_id}: placement anchor coordinate drift is {dx},{dy} px")
+    return failures
+
+
+def command_verify_placement(args: argparse.Namespace) -> None:
+    manifest_path = Path(args.manifest)
+    review_dir = Path(args.review_out)
+    write_review(manifest_path, review_dir)
+    rows = manifest_frame_rows(manifest_path)
+    failures = placement_validation_failures(rows, args.max_anchor_coordinate_drift)
+    report = {
+        "manifest": str(manifest_path),
+        "review": str(review_dir / "review.html"),
+        "frame_count": len(rows),
+        "pass": not failures,
+        "failures": failures,
+    }
+    report_path = review_dir / "placement_report.json"
+    report_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    print(f"wrote placement report: {report_path}")
+    print(f"wrote review: {review_dir / 'review.html'}")
+    if failures:
+        raise SystemExit("placement verification failed:\n" + "\n".join(f"- {failure}" for failure in failures))
 
 
 def command_verify_peasant_idle(args: argparse.Namespace) -> None:
@@ -1786,8 +1929,6 @@ def command_verify_peasant_idle(args: argparse.Namespace) -> None:
 
 def command_split_reference(args: argparse.Namespace) -> None:
     entity = args.entity.strip().lower().replace("_", "-")
-    if entity != "peasant":
-        raise SystemExit("only peasant/villager reference splitting is bundled so far")
     unit_spec = load_unit_spec(entity, args.spec_source, args.spec_binary, args.spec_json)
     actions = spec_actions(unit_spec)
     key_color = parse_color(args.magenta)
@@ -1867,11 +2008,13 @@ def command_slot_info(args: argparse.Namespace) -> None:
 
 def command_prompt_batch_source(args: argparse.Namespace) -> None:
     entity = args.entity.strip().lower().replace("_", "-")
-    if entity != "peasant":
-        raise SystemExit("only peasant/villager batch prompting is bundled so far")
     unit_spec = load_unit_spec(entity, args.spec_source, args.spec_binary, args.spec_json)
     spec = action_spec(args.action, unit_spec)
-    slots = [parse_batch_slot(raw) for raw in args.slot] if args.slot else default_batch_slots(entity, args.action)
+    slots = [parse_batch_slot(raw) for raw in args.slot] if args.slot else default_batch_slots(entity, args.action, unit_spec, args.cols, args.rows)
+    known_directions = set(spec_directions(unit_spec))
+    unknown_directions = sorted({direction for direction, _frame in slots if direction not in known_directions})
+    if unknown_directions:
+        raise SystemExit(f"unknown directions for {entity}: {', '.join(unknown_directions)}. Known directions: {', '.join(sorted(known_directions))}")
     references = "\n".join(f"- Positive reference to view before generation: {Path(ref)}" for ref in args.reference) or "- no positive local reference attached"
     panel_lines = []
     for index, (direction, frame) in enumerate(slots):
@@ -1880,13 +2023,29 @@ def command_prompt_batch_source(args: argparse.Namespace) -> None:
         panel_lines.append(
             f"{index + 1}. row {row}, column {col}: {direction} frame {frame}, {phase_text(spec, frame)}, {direction_text(direction)}"
         )
+    asset_name = str(unit_spec.get("name") or entity)
+    asset_type = spec_asset_type(unit_spec)
+    art = unit_spec.get("art", {})
+    design_line = "; ".join(
+        part for part in (
+            str(art.get("source_role", "")).strip(),
+            str(art.get("visual_design", "")).strip(),
+            str(art.get("legacy_projection", "")).strip(),
+        )
+        if part
+    ) or "Use the generated Realm image-json spec for this asset's identity, projection, and gameplay role."
+    mirror_line = (
+        "All source art faces slightly toward screen right. Do not create left-facing source art; left facings are mirrored by the Realm renderer at runtime."
+        if unit_spec.get("render", {}).get("runtime_mirrors_horizontal")
+        else "Use only the declared source direction for each panel; do not invent extra mirrored or alternate directions."
+    )
     prompt = f"""Use case: stylized-concept
 Asset type: coherent production batch source for a 2D RTS game tileset
-Primary request: Generate exactly one square image containing a {args.cols} by {args.rows} batch sheet for the Realm {entity} `{args.action}` animation. This batch sheet is an intermediate consistency source; it will be split into standalone production `source.png` files before processing.
+Primary request: Generate exactly one square image containing a {args.cols} by {args.rows} batch sheet for the Realm {asset_name} ({asset_type}) `{args.action}` animation. This batch sheet is an intermediate consistency source; it will be split into standalone production `source.png` files before processing.
 
-Shared character identity: one compact medieval male peasant/villager with the same rounded cartoon RTS proportions, blue helmet, blue tunic/player-colour cloth accents, tan skin, dark beard, brown belt, brown boots, thick clean outline, and readable small-sprite silhouette in every panel.
+Shared asset identity: {design_line}
 
-Consistency requirements: every panel must use the identical character design, palette, scale, camera height, lighting, outline weight, pixel-art/painted sprite finish, and foot baseline. All source art faces slightly toward screen right. Do not create left-facing source art; left facings are mirrored by the Realm renderer at runtime.
+Consistency requirements: every panel must use the identical asset design, palette, scale, camera height, lighting, outline weight, pixel-art/painted sprite finish, and anchor baseline. {mirror_line}
 
 Panel order. Use these labels as instructions only; do not draw labels or text:
 {chr(10).join(panel_lines)}
@@ -1898,7 +2057,7 @@ Positive references that must be viewed before generation:
 
 Reference hygiene: view only positive references that show the desired angle or the full source sheet. Do not view or attach wrong-angle crops, flat rear diagrams, face-on front crops, inconsistent failed batches, or other rejected images as generation references; they are for human diagnosis only and bias the pose.
 
-Constraints: no text, no numbers, no watermark, no cropped reference-sheet art as the final sprite, no straight-on mascot front view, no flat rear diagram, no mirrored left-facing variants, no magenta inside the character or carried objects. Frame 1 of Peasant idle is the arms-crossed long-idle pose in both front and back panels."""
+Constraints: no text, no numbers, no watermark, no cropped reference-sheet art as the final sprite, no straight-on mascot front view, no flat rear diagram, no mirrored left-facing variants, no magenta inside the asset artwork."""
     if args.prompt_out:
         out = Path(args.prompt_out)
         out.parent.mkdir(parents=True, exist_ok=True)
@@ -1930,8 +2089,6 @@ def default_candidate_version() -> str:
 
 def command_store_generated(args: argparse.Namespace) -> None:
     entity = args.entity.strip().lower().replace("_", "-")
-    if entity != "peasant":
-        raise SystemExit("only peasant/villager generated-source storing is bundled so far")
     source_path = Path(args.input)
     if not source_path.exists():
         raise SystemExit(f"generated image not found: {source_path}")
@@ -1987,11 +2144,13 @@ def command_store_generated(args: argparse.Namespace) -> None:
 
 def command_split_batch_source(args: argparse.Namespace) -> None:
     entity = args.entity.strip().lower().replace("_", "-")
-    if entity != "peasant":
-        raise SystemExit("only peasant/villager batch splitting is bundled so far")
     unit_spec = load_unit_spec(entity, args.spec_source, args.spec_binary, args.spec_json)
     spec = action_spec(args.action, unit_spec)
-    slots = [parse_batch_slot(raw) for raw in args.slot] if args.slot else default_batch_slots(entity, args.action)
+    slots = [parse_batch_slot(raw) for raw in args.slot] if args.slot else default_batch_slots(entity, args.action, unit_spec, args.cols, args.rows)
+    known_directions = set(spec_directions(unit_spec))
+    unknown_directions = sorted({direction for direction, _frame in slots if direction not in known_directions})
+    if unknown_directions:
+        raise SystemExit(f"unknown directions for {entity}: {', '.join(unknown_directions)}. Known directions: {', '.join(sorted(known_directions))}")
     expected = args.cols * args.rows
     if len(slots) != expected:
         raise SystemExit(f"slot count {len(slots)} does not match {args.cols}x{args.rows} batch source")
@@ -2055,10 +2214,10 @@ def command_split_batch_source(args: argparse.Namespace) -> None:
 
 def command_process_frame(args: argparse.Namespace) -> None:
     entity = args.entity.strip().lower().replace("_", "-")
-    if entity != "peasant":
-        raise SystemExit("only peasant/villager single-frame processing is bundled so far")
     unit_spec = load_unit_spec(entity, args.spec_source, args.spec_binary, args.spec_json)
     spec = action_spec(args.action, unit_spec)
+    if args.direction not in spec_directions(unit_spec):
+        raise SystemExit(f"unknown direction for {entity}: {args.direction}. Known directions: {', '.join(spec_directions(unit_spec))}")
     key_color = parse_color(args.magenta)
     team_color = parse_color(args.team_color)
     prompt_text = ""
@@ -2080,7 +2239,7 @@ def command_process_frame(args: argparse.Namespace) -> None:
         args.team_threshold,
     )
 
-    out_root = Path(args.out) / entity
+    out_root = runtime_output_root(args, unit_spec)
     action_dir = out_root / args.action / args.direction
     action_dir.mkdir(parents=True, exist_ok=True)
     base_path = action_dir / f"frame_{args.frame:02d}_base.png"
@@ -2130,19 +2289,17 @@ def load_frame_metadata(workbench: Path, entity: str, action_id: str, direction:
 
 def command_assemble(args: argparse.Namespace) -> None:
     entity = args.entity.strip().lower().replace("_", "-")
-    if entity != "peasant":
-        raise SystemExit("only peasant/villager manifest assembly is bundled so far")
     args.source_workflow = "single-frame"
     unit_spec = load_unit_spec(entity, args.spec_source, args.spec_binary, args.spec_json)
     manifest = build_manifest(args, [], unit_spec)
-    out_root = Path(args.out) / entity
+    out_root = runtime_output_root(args, unit_spec)
     workbench = Path(args.workbench)
     assumptions: list[str] = manifest["assumptions"]
 
     for spec in spec_actions(unit_spec):
         action_id = spec["id"]
         expected_frames = len(spec.get("phases", [])) or 1
-        for direction in ("front", "back"):
+        for direction in spec_directions(unit_spec):
             frames = []
             for frame in range(expected_frames):
                 base_path = out_root / action_id / direction / f"frame_{frame:02d}_base.png"
@@ -2182,8 +2339,6 @@ def command_assemble(args: argparse.Namespace) -> None:
 
 def command_unit_spec(args: argparse.Namespace) -> None:
     entity = args.entity.strip().lower().replace("_", "-")
-    if entity != "peasant":
-        raise SystemExit("only peasant/villager unit specs are bundled so far")
     spec = load_unit_spec(entity, args.spec_source, args.spec_binary, args.spec_json)
     if args.out:
         out = Path(args.out)
@@ -2210,37 +2365,17 @@ def command_unit_spec(args: argparse.Namespace) -> None:
         print(json.dumps(spec, indent=2))
 
 
+def resolve_image_spec_path(raw: str) -> Path:
+    path = resolve_generated_spec_path(raw, IMAGE_SPEC_DIR, ".md", "scripts/export_image_generation_prompts.py")
+    if generated_markdown_is_stale(path):
+        run_repo_script("scripts/export_image_generation_prompts.py")
+        path = resolve_generated_spec_path(raw, IMAGE_SPEC_DIR, ".md", None)
+    return path
+
+
 def command_prompt(args: argparse.Namespace) -> None:
-    if args.entity.lower() not in {"peasant", "villager"}:
-        raise SystemExit("only the peasant/villager prompt is bundled so far")
-    view = args.view
-    state = int(args.state)
-    facing = (
-        "from the Realm front angle: three-quarter front RTS sprite view, body and face turned "
-        "about 30-45 degrees toward screen right like the reference villager, not straight-on"
-    )
-    if view == "back":
-        facing = (
-            "from the Realm back angle: three-quarter rear RTS sprite view facing away toward screen right; "
-            "show the back and side of the helmet, tunic, belt, pack or basket, and rear side of tools"
-        )
-    rows = "\n".join(f"{i + 1}. {line}" for i, line in enumerate(PEASANT_STATE_DESCRIPTIONS[state]))
-    print(
-        f"""Use case: stylized-concept
-Asset type: reference contact sheet for a 2D RTS game tileset
-Primary request: Generate exactly one image: the {view}_state_{state} reference sheet for the Realm peasant/villager unit. This is not final production art; final frames will be generated one at a time later.
-
-Style reference: match the supplied villager sprite sheets: rounded cartoon RTS style, compact proportions, blue helmet and blue tunic accents, brown leather boots and belt, tan skin, dark beard, thick clean outline, readable at small size.
-
-Canvas/layout: one square image containing a clear 4 by 4 contact sheet with consistent row and column spacing. A single solid #ff00ff magenta background across the whole sheet is fine; separate magenta squares and white gutters are not required. Put exactly one complete sprite centered in each visual grid slot.
-
-Character consistency: every square shows the same compact medieval male peasant/villager {facing}. Keep the same scale, camera angle, lighting, outline thickness, outfit, helmet, beard, and blue player-colour cloth across all 16 squares.
-
-Exact 16 squares, left to right, top to bottom:
-{rows}
-
-Constraints: no labels, no text, no numbers, no watermark. Do not use magenta in the character, berries, meat, skin, clothing trim, shadows, or tool highlights. Keep every sprite readable and visually separated in its grid slot. Do not draw transparency."""
-    )
+    path = resolve_image_spec_path(args.entity)
+    print(path.read_text(encoding="utf-8"))
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -2248,7 +2383,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
 
     def add_spec_source_args(p: argparse.ArgumentParser) -> None:
-        p.add_argument("--spec-source", choices=["auto", "code", "fallback"], default="auto")
+        p.add_argument("--spec-source", choices=["auto", "image-json", "code", "fallback"], default="auto")
         p.add_argument("--spec-binary", help="Realm binary to call with --dump-animation-spec")
         p.add_argument("--spec-json", help="Read a previously exported unit animation JSON spec")
 
@@ -2276,6 +2411,12 @@ def build_parser() -> argparse.ArgumentParser:
     review.add_argument("--review-out", required=True)
     review.set_defaults(func=command_review)
 
+    verify_placement = sub.add_parser("verify-placement", help="verify manifest placement metadata and rebuild anchor review artifacts")
+    verify_placement.add_argument("--manifest", required=True)
+    verify_placement.add_argument("--review-out", required=True)
+    verify_placement.add_argument("--max-anchor-coordinate-drift", type=int, default=0)
+    verify_placement.set_defaults(func=command_verify_placement)
+
     verify_idle = sub.add_parser("verify-peasant-idle", help="verify the exact Peasant idle production set and rebuild review artifacts")
     verify_idle.add_argument("--manifest", default="assets/tiles/entities/peasant/manifest.json")
     verify_idle.add_argument("--review-out", default="build/tileset-review/peasant-idle")
@@ -2286,7 +2427,7 @@ def build_parser() -> argparse.ArgumentParser:
     split.add_argument("--entity", default="peasant")
     add_spec_source_args(split)
     split.add_argument("--sheet", required=True)
-    split.add_argument("--view", choices=["front", "back"], required=True)
+    split.add_argument("--view", required=True)
     split.add_argument("--state", choices=["1", "2"], required=True)
     split.add_argument("--workbench", default="art/tiles/workbench")
     split.add_argument("--cols", type=int, default=4)
@@ -2299,20 +2440,20 @@ def build_parser() -> argparse.ArgumentParser:
     slot_info.add_argument("--entity", default="peasant")
     add_spec_source_args(slot_info)
     slot_info.add_argument("--slot", required=True, help="top-left, row1-col1, 1-16, or action id")
-    slot_info.add_argument("--view", choices=["front", "back"], required=True)
+    slot_info.add_argument("--view", required=True)
     slot_info.add_argument("--state", choices=["1", "2"], required=True)
     slot_info.add_argument("--workbench", default="art/tiles/workbench")
     slot_info.set_defaults(func=command_slot_info)
 
-    prompt_frame = sub.add_parser("prompt-frame", help="print a single-frame production prompt from the peasant registry")
+    prompt_frame = sub.add_parser("prompt-frame", help="print a single-frame production prompt from generated image-json data")
     prompt_frame.add_argument("--entity", default="peasant")
     add_spec_source_args(prompt_frame)
     prompt_frame.add_argument("--action")
-    prompt_frame.add_argument("--direction", choices=["front", "back"], required=True)
+    prompt_frame.add_argument("--direction", required=True)
     prompt_frame.add_argument("--frame", type=int)
     prompt_frame.add_argument("--reference", action="append", default=[])
     prompt_frame.add_argument("--reference-slot", help="top-left, row1-col1, 1-16, or action id")
-    prompt_frame.add_argument("--reference-view", choices=["front", "back"])
+    prompt_frame.add_argument("--reference-view")
     prompt_frame.add_argument("--reference-state", choices=["1", "2"])
     prompt_frame.add_argument("--workbench", default="art/tiles/workbench")
     prompt_frame.add_argument("--prompt-out")
@@ -2365,7 +2506,7 @@ def build_parser() -> argparse.ArgumentParser:
     process.add_argument("--entity", default="peasant")
     add_spec_source_args(process)
     process.add_argument("--action", required=True)
-    process.add_argument("--direction", choices=["front", "back"], required=True)
+    process.add_argument("--direction", required=True)
     process.add_argument("--frame", type=int, required=True)
     process.add_argument("--input", required=True)
     process.add_argument("--out", default="assets/tiles/entities")
@@ -2392,16 +2533,16 @@ def build_parser() -> argparse.ArgumentParser:
     assemble.add_argument("--team-color", default="#0088cc")
     assemble.set_defaults(func=command_assemble)
 
-    unit_spec = sub.add_parser("unit-spec", help="print or write the code-derived peasant tileset action spec")
+    unit_spec = sub.add_parser("unit-spec", help="print or write the generated image-json tileset action spec")
     unit_spec.add_argument("--entity", default="peasant")
     add_spec_source_args(unit_spec)
     unit_spec.add_argument("--out")
     unit_spec.set_defaults(func=command_unit_spec)
 
-    prompt = sub.add_parser("prompt", help="print a bundled generation prompt")
+    prompt = sub.add_parser("prompt", help="print a generated art/tiles/image-spec Markdown prompt")
     prompt.add_argument("--entity", default="peasant")
-    prompt.add_argument("--view", choices=["front", "back"], default="front")
-    prompt.add_argument("--state", choices=["1", "2"], default="1")
+    prompt.add_argument("--view", choices=["front", "back"], default="front", help=argparse.SUPPRESS)
+    prompt.add_argument("--state", choices=["1", "2"], default="1", help=argparse.SUPPRESS)
     prompt.set_defaults(func=command_prompt)
     return parser
 
