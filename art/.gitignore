@@ -1,0 +1,4 @@
+# Skill-generated visual references. Root art/reference remains user-owned and committable.
+/generated-reference/*
+!/generated-reference/
+!/generated-reference/README.md
