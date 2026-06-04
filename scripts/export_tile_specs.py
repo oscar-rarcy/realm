@@ -20,11 +20,340 @@ ENTITY_RANGES = {
     "buildings": ("E_TOWNHALL", "E_DOCK"),
     "animals": ("E_DEER", "E_BOAR"),
 }
+BRIDGE_BUILDING_ENUMS = {"E_WOODEN_BRIDGE", "E_STONE_BRIDGE"}
 PLAYER_TEAM_COLOR_CATEGORIES = {"units", "buildings"}
 PEASANT_SPEC = ROOT / "art" / "tiles" / "workbench" / "peasant" / "unit_spec.json"
+SELF_TILE = "self_tile"
+ADJACENT_TARGET = "adjacent_target_tile_or_entity"
+PEASANT_ACTIONS: list[dict[str, Any]] = [
+    {
+        "id": "idle",
+        "frame_ms": 20000,
+        "loop": False,
+        "hold_last": True,
+        "transition_after_ms": 20000,
+        "family": "idle",
+        "target_relation": SELF_TILE,
+        "fit_profile": "standing",
+        "phases": [
+            "relaxed idle, arms at sides, both feet planted",
+            "long-idle hold pose, arms crossed, both feet planted",
+        ],
+    },
+    {
+        "id": "walk",
+        "frame_ms": 180,
+        "loop": True,
+        "family": "gait",
+        "target_relation": SELF_TILE,
+        "fit_profile": "standing",
+        "phases": [
+            "walking gait with the front/near leg forward and the rear/far leg back",
+            "walking gait with the rear/far leg forward and the front/near leg back",
+        ],
+    },
+    {
+        "id": "chop_wood",
+        "frame_ms": 320,
+        "loop": True,
+        "family": "swing",
+        "target_relation": ADJACENT_TARGET,
+        "fit_profile": "wide_tool",
+        "tool": "wood axe",
+        "phases": [
+            "axe at the bottom/contact part of the chop, axe head low and forward",
+            "axe raised high at the top of the swing",
+        ],
+    },
+    {
+        "id": "mine_gold",
+        "frame_ms": 320,
+        "loop": True,
+        "family": "swing",
+        "target_relation": ADJACENT_TARGET,
+        "fit_profile": "wide_tool",
+        "tool": "pickaxe",
+        "phases": [
+            "pickaxe at the bottom/contact part of the mining swing, pick head low and forward",
+            "pickaxe raised high at the top of the swing",
+        ],
+    },
+    {
+        "id": "gather_berries",
+        "frame_ms": 700,
+        "loop": True,
+        "family": "gather",
+        "target_relation": ADJACENT_TARGET,
+        "fit_profile": "kneeling",
+        "phases": [
+            "one hand reaching out toward berries beside a basket",
+            "hand back in the basket with berries",
+        ],
+    },
+    {
+        "id": "hoe_soil",
+        "frame_ms": 520,
+        "loop": True,
+        "family": "work_stroke",
+        "target_relation": ADJACENT_TARGET,
+        "fit_profile": "wide_tool",
+        "tool": "long-handled farming hoe with a small flat rectangular blade, not an axe or pickaxe",
+        "phases": [
+            "arms outstretched with the hoe extended away from the body",
+            "arms pulled in after the hoe stroke while still holding the same farming hoe",
+        ],
+    },
+    {
+        "id": "gather_wheat",
+        "frame_ms": 520,
+        "loop": True,
+        "family": "gather",
+        "target_relation": ADJACENT_TARGET,
+        "fit_profile": "wide_tool",
+        "tool": "sickle",
+        "phases": [
+            "using a sickle to cut wheat",
+            "still holding the sickle while the free hand reaches for wheat",
+        ],
+    },
+    {
+        "id": "build",
+        "frame_ms": 300,
+        "loop": True,
+        "family": "hammer",
+        "target_relation": ADJACENT_TARGET,
+        "fit_profile": "kneeling",
+        "tool": "hammer",
+        "phases": [
+            "kneeling builder with hammer raised up",
+            "kneeling builder with hammer down",
+        ],
+    },
+    {
+        "id": "carry_wood",
+        "frame_ms": 180,
+        "loop": True,
+        "family": "carry_gait",
+        "target_relation": SELF_TILE,
+        "fit_profile": "standing",
+        "carry": "bundled logs held securely in both arms",
+        "phases": [
+            "carrying bundled logs while walking, front/near leg forward",
+            "carrying bundled logs while walking, rear/far leg forward",
+        ],
+    },
+    {
+        "id": "carry_gold",
+        "frame_ms": 180,
+        "loop": True,
+        "family": "carry_gait",
+        "target_relation": SELF_TILE,
+        "fit_profile": "standing",
+        "carry": "pile of grey stones and yellow gold ore held in both arms",
+        "phases": [
+            "carrying stones and gold ore while walking, front/near leg forward",
+            "carrying stones and gold ore while walking, rear/far leg forward",
+        ],
+    },
+    {
+        "id": "carry_berries",
+        "frame_ms": 180,
+        "loop": True,
+        "family": "carry_gait",
+        "target_relation": SELF_TILE,
+        "fit_profile": "standing",
+        "carry": "basket of red berries held in both arms",
+        "phases": [
+            "carrying berries while walking, front/near leg forward",
+            "carrying berries while walking, rear/far leg forward",
+        ],
+    },
+    {
+        "id": "carry_wheat",
+        "frame_ms": 180,
+        "loop": True,
+        "family": "carry_gait",
+        "target_relation": SELF_TILE,
+        "fit_profile": "standing",
+        "carry": "bundle of wheat held securely in both arms",
+        "phases": [
+            "carrying wheat while walking, front/near leg forward",
+            "carrying wheat while walking, rear/far leg forward",
+        ],
+    },
+    {
+        "id": "gather_meat",
+        "frame_ms": 520,
+        "loop": True,
+        "family": "gather",
+        "target_relation": ADJACENT_TARGET,
+        "fit_profile": "kneeling",
+        "tool": "knife",
+        "phases": [
+            "holding a knife while actively cutting or reaching toward meat",
+            "still holding the knife while taking meat with the free hand",
+        ],
+    },
+    {
+        "id": "carry_meat",
+        "frame_ms": 180,
+        "loop": True,
+        "family": "carry_gait",
+        "target_relation": SELF_TILE,
+        "fit_profile": "standing",
+        "carry": "large cut of meat held in both arms",
+        "phases": [
+            "carrying meat while walking, front/near leg forward",
+            "carrying meat while walking, rear/far leg forward",
+        ],
+    },
+    {
+        "id": "club_attack",
+        "frame_ms": 260,
+        "loop": True,
+        "family": "swing",
+        "target_relation": ADJACENT_TARGET,
+        "fit_profile": "wide_tool",
+        "tool": "wooden club",
+        "phases": [
+            "club at the top of the attack swing, held overhead but still inside the tile",
+            "club at the bottom/contact part of the attack swing, still fully inside the tile",
+        ],
+    },
+    {
+        "id": "death",
+        "frame_ms": 30000,
+        "loop": False,
+        "hold_last": True,
+        "family": "one_shot",
+        "target_relation": SELF_TILE,
+        "fit_profile": "lying",
+        "phases": [
+            "dead villager body lying on the ground, not a skeleton",
+            "skeleton remains of the same villager in the same ground area, with small clothing scraps",
+        ],
+    },
+]
 PLAYER_SIGIL = {
     "id": "player-sigil",
     "description": "white diagonal stripe running from top left to bottom right",
+}
+KNIGHT_COMMON_TEAM_COLOR_SLOTS = [
+    "shield face",
+    "horse bridle/headstall/face straps",
+    "reins",
+]
+KNIGHT_PLATE_HELM_TEAM_COLOR_SLOTS = [
+    *KNIGHT_COMMON_TEAM_COLOR_SLOTS,
+    "saddle/saddle cloth",
+]
+KNIGHT_IRON_WEAPONS_HEAVY_LANCE_DESCRIPTION = (
+    "heavy mounted cavalry lance, longer than the default short spear, with wooden shaft, large bright iron lance head, "
+    "visible iron socket/fittings, and metal butt cap"
+)
+KNIGHT_IRON_WEAPONS_SMALL_PENNANT_DESCRIPTION = (
+    "small practical lance pennant in blue #00AFFF with a white diagonal stripe, pointing/trailing outward away from "
+    "the rider rather than inward across the rider"
+)
+KNIGHT_TIER_RULES: dict[str, dict[str, Any]] = {
+    "basic_weapons__open_helmet": {
+        "team_color_slots": KNIGHT_COMMON_TEAM_COLOR_SLOTS,
+        "description": (
+            "default/basic Knight with no research active; open nasal helmet, visible face, simple mail coif, "
+            "and light shoulder protection only; reads as the mounted villager upgraded with cheap early cavalry gear, "
+            "not polished noble cavalry; no horse armour and no barding; brown leather saddle and dark brown leather "
+            "girth/belly strap; horse bridle/headstall/face straps and reins use blue #00AFFF; short spear with "
+            "plain wooden shaft, leather grip, and dull bronze or scrap-metal spearhead; no pennant; round wooden "
+            "shield with blue #00AFFF face, white diagonal stripe, and optional simple central boss; shield is "
+            "strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's "
+            "anatomical left hand still holds or gathers the reins"
+        ),
+        "team_color_rules": [
+            "Use blue #00AFFF on the shield face, horse bridle/headstall/face straps, and reins.",
+            "Put the white diagonal stripe on the shield face.",
+            "No Plate Helm is active, so keep the saddle brown leather.",
+            "Keep the girth/belly strap under the horse dark brown leather; never make it blue.",
+            "No pennant, horse armour, barding, lance, kite shield, or polished noble-cavalry treatment.",
+            "Keep horse body, mane, tail, hooves, saddle leather, girth strap, shadows, wood, skin, and plain metal out of team colour.",
+        ],
+    },
+    "basic_weapons__plate_helm": {
+        "team_color_slots": KNIGHT_PLATE_HELM_TEAM_COLOR_SLOTS,
+        "description": (
+            "Plate Helm active and Iron Weapons inactive; same Plate Helm armour package as iron_weapons__plate_helm: "
+            "closed plate helm, blue plume/crest, and full plate-style rider armour silhouette; same horse armour/barding "
+            "package as iron_weapons__plate_helm, with plated head armour/chanfron, neck plates/crinet, and chest/front "
+            "armour/peytral; saddle/saddle cloth becomes blue #00AFFF; dark brown leather girth/belly strap under the "
+            "horse remains non-team-colour and must never become blue; horse bridle/headstall/face straps and reins remain blue #00AFFF where visible; same short spear "
+            "as the default/basic variant, with plain wooden shaft, leather grip, and dull bronze or scrap-metal spearhead; "
+            "no pennant and do not upgrade to a lance; same round wooden shield as the default/basic variant, with blue "
+            "#00AFFF face and white diagonal stripe; no reinforced iron rim, rivets, or kite-shield upgrade; shield is "
+            "strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical "
+            "left hand still holds or gathers the reins"
+        ),
+        "team_color_rules": [
+            "Use blue #00AFFF on the shield face, horse bridle/headstall/face straps, reins, and saddle/saddle cloth.",
+            "Put the white diagonal stripe on the shield face.",
+            "Plate Helm is active, so the saddle/saddle cloth becomes blue #00AFFF.",
+            "Keep the girth/belly strap under the horse dark brown leather; never make it blue.",
+            "Horse armour/barding is present because Plate Helm is active, but the girth strap, horse body, and plain metal are not team colour.",
+            "Keep the basic short spear and round wooden shield; do not add a lance, pennant, kite shield, iron rim, or iron rivets in this tier.",
+            "Keep horse body, mane, tail, hooves, girth strap, shadows, wood, skin, and plain metal out of team colour.",
+        ],
+    },
+    "iron_weapons__open_helmet": {
+        "team_color_slots": [
+            *KNIGHT_COMMON_TEAM_COLOR_SLOTS,
+            "small lance pennant",
+        ],
+        "description": (
+            "Iron Weapons active and Plate Helm inactive; same open-helmet/light-armour package as basic_weapons__open_helmet: "
+            "open nasal helmet, visible face, simple mail coif, and light shoulder protection; no full plate armour and no "
+            "plume/crest; no horse armour and no barding; brown leather saddle and dark brown leather girth/belly strap; "
+            f"horse bridle/headstall/face straps and reins use blue #00AFFF; {KNIGHT_IRON_WEAPONS_HEAVY_LANCE_DESCRIPTION}; "
+            f"{KNIGHT_IRON_WEAPONS_SMALL_PENNANT_DESCRIPTION}; pentagonal/kite-style shield "
+            "with blue #00AFFF face, white diagonal stripe, reinforced iron rim, and iron rivets/fasteners; shield is strapped "
+            "to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand "
+            "still holds or gathers the reins"
+        ),
+        "team_color_rules": [
+            "Use blue #00AFFF on the shield face, horse bridle/headstall/face straps, reins, and small lance pennant.",
+            "Put the white diagonal stripe on the shield face and the small lance pennant.",
+            "The small lance pennant points/trails outward away from the rider, not inward across the rider.",
+            "No Plate Helm is active, so keep the saddle brown leather.",
+            "Keep the girth/belly strap under the horse dark brown leather; never make it blue.",
+            "Keep the open nasal helmet and visible face; do not add Plate Helm armour features in this tier.",
+            "No horse armour or barding; Iron Weapons alone upgrades to the heavy mounted cavalry lance, upgraded shield, and small pennant.",
+            "Keep horse body, mane, tail, hooves, saddle leather, girth strap, shadows, wood, skin, and plain metal out of team colour.",
+        ],
+    },
+    "iron_weapons__plate_helm": {
+        "team_color_slots": [
+            *KNIGHT_PLATE_HELM_TEAM_COLOR_SLOTS,
+            "small lance pennant",
+        ],
+        "description": (
+            "both Plate Helm and Iron Weapons active; same Plate Helm armour package as basic_weapons__plate_helm: closed "
+            "plate helm, blue plume/crest, and full plate-style rider armour silhouette; same horse armour/barding package "
+            "as basic_weapons__plate_helm, with plated head armour/chanfron, neck plates/crinet, and chest/front armour/peytral; "
+            "saddle/saddle cloth becomes blue #00AFFF; dark brown leather girth/belly strap under the horse remains "
+            f"non-team-colour and must never become blue; horse bridle/headstall/face straps and reins remain blue #00AFFF where visible; {KNIGHT_IRON_WEAPONS_HEAVY_LANCE_DESCRIPTION}; "
+            f"{KNIGHT_IRON_WEAPONS_SMALL_PENNANT_DESCRIPTION}; same pentagonal/kite-style "
+            "Iron Weapons shield as iron_weapons__open_helmet, with blue #00AFFF face, white diagonal stripe, reinforced iron rim, "
+            "and iron rivets/fasteners; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and "
+            "partly visible; rider's anatomical left hand still holds or gathers the reins"
+        ),
+        "team_color_rules": [
+            "Use blue #00AFFF on the shield face, horse bridle/headstall/face straps, reins, saddle/saddle cloth, and small lance pennant.",
+            "Put the white diagonal stripe on the shield face and the small lance pennant.",
+            "The small lance pennant points/trails outward away from the rider, not inward across the rider.",
+            "Plate Helm is active, so the saddle/saddle cloth becomes blue #00AFFF.",
+            "Keep the girth/belly strap under the horse dark brown leather; never make it blue.",
+            "Horse armour/barding is present because Plate Helm is active, and should match basic_weapons__plate_helm except for weapon/shield differences.",
+            "Keep the lance pennant small and practical, not a large banner or ceremonial flag.",
+            "Keep horse body, mane, tail, hooves, girth strap, shadows, wood, skin, and plain metal out of team colour.",
+        ],
+    },
 }
 RESEARCH_VISUAL_LINES = {
     "weapon_material": {
@@ -107,13 +436,13 @@ RESEARCH_VISUAL_LINES = {
                 "id": "open_helmet",
                 "name": "Open Helmet",
                 "research": None,
-                "description": "starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
+                "description": "early/basic cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
             },
             {
                 "id": "plate_helm",
                 "name": "Plate Helm",
                 "research": "Plate Helm",
-                "description": "upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+                "description": "upgraded cavalry armour with a closed plate helm, stronger cheek protection, brighter solid helmet brow, and heavier neck protection",
             },
         ],
     },
@@ -122,6 +451,32 @@ PLAYER_COLOURS = {
     "blue": {"name": "blue", "hex": "#00AFFF"},
     "red": {"name": "red", "hex": "#FF0000"},
     "green": {"name": "green", "hex": "#00B050"},
+}
+GENERATION_ASPECTS = {
+    "square_1_1": {
+        "preset": "Square",
+        "ratio": "1:1",
+        "description": "default square image-generation aspect ratio",
+    },
+    "portrait_4_3": {
+        "preset": "Portrait",
+        "ratio": "4:3",
+        "description": "taller cavalry sheet with extra vertical room for horse and rider silhouette",
+    },
+    "story_16_9": {
+        "preset": "Story",
+        "ratio": "16:9",
+        "description": "wide sheet with extra horizontal room for long spears, pikes, and lances",
+    },
+}
+DEFAULT_GENERATION_ASPECT_ID = "square_1_1"
+ENTITY_GENERATION_ASPECT_OVERRIDES = {
+    "E_KNIGHT": "portrait_4_3",
+    "E_SPEARMAN": "story_16_9",
+}
+KNIGHT_LANCE_VARIANT_ASPECTS = {
+    "iron_weapons__open_helmet": "story_16_9",
+    "iron_weapons__plate_helm": "story_16_9",
 }
 BLUE_CONTEXT_KEYWORDS = {
     "blue", "water", "naval", "ship", "warship", "boat", "dock", "fishing", "fish",
@@ -383,20 +738,144 @@ def research_visual_lines_for_entity(enum_name: str) -> list[dict[str, Any]]:
     ]
 
 
+def team_color_slots_for_entity(enum_name: str, profile: dict[str, str], team_color_required: bool) -> list[str]:
+    if not team_color_required:
+        return []
+    if enum_name == "E_KNIGHT":
+        return [
+            *KNIGHT_COMMON_TEAM_COLOR_SLOTS,
+            "saddle/saddle cloth only when Plate Helm is active",
+        ]
+    return split_list(profile.get("team_color_slots", ""))
+
+
+def team_color_variant_rules_for_entity(enum_name: str) -> list[dict[str, Any]]:
+    if enum_name != "E_KNIGHT":
+        return []
+    return [
+        {
+            "id": variant_id,
+            "name": variant_id.replace("__", " + ").replace("_", " ").title(),
+            "team_color_slots": list(rule["team_color_slots"]),
+            "rules": list(rule["team_color_rules"]),
+        }
+        for variant_id, rule in KNIGHT_TIER_RULES.items()
+    ]
+
+
+def generation_aspect(aspect_id: str = DEFAULT_GENERATION_ASPECT_ID) -> dict[str, str]:
+    aspect = GENERATION_ASPECTS.get(aspect_id, GENERATION_ASPECTS[DEFAULT_GENERATION_ASPECT_ID])
+    return {
+        "id": aspect_id if aspect_id in GENERATION_ASPECTS else DEFAULT_GENERATION_ASPECT_ID,
+        "preset": aspect["preset"],
+        "ratio": aspect["ratio"],
+        "description": aspect["description"],
+    }
+
+
+def generation_aspect_for_group(group: str) -> dict[str, str]:
+    return generation_aspect(DEFAULT_GENERATION_ASPECT_ID)
+
+
+def generation_aspect_for_entity(enum_name: str, category: str) -> dict[str, str]:
+    if category != "units":
+        return generation_aspect_for_group(category)
+    return generation_aspect(ENTITY_GENERATION_ASPECT_OVERRIDES.get(enum_name, DEFAULT_GENERATION_ASPECT_ID))
+
+
+def generation_aspect_for_research_variant(enum_name: str, variant_id: str) -> dict[str, str] | None:
+    if enum_name == "E_KNIGHT" and variant_id in KNIGHT_LANCE_VARIANT_ASPECTS:
+        return generation_aspect(KNIGHT_LANCE_VARIANT_ASPECTS[variant_id])
+    return None
+
+
+def generation_aspect_variant_rules_for_entity(enum_name: str, category: str) -> list[dict[str, str]]:
+    base = generation_aspect_for_entity(enum_name, category)
+    rules: list[dict[str, str]] = []
+    if enum_name == "E_KNIGHT":
+        for variant_id, aspect_id in KNIGHT_LANCE_VARIANT_ASPECTS.items():
+            aspect = generation_aspect(aspect_id)
+            if aspect["id"] == base["id"]:
+                continue
+            rules.append(
+                {
+                    "variant": variant_id,
+                    "preset": aspect["preset"],
+                    "ratio": aspect["ratio"],
+                    "description": "use for Iron Weapons Knight lance states so the lance has horizontal room",
+                }
+            )
+    return rules
+
+
+def source_canvas_for_entity(enum_name: str, category: str) -> dict[str, Any]:
+    if category in {"units", "animals"}:
+        return {
+            "width_px": 48,
+            "height_px": 48,
+            "unit": "px",
+            "scope": "per accepted standalone actor sprite frame",
+            "source": "docs/tileset/realm_tileset_visual_audit.md core format table",
+        }
+    if category == "buildings":
+        return {
+            "width_px": 32,
+            "height_px": 32,
+            "unit": "px",
+            "scope": "per occupied building footprint cell",
+            "source": "docs/tileset/realm_tileset_visual_audit.md core format table",
+        }
+    return {}
+
+
+def source_canvas_for_group(group: str) -> dict[str, Any]:
+    if group == "grounds":
+        return {
+            "width_px": 1024,
+            "height_px": 1024,
+            "unit": "px",
+            "scope": "per standalone high-resolution ground source tile",
+            "source": "realm-tileset-from-images ground contract",
+        }
+    if group in {"features", "decals"}:
+        return {
+            "width_px": 48,
+            "height_px": 48,
+            "unit": "px",
+            "scope": "per accepted standalone tile-anchored source image",
+            "source": "docs/tileset/realm_tileset_visual_audit.md core format table",
+        }
+    if group in {"projectiles", "effects", "user_interface"}:
+        return {
+            "width_px": 32,
+            "height_px": 32,
+            "unit": "px",
+            "scope": "per accepted standalone overlay, projectile, or UI source image",
+            "source": "docs/tileset/realm_tileset_visual_audit.md core format table",
+        }
+    return {}
+
+
 def research_tier_variants_for_entity(enum_name: str) -> list[dict[str, Any]]:
     lines = research_visual_lines_for_entity(enum_name)
     if not lines:
         return []
     variants: list[dict[str, Any]] = []
     for combo in itertools.product(*[line["tiers"] for line in lines]):
+        variant_id = "__".join(tier["id"] for tier in combo)
+        description = "; ".join(tier["description"] for tier in combo)
+        if enum_name == "E_KNIGHT" and variant_id in KNIGHT_TIER_RULES:
+            description = KNIGHT_TIER_RULES[variant_id]["description"]
+        variant_aspect = generation_aspect_for_research_variant(enum_name, variant_id)
         researched = [tier["research"] for tier in combo if tier.get("research")]
         variants.append(
             {
-                "id": "__".join(tier["id"] for tier in combo),
+                "id": variant_id,
                 "name": " + ".join(tier["name"] for tier in combo),
-                "description": "; ".join(tier["description"] for tier in combo),
+                "description": description,
                 "research": researched,
                 "is_default": not researched,
+                **({"generation_aspect": variant_aspect} if variant_aspect else {}),
             }
         )
     return variants
@@ -418,11 +897,62 @@ def apply_research_variants_to_actions(enum_name: str, actions: list[dict[str, A
                 "research": variant["research"],
                 "is_default": variant["is_default"],
             }
+            if variant.get("generation_aspect"):
+                item["generation_aspect"] = variant["generation_aspect"]
             expanded.append(item)
     return expanded
 
 
+def guided_entity_action_description(enum_name: str, action_id: str, description: str) -> str:
+    action = action_id.lower()
+    if enum_name != "E_KNIGHT":
+        return description
+    shield_reins = (
+        "shield is strapped to the rider's anatomical left forearm, relaxed on the far side beside or behind "
+        "the horse neck/shoulder area, about one third to one half visible; the rider's anatomical left hand "
+        "still holds or gathers the reins, with reins passing naturally near the shield-side hand"
+    )
+    if action == "idle":
+        return (
+            "idle mounted stance: rider's anatomical right hand carries the spear/lance upright or near-upright; "
+            f"{shield_reins}; shield is not front-presented; reins are relaxed rather than tense"
+        )
+    if action == "trot":
+        return (
+            "controlled trot: rider's anatomical right hand carries the spear/lance while the horse moves; "
+            f"{shield_reins}; horse can be guided by legs, knees, seat, spurs, training, and relaxed reins"
+        )
+    if "charge" in action or "strike" in action:
+        return (
+            "charge/strike action with the spear/lance allowed to angle for the attack; "
+            f"{shield_reins}; keep the shield strapped, not gripped as a whole-hand object"
+        )
+    if "hit" in action or "alert" in action:
+        return (
+            "hit/alert mounted pose with the spear/lance still in the rider's anatomical right hand; "
+            f"{shield_reins}; shield arm remains relaxed rather than actively presenting the shield"
+        )
+    return description
+
+
+def apply_entity_action_guidance(enum_name: str, actions: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    guided: list[dict[str, Any]] = []
+    for action in actions:
+        item = dict(action)
+        item["description"] = guided_entity_action_description(
+            enum_name,
+            str(item.get("id", "")),
+            str(item.get("description", item.get("id", ""))),
+        )
+        guided.append(item)
+    return guided
+
+
 def recommended_player_colour(enum_name: str, stats: dict[str, Any], audit: dict[str, str]) -> dict[str, str]:
+    if enum_name in {"E_WOODEN_BRIDGE", "E_STONE_BRIDGE"}:
+        return PLAYER_COLOURS["red"]
+    if enum_name == "E_KNIGHT":
+        return PLAYER_COLOURS["blue"]
     profile = entity_profile(enum_name, audit)
     context = " ".join(
         [
@@ -486,9 +1016,9 @@ def parse_stats(source: str) -> dict[str, dict[str, Any]]:
         if len(fields) < 16:
             raise RuntimeError(f"bad STATS row for {enum_name}: {fields}")
         if len(fields) >= 17:
-            cost_food_i = 7
-            cost_gold_i = 8
-            cost_wood_i = 9
+            cost_gold_i = 7
+            cost_wood_i = 8
+            cost_food_i = 9
             train_time_i = 10
             footprint_w_i = 11
             footprint_h_i = 12
@@ -594,6 +1124,8 @@ def parse_audit_tables(markdown: str) -> tuple[dict[str, dict[str, str]], dict[s
 
 
 def category_for_entity(enum_name: str, entity_order: list[str]) -> str | None:
+    if enum_name in BRIDGE_BUILDING_ENUMS:
+        return "buildings"
     index = entity_order.index(enum_name)
     for category, (start, end) in ENTITY_RANGES.items():
         if entity_order.index(start) <= index <= entity_order.index(end):
@@ -620,9 +1152,9 @@ def default_entity_actions(category: str, required_states: str) -> list[dict[str
 
 def peasant_actions() -> list[dict[str, Any]]:
     if not PEASANT_SPEC.exists():
-        return []
+        return [dict(action) for action in PEASANT_ACTIONS]
     spec = json.loads(PEASANT_SPEC.read_text(encoding="utf-8"))
-    return spec.get("actions", [])
+    return spec.get("actions", []) or [dict(action) for action in PEASANT_ACTIONS]
 
 
 def entity_spec(
@@ -635,10 +1167,13 @@ def entity_spec(
     actions = peasant_actions() if enum_name == "E_PEASANT" else default_entity_actions(
         category, profile.get("required_states", "")
     )
+    actions = apply_entity_action_guidance(enum_name, actions)
     actions = apply_research_variants_to_actions(enum_name, actions)
     team_color_required = category in PLAYER_TEAM_COLOR_CATEGORIES
+    team_color_slots = team_color_slots_for_entity(enum_name, profile, team_color_required)
     player_colour = recommended_player_colour(enum_name, stats, audit) if team_color_required else None
     military_sigil = PLAYER_SIGIL if is_military_unit(category, stats) else None
+    generation_aspect_spec = generation_aspect_for_entity(enum_name, category)
     render = {
         "layer": "building" if category == "buildings" else "actor",
         "projection_mode": "upright_world",
@@ -655,13 +1190,28 @@ def entity_spec(
         placement["origin"] = "south_west"
     states: list[str]
     if category == "buildings":
-        states = [
-            "construction_0_foundation", "construction_1_frame", "construction_2_nearly_complete",
-            "complete", "damaged", "garrisoned", "garrison_firing", "training_peasant",
-            "training_infantry", "training_cavalry", "training_ship", "researching_iron_weapons",
-            "researching_crossbows", "researching_pikes", "researching_counterweight",
-            "researching_plate_helm",
-        ]
+        if enum_name == "E_WOODEN_BRIDGE":
+            states = [
+                "span_single_east_west", "span_single_north_south",
+                "construction_0_foundation", "construction_1_frame", "construction_2_nearly_complete",
+                "damaged", "broken",
+            ]
+        elif enum_name == "E_STONE_BRIDGE":
+            states = [
+                "span_single_east_west", "span_single_north_south",
+                "span_half_east_west", "span_half_north_south",
+                "span_joined_east_west", "span_joined_north_south",
+                "construction_0_foundation", "construction_1_frame", "construction_2_nearly_complete",
+                "damaged", "broken",
+            ]
+        else:
+            states = [
+                "construction_0_foundation", "construction_1_frame", "construction_2_nearly_complete",
+                "complete", "damaged", "garrisoned", "garrison_firing", "training_peasant",
+                "training_infantry", "training_cavalry", "training_ship", "researching_iron_weapons",
+                "researching_crossbows", "researching_pikes", "researching_counterweight",
+                "researching_plate_helm",
+            ]
     elif category == "animals":
         states = ["alive", "dead_unharvested", "partly_harvested", "mostly_harvested", "depleted_skeleton"]
     elif enum_name == "E_TRANSPORT":
@@ -703,7 +1253,8 @@ def entity_spec(
         },
         "team_color": {
             "required": team_color_required,
-            "slots": split_list(profile.get("team_color_slots", "")) if team_color_required else [],
+            "slots": team_color_slots,
+            "variant_rules": team_color_variant_rules_for_entity(enum_name),
             "recommended_player_colour": player_colour,
             "player_sigil": military_sigil,
         },
@@ -727,6 +1278,9 @@ def entity_spec(
             "legacy_projection": "upright sprite anchored over projected isometric map tiles",
             "visual_design": profile.get("visual_design", ""),
             "source_role": profile.get("role", ""),
+            "generation_aspect": generation_aspect_spec,
+            "generation_aspect_variant_rules": generation_aspect_variant_rules_for_entity(enum_name, category),
+            "source_canvas": source_canvas_for_entity(enum_name, category),
         },
         "states": states,
         "actions": actions,
@@ -770,6 +1324,8 @@ def ammunition_spec(spec: dict[str, Any]) -> dict[str, Any]:
         "art": {
             "legacy_projection": "transparent upright_world projectile sprite or tiny animation",
             "visual_design": spec["description"],
+            "generation_aspect": generation_aspect_for_group("projectiles"),
+            "source_canvas": source_canvas_for_group("projectiles"),
         },
         "states": [state["id"] for state in spec["states"]],
         "actions": [
@@ -894,6 +1450,10 @@ def ground_spec_v2(enum_name: str, slug: str) -> dict[str, Any]:
             "legacy_terrain_enums": GROUND_LEGACY_TERRAINS.get(enum_name, []),
         },
         "gameplay": ground_gameplay(enum_name),
+        "art": {
+            "generation_aspect": generation_aspect_for_group("grounds"),
+            "source_canvas": source_canvas_for_group("grounds"),
+        },
         "paths": {
             "runtime_root": f"assets/tiles/grounds/{slug}",
             "base": f"assets/tiles/grounds/{slug}.png",
@@ -931,6 +1491,10 @@ def feature_spec_v2(enum_name: str, slug: str) -> dict[str, Any]:
         "placement": {
             "footprint": {"w": 1, "h": 1},
         },
+        "art": {
+            "generation_aspect": generation_aspect_for_group("features"),
+            "source_canvas": source_canvas_for_group("features"),
+        },
         "paths": {
             "runtime_root": f"assets/tiles/features/{slug}",
             "manifest": f"assets/tiles/features/{slug}/manifest.json",
@@ -967,6 +1531,10 @@ def decal_spec_v2(enum_name: str, slug: str) -> dict[str, Any]:
             "legacy_terrain_enums": DECAL_LEGACY_TERRAINS.get(enum_name, []),
             "emission_context": DECAL_RUNTIME_CONTEXT.get(enum_name, "runtime"),
         },
+        "art": {
+            "generation_aspect": generation_aspect_for_group("decals"),
+            "source_canvas": source_canvas_for_group("decals"),
+        },
         "paths": {
             "runtime_root": f"assets/tiles/decals/{slug}",
             "base": f"assets/tiles/decals/{slug}.png",
@@ -993,6 +1561,10 @@ def effect_spec_v2(slug: str) -> dict[str, Any]:
             "depth_bucket": "effect",
             "anchor": "world_position",
         },
+        "art": {
+            "generation_aspect": generation_aspect_for_group("effects"),
+            "source_canvas": source_canvas_for_group("effects"),
+        },
         "paths": {
             "runtime_root": f"assets/tiles/effects-ui/{slug}.png",
         },
@@ -1015,6 +1587,10 @@ def ui_asset_spec_v2(slug: str) -> dict[str, Any]:
             "projection_factor": 0.0,
             "depth_bucket": "ui",
             "anchor": "screen_position",
+        },
+        "art": {
+            "generation_aspect": generation_aspect_for_group("user_interface"),
+            "source_canvas": source_canvas_for_group("user_interface"),
         },
         "paths": {
             "runtime_root": f"assets/tiles/effects-ui/{slug}.png",

@@ -135,42 +135,6 @@ static bool setupNightLightView(int zoom) {
     return true;
 }
 
-static void applyNightLightTestScene() {
-    const int cx = MAP_W / 2;
-    const int cy = MAP_H / 2;
-    for (int y = 0; y < MAP_H; ++y) {
-        for (int x = 0; x < MAP_W; ++x) {
-            Tile& tile = g.map[y][x];
-            tile.terrain = T_GRASS;
-            tile.resources = 0;
-            tile.biome = B_TEMPERATE;
-            tile.preWinterTerrain = T_GRASS;
-            tile.wear = 0;
-            for (int p = 0; p < MAX_PLAYERS; ++p) {
-                tile.visible[p] = false;
-                tile.explored[p] = true;
-            }
-        }
-    }
-
-    g.entities.clear();
-    g.projectiles.clear();
-    g.local.selectedId = -1;
-    g.local.selectedIds.clear();
-    g.local.buildPending = E_NONE;
-    g.nextId = 1;
-    spawnEntity(g, E_TOWNHALL, 0, cx - 1, cy - 1);
-    spawnEntity(g, E_PEASANT, 0, cx + 5, cy + 2);
-    spawnEntity(g, E_PEASANT, 0, cx - 5, cy + 3);
-    g.map[cy + 4][cx + 7].terrain = T_FOREST;
-    g.map[cy + 4][cx + 7].resources = 120;
-    g.map[cy + 4][cx + 7].preWinterTerrain = T_FOREST;
-    view.cursorX = cx;
-    view.cursorY = cy;
-    std::cerr << "realm: night light controlled scene center=" << cx << "," << cy
-              << " entities=" << g.entities.size() << "\n";
-}
-
 static int runNightLightTestMode() {
     std::filesystem::path outDir = "build/night-light-screenshots";
     if (const char* env = std::getenv("REALM_UI_NIGHT_LIGHT_TEST_DIR")) {
@@ -188,7 +152,6 @@ static int runNightLightTestMode() {
     int ais = envIntLocal("REALM_NIGHT_LIGHT_TEST_AIS", 0);
     initGameWithSeed(ais, (unsigned)envIntLocal("REALM_SEED", 2468),
                      envIntLocal("REALM_HUMAN_CORNER", 1));
-    applyNightLightTestScene();
 
     bool ok = setupNightLightView(envIntLocal("REALM_UI_TEST_ZOOM", 26));
     if (ok) ok = captureUiFrame((outDir / "01-night-townhall-light.bmp").string()) && ok;

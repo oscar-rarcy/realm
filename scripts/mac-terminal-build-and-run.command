@@ -1,18 +1,33 @@
 #!/bin/bash
 
-# Realm macOS GUI build/run script.
+# Realm macOS terminal build/run script.
 # Run it from Terminal or double-click it in Finder.
+# Pass "clean" or "--clean" to remove build outputs before rebuilding.
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-# Keep the log outside build/, because `make clean` deletes build/.
+# Keep the log outside build/, because optional clean builds delete build/.
 mkdir -p "$REPO/logs"
-LOG="$REPO/logs/mac-gui-build.log"
+LOG="$REPO/logs/mac-terminal-build.log"
 
-echo "Realm macOS GUI build"
+CLEAN=0
+for arg in "$@"; do
+    case "$arg" in
+        clean|--clean)
+            CLEAN=1
+            ;;
+    esac
+done
+
+echo "Realm macOS terminal build"
 echo "Repo: $REPO"
 echo "Log: $LOG"
+if [[ "$CLEAN" -eq 1 ]]; then
+    echo "Build mode: clean"
+else
+    echo "Build mode: incremental"
+fi
 echo
 
 if [[ "$(uname -s)" != "Darwin" ]]; then
@@ -22,26 +37,21 @@ if [[ "$(uname -s)" != "Darwin" ]]; then
     exit 1
 fi
 
-if ! command -v brew >/dev/null 2>&1; then
-    echo "ERROR: Homebrew was not found."
-    echo
-    echo "Install Homebrew from https://brew.sh, then run this script again."
-    echo
-    read -r -p "Press Return to close..."
-    exit 1
-fi
-
 cd "$REPO" || exit 1
 
-echo "Installing/checking Homebrew build dependencies..."
-echo "Cleaning and building GUI target..."
+if [[ "$CLEAN" -eq 1 ]]; then
+    echo "Cleaning and building terminal target..."
+else
+    echo "Building terminal target..."
+fi
 echo
 
 {
-    brew install pkg-config sdl2 sdl2_ttf
-    make clean
-    make gui
-    test -x bin/realm-gfx
+    if [[ "$CLEAN" -eq 1 ]]; then
+        make clean
+    fi
+    make terminal
+    test -x bin/realm
 } > "$LOG" 2>&1
 
 EXITCODE=$?
@@ -60,10 +70,10 @@ if [[ "$EXITCODE" -ne 0 ]]; then
 fi
 
 echo "Build succeeded."
-echo "Starting Realm GUI..."
+echo "Starting Realm terminal renderer..."
 echo
 
-"$REPO/bin/realm-gfx"
+"$REPO/bin/realm"
 
 EXITCODE=$?
 

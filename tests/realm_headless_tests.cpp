@@ -6,6 +6,7 @@
 #include "commands/input_intent.h"
 #include "commands/input_mode_controller.h"
 #include "input_keys.h"
+#include "user_settings.h"
 #include "view_state.h"
 #include "core/build_service.h"
 #include "core/game_context.h"
@@ -24,6 +25,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <cstdio>
+#include <filesystem>
 #include <fstream>
 #include <iterator>
 #include <limits>
@@ -86,6 +88,22 @@ static Entity* testCorpseAt(int x, int y) {
 static bool testCanPlace(EntityType type, int x, int y, int owner) {
     WorldIndex world = buildWorldIndex(g);
     return canPlace(g, world, type, x, y, owner);
+}
+
+static void setTestEnvVar(const char* name, const std::string& value) {
+#if defined(_WIN32)
+    _putenv_s(name, value.c_str());
+#else
+    setenv(name, value.c_str(), 1);
+#endif
+}
+
+static void clearTestEnvVar(const char* name) {
+#if defined(_WIN32)
+    _putenv_s(name, "");
+#else
+    unsetenv(name);
+#endif
 }
 
 static void runTestAIGather(PlayerId owner) {
@@ -417,6 +435,10 @@ static void testWeatherSightAndForestMovementPenalties() {
     knight->moveCd = 0;
     moveAlongPath(g, world, *knight);
     assert(knight->x == 53 && knight->moveCd == STATS[E_KNIGHT].speed + 2);
+    assert(knight->visualMoveFromX == 52 && knight->visualMoveFromY == 50);
+    assert(knight->visualMoveToX == 53 && knight->visualMoveToY == 50);
+    assert(knight->visualMoveDurationTicks == knight->moveCd + 1);
+    assert(knight->visualMoveSeq > 0);
 }
 
 static void testVisualEntityStateSelectors() {
@@ -495,6 +517,9 @@ static void testRenderModelBuildsViewport() {
     g.mode = M_BUILD_PLACE;
     g.local.buildPending = E_TOWER;
     spawnProjectile(g, 12, 12, 14, 14, '-', CP_PROJ_ARROW, PT_ARROW);
+    assert(!g.projectiles.empty());
+    assert(g.projectiles.back().visualId > 0);
+    assert(g.projectiles.back().visualSpawnX == 12.0f && g.projectiles.back().visualSpawnY == 12.0f);
     ui.actionMarkers.push_back({ 13, 13, 9, '!' });
     ui.actionMarkers.push_back({ 30, 30, 9, '?' });
 
@@ -798,6 +823,13 @@ static void testMatchResetAndDeterminism() {
     spawnProjectile(g, 5, 5, 10, 10, '-', CP_PROJ_ARROW);
     spawnEntity(g, E_MILITIA, 0, 20, 20);
     assert(!g.projectiles.empty());
+    assert(g.projectiles.back().visualId > 0);
+    g.tick = 1;
+    tickProjectiles(g);
+    assert(!g.projectiles.empty());
+    assert(g.projectiles.back().visualMoveSeq > 0);
+    assert(g.projectiles.back().visualMoveFromX != g.projectiles.back().visualMoveToX
+           || g.projectiles.back().visualMoveFromY != g.projectiles.back().visualMoveToY);
     initGameWithSeed(2, 2002u, 1);
     std::string second = startupSummary();
     assert(first == second);
@@ -1398,6 +1430,78 @@ static void testWallLineBuild() {
     assert(validateGameState(g, nullptr));
 }
 
+static void makeTestTile(int x, int y, Terrain terrain) {
+    assert(inBounds(x, y));
+    g.map[y][x].terrain = terrain;
+    g.map[y][x].preWinterTerrain = terrain;
+    g.map[y][x].resources = 0;
+    g.map[y][x].wear = 0;
+}
+
+static void testBridgeBuildingPlacementAndMovement() {
+    initGameWithSeed(1, 5317u, 0);
+    g.entities.clear();
+    g.players[0].gold = 500;
+    g.players[0].wood = 500;
+
+    const int y = 30;
+    for (int yy = y - 2; yy <= y + 2; ++yy)
+        for (int x = 27; x <= 36; ++x)
+            makeTestTile(x, yy, T_WATER);
+
+    makeTestTile(30, y, T_GRASS);
+    makeTestTile(31, y, T_WATER);
+    makeTestTile(32, y, T_GRASS);
+    WorldIndex world = buildWorldIndex(g);
+    assert(canPlace(g, world, E_WOODEN_BRIDGE, 31, y, 0));
+    assert(canPlace(g, world, E_STONE_BRIDGE, 31, y, 0));
+
+    int woodBridgeId = spawnEntity(g, E_WOODEN_BRIDGE, 0, 31, y);
+    world = buildWorldIndex(g);
+    assert(isCompletedBridgeAt(g, world, 31, y));
+    std::vector<std::pair<int, int>> woodPath = findPath(g, world, 30, y, 32, y, 300, false);
+    assert(!woodPath.empty());
+    assert(woodPath.back().first == 32 && woodPath.back().second == y);
+    Entity* woodBridge = testFindEntity(woodBridgeId);
+    assert(woodBridge);
+    woodBridge->alive = false;
+
+    makeTestTile(30, y, T_GRASS);
+    makeTestTile(31, y, T_WATER);
+    makeTestTile(32, y, T_WATER);
+    makeTestTile(33, y, T_GRASS);
+    world = buildWorldIndex(g);
+    assert(!canPlace(g, world, E_WOODEN_BRIDGE, 31, y, 0));
+    assert(canPlace(g, world, E_STONE_BRIDGE, 31, y, 0));
+    assert(canPlace(g, world, E_STONE_BRIDGE, 32, y, 0));
+
+    int builderLeftId = spawnEntity(g, E_PEASANT, 0, 30, y);
+    world = buildWorldIndex(g);
+    assert(startBuildService(g, world, gameEvents(), 0, builderLeftId, E_STONE_BRIDGE, { 31, y }).ok);
+    world = buildWorldIndex(g);
+    assert(!startBuildService(g, world, gameEvents(), 0, builderLeftId, E_STONE_BRIDGE, { 32, y }).ok);
+
+    int builderRightId = spawnEntity(g, E_PEASANT, 0, 33, y);
+    world = buildWorldIndex(g);
+    assert(startBuildService(g, world, gameEvents(), 0, builderRightId, E_STONE_BRIDGE, { 32, y }).ok);
+
+    for (Entity& entity : g.entities) {
+        if (entity.type == E_STONE_BRIDGE) {
+            entity.underConstruction = false;
+            entity.hp = entity.maxHp;
+        }
+    }
+    world = buildWorldIndex(g);
+    assert(isCompletedBridgeAt(g, world, 31, y));
+    assert(isCompletedBridgeAt(g, world, 32, y));
+    std::vector<std::pair<int, int>> stonePath = findPath(g, world, 30, y, 33, y, 300, false);
+    assert(stonePath.size() >= 3);
+    assert(stonePath[0].first == 31 && stonePath[0].second == y);
+    assert(stonePath[1].first == 32 && stonePath[1].second == y);
+    assert(stonePath.back().first == 33 && stonePath.back().second == y);
+    assert(validateGameState(g, nullptr));
+}
+
 static void testResearchService() {
     // Shared research service: same canonical costs/durations for human and AI,
     // validation rules enforced centrally.
@@ -1645,13 +1749,27 @@ static void testContextResolverProducesTypedCommands() {
 
     MapPos moveTarget = emptyTile();
     WorldIndex resolverWorld = buildWorldIndex(g);
+    auto hasOption = [](const CommandOptions& options, CommandActionKind kind) {
+        for (const CommandOption& option : options.options) {
+            if (option.kind == kind) return true;
+        }
+        return false;
+    };
     Command move = resolveContextCommand(g, resolverWorld, 0, workerSelection, moveTarget);
     assert(commandHasPayload<MoveCommand>(move));
+    CommandOptions moveOptions = resolveContextCommandOptions(g, resolverWorld, 0, workerSelection, moveTarget);
+    const CommandOption* moveRecommended = recommendedCommandOption(moveOptions);
+    assert(moveRecommended && moveRecommended->kind == CommandActionKind::Move);
 
     Command attack = resolveContextCommand(g, resolverWorld, 0, workerSelection, { 33, 30 });
     assert(commandHasPayload<AttackCommand>(attack));
     const AttackCommand* attackPayload = std::get_if<AttackCommand>(&attack.payload);
     assert(attackPayload && attackPayload->targetId == enemyId);
+    CommandOptions attackOptions = resolveContextCommandOptions(g, resolverWorld, 0, workerSelection, { 33, 30 });
+    const CommandOption* attackRecommended = recommendedCommandOption(attackOptions);
+    assert(attackRecommended && attackRecommended->kind == CommandActionKind::Attack);
+    assert(hasOption(attackOptions, CommandActionKind::Attack));
+    assert(hasOption(attackOptions, CommandActionKind::Move));
 
     g.map[30][30].visible[1] = true;
     Command aiAttack = resolveContextCommand(g, resolverWorld, 1, aiWorkerSelection, { 30, 30 });
@@ -1675,6 +1793,10 @@ static void testContextResolverProducesTypedCommands() {
     resolverWorld = buildWorldIndex(g);
     Command gather = resolveContextCommand(g, resolverWorld, 0, workerSelection, gatherTarget);
     assert(commandHasPayload<GatherCommand>(gather));
+    CommandOptions gatherOptions = resolveContextCommandOptions(g, resolverWorld, 0, workerSelection, gatherTarget);
+    const CommandOption* gatherRecommended = recommendedCommandOption(gatherOptions);
+    assert(gatherRecommended && gatherRecommended->kind == CommandActionKind::Gather);
+    assert(hasOption(gatherOptions, CommandActionKind::Move));
 
     MapPos farmTarget = emptyTile();
     g.map[farmTarget.y][farmTarget.x].terrain = T_WHEAT;
@@ -1684,6 +1806,19 @@ static void testContextResolverProducesTypedCommands() {
     assert(commandHasPayload<BuildCommand>(farm));
     const BuildCommand* buildPayload = std::get_if<BuildCommand>(&farm.payload);
     assert(buildPayload && buildPayload->entityType == E_FARM);
+    CommandOptions farmOptions = resolveContextCommandOptions(g, resolverWorld, 0, workerSelection, farmTarget);
+    const CommandOption* farmRecommended = recommendedCommandOption(farmOptions);
+    assert(farmRecommended && farmRecommended->kind == CommandActionKind::Build);
+    assert(hasOption(farmOptions, CommandActionKind::Move));
+
+    CommandPreviewRequest waypointRequest;
+    waypointRequest.issuer = 0;
+    waypointRequest.selection = workerSelection;
+    waypointRequest.target = moveTarget;
+    waypointRequest.mode = CommandPreviewMode::Waypoint;
+    CommandOptions waypointOptions = resolveCommandOptions(g, resolverWorld, waypointRequest);
+    const CommandOption* waypointRecommended = recommendedCommandOption(waypointOptions);
+    assert(waypointRecommended && waypointRecommended->kind == CommandActionKind::Waypoint);
 
     int houseId = spawnEntity(g, E_HOUSE, 0, 36, 30);
     Entity* house = testFindEntity(houseId);
@@ -3014,6 +3149,41 @@ static void testMapgenRoadsCarryWear() {
     assert(roadGame.map[roadY][roadX].wear == 79);
 }
 
+static void testBuildingPavingStartsOnFootprint() {
+    Game pavingGame{};
+    realmSrand(pavingGame, 9217u);
+    pavingGame.nextId = 1;
+    for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
+        pavingGame.map[y][x].terrain = T_GRASS;
+        pavingGame.map[y][x].preWinterTerrain = T_GRASS;
+        pavingGame.map[y][x].biome = B_TEMPERATE;
+        pavingGame.map[y][x].resources = 0;
+        pavingGame.map[y][x].wear = 0;
+    }
+
+    const int hx = 40;
+    const int hy = 40;
+    spawnEntity(pavingGame, E_HOUSE, 0, hx, hy);
+    pavingGame.tick = 100;
+    tickPaving(pavingGame);
+
+    const EntityStats& house = STATS[E_HOUSE];
+    for (int dy = 0; dy < house.sizeH; ++dy) for (int dx = 0; dx < house.sizeW; ++dx) {
+        assert(pavingGame.map[hy + dy][hx + dx].wear == 5);
+    }
+    assert(pavingGame.map[hy - 1][hx].wear == 5);
+
+    Tile& footprint = pavingGame.map[hy + 1][hx + 1];
+    footprint.terrain = T_DIRT;
+    footprint.preWinterTerrain = T_DIRT;
+    footprint.wear = 79;
+    pavingGame.tick = 200;
+    tickPaving(pavingGame);
+    assert(footprint.terrain == T_ROAD);
+    assert(footprint.preWinterTerrain == T_ROAD);
+    assert(footprint.wear >= 80);
+}
+
 static void testStartSafetyAcrossSeeds() {
     for (unsigned seed = 1; seed <= 60; seed++) {
         initGameWithSeed(3, seed, (int)(seed % 4));
@@ -3247,6 +3417,93 @@ static void testStopCurrentSelectionDispatchesCommand() {
     assert(!events.empty() && events.back().type == GameEventType::CommandAccepted);
 }
 
+static void testPlayerColorHueSpacing() {
+    Game local{};
+    setHumanPlayerColorHue(local, 15);
+    configurePlayerColorHues(local, 3);
+    assert(local.playerColorHue[0] == 15);
+    assert(local.playerColorHue[1] == 105);
+    assert(local.playerColorHue[2] == 195);
+    assert(local.playerColorHue[3] == 285);
+
+    setHumanPlayerColorHue(local, -10);
+    configurePlayerColorHues(local, 1);
+    assert(local.playerColorHue[0] == 350);
+    assert(local.playerColorHue[1] == 170);
+
+    setHumanPlayerColorHue(g, 30);
+    initGameWithSeed(3, 5212u, 0);
+    assert(g.playerColorHue[0] == 30);
+    assert(g.playerColorHue[1] == 120);
+    assert(g.playerColorHue[2] == 210);
+    assert(g.playerColorHue[3] == 300);
+    setHumanPlayerColorHue(g, 200);
+    configurePlayerColorHues(g, 1);
+
+    initGameWithSeed(2, 5213u, 0);
+    setHumanPlayerColorHue(g, 30);
+    configurePlayerColorHues(g, 2);
+    assert(saveGame(g, "build/player-color-save.realm"));
+    setHumanPlayerColorHue(g, 200);
+    configurePlayerColorHues(g, 1);
+    assert(loadGame(g, "build/player-color-save.realm"));
+    assert(g.playerColorHue[0] == 200);
+    assert(g.playerColorHue[1] == 320);
+    assert(g.playerColorHue[2] == 80);
+    std::remove("build/player-color-save.realm");
+}
+
+static void testUserSettingsPersistence() {
+    std::filesystem::path settingsDir = std::filesystem::path("build") / "test-user-settings";
+    std::filesystem::path settingsPath = settingsDir / "settings.txt";
+    std::filesystem::remove_all(settingsDir);
+    setTestEnvVar("REALM_SETTINGS_PATH", settingsPath.string());
+
+    UserSettings missing = loadUserSettings();
+    assert(missing.playerColorHue == 200);
+    assert(missing.asciiSquareMapCells);
+
+    UserSettings saved{};
+    saved.playerColorHue = -10;
+    saved.asciiSquareMapCells = true;
+    assert(saveUserSettings(saved));
+
+    UserSettings loaded = loadUserSettings();
+    assert(loaded.playerColorHue == 350);
+    assert(loaded.asciiSquareMapCells);
+
+    saved.asciiSquareMapCells = false;
+    assert(saveUserSettings(saved));
+    UserSettings terminalCells = loadUserSettings();
+    assert(!terminalCells.asciiSquareMapCells);
+
+    {
+        std::ifstream in(settingsPath);
+        std::string text((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+        assert(text.find("REALM_SETTINGS 1") != std::string::npos);
+        assert(text.find("player_color_hue 350") != std::string::npos);
+        assert(text.find("ascii_square_map_cells 0") != std::string::npos);
+    }
+
+    Game local{};
+    applyUserSettingsToGame(local, loaded);
+    assert(local.playerColorHue[0] == 350);
+    assert(userSettingsFromGame(local).playerColorHue == 350);
+    assert(!userSettingsFromGame(local).asciiSquareMapCells);
+
+    {
+        std::ofstream corrupt(settingsPath, std::ios::trunc);
+        corrupt << "REALM_SETTINGS 1\n";
+        corrupt << "player_color_hue nope\n";
+    }
+    UserSettings fallback = loadUserSettings();
+    assert(fallback.playerColorHue == 200);
+    assert(fallback.asciiSquareMapCells);
+
+    clearTestEnvVar("REALM_SETTINGS_PATH");
+    std::filesystem::remove_all(settingsDir);
+}
+
 static void testSimulationTickWorldIndexBuildBudget() {
     initGameWithSeed(2, 5211u, 0);
     for (int i = 0; i < 18; i++) {
@@ -3275,10 +3532,13 @@ int main() {
     testInputFeedbackHelper();
     testRecoverableValidation();
     testMatchResetAndDeterminism();
+    testPlayerColorHueSpacing();
+    testUserSettingsPersistence();
     testSupplyAndTownHallCost();
     testTownHallTrainInputFlow();
     testHoldPositionInput();
     testWallLineBuild();
+    testBridgeBuildingPlacementAndMovement();
     testResearchService();
     testUnitFoodCostTable();
     testMarketTradeService();
@@ -3304,6 +3564,7 @@ int main() {
     testMapGenerationConfigBiomes();
     testLocalMapGenerationIsDeterministic();
     testMapgenRoadsCarryWear();
+    testBuildingPavingStartsOnFootprint();
     testStartSafetyAcrossSeeds();
     testMapgenReachabilityAcrossSeeds();
     testSaveLoadRoundTrip();

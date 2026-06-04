@@ -1,0 +1,752 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Realm Tileset HUD Mockup</title>
+  <style>
+    :root {
+      --ink-0: #05070a;
+      --ink-1: #0b1015;
+      --ink-2: #121922;
+      --ink-3: #1b2630;
+      --line: #3b4350;
+      --line-hot: #a97b36;
+      --brass: #d2a34d;
+      --brass-soft: #8b682e;
+      --paper: #efe3c4;
+      --muted: #aeb8bd;
+      --dim: #77838c;
+      --blue: #2f83c5;
+      --blue-hot: #64b5f6;
+      --green: #74b65c;
+      --amber: #d79b45;
+      --red: #c9634d;
+      --wood: #a77143;
+      --food: #9abb61;
+      --gold: #e0b44c;
+      --shadow: rgba(0, 0, 0, 0.48);
+      font-family: "Segoe UI", Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: #1c2024;
+      color: var(--paper);
+    }
+
+    .frame {
+      width: 1280px;
+      height: 800px;
+      position: relative;
+      overflow: hidden;
+      background: #202b24;
+      box-shadow: 0 26px 70px rgba(0, 0, 0, 0.55);
+    }
+
+    .map {
+      position: absolute;
+      inset: 42px 312px 86px 0;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 44% 42%, rgba(255, 240, 160, 0.16), transparent 24%),
+        linear-gradient(145deg, #30333a 0 12%, #34422a 16% 78%, #20262d 100%);
+    }
+
+    .map:before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(90deg, rgba(0, 0, 0, 0.12), transparent 18%, transparent 82%, rgba(0, 0, 0, 0.22)),
+        linear-gradient(180deg, rgba(0, 0, 0, 0.22), transparent 24%, transparent 78%, rgba(0, 0, 0, 0.34));
+      pointer-events: none;
+      z-index: 20;
+    }
+
+    .iso-grid {
+      position: absolute;
+      left: -34px;
+      top: -12px;
+      width: 1040px;
+      height: 690px;
+    }
+
+    .tile {
+      position: absolute;
+      width: 78px;
+      height: 39px;
+      transform: translate(-39px, -19px);
+      clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      background: #61732a;
+      box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.18);
+    }
+
+    .tile.grass { background: linear-gradient(135deg, #7b852e, #5d6f29); }
+    .tile.dirt { background: linear-gradient(135deg, #7b6237, #5e4a2e); }
+    .tile.road { background: linear-gradient(135deg, #595b54, #454947); }
+    .tile.dark { background: linear-gradient(135deg, #222830, #171c21); }
+    .tile.forest { background: linear-gradient(135deg, #203e24, #152c1c); }
+    .tile.water { background: linear-gradient(135deg, #2b6f82, #1e4e61); }
+    .tile.selected { background: linear-gradient(135deg, #3084be, #266090); }
+
+    .cursor {
+      position: absolute;
+      left: 39px;
+      top: 439px;
+      width: 78px;
+      height: 39px;
+      clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+      border: 2px solid #f1e14b;
+      box-shadow: 0 0 12px rgba(241, 225, 75, 0.9);
+      z-index: 9;
+    }
+
+    .tree,
+    .unit,
+    .building,
+    .resource,
+    .enemy {
+      position: absolute;
+      z-index: 12;
+      filter: drop-shadow(0 8px 6px rgba(0, 0, 0, 0.36));
+    }
+
+    .tree {
+      width: 20px;
+      height: 34px;
+      background: linear-gradient(#183f18, #0d2b13);
+      clip-path: polygon(50% 0, 75% 28%, 65% 28%, 88% 58%, 65% 58%, 82% 86%, 18% 86%, 35% 58%, 12% 58%, 35% 28%, 25% 28%);
+    }
+
+    .unit {
+      width: 24px;
+      height: 42px;
+      border-radius: 8px 8px 5px 5px;
+      background: linear-gradient(90deg, #885a24 0 26%, #20669d 27% 70%, #2c2f35 71%);
+    }
+
+    .unit:before {
+      content: "";
+      position: absolute;
+      top: -7px;
+      left: 5px;
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: #d49a5b;
+      border: 2px solid #1c2228;
+    }
+
+    .enemy {
+      width: 24px;
+      height: 46px;
+      border-radius: 10px 10px 5px 5px;
+      background: linear-gradient(#7762ad, #3c2a6a);
+    }
+
+    .enemy:before {
+      content: "";
+      position: absolute;
+      top: -8px;
+      left: 5px;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #a56a8c;
+    }
+
+    .building {
+      width: 38px;
+      height: 42px;
+      background: linear-gradient(#b6b0a2 0 18%, #6f7270 19% 100%);
+      clip-path: polygon(50% 0, 100% 24%, 88% 24%, 88% 100%, 12% 100%, 12% 24%, 0 24%);
+      border-bottom: 4px solid #4b4b48;
+    }
+
+    .resource {
+      width: 30px;
+      height: 24px;
+      border-radius: 45%;
+      background: radial-gradient(circle at 34% 32%, #3d314a, #16121e 68%);
+    }
+
+    .topbar {
+      position: absolute;
+      inset: 0 312px auto 0;
+      height: 42px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+      align-items: center;
+      gap: 14px;
+      padding: 6px 14px;
+      background:
+        linear-gradient(180deg, rgba(39, 49, 58, 0.98), rgba(11, 16, 22, 0.98)),
+        #111922;
+      border-bottom: 1px solid rgba(210, 163, 77, 0.4);
+      box-shadow: 0 8px 24px var(--shadow);
+      z-index: 30;
+    }
+
+    .resource-strip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .chip {
+      height: 29px;
+      min-width: 82px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 10px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(0, 0, 0, 0.12));
+      box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.16);
+    }
+
+    .chip .dot {
+      width: 13px;
+      height: 13px;
+      border-radius: 3px;
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35), inset 0 1px rgba(255, 255, 255, 0.22);
+    }
+
+    .chip strong {
+      font-size: 16px;
+      letter-spacing: 0;
+      font-weight: 700;
+    }
+
+    .chip span {
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+    }
+
+    .world-pill {
+      height: 31px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 16px;
+      border: 1px solid rgba(210, 163, 77, 0.5);
+      background: linear-gradient(180deg, rgba(97, 74, 37, 0.42), rgba(22, 25, 30, 0.75));
+      color: #f5ddb0;
+      font-size: 14px;
+      box-shadow: 0 0 18px rgba(210, 163, 77, 0.12);
+      white-space: nowrap;
+    }
+
+    .top-actions {
+      justify-self: end;
+      display: flex;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .tiny-btn {
+      height: 28px;
+      min-width: 32px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.045);
+      color: var(--paper);
+    }
+
+    .panel {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 312px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 12px;
+      background:
+        linear-gradient(180deg, rgba(16, 22, 29, 0.98), rgba(5, 7, 10, 0.98)),
+        #090d12;
+      border-left: 1px solid rgba(210, 163, 77, 0.36);
+      box-shadow: -16px 0 34px rgba(0, 0, 0, 0.42);
+      z-index: 32;
+    }
+
+    .panel-section {
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(0, 0, 0, 0.18));
+      box-shadow: inset 0 1px rgba(255, 255, 255, 0.04);
+    }
+
+    .minimap {
+      height: 142px;
+      padding: 8px;
+    }
+
+    .minimap-map {
+      position: relative;
+      height: 100%;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 62% 44%, #84852d 0 2px, transparent 3px),
+        radial-gradient(circle at 28% 63%, #2e78a0 0 3px, transparent 4px),
+        linear-gradient(135deg, #1b232b 0 17%, #5d722b 18% 72%, #1a2c1d 73%);
+      border: 1px solid rgba(0, 0, 0, 0.65);
+    }
+
+    .minimap-map:after {
+      content: "";
+      position: absolute;
+      left: 32px;
+      top: 33px;
+      width: 142px;
+      height: 72px;
+      border: 2px solid rgba(255, 255, 255, 0.82);
+      box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.13);
+    }
+
+    .section-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 10px 0;
+      color: var(--brass);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+
+    .selected-card {
+      padding: 10px;
+    }
+
+    .selected-head {
+      display: grid;
+      grid-template-columns: 58px minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+    }
+
+    .portrait {
+      width: 58px;
+      height: 58px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(100, 181, 246, 0.5);
+      background:
+        radial-gradient(circle at 50% 36%, rgba(100, 181, 246, 0.22), transparent 34%),
+        linear-gradient(180deg, #1a2530, #0b0f14);
+      box-shadow: 0 0 18px rgba(47, 131, 197, 0.18);
+    }
+
+    .portrait .unit {
+      position: static;
+      transform: scale(1.1);
+      filter: none;
+    }
+
+    .selected-name {
+      min-width: 0;
+    }
+
+    .selected-name h2 {
+      margin: 0 0 3px;
+      color: #ffe0a2;
+      font-size: 19px;
+      font-weight: 700;
+    }
+
+    .selected-name p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .bar-row {
+      display: grid;
+      grid-template-columns: 28px minmax(0, 1fr) 42px;
+      gap: 8px;
+      align-items: center;
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .bar {
+      height: 9px;
+      background: #15191f;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      overflow: hidden;
+    }
+
+    .bar > i {
+      display: block;
+      height: 100%;
+      background: linear-gradient(90deg, #63b45d, #a3d875);
+    }
+
+    .task-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 10px;
+      color: #cbd5d8;
+      font-size: 13px;
+    }
+
+    .command-grid {
+      padding: 8px 10px 10px;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    .command {
+      position: relative;
+      min-height: 46px;
+      padding: 8px 8px 7px 38px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: linear-gradient(180deg, rgba(30, 42, 52, 0.95), rgba(11, 14, 18, 0.95));
+      color: var(--paper);
+      box-shadow: inset 0 1px rgba(255, 255, 255, 0.05);
+    }
+
+    .command.active {
+      border-color: rgba(100, 181, 246, 0.7);
+      box-shadow: 0 0 15px rgba(47, 131, 197, 0.16), inset 0 1px rgba(255, 255, 255, 0.07);
+    }
+
+    .command.disabled {
+      opacity: 0.48;
+    }
+
+    .command .hotkey {
+      position: absolute;
+      left: 8px;
+      top: 8px;
+      width: 22px;
+      height: 22px;
+      display: grid;
+      place-items: center;
+      color: #11151a;
+      background: var(--brass);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .command strong {
+      display: block;
+      font-size: 13px;
+      line-height: 15px;
+    }
+
+    .command span {
+      display: block;
+      margin-top: 2px;
+      color: var(--dim);
+      font-size: 11px;
+      line-height: 13px;
+    }
+
+    .intel {
+      padding: 8px 10px 10px;
+      display: grid;
+      gap: 7px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .intel-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .intel-row strong {
+      color: var(--paper);
+      font-weight: 600;
+    }
+
+    .bottom {
+      position: absolute;
+      left: 0;
+      right: 312px;
+      bottom: 0;
+      height: 86px;
+      display: grid;
+      grid-template-columns: 245px minmax(0, 1fr) 180px;
+      gap: 12px;
+      align-items: stretch;
+      padding: 10px 12px;
+      background:
+        linear-gradient(180deg, rgba(32, 42, 50, 0.98), rgba(9, 13, 18, 0.98)),
+        #0d141b;
+      border-top: 1px solid rgba(210, 163, 77, 0.38);
+      box-shadow: 0 -12px 28px rgba(0, 0, 0, 0.44);
+      z-index: 31;
+    }
+
+    .mode-card {
+      padding: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(0, 0, 0, 0.16);
+    }
+
+    .mode-card h3 {
+      margin: 0;
+      color: #ffe0a2;
+      font-size: 15px;
+    }
+
+    .mode-card p {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 15px;
+    }
+
+    .ribbon-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(72px, 1fr));
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .slot {
+      position: relative;
+      min-width: 0;
+      padding: 8px 6px 6px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: linear-gradient(180deg, #1a2530, #0c1117);
+      text-align: center;
+    }
+
+    .slot:before {
+      content: attr(data-key);
+      position: absolute;
+      left: 5px;
+      top: 5px;
+      min-width: 18px;
+      height: 18px;
+      display: grid;
+      place-items: center;
+      background: rgba(210, 163, 77, 0.92);
+      color: #11151a;
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    .slot .icon {
+      height: 24px;
+      margin-bottom: 4px;
+      color: var(--blue-hot);
+      font-size: 19px;
+      line-height: 24px;
+    }
+
+    .slot .label {
+      display: block;
+      overflow: hidden;
+      color: var(--paper);
+      font-size: 11px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .utility {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    .utility .slot {
+      display: flex;
+      align-items: center;
+      min-height: 0;
+      padding: 5px 5px 4px 31px;
+      text-align: left;
+    }
+
+    .utility .slot .label {
+      white-space: normal;
+    }
+
+    .toast {
+      position: absolute;
+      left: 270px;
+      bottom: 95px;
+      width: 462px;
+      padding: 9px 12px;
+      border: 1px solid rgba(210, 163, 77, 0.58);
+      background: linear-gradient(180deg, rgba(63, 49, 28, 0.96), rgba(22, 18, 15, 0.96));
+      color: #ffe0a2;
+      box-shadow: 0 10px 26px rgba(0, 0, 0, 0.4);
+      z-index: 40;
+      font-size: 13px;
+    }
+
+    .label-tag {
+      display: inline-flex;
+      align-items: center;
+      height: 20px;
+      padding: 0 7px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.045);
+      font-size: 11px;
+    }
+  </style>
+</head>
+<body>
+  <main class="frame" aria-label="Realm tileset HUD mockup">
+    <section class="map">
+      <div class="iso-grid" id="isoGrid"></div>
+      <div class="cursor"></div>
+      <div class="building" style="left: 472px; top: 288px"></div>
+      <div class="building" style="left: 512px; top: 270px"></div>
+      <div class="building" style="left: 550px; top: 292px"></div>
+      <div class="building" style="left: 512px; top: 324px"></div>
+      <div class="unit" style="left: 156px; top: 426px"></div>
+      <div class="unit" style="left: 374px; top: 468px"></div>
+      <div class="unit" style="left: 390px; top: 510px"></div>
+      <div class="enemy" style="left: 642px; top: 365px"></div>
+      <div class="resource" style="left: 290px; top: 460px"></div>
+      <div class="resource" style="left: 394px; top: 520px"></div>
+      <div class="tree" style="left: 736px; top: 430px"></div>
+      <div class="tree" style="left: 782px; top: 416px"></div>
+      <div class="tree" style="left: 824px; top: 452px"></div>
+      <div class="tree" style="left: 914px; top: 490px"></div>
+      <div class="tree" style="left: 524px; top: 670px"></div>
+      <div class="tree" style="left: 612px; top: 627px"></div>
+    </section>
+
+    <header class="topbar">
+      <div class="resource-strip">
+        <div class="chip"><i class="dot" style="background: var(--gold)"></i><strong>794</strong><span>Gold</span></div>
+        <div class="chip"><i class="dot" style="background: var(--wood)"></i><strong>200</strong><span>Wood</span></div>
+        <div class="chip"><i class="dot" style="background: var(--food)"></i><strong>124</strong><span>Food</span></div>
+        <div class="chip"><i class="dot" style="background: var(--blue)"></i><strong>4/10</strong><span>Pop</span></div>
+      </div>
+      <div class="world-pill">Spring | Dawn | Clear</div>
+      <div class="top-actions">
+        <div class="tiny-btn">?</div>
+        <div class="tiny-btn">D</div>
+        <div class="tiny-btn">Y</div>
+      </div>
+    </header>
+
+    <aside class="panel">
+      <section class="panel-section minimap">
+        <div class="minimap-map"></div>
+      </section>
+
+      <section class="panel-section selected-card">
+        <div class="selected-head">
+          <div class="portrait"><div class="unit"></div></div>
+          <div class="selected-name">
+            <h2>Peasant</h2>
+            <p>Player unit | selected</p>
+            <span class="label-tag">Idle worker</span>
+          </div>
+        </div>
+        <div class="bar-row">
+          <span>HP</span>
+          <div class="bar"><i style="width: 88%"></i></div>
+          <span>22/25</span>
+        </div>
+        <div class="task-line"><span>State</span><strong>Awaiting orders</strong></div>
+        <div class="task-line"><span>Tile</span><strong>Grass / clear</strong></div>
+      </section>
+
+      <section class="panel-section">
+        <div class="section-title"><span>Commands</span><span>Hotkeys active</span></div>
+        <div class="command-grid">
+          <div class="command active"><span class="hotkey">B</span><strong>Build</strong><span>Place structures</span></div>
+          <div class="command"><span class="hotkey">R</span><strong>Command</strong><span>Move or gather</span></div>
+          <div class="command"><span class="hotkey">A</span><strong>Attack move</strong><span>Escort route</span></div>
+          <div class="command"><span class="hotkey">.</span><strong>Idle next</strong><span>Find worker</span></div>
+          <div class="command disabled"><span class="hotkey">T</span><strong>Train</strong><span>Needs building</span></div>
+          <div class="command"><span class="hotkey">G</span><strong>Group</strong><span>Assign control</span></div>
+        </div>
+      </section>
+
+      <section class="panel-section">
+        <div class="section-title"><span>Cursor report</span><span>126,44</span></div>
+        <div class="intel">
+          <div class="intel-row"><span>Ground</span><strong>Temperate grass</strong></div>
+          <div class="intel-row"><span>Stack</span><strong>Empty</strong></div>
+          <div class="intel-row"><span>View</span><strong>Tileset / isometric</strong></div>
+          <div class="intel-row"><span>Camera</span><strong>Wheel zoom | middle pan</strong></div>
+        </div>
+      </section>
+    </aside>
+
+    <div class="toast">Wall start set. Move the cursor, then press Space or Enter to place.</div>
+
+    <footer class="bottom">
+      <section class="mode-card">
+        <h3>Build Mode</h3>
+        <p>Select a structure, then place it on a valid tile. Right-click or Esc cancels.</p>
+      </section>
+
+      <section class="ribbon-grid" aria-label="Build commands">
+        <div class="slot" data-key="H"><div class="icon">H</div><span class="label">House</span></div>
+        <div class="slot" data-key="B"><div class="icon">B</div><span class="label">Barracks</span></div>
+        <div class="slot" data-key="S"><div class="icon">S</div><span class="label">Stable</span></div>
+        <div class="slot" data-key="T"><div class="icon">T</div><span class="label">Tower</span></div>
+        <div class="slot" data-key="F"><div class="icon">F</div><span class="label">Farm</span></div>
+        <div class="slot" data-key="W"><div class="icon">W</div><span class="label">Wall</span></div>
+        <div class="slot" data-key="Esc"><div class="icon">X</div><span class="label">Cancel</span></div>
+      </section>
+
+      <section class="utility">
+        <div class="slot" data-key="F5"><span class="label">Save</span></div>
+        <div class="slot" data-key="F9"><span class="label">Load</span></div>
+        <div class="slot" data-key="D"><span class="label">Diag</span></div>
+        <div class="slot" data-key="Y"><span class="label">Capture</span></div>
+      </section>
+    </footer>
+  </main>
+
+  <script>
+    const grid = document.getElementById("isoGrid");
+    const cols = 15;
+    const rows = 14;
+    const hw = 39;
+    const hh = 19.5;
+    const originX = 510;
+    const originY = 34;
+    const classes = ["grass", "grass", "grass", "grass", "forest", "dirt", "road"];
+    for (let y = 0; y < rows; y++) {
+      for (let x = 0; x < cols; x++) {
+        const tile = document.createElement("div");
+        const sx = originX + (x - y) * hw;
+        const sy = originY + (x + y) * hh;
+        let kind = classes[(x * 7 + y * 5) % classes.length];
+        if (x > 5 && x < 10 && y > 4 && y < 8) kind = "dirt";
+        if (x < 5 && y > 7 && y < 10) kind = "road";
+        if (x > 11 || y < 1) kind = "dark";
+        if (x === 7 && y === 11) kind = "water";
+        if (x === 4 && y === 8) kind = "selected";
+        tile.className = "tile " + kind;
+        tile.style.left = `${sx}px`;
+        tile.style.top = `${sy}px`;
+        tile.style.zIndex = String(1 + x + y);
+        grid.appendChild(tile);
+      }
+    }
+  </script>
+</body>
+</html>

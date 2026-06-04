@@ -4,18 +4,30 @@ setlocal
 REM Realm Windows terminal build/run script.
 REM Run it from PowerShell, Command Prompt, or double-click it.
 REM The terminal renderer is built and run inside WSL.
+REM Pass "clean" or "--clean" to remove build outputs before rebuilding.
 
 set "SCRIPT_DIR=%~dp0"
 for %%I in ("%SCRIPT_DIR%..") do set "REPO=%%~fI"
 
-REM Keep the log outside build/, because `make clean` deletes build/.
+REM Keep the log outside build/, because optional clean builds delete build/.
 set "LOG_DIR=%REPO%\logs"
 if not exist "%LOG_DIR%" mkdir "%LOG_DIR%"
 set "LOG=%LOG_DIR%\windows-terminal-build.log"
 
+set "CLEAN=0"
+:parse_args
+if "%~1"=="" goto after_args
+if /I "%~1"=="clean" set "CLEAN=1"
+if /I "%~1"=="--clean" set "CLEAN=1"
+shift
+goto parse_args
+:after_args
+
 echo Realm Windows terminal build
 echo Repo: %REPO%
 echo Log: %LOG%
+if "%CLEAN%"=="1" echo Build mode: clean
+if not "%CLEAN%"=="1" echo Build mode: incremental
 echo.
 
 where wsl.exe >nul 2>&1
@@ -31,10 +43,16 @@ if errorlevel 1 (
 
 cd /d "%REPO%"
 
-echo Cleaning and building terminal target in WSL...
+if "%CLEAN%"=="1" (
+    echo Cleaning and building terminal target in WSL...
+    set "BUILD_CMD=make clean && make terminal"
+) else (
+    echo Building terminal target in WSL...
+    set "BUILD_CMD=make terminal"
+)
 echo.
 
-wsl.exe --cd "%REPO%" bash -lc "make clean && make terminal && test -x bin/realm" > "%LOG%" 2>&1
+wsl.exe --cd "%REPO%" bash -lc "%BUILD_CMD% && test -x bin/realm" > "%LOG%" 2>&1
 
 set "EXITCODE=%ERRORLEVEL%"
 
