@@ -31,8 +31,8 @@
       "range": 7,
       "speed": 0,
       "attack_speed_ticks": 7,
-      "cost_gold": 100,
-      "cost_wood": 0,
+      "cost_gold": 50,
+      "cost_wood": 100,
       "train_time_ticks": 70,
       "supply_provided": 0,
       "supply_used": 0,
@@ -58,6 +58,7 @@
     "slots": [
       "flag or shield plaque"
     ],
+    "variant_rules": [],
     "recommended_player_colour": {
       "name": "blue",
       "hex": "#00AFFF"
@@ -81,7 +82,21 @@
   "art": {
     "legacy_projection": "upright sprite anchored over projected isometric map tiles",
     "visual_design": "Stone watchtower, battlements, torch/readable height",
-    "source_role": "defensive ranged, garrison 3, extra vision"
+    "source_role": "defensive ranged, garrison 3, extra vision",
+    "generation_aspect": {
+      "id": "square_1_1",
+      "preset": "Square",
+      "ratio": "1:1",
+      "description": "default square image-generation aspect ratio"
+    },
+    "generation_aspect_variant_rules": [],
+    "source_canvas": {
+      "width_px": 32,
+      "height_px": 32,
+      "unit": "px",
+      "scope": "per occupied building footprint cell",
+      "source": "docs/tileset/realm_tileset_visual_audit.md core format table"
+    }
   },
   "states": [
     "construction_0_foundation",

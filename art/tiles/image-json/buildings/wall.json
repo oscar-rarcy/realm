@@ -31,8 +31,8 @@
       "range": 0,
       "speed": 0,
       "attack_speed_ticks": 0,
-      "cost_gold": 20,
-      "cost_wood": 0,
+      "cost_gold": 0,
+      "cost_wood": 20,
       "train_time_ticks": 15,
       "supply_provided": 0,
       "supply_used": 0,
@@ -55,6 +55,7 @@
       "tiny banner only at intervals",
       "not every tile"
     ],
+    "variant_rules": [],
     "recommended_player_colour": {
       "name": "blue",
       "hex": "#00AFFF"
@@ -76,7 +77,21 @@
   "art": {
     "legacy_projection": "upright sprite anchored over projected isometric map tiles",
     "visual_design": "Stone wall block that joins cleanly to neighbours",
-    "source_role": "drag-built blocker"
+    "source_role": "drag-built blocker",
+    "generation_aspect": {
+      "id": "square_1_1",
+      "preset": "Square",
+      "ratio": "1:1",
+      "description": "default square image-generation aspect ratio"
+    },
+    "generation_aspect_variant_rules": [],
+    "source_canvas": {
+      "width_px": 32,
+      "height_px": 32,
+      "unit": "px",
+      "scope": "per occupied building footprint cell",
+      "source": "docs/tileset/realm_tileset_visual_audit.md core format table"
+    }
   },
   "states": [
     "construction_0_foundation",

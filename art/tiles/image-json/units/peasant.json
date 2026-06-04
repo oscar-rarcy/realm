@@ -31,7 +31,7 @@
       "range": 1,
       "speed": 3,
       "attack_speed_ticks": 8,
-      "cost_gold": 0,
+      "cost_gold": 50,
       "cost_wood": 0,
       "train_time_ticks": 40,
       "supply_provided": 0,
@@ -60,6 +60,7 @@
       "belt sash",
       "shoulder cloth"
     ],
+    "variant_rules": [],
     "recommended_player_colour": {
       "name": "blue",
       "hex": "#00AFFF"
@@ -81,7 +82,21 @@
   "art": {
     "legacy_projection": "upright sprite anchored over projected isometric map tiles",
     "visual_design": "Hooded medieval labourer with tunic, belt, simple tool; neutral cloth/leather",
-    "source_role": "worker, builder, gatherer, basic attacker"
+    "source_role": "worker, builder, gatherer, basic attacker",
+    "generation_aspect": {
+      "id": "square_1_1",
+      "preset": "Square",
+      "ratio": "1:1",
+      "description": "default square image-generation aspect ratio"
+    },
+    "generation_aspect_variant_rules": [],
+    "source_canvas": {
+      "width_px": 48,
+      "height_px": 48,
+      "unit": "px",
+      "scope": "per accepted standalone actor sprite frame",
+      "source": "docs/tileset/realm_tileset_visual_audit.md core format table"
+    }
   },
   "states": [
     "idle",
@@ -98,7 +113,231 @@
     "dead",
     "decayed skeleton"
   ],
-  "actions": [],
+  "actions": [
+    {
+      "id": "idle",
+      "frame_ms": 20000,
+      "loop": false,
+      "hold_last": true,
+      "transition_after_ms": 20000,
+      "family": "idle",
+      "target_relation": "self_tile",
+      "fit_profile": "standing",
+      "phases": [
+        "relaxed idle, arms at sides, both feet planted",
+        "long-idle hold pose, arms crossed, both feet planted"
+      ],
+      "description": "idle"
+    },
+    {
+      "id": "walk",
+      "frame_ms": 180,
+      "loop": true,
+      "family": "gait",
+      "target_relation": "self_tile",
+      "fit_profile": "standing",
+      "phases": [
+        "walking gait with the front/near leg forward and the rear/far leg back",
+        "walking gait with the rear/far leg forward and the front/near leg back"
+      ],
+      "description": "walk"
+    },
+    {
+      "id": "chop_wood",
+      "frame_ms": 320,
+      "loop": true,
+      "family": "swing",
+      "target_relation": "adjacent_target_tile_or_entity",
+      "fit_profile": "wide_tool",
+      "tool": "wood axe",
+      "phases": [
+        "axe at the bottom/contact part of the chop, axe head low and forward",
+        "axe raised high at the top of the swing"
+      ],
+      "description": "chop_wood"
+    },
+    {
+      "id": "mine_gold",
+      "frame_ms": 320,
+      "loop": true,
+      "family": "swing",
+      "target_relation": "adjacent_target_tile_or_entity",
+      "fit_profile": "wide_tool",
+      "tool": "pickaxe",
+      "phases": [
+        "pickaxe at the bottom/contact part of the mining swing, pick head low and forward",
+        "pickaxe raised high at the top of the swing"
+      ],
+      "description": "mine_gold"
+    },
+    {
+      "id": "gather_berries",
+      "frame_ms": 700,
+      "loop": true,
+      "family": "gather",
+      "target_relation": "adjacent_target_tile_or_entity",
+      "fit_profile": "kneeling",
+      "phases": [
+        "one hand reaching out toward berries beside a basket",
+        "hand back in the basket with berries"
+      ],
+      "description": "gather_berries"
+    },
+    {
+      "id": "hoe_soil",
+      "frame_ms": 520,
+      "loop": true,
+      "family": "work_stroke",
+      "target_relation": "adjacent_target_tile_or_entity",
+      "fit_profile": "wide_tool",
+      "tool": "long-handled farming hoe with a small flat rectangular blade, not an axe or pickaxe",
+      "phases": [
+        "arms outstretched with the hoe extended away from the body",
+        "arms pulled in after the hoe stroke while still holding the same farming hoe"
+      ],
+      "description": "hoe_soil"
+    },
+    {
+      "id": "gather_wheat",
+      "frame_ms": 520,
+      "loop": true,
+      "family": "gather",
+      "target_relation": "adjacent_target_tile_or_entity",
+      "fit_profile": "wide_tool",
+      "tool": "sickle",
+      "phases": [
+        "using a sickle to cut wheat",
+        "still holding the sickle while the free hand reaches for wheat"
+      ],
+      "description": "gather_wheat"
+    },
+    {
+      "id": "build",
+      "frame_ms": 300,
+      "loop": true,
+      "family": "hammer",
+      "target_relation": "adjacent_target_tile_or_entity",
+      "fit_profile": "kneeling",
+      "tool": "hammer",
+      "phases": [
+        "kneeling builder with hammer raised up",
+        "kneeling builder with hammer down"
+      ],
+      "description": "build"
+    },
+    {
+      "id": "carry_wood",
+      "frame_ms": 180,
+      "loop": true,
+      "family": "carry_gait",
+      "target_relation": "self_tile",
+      "fit_profile": "standing",
+      "carry": "bundled logs held securely in both arms",
+      "phases": [
+        "carrying bundled logs while walking, front/near leg forward",
+        "carrying bundled logs while walking, rear/far leg forward"
+      ],
+      "description": "carry_wood"
+    },
+    {
+      "id": "carry_gold",
+      "frame_ms": 180,
+      "loop": true,
+      "family": "carry_gait",
+      "target_relation": "self_tile",
+      "fit_profile": "standing",
+      "carry": "pile of grey stones and yellow gold ore held in both arms",
+      "phases": [
+        "carrying stones and gold ore while walking, front/near leg forward",
+        "carrying stones and gold ore while walking, rear/far leg forward"
+      ],
+      "description": "carry_gold"
+    },
+    {
+      "id": "carry_berries",
+      "frame_ms": 180,
+      "loop": true,
+      "family": "carry_gait",
+      "target_relation": "self_tile",
+      "fit_profile": "standing",
+      "carry": "basket of red berries held in both arms",
+      "phases": [
+        "carrying berries while walking, front/near leg forward",
+        "carrying berries while walking, rear/far leg forward"
+      ],
+      "description": "carry_berries"
+    },
+    {
+      "id": "carry_wheat",
+      "frame_ms": 180,
+      "loop": true,
+      "family": "carry_gait",
+      "target_relation": "self_tile",
+      "fit_profile": "standing",
+      "carry": "bundle of wheat held securely in both arms",
+      "phases": [
+        "carrying wheat while walking, front/near leg forward",
+        "carrying wheat while walking, rear/far leg forward"
+      ],
+      "description": "carry_wheat"
+    },
+    {
+      "id": "gather_meat",
+      "frame_ms": 520,
+      "loop": true,
+      "family": "gather",
+      "target_relation": "adjacent_target_tile_or_entity",
+      "fit_profile": "kneeling",
+      "tool": "knife",
+      "phases": [
+        "holding a knife while actively cutting or reaching toward meat",
+        "still holding the knife while taking meat with the free hand"
+      ],
+      "description": "gather_meat"
+    },
+    {
+      "id": "carry_meat",
+      "frame_ms": 180,
+      "loop": true,
+      "family": "carry_gait",
+      "target_relation": "self_tile",
+      "fit_profile": "standing",
+      "carry": "large cut of meat held in both arms",
+      "phases": [
+        "carrying meat while walking, front/near leg forward",
+        "carrying meat while walking, rear/far leg forward"
+      ],
+      "description": "carry_meat"
+    },
+    {
+      "id": "club_attack",
+      "frame_ms": 260,
+      "loop": true,
+      "family": "swing",
+      "target_relation": "adjacent_target_tile_or_entity",
+      "fit_profile": "wide_tool",
+      "tool": "wooden club",
+      "phases": [
+        "club at the top of the attack swing, held overhead but still inside the tile",
+        "club at the bottom/contact part of the attack swing, still fully inside the tile"
+      ],
+      "description": "club_attack"
+    },
+    {
+      "id": "death",
+      "frame_ms": 30000,
+      "loop": false,
+      "hold_last": true,
+      "family": "one_shot",
+      "target_relation": "self_tile",
+      "fit_profile": "lying",
+      "phases": [
+        "dead villager body lying on the ground, not a skeleton",
+        "skeleton remains of the same villager in the same ground area, with small clothing scraps"
+      ],
+      "description": "death"
+    }
+  ],
   "paths": {
     "runtime_root": "assets/tiles/entities/peasant",
     "manifest": "assets/tiles/entities/peasant/manifest.json"

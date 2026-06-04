@@ -476,6 +476,18 @@
         "name": "Dock",
         "slug": "dock",
         "path": "buildings/dock.json"
+      },
+      {
+        "enum": "E_WOODEN_BRIDGE",
+        "name": "Wooden Bridge",
+        "slug": "wooden_bridge",
+        "path": "buildings/wooden_bridge.json"
+      },
+      {
+        "enum": "E_STONE_BRIDGE",
+        "name": "Stone Bridge",
+        "slug": "stone_bridge",
+        "path": "buildings/stone_bridge.json"
       }
     ],
     "projectiles": [

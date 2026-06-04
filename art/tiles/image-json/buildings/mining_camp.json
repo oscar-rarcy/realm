@@ -31,8 +31,8 @@
       "range": 0,
       "speed": 0,
       "attack_speed_ticks": 0,
-      "cost_gold": 60,
-      "cost_wood": 0,
+      "cost_gold": 30,
+      "cost_wood": 60,
       "train_time_ticks": 0,
       "supply_provided": 0,
       "supply_used": 0,
@@ -57,6 +57,7 @@
       "small banner",
       "cart flag"
     ],
+    "variant_rules": [],
     "recommended_player_colour": {
       "name": "blue",
       "hex": "#00AFFF"
@@ -78,7 +79,21 @@
   "art": {
     "legacy_projection": "upright sprite anchored over projected isometric map tiles",
     "visual_design": "Mine hut, timber supports, ore carts, lantern",
-    "source_role": "gold drop-off"
+    "source_role": "gold drop-off",
+    "generation_aspect": {
+      "id": "square_1_1",
+      "preset": "Square",
+      "ratio": "1:1",
+      "description": "default square image-generation aspect ratio"
+    },
+    "generation_aspect_variant_rules": [],
+    "source_canvas": {
+      "width_px": 32,
+      "height_px": 32,
+      "unit": "px",
+      "scope": "per occupied building footprint cell",
+      "source": "docs/tileset/realm_tileset_visual_audit.md core format table"
+    }
   },
   "states": [
     "construction_0_foundation",

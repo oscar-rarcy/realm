@@ -12,11 +12,30 @@ Generate Realm image sheets for **crates and barrels decal**.
 - Directions: tile
 - Default state: `crates`
 
+## Simplified Ground-Decal Style Contract
+
+- Use a simplified hand-painted map-mark style, not a paper cutout.
+- Do not add a cream paper border, die-cut edge, sticker outline, freestanding shadow, holder, or base.
+- Keep shapes simple, readable, and low against the ground, with soft or broken edges that can layer over different terrain.
+- Use muted painted colour areas and minimal broad linework only where needed for readability.
+- Decals should feel like markings, plants, stones, puddles, scuffs, or wear on the map surface, not independent objects.
+- If transparency is not available, let fading or soft transparent edges fade toward #ff00ff magenta at the boundary.
+
+## Aspect Ratio
+
+- Image generation preset: Square (1:1).
+- Use this aspect ratio for the whole contact sheet; crop accepted slots into production sprites after review.
+
+## Output Resolution
+
+- Final accepted standalone source canvas: 48 by 48 px.
+- Use this resolution from the generated JSON spec for every accepted standalone decal; contact-sheet slots may be larger, but each slot must be cleanly crop/downscale-safe to 48 by 48 px.
+
 ## Image Output Contract
 
 - Output kind: reference contact sheet for planning and review.
 - Per-cell target: one complete decal matching the listed state, centred in its grid cell.
-- Background: Use a transparent sheet background. If the image tool cannot produce alpha, use one flat #ff00ff magenta background and clear gutters between cells.
+- Background: Use transparent background, or a single flat #ff00ff magenta background if transparency is not available.
 - Gutters: keep clear separation between cells so each slot can be cropped or regenerated independently.
 - Consistency: keep the same asset identity, palette, lighting direction, scale, and outline weight across every slot in the file.
 - Margins: leave enough padding that no silhouette, weapon, tool, projectile, shadow, crop, corpse, decal, or effect touches a cell edge.
@@ -44,13 +63,14 @@ Use a **2 by 2** grid for this sheet.
 ## Production Follow-Up
 
 - Final production decal art should be exported as one standalone square image per accepted state.
-- Use transparent background or a flat #ff00ff magenta key background, with only the low overlay art visible.
+- Use transparent background or a flat #ff00ff magenta key background, with only the low simplified map-mark art visible.
 - Keep decal opacity and silhouette subtle enough that it reads as ground wear or clutter, not a blocking object.
+- Do not add paper borders, sticker outlines, freestanding shadows, holders, bases, or cream die-cut edges.
 - Treat the sheet as the visual decision record; generate or crop final production decal images only after the sheet slot is accepted.
 
 ## Prompt
 
-Generate Realm crates and barrels decal image sheets. Use transparent low/flat overlay decals that sit on the ground and do not imply an independent blocking object. Create one decal for each of the 4 listed states or variants. The default state is crates.  Order items left to right and top to bottom within each sheet. Use clean readable small-RTS art, stable scale, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork. Use transparent background, or a single flat #ff00ff magenta background if transparency is not available.
+Generate Realm crates and barrels decal image sheets. Use transparent low/flat overlay decals that sit on the ground and do not imply an independent blocking object. Create one decal for each of the 4 listed states or variants. The default state is crates.  Order items left to right and top to bottom within each sheet. Use clean readable simplified hand-painted ground-decal styling, stable scale, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork. Use transparent background, or a single flat #ff00ff magenta background if transparency is not available.
 
 Slot order:
 - Grid: 2 by 2

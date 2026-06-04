@@ -32,6 +32,21 @@
       "h": 1
     }
   },
+  "art": {
+    "generation_aspect": {
+      "id": "square_1_1",
+      "preset": "Square",
+      "ratio": "1:1",
+      "description": "default square image-generation aspect ratio"
+    },
+    "source_canvas": {
+      "width_px": 48,
+      "height_px": 48,
+      "unit": "px",
+      "scope": "per accepted standalone tile-anchored source image",
+      "source": "docs/tileset/realm_tileset_visual_audit.md core format table"
+    }
+  },
   "paths": {
     "runtime_root": "assets/tiles/features/forest",
     "manifest": "assets/tiles/features/forest/manifest.json"

@@ -54,6 +54,7 @@
   "team_color": {
     "required": false,
     "slots": [],
+    "variant_rules": [],
     "recommended_player_colour": null,
     "player_sigil": null
   },
@@ -72,7 +73,21 @@
   "art": {
     "legacy_projection": "upright sprite anchored over projected isometric map tiles",
     "visual_design": "Brown/tan deer, clear antlers or slim silhouette",
-    "source_role": "spawns in herds; flees in herd when units approach; food on kill"
+    "source_role": "spawns in herds; flees in herd when units approach; food on kill",
+    "generation_aspect": {
+      "id": "square_1_1",
+      "preset": "Square",
+      "ratio": "1:1",
+      "description": "default square image-generation aspect ratio"
+    },
+    "generation_aspect_variant_rules": [],
+    "source_canvas": {
+      "width_px": 48,
+      "height_px": 48,
+      "unit": "px",
+      "scope": "per accepted standalone actor sprite frame",
+      "source": "docs/tileset/realm_tileset_visual_audit.md core format table"
+    }
   },
   "states": [
     "alive",

@@ -31,8 +31,8 @@
       "range": 5,
       "speed": 4,
       "attack_speed_ticks": 7,
-      "cost_gold": 80,
-      "cost_wood": 20,
+      "cost_gold": 150,
+      "cost_wood": 80,
       "train_time_ticks": 100,
       "supply_provided": 0,
       "supply_used": 3,
@@ -60,6 +60,7 @@
       "shields",
       "pennant"
     ],
+    "variant_rules": [],
     "recommended_player_colour": {
       "name": "red",
       "hex": "#FF0000"
@@ -86,7 +87,21 @@
   "art": {
     "legacy_projection": "upright sprite anchored over projected isometric map tiles",
     "visual_design": "Larger longboat/war galley silhouette, shielded sides",
-    "source_role": "naval combat"
+    "source_role": "naval combat",
+    "generation_aspect": {
+      "id": "square_1_1",
+      "preset": "Square",
+      "ratio": "1:1",
+      "description": "default square image-generation aspect ratio"
+    },
+    "generation_aspect_variant_rules": [],
+    "source_canvas": {
+      "width_px": 48,
+      "height_px": 48,
+      "unit": "px",
+      "scope": "per accepted standalone actor sprite frame",
+      "source": "docs/tileset/realm_tileset_visual_audit.md core format table"
+    }
   },
   "states": [
     "idle",

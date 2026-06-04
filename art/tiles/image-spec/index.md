@@ -12,6 +12,12 @@ This folder is the complete Realm image-generation specification for the current
 - Keep emoji, symbol, ASCII, and procedural fallbacks readable until replacement art exists.
 - Peasant idle is the only sprite lane assumed to already exist; every other prompt should be treated as needed art.
 - Ground prompts are top-down square tile art. Feature prompts are transparent anchored sprites. Decal prompts are transparent ground overlays. Projectile, effect, and user-interface prompts are transparent overlays.
+- User-supplied unit references under `art/reference/units/` are equipment and silhouette references only; generated unit sheets must be stylized Realm art, not copies of the reference image style or pixels.
+- Unit and animal actor prompts use the generated JSON source-canvas resolution for accepted standalone frames. Current actor sprites are 48 by 48 px.
+- Unit and animal actor prompts use the tiny medieval paper-cutout style. Human face rules appear only for unit prompts; animal face rules appear for animal prompts and Knight.
+- Projectile prompts use the same moving paper-cutout treatment because projectiles move through the world.
+- Building and decal prompts use simplified painted map-art, not paper cutouts.
+- Ground and feature prompts use map-integrated hand-drawn watercolor styling. Feature and transition-like edges may fade to transparency, or toward #ff00ff magenta when alpha is unavailable.
 - Unit and building sheets may show a projectile only before release; released projectiles belong in the projectile prompts.
 - Unit and animal `front` is a three-quarter screen-right RTS angle; `back` is the matching rear-right angle. Do not generate mirrored left-facing source art.
 - Do not add text labels, numbers, watermarks, cropped artwork, or baked UI chrome to generated image sheets.
@@ -113,6 +119,8 @@ This folder is the complete Realm image-generation specification for the current
 - [Mining Camp](buildings/mining_camp.md)
 - [Mill](buildings/mill.md)
 - [Dock](buildings/dock.md)
+- [Wooden Bridge](buildings/wooden_bridge.md)
+- [Stone Bridge](buildings/stone_bridge.md)
 
 ## Projectiles
 

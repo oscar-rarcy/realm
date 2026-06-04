@@ -31,8 +31,8 @@
       "range": 1,
       "speed": 1,
       "attack_speed_ticks": 5,
-      "cost_gold": 0,
-      "cost_wood": 40,
+      "cost_gold": 120,
+      "cost_wood": 0,
       "train_time_ticks": 80,
       "supply_provided": 0,
       "supply_used": 2,
@@ -54,9 +54,89 @@
   "team_color": {
     "required": true,
     "slots": [
-      "shield",
-      "saddle cloth",
-      "pennant"
+      "shield face",
+      "horse bridle/headstall/face straps",
+      "reins",
+      "saddle/saddle cloth only when Plate Helm is active"
+    ],
+    "variant_rules": [
+      {
+        "id": "basic_weapons__open_helmet",
+        "name": "Basic Weapons + Open Helmet",
+        "team_color_slots": [
+          "shield face",
+          "horse bridle/headstall/face straps",
+          "reins"
+        ],
+        "rules": [
+          "Use blue #00AFFF on the shield face, horse bridle/headstall/face straps, and reins.",
+          "Put the white diagonal stripe on the shield face.",
+          "No Plate Helm is active, so keep the saddle brown leather.",
+          "Keep the girth/belly strap under the horse dark brown leather; never make it blue.",
+          "No pennant, horse armour, barding, lance, kite shield, or polished noble-cavalry treatment.",
+          "Keep horse body, mane, tail, hooves, saddle leather, girth strap, shadows, wood, skin, and plain metal out of team colour."
+        ]
+      },
+      {
+        "id": "basic_weapons__plate_helm",
+        "name": "Basic Weapons + Plate Helm",
+        "team_color_slots": [
+          "shield face",
+          "horse bridle/headstall/face straps",
+          "reins",
+          "saddle/saddle cloth"
+        ],
+        "rules": [
+          "Use blue #00AFFF on the shield face, horse bridle/headstall/face straps, reins, and saddle/saddle cloth.",
+          "Put the white diagonal stripe on the shield face.",
+          "Plate Helm is active, so the saddle/saddle cloth becomes blue #00AFFF.",
+          "Keep the girth/belly strap under the horse dark brown leather; never make it blue.",
+          "Horse armour/barding is present because Plate Helm is active, but the girth strap, horse body, and plain metal are not team colour.",
+          "Keep the basic short spear and round wooden shield; do not add a lance, pennant, kite shield, iron rim, or iron rivets in this tier.",
+          "Keep horse body, mane, tail, hooves, girth strap, shadows, wood, skin, and plain metal out of team colour."
+        ]
+      },
+      {
+        "id": "iron_weapons__open_helmet",
+        "name": "Iron Weapons + Open Helmet",
+        "team_color_slots": [
+          "shield face",
+          "horse bridle/headstall/face straps",
+          "reins",
+          "small lance pennant"
+        ],
+        "rules": [
+          "Use blue #00AFFF on the shield face, horse bridle/headstall/face straps, reins, and small lance pennant.",
+          "Put the white diagonal stripe on the shield face and the small lance pennant.",
+          "The small lance pennant points/trails outward away from the rider, not inward across the rider.",
+          "No Plate Helm is active, so keep the saddle brown leather.",
+          "Keep the girth/belly strap under the horse dark brown leather; never make it blue.",
+          "Keep the open nasal helmet and visible face; do not add Plate Helm armour features in this tier.",
+          "No horse armour or barding; Iron Weapons alone upgrades to the heavy mounted cavalry lance, upgraded shield, and small pennant.",
+          "Keep horse body, mane, tail, hooves, saddle leather, girth strap, shadows, wood, skin, and plain metal out of team colour."
+        ]
+      },
+      {
+        "id": "iron_weapons__plate_helm",
+        "name": "Iron Weapons + Plate Helm",
+        "team_color_slots": [
+          "shield face",
+          "horse bridle/headstall/face straps",
+          "reins",
+          "saddle/saddle cloth",
+          "small lance pennant"
+        ],
+        "rules": [
+          "Use blue #00AFFF on the shield face, horse bridle/headstall/face straps, reins, saddle/saddle cloth, and small lance pennant.",
+          "Put the white diagonal stripe on the shield face and the small lance pennant.",
+          "The small lance pennant points/trails outward away from the rider, not inward across the rider.",
+          "Plate Helm is active, so the saddle/saddle cloth becomes blue #00AFFF.",
+          "Keep the girth/belly strap under the horse dark brown leather; never make it blue.",
+          "Horse armour/barding is present because Plate Helm is active, and should match basic_weapons__plate_helm except for weapon/shield differences.",
+          "Keep the lance pennant small and practical, not a large banner or ceremonial flag.",
+          "Keep horse body, mane, tail, hooves, girth strap, shadows, wood, skin, and plain metal out of team colour."
+        ]
+      }
     ],
     "recommended_player_colour": {
       "name": "blue",
@@ -98,13 +178,13 @@
             "id": "open_helmet",
             "name": "Open Helmet",
             "research": null,
-            "description": "starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection"
+            "description": "early/basic cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection"
           },
           {
             "id": "plate_helm",
             "name": "Plate Helm",
             "research": "Plate Helm",
-            "description": "upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection"
+            "description": "upgraded cavalry armour with a closed plate helm, stronger cheek protection, brighter solid helmet brow, and heavier neck protection"
           }
         ]
       }
@@ -113,14 +193,14 @@
       {
         "id": "basic_weapons__open_helmet",
         "name": "Basic weapons + Open Helmet",
-        "description": "starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
+        "description": "default/basic Knight with no research active; open nasal helmet, visible face, simple mail coif, and light shoulder protection only; reads as the mounted villager upgraded with cheap early cavalry gear, not polished noble cavalry; no horse armour and no barding; brown leather saddle and dark brown leather girth/belly strap; horse bridle/headstall/face straps and reins use blue #00AFFF; short spear with plain wooden shaft, leather grip, and dull bronze or scrap-metal spearhead; no pennant; round wooden shield with blue #00AFFF face, white diagonal stripe, and optional simple central boss; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
         "research": [],
         "is_default": true
       },
       {
         "id": "basic_weapons__plate_helm",
         "name": "Basic weapons + Plate Helm",
-        "description": "starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+        "description": "Plate Helm active and Iron Weapons inactive; same Plate Helm armour package as iron_weapons__plate_helm: closed plate helm, blue plume/crest, and full plate-style rider armour silhouette; same horse armour/barding package as iron_weapons__plate_helm, with plated head armour/chanfron, neck plates/crinet, and chest/front armour/peytral; saddle/saddle cloth becomes blue #00AFFF; dark brown leather girth/belly strap under the horse remains non-team-colour and must never become blue; horse bridle/headstall/face straps and reins remain blue #00AFFF where visible; same short spear as the default/basic variant, with plain wooden shaft, leather grip, and dull bronze or scrap-metal spearhead; no pennant and do not upgrade to a lance; same round wooden shield as the default/basic variant, with blue #00AFFF face and white diagonal stripe; no reinforced iron rim, rivets, or kite-shield upgrade; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
         "research": [
           "Plate Helm"
         ],
@@ -129,21 +209,33 @@
       {
         "id": "iron_weapons__open_helmet",
         "name": "Iron Weapons + Open Helmet",
-        "description": "upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
+        "description": "Iron Weapons active and Plate Helm inactive; same open-helmet/light-armour package as basic_weapons__open_helmet: open nasal helmet, visible face, simple mail coif, and light shoulder protection; no full plate armour and no plume/crest; no horse armour and no barding; brown leather saddle and dark brown leather girth/belly strap; horse bridle/headstall/face straps and reins use blue #00AFFF; heavy mounted cavalry lance, longer than the default short spear, with wooden shaft, large bright iron lance head, visible iron socket/fittings, and metal butt cap; small practical lance pennant in blue #00AFFF with a white diagonal stripe, pointing/trailing outward away from the rider rather than inward across the rider; pentagonal/kite-style shield with blue #00AFFF face, white diagonal stripe, reinforced iron rim, and iron rivets/fasteners; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
         "research": [
           "Iron Weapons"
         ],
-        "is_default": false
+        "is_default": false,
+        "generation_aspect": {
+          "id": "story_16_9",
+          "preset": "Story",
+          "ratio": "16:9",
+          "description": "wide sheet with extra horizontal room for long spears, pikes, and lances"
+        }
       },
       {
         "id": "iron_weapons__plate_helm",
         "name": "Iron Weapons + Plate Helm",
-        "description": "upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+        "description": "both Plate Helm and Iron Weapons active; same Plate Helm armour package as basic_weapons__plate_helm: closed plate helm, blue plume/crest, and full plate-style rider armour silhouette; same horse armour/barding package as basic_weapons__plate_helm, with plated head armour/chanfron, neck plates/crinet, and chest/front armour/peytral; saddle/saddle cloth becomes blue #00AFFF; dark brown leather girth/belly strap under the horse remains non-team-colour and must never become blue; horse bridle/headstall/face straps and reins remain blue #00AFFF where visible; heavy mounted cavalry lance, longer than the default short spear, with wooden shaft, large bright iron lance head, visible iron socket/fittings, and metal butt cap; small practical lance pennant in blue #00AFFF with a white diagonal stripe, pointing/trailing outward away from the rider rather than inward across the rider; same pentagonal/kite-style Iron Weapons shield as iron_weapons__open_helmet, with blue #00AFFF face, white diagonal stripe, reinforced iron rim, and iron rivets/fasteners; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
         "research": [
           "Iron Weapons",
           "Plate Helm"
         ],
-        "is_default": false
+        "is_default": false,
+        "generation_aspect": {
+          "id": "story_16_9",
+          "preset": "Story",
+          "ratio": "16:9",
+          "description": "wide sheet with extra horizontal room for long spears, pikes, and lances"
+        }
       }
     ]
   },
@@ -155,7 +247,34 @@
   "art": {
     "legacy_projection": "upright sprite anchored over projected isometric map tiles",
     "visual_design": "Armoured rider on horse; should read as cavalry even at small size",
-    "source_role": "fast heavy cavalry"
+    "source_role": "fast heavy cavalry",
+    "generation_aspect": {
+      "id": "portrait_4_3",
+      "preset": "Portrait",
+      "ratio": "4:3",
+      "description": "taller cavalry sheet with extra vertical room for horse and rider silhouette"
+    },
+    "generation_aspect_variant_rules": [
+      {
+        "variant": "iron_weapons__open_helmet",
+        "preset": "Story",
+        "ratio": "16:9",
+        "description": "use for Iron Weapons Knight lance states so the lance has horizontal room"
+      },
+      {
+        "variant": "iron_weapons__plate_helm",
+        "preset": "Story",
+        "ratio": "16:9",
+        "description": "use for Iron Weapons Knight lance states so the lance has horizontal room"
+      }
+    ],
+    "source_canvas": {
+      "width_px": 48,
+      "height_px": 48,
+      "unit": "px",
+      "scope": "per accepted standalone actor sprite frame",
+      "source": "docs/tileset/realm_tileset_visual_audit.md core format table"
+    }
   },
   "states": [
     "idle",
@@ -168,7 +287,7 @@
   "actions": [
     {
       "id": "basic_weapons__open_helmet__idle",
-      "description": "Basic weapons + Open Helmet: idle; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
+      "description": "Basic weapons + Open Helmet: idle mounted stance: rider's anatomical right hand carries the spear/lance upright or near-upright; shield is strapped to the rider's anatomical left forearm, relaxed on the far side beside or behind the horse neck/shoulder area, about one third to one half visible; the rider's anatomical left hand still holds or gathers the reins, with reins passing naturally near the shield-side hand; shield is not front-presented; reins are relaxed rather than tense; default/basic Knight with no research active; open nasal helmet, visible face, simple mail coif, and light shoulder protection only; reads as the mounted villager upgraded with cheap early cavalry gear, not polished noble cavalry; no horse armour and no barding; brown leather saddle and dark brown leather girth/belly strap; horse bridle/headstall/face straps and reins use blue #00AFFF; short spear with plain wooden shaft, leather grip, and dull bronze or scrap-metal spearhead; no pennant; round wooden shield with blue #00AFFF face, white diagonal stripe, and optional simple central boss; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
       "source": "docs/tileset/realm_tileset_visual_audit.md",
       "frames_recommended": 2,
       "research_visual_variant": {
@@ -180,7 +299,7 @@
     },
     {
       "id": "basic_weapons__open_helmet__trot",
-      "description": "Basic weapons + Open Helmet: trot; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
+      "description": "Basic weapons + Open Helmet: controlled trot: rider's anatomical right hand carries the spear/lance while the horse moves; shield is strapped to the rider's anatomical left forearm, relaxed on the far side beside or behind the horse neck/shoulder area, about one third to one half visible; the rider's anatomical left hand still holds or gathers the reins, with reins passing naturally near the shield-side hand; horse can be guided by legs, knees, seat, spurs, training, and relaxed reins; default/basic Knight with no research active; open nasal helmet, visible face, simple mail coif, and light shoulder protection only; reads as the mounted villager upgraded with cheap early cavalry gear, not polished noble cavalry; no horse armour and no barding; brown leather saddle and dark brown leather girth/belly strap; horse bridle/headstall/face straps and reins use blue #00AFFF; short spear with plain wooden shaft, leather grip, and dull bronze or scrap-metal spearhead; no pennant; round wooden shield with blue #00AFFF face, white diagonal stripe, and optional simple central boss; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
       "source": "docs/tileset/realm_tileset_visual_audit.md",
       "frames_recommended": 2,
       "research_visual_variant": {
@@ -192,7 +311,7 @@
     },
     {
       "id": "basic_weapons__open_helmet__charge_strike",
-      "description": "Basic weapons + Open Helmet: charge/strike; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
+      "description": "Basic weapons + Open Helmet: charge/strike action with the spear/lance allowed to angle for the attack; shield is strapped to the rider's anatomical left forearm, relaxed on the far side beside or behind the horse neck/shoulder area, about one third to one half visible; the rider's anatomical left hand still holds or gathers the reins, with reins passing naturally near the shield-side hand; keep the shield strapped, not gripped as a whole-hand object; default/basic Knight with no research active; open nasal helmet, visible face, simple mail coif, and light shoulder protection only; reads as the mounted villager upgraded with cheap early cavalry gear, not polished noble cavalry; no horse armour and no barding; brown leather saddle and dark brown leather girth/belly strap; horse bridle/headstall/face straps and reins use blue #00AFFF; short spear with plain wooden shaft, leather grip, and dull bronze or scrap-metal spearhead; no pennant; round wooden shield with blue #00AFFF face, white diagonal stripe, and optional simple central boss; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
       "source": "docs/tileset/realm_tileset_visual_audit.md",
       "frames_recommended": 2,
       "research_visual_variant": {
@@ -204,7 +323,7 @@
     },
     {
       "id": "basic_weapons__open_helmet__hit_alert",
-      "description": "Basic weapons + Open Helmet: hit/alert; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
+      "description": "Basic weapons + Open Helmet: hit/alert mounted pose with the spear/lance still in the rider's anatomical right hand; shield is strapped to the rider's anatomical left forearm, relaxed on the far side beside or behind the horse neck/shoulder area, about one third to one half visible; the rider's anatomical left hand still holds or gathers the reins, with reins passing naturally near the shield-side hand; shield arm remains relaxed rather than actively presenting the shield; default/basic Knight with no research active; open nasal helmet, visible face, simple mail coif, and light shoulder protection only; reads as the mounted villager upgraded with cheap early cavalry gear, not polished noble cavalry; no horse armour and no barding; brown leather saddle and dark brown leather girth/belly strap; horse bridle/headstall/face straps and reins use blue #00AFFF; short spear with plain wooden shaft, leather grip, and dull bronze or scrap-metal spearhead; no pennant; round wooden shield with blue #00AFFF face, white diagonal stripe, and optional simple central boss; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
       "source": "docs/tileset/realm_tileset_visual_audit.md",
       "frames_recommended": 2,
       "research_visual_variant": {
@@ -216,7 +335,7 @@
     },
     {
       "id": "basic_weapons__open_helmet__dead",
-      "description": "Basic weapons + Open Helmet: dead; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
+      "description": "Basic weapons + Open Helmet: dead; default/basic Knight with no research active; open nasal helmet, visible face, simple mail coif, and light shoulder protection only; reads as the mounted villager upgraded with cheap early cavalry gear, not polished noble cavalry; no horse armour and no barding; brown leather saddle and dark brown leather girth/belly strap; horse bridle/headstall/face straps and reins use blue #00AFFF; short spear with plain wooden shaft, leather grip, and dull bronze or scrap-metal spearhead; no pennant; round wooden shield with blue #00AFFF face, white diagonal stripe, and optional simple central boss; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
       "source": "docs/tileset/realm_tileset_visual_audit.md",
       "frames_recommended": 2,
       "research_visual_variant": {
@@ -228,7 +347,7 @@
     },
     {
       "id": "basic_weapons__open_helmet__decayed_skeleton_with_armour_horse_gear_and_weapon",
-      "description": "Basic weapons + Open Helmet: decayed skeleton with armour horse gear and weapon; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
+      "description": "Basic weapons + Open Helmet: decayed skeleton with armour horse gear and weapon; default/basic Knight with no research active; open nasal helmet, visible face, simple mail coif, and light shoulder protection only; reads as the mounted villager upgraded with cheap early cavalry gear, not polished noble cavalry; no horse armour and no barding; brown leather saddle and dark brown leather girth/belly strap; horse bridle/headstall/face straps and reins use blue #00AFFF; short spear with plain wooden shaft, leather grip, and dull bronze or scrap-metal spearhead; no pennant; round wooden shield with blue #00AFFF face, white diagonal stripe, and optional simple central boss; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
       "source": "docs/tileset/realm_tileset_visual_audit.md",
       "frames_recommended": 2,
       "research_visual_variant": {
@@ -240,7 +359,7 @@
     },
     {
       "id": "basic_weapons__plate_helm__idle",
-      "description": "Basic weapons + Plate Helm: idle; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+      "description": "Basic weapons + Plate Helm: idle mounted stance: rider's anatomical right hand carries the spear/lance upright or near-upright; shield is strapped to the rider's anatomical left forearm, relaxed on the far side beside or behind the horse neck/shoulder area, about one third to one half visible; the rider's anatomical left hand still holds or gathers the reins, with reins passing naturally near the shield-side hand; shield is not front-presented; reins are relaxed rather than tense; Plate Helm active and Iron Weapons inactive; same Plate Helm armour package as iron_weapons__plate_helm: closed plate helm, blue plume/crest, and full plate-style rider armour silhouette; same horse armour/barding package as iron_weapons__plate_helm, with plated head armour/chanfron, neck plates/crinet, and chest/front armour/peytral; saddle/saddle cloth becomes blue #00AFFF; dark brown leather girth/belly strap under the horse remains non-team-colour and must never become blue; horse bridle/headstall/face straps and reins remain blue #00AFFF where visible; same short spear as the default/basic variant, with plain wooden shaft, leather grip, and dull bronze or scrap-metal spearhead; no pennant and do not upgrade to a lance; same round wooden shield as the default/basic variant, with blue #00AFFF face and white diagonal stripe; no reinforced iron rim, rivets, or kite-shield upgrade; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
       "source": "docs/tileset/realm_tileset_visual_audit.md",
       "frames_recommended": 2,
       "research_visual_variant": {
@@ -254,7 +373,7 @@
     },
     {
       "id": "basic_weapons__plate_helm__trot",
-      "description": "Basic weapons + Plate Helm: trot; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+      "description": "Basic weapons + Plate Helm: controlled trot: rider's anatomical right hand carries the spear/lance while the horse moves; shield is strapped to the rider's anatomical left forearm, relaxed on the far side beside or behind the horse neck/shoulder area, about one third to one half visible; the rider's anatomical left hand still holds or gathers the reins, with reins passing naturally near the shield-side hand; horse can be guided by legs, knees, seat, spurs, training, and relaxed reins; Plate Helm active and Iron Weapons inactive; same Plate Helm armour package as iron_weapons__plate_helm: closed plate helm, blue plume/crest, and full plate-style rider armour silhouette; same horse armour/barding package as iron_weapons__plate_helm, with plated head armour/chanfron, neck plates/crinet, and chest/front armour/peytral; saddle/saddle cloth becomes blue #00AFFF; dark brown leather girth/belly strap under the horse remains non-team-colour and must never become blue; horse bridle/headstall/face straps and reins remain blue #00AFFF where visible; same short spear as the default/basic variant, with plain wooden shaft, leather grip, and dull bronze or scrap-metal spearhead; no pennant and do not upgrade to a lance; same round wooden shield as the default/basic variant, with blue #00AFFF face and white diagonal stripe; no reinforced iron rim, rivets, or kite-shield upgrade; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
       "source": "docs/tileset/realm_tileset_visual_audit.md",
       "frames_recommended": 2,
       "research_visual_variant": {
@@ -268,7 +387,7 @@
     },
     {
       "id": "basic_weapons__plate_helm__charge_strike",
-      "description": "Basic weapons + Plate Helm: charge/strike; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+      "description": "Basic weapons + Plate Helm: charge/strike action with the spear/lance allowed to angle for the attack; shield is strapped to the rider's anatomical left forearm, relaxed on the far side beside or behind the horse neck/shoulder area, about one third to one half visible; the rider's anatomical left hand still holds or gathers the reins, with reins passing naturally near the shield-side hand; keep the shield strapped, not gripped as a whole-hand object; Plate Helm active and Iron Weapons inactive; same Plate Helm armour package as iron_weapons__plate_helm: closed plate helm, blue plume/crest, and full plate-style rider armour silhouette; same horse armour/barding package as iron_weapons__plate_helm, with plated head armour/chanfron, neck plates/crinet, and chest/front armour/peytral; saddle/saddle cloth becomes blue #00AFFF; dark brown leather girth/belly strap under the horse remains non-team-colour and must never become blue; horse bridle/headstall/face straps and reins remain blue #00AFFF where visible; same short spear as the default/basic variant, with plain wooden shaft, leather grip, and dull bronze or scrap-metal spearhead; no pennant and do not upgrade to a lance; same round wooden shield as the default/basic variant, with blue #00AFFF face and white diagonal stripe; no reinforced iron rim, rivets, or kite-shield upgrade; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
       "source": "docs/tileset/realm_tileset_visual_audit.md",
       "frames_recommended": 2,
       "research_visual_variant": {
@@ -282,7 +401,7 @@
     },
     {
       "id": "basic_weapons__plate_helm__hit_alert",
-      "description": "Basic weapons + Plate Helm: hit/alert; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+      "description": "Basic weapons + Plate Helm: hit/alert mounted pose with the spear/lance still in the rider's anatomical right hand; shield is strapped to the rider's anatomical left forearm, relaxed on the far side beside or behind the horse neck/shoulder area, about one third to one half visible; the rider's anatomical left hand still holds or gathers the reins, with reins passing naturally near the shield-side hand; shield arm remains relaxed rather than actively presenting the shield; Plate Helm active and Iron Weapons inactive; same Plate Helm armour package as iron_weapons__plate_helm: closed plate helm, blue plume/crest, and full plate-style rider armour silhouette; same horse armour/barding package as iron_weapons__plate_helm, with plated head armour/chanfron, neck plates/crinet, and chest/front armour/peytral; saddle/saddle cloth becomes blue #00AFFF; dark brown leather girth/belly strap under the horse remains non-team-colour and must never become blue; horse bridle/headstall/face straps and reins remain blue #00AFFF where visible; same short spear as the default/basic variant, with plain wooden shaft, leather grip, and dull bronze or scrap-metal spearhead; no pennant and do not upgrade to a lance; same round wooden shield as the default/basic variant, with blue #00AFFF face and white diagonal stripe; no reinforced iron rim, rivets, or kite-shield upgrade; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
       "source": "docs/tileset/realm_tileset_visual_audit.md",
       "frames_recommended": 2,
       "research_visual_variant": {
@@ -296,7 +415,7 @@
     },
     {
       "id": "basic_weapons__plate_helm__dead",
-      "description": "Basic weapons + Plate Helm: dead; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+      "description": "Basic weapons + Plate Helm: dead; Plate Helm active and Iron Weapons inactive; same Plate Helm armour package as iron_weapons__plate_helm: closed plate helm, blue plume/crest, and full plate-style rider armour silhouette; same horse armour/barding package as iron_weapons__plate_helm, with plated head armour/chanfron, neck plates/crinet, and chest/front armour/peytral; saddle/saddle cloth becomes blue #00AFFF; dark brown leather girth/belly strap under the horse remains non-team-colour and must never become blue; horse bridle/headstall/face straps and reins remain blue #00AFFF where visible; same short spear as the default/basic variant, with plain wooden shaft, leather grip, and dull bronze or scrap-metal spearhead; no pennant and do not upgrade to a lance; same round wooden shield as the default/basic variant, with blue #00AFFF face and white diagonal stripe; no reinforced iron rim, rivets, or kite-shield upgrade; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
       "source": "docs/tileset/realm_tileset_visual_audit.md",
       "frames_recommended": 2,
       "research_visual_variant": {
@@ -310,7 +429,7 @@
     },
     {
       "id": "basic_weapons__plate_helm__decayed_skeleton_with_armour_horse_gear_and_weapon",
-      "description": "Basic weapons + Plate Helm: decayed skeleton with armour horse gear and weapon; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+      "description": "Basic weapons + Plate Helm: decayed skeleton with armour horse gear and weapon; Plate Helm active and Iron Weapons inactive; same Plate Helm armour package as iron_weapons__plate_helm: closed plate helm, blue plume/crest, and full plate-style rider armour silhouette; same horse armour/barding package as iron_weapons__plate_helm, with plated head armour/chanfron, neck plates/crinet, and chest/front armour/peytral; saddle/saddle cloth becomes blue #00AFFF; dark brown leather girth/belly strap under the horse remains non-team-colour and must never become blue; horse bridle/headstall/face straps and reins remain blue #00AFFF where visible; same short spear as the default/basic variant, with plain wooden shaft, leather grip, and dull bronze or scrap-metal spearhead; no pennant and do not upgrade to a lance; same round wooden shield as the default/basic variant, with blue #00AFFF face and white diagonal stripe; no reinforced iron rim, rivets, or kite-shield upgrade; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
       "source": "docs/tileset/realm_tileset_visual_audit.md",
       "frames_recommended": 2,
       "research_visual_variant": {
@@ -324,7 +443,7 @@
     },
     {
       "id": "iron_weapons__open_helmet__idle",
-      "description": "Iron Weapons + Open Helmet: idle; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
+      "description": "Iron Weapons + Open Helmet: idle mounted stance: rider's anatomical right hand carries the spear/lance upright or near-upright; shield is strapped to the rider's anatomical left forearm, relaxed on the far side beside or behind the horse neck/shoulder area, about one third to one half visible; the rider's anatomical left hand still holds or gathers the reins, with reins passing naturally near the shield-side hand; shield is not front-presented; reins are relaxed rather than tense; Iron Weapons active and Plate Helm inactive; same open-helmet/light-armour package as basic_weapons__open_helmet: open nasal helmet, visible face, simple mail coif, and light shoulder protection; no full plate armour and no plume/crest; no horse armour and no barding; brown leather saddle and dark brown leather girth/belly strap; horse bridle/headstall/face straps and reins use blue #00AFFF; heavy mounted cavalry lance, longer than the default short spear, with wooden shaft, large bright iron lance head, visible iron socket/fittings, and metal butt cap; small practical lance pennant in blue #00AFFF with a white diagonal stripe, pointing/trailing outward away from the rider rather than inward across the rider; pentagonal/kite-style shield with blue #00AFFF face, white diagonal stripe, reinforced iron rim, and iron rivets/fasteners; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
       "source": "docs/tileset/realm_tileset_visual_audit.md",
       "frames_recommended": 2,
       "research_visual_variant": {
@@ -334,11 +453,17 @@
           "Iron Weapons"
         ],
         "is_default": false
+      },
+      "generation_aspect": {
+        "id": "story_16_9",
+        "preset": "Story",
+        "ratio": "16:9",
+        "description": "wide sheet with extra horizontal room for long spears, pikes, and lances"
       }
     },
     {
       "id": "iron_weapons__open_helmet__trot",
-      "description": "Iron Weapons + Open Helmet: trot; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
+      "description": "Iron Weapons + Open Helmet: controlled trot: rider's anatomical right hand carries the spear/lance while the horse moves; shield is strapped to the rider's anatomical left forearm, relaxed on the far side beside or behind the horse neck/shoulder area, about one third to one half visible; the rider's anatomical left hand still holds or gathers the reins, with reins passing naturally near the shield-side hand; horse can be guided by legs, knees, seat, spurs, training, and relaxed reins; Iron Weapons active and Plate Helm inactive; same open-helmet/light-armour package as basic_weapons__open_helmet: open nasal helmet, visible face, simple mail coif, and light shoulder protection; no full plate armour and no plume/crest; no horse armour and no barding; brown leather saddle and dark brown leather girth/belly strap; horse bridle/headstall/face straps and reins use blue #00AFFF; heavy mounted cavalry lance, longer than the default short spear, with wooden shaft, large bright iron lance head, visible iron socket/fittings, and metal butt cap; small practical lance pennant in blue #00AFFF with a white diagonal stripe, pointing/trailing outward away from the rider rather than inward across the rider; pentagonal/kite-style shield with blue #00AFFF face, white diagonal stripe, reinforced iron rim, and iron rivets/fasteners; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
       "source": "docs/tileset/realm_tileset_visual_audit.md",
       "frames_recommended": 2,
       "research_visual_variant": {
@@ -348,11 +473,17 @@
           "Iron Weapons"
         ],
         "is_default": false
+      },
+      "generation_aspect": {
+        "id": "story_16_9",
+        "preset": "Story",
+        "ratio": "16:9",
+        "description": "wide sheet with extra horizontal room for long spears, pikes, and lances"
       }
     },
     {
       "id": "iron_weapons__open_helmet__charge_strike",
-      "description": "Iron Weapons + Open Helmet: charge/strike; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
+      "description": "Iron Weapons + Open Helmet: charge/strike action with the spear/lance allowed to angle for the attack; shield is strapped to the rider's anatomical left forearm, relaxed on the far side beside or behind the horse neck/shoulder area, about one third to one half visible; the rider's anatomical left hand still holds or gathers the reins, with reins passing naturally near the shield-side hand; keep the shield strapped, not gripped as a whole-hand object; Iron Weapons active and Plate Helm inactive; same open-helmet/light-armour package as basic_weapons__open_helmet: open nasal helmet, visible face, simple mail coif, and light shoulder protection; no full plate armour and no plume/crest; no horse armour and no barding; brown leather saddle and dark brown leather girth/belly strap; horse bridle/headstall/face straps and reins use blue #00AFFF; heavy mounted cavalry lance, longer than the default short spear, with wooden shaft, large bright iron lance head, visible iron socket/fittings, and metal butt cap; small practical lance pennant in blue #00AFFF with a white diagonal stripe, pointing/trailing outward away from the rider rather than inward across the rider; pentagonal/kite-style shield with blue #00AFFF face, white diagonal stripe, reinforced iron rim, and iron rivets/fasteners; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
       "source": "docs/tileset/realm_tileset_visual_audit.md",
       "frames_recommended": 2,
       "research_visual_variant": {
@@ -362,11 +493,17 @@
           "Iron Weapons"
         ],
         "is_default": false
+      },
+      "generation_aspect": {
+        "id": "story_16_9",
+        "preset": "Story",
+        "ratio": "16:9",
+        "description": "wide sheet with extra horizontal room for long spears, pikes, and lances"
       }
     },
     {
       "id": "iron_weapons__open_helmet__hit_alert",
-      "description": "Iron Weapons + Open Helmet: hit/alert; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
+      "description": "Iron Weapons + Open Helmet: hit/alert mounted pose with the spear/lance still in the rider's anatomical right hand; shield is strapped to the rider's anatomical left forearm, relaxed on the far side beside or behind the horse neck/shoulder area, about one third to one half visible; the rider's anatomical left hand still holds or gathers the reins, with reins passing naturally near the shield-side hand; shield arm remains relaxed rather than actively presenting the shield; Iron Weapons active and Plate Helm inactive; same open-helmet/light-armour package as basic_weapons__open_helmet: open nasal helmet, visible face, simple mail coif, and light shoulder protection; no full plate armour and no plume/crest; no horse armour and no barding; brown leather saddle and dark brown leather girth/belly strap; horse bridle/headstall/face straps and reins use blue #00AFFF; heavy mounted cavalry lance, longer than the default short spear, with wooden shaft, large bright iron lance head, visible iron socket/fittings, and metal butt cap; small practical lance pennant in blue #00AFFF with a white diagonal stripe, pointing/trailing outward away from the rider rather than inward across the rider; pentagonal/kite-style shield with blue #00AFFF face, white diagonal stripe, reinforced iron rim, and iron rivets/fasteners; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
       "source": "docs/tileset/realm_tileset_visual_audit.md",
       "frames_recommended": 2,
       "research_visual_variant": {
@@ -376,11 +513,17 @@
           "Iron Weapons"
         ],
         "is_default": false
+      },
+      "generation_aspect": {
+        "id": "story_16_9",
+        "preset": "Story",
+        "ratio": "16:9",
+        "description": "wide sheet with extra horizontal room for long spears, pikes, and lances"
       }
     },
     {
       "id": "iron_weapons__open_helmet__dead",
-      "description": "Iron Weapons + Open Helmet: dead; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
+      "description": "Iron Weapons + Open Helmet: dead; Iron Weapons active and Plate Helm inactive; same open-helmet/light-armour package as basic_weapons__open_helmet: open nasal helmet, visible face, simple mail coif, and light shoulder protection; no full plate armour and no plume/crest; no horse armour and no barding; brown leather saddle and dark brown leather girth/belly strap; horse bridle/headstall/face straps and reins use blue #00AFFF; heavy mounted cavalry lance, longer than the default short spear, with wooden shaft, large bright iron lance head, visible iron socket/fittings, and metal butt cap; small practical lance pennant in blue #00AFFF with a white diagonal stripe, pointing/trailing outward away from the rider rather than inward across the rider; pentagonal/kite-style shield with blue #00AFFF face, white diagonal stripe, reinforced iron rim, and iron rivets/fasteners; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
       "source": "docs/tileset/realm_tileset_visual_audit.md",
       "frames_recommended": 2,
       "research_visual_variant": {
@@ -390,11 +533,17 @@
           "Iron Weapons"
         ],
         "is_default": false
+      },
+      "generation_aspect": {
+        "id": "story_16_9",
+        "preset": "Story",
+        "ratio": "16:9",
+        "description": "wide sheet with extra horizontal room for long spears, pikes, and lances"
       }
     },
     {
       "id": "iron_weapons__open_helmet__decayed_skeleton_with_armour_horse_gear_and_weapon",
-      "description": "Iron Weapons + Open Helmet: decayed skeleton with armour horse gear and weapon; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
+      "description": "Iron Weapons + Open Helmet: decayed skeleton with armour horse gear and weapon; Iron Weapons active and Plate Helm inactive; same open-helmet/light-armour package as basic_weapons__open_helmet: open nasal helmet, visible face, simple mail coif, and light shoulder protection; no full plate armour and no plume/crest; no horse armour and no barding; brown leather saddle and dark brown leather girth/belly strap; horse bridle/headstall/face straps and reins use blue #00AFFF; heavy mounted cavalry lance, longer than the default short spear, with wooden shaft, large bright iron lance head, visible iron socket/fittings, and metal butt cap; small practical lance pennant in blue #00AFFF with a white diagonal stripe, pointing/trailing outward away from the rider rather than inward across the rider; pentagonal/kite-style shield with blue #00AFFF face, white diagonal stripe, reinforced iron rim, and iron rivets/fasteners; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
       "source": "docs/tileset/realm_tileset_visual_audit.md",
       "frames_recommended": 2,
       "research_visual_variant": {
@@ -404,11 +553,17 @@
           "Iron Weapons"
         ],
         "is_default": false
+      },
+      "generation_aspect": {
+        "id": "story_16_9",
+        "preset": "Story",
+        "ratio": "16:9",
+        "description": "wide sheet with extra horizontal room for long spears, pikes, and lances"
       }
     },
     {
       "id": "iron_weapons__plate_helm__idle",
-      "description": "Iron Weapons + Plate Helm: idle; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+      "description": "Iron Weapons + Plate Helm: idle mounted stance: rider's anatomical right hand carries the spear/lance upright or near-upright; shield is strapped to the rider's anatomical left forearm, relaxed on the far side beside or behind the horse neck/shoulder area, about one third to one half visible; the rider's anatomical left hand still holds or gathers the reins, with reins passing naturally near the shield-side hand; shield is not front-presented; reins are relaxed rather than tense; both Plate Helm and Iron Weapons active; same Plate Helm armour package as basic_weapons__plate_helm: closed plate helm, blue plume/crest, and full plate-style rider armour silhouette; same horse armour/barding package as basic_weapons__plate_helm, with plated head armour/chanfron, neck plates/crinet, and chest/front armour/peytral; saddle/saddle cloth becomes blue #00AFFF; dark brown leather girth/belly strap under the horse remains non-team-colour and must never become blue; horse bridle/headstall/face straps and reins remain blue #00AFFF where visible; heavy mounted cavalry lance, longer than the default short spear, with wooden shaft, large bright iron lance head, visible iron socket/fittings, and metal butt cap; small practical lance pennant in blue #00AFFF with a white diagonal stripe, pointing/trailing outward away from the rider rather than inward across the rider; same pentagonal/kite-style Iron Weapons shield as iron_weapons__open_helmet, with blue #00AFFF face, white diagonal stripe, reinforced iron rim, and iron rivets/fasteners; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
       "source": "docs/tileset/realm_tileset_visual_audit.md",
       "frames_recommended": 2,
       "research_visual_variant": {
@@ -419,11 +574,17 @@
           "Plate Helm"
         ],
         "is_default": false
+      },
+      "generation_aspect": {
+        "id": "story_16_9",
+        "preset": "Story",
+        "ratio": "16:9",
+        "description": "wide sheet with extra horizontal room for long spears, pikes, and lances"
       }
     },
     {
       "id": "iron_weapons__plate_helm__trot",
-      "description": "Iron Weapons + Plate Helm: trot; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+      "description": "Iron Weapons + Plate Helm: controlled trot: rider's anatomical right hand carries the spear/lance while the horse moves; shield is strapped to the rider's anatomical left forearm, relaxed on the far side beside or behind the horse neck/shoulder area, about one third to one half visible; the rider's anatomical left hand still holds or gathers the reins, with reins passing naturally near the shield-side hand; horse can be guided by legs, knees, seat, spurs, training, and relaxed reins; both Plate Helm and Iron Weapons active; same Plate Helm armour package as basic_weapons__plate_helm: closed plate helm, blue plume/crest, and full plate-style rider armour silhouette; same horse armour/barding package as basic_weapons__plate_helm, with plated head armour/chanfron, neck plates/crinet, and chest/front armour/peytral; saddle/saddle cloth becomes blue #00AFFF; dark brown leather girth/belly strap under the horse remains non-team-colour and must never become blue; horse bridle/headstall/face straps and reins remain blue #00AFFF where visible; heavy mounted cavalry lance, longer than the default short spear, with wooden shaft, large bright iron lance head, visible iron socket/fittings, and metal butt cap; small practical lance pennant in blue #00AFFF with a white diagonal stripe, pointing/trailing outward away from the rider rather than inward across the rider; same pentagonal/kite-style Iron Weapons shield as iron_weapons__open_helmet, with blue #00AFFF face, white diagonal stripe, reinforced iron rim, and iron rivets/fasteners; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
       "source": "docs/tileset/realm_tileset_visual_audit.md",
       "frames_recommended": 2,
       "research_visual_variant": {
@@ -434,11 +595,17 @@
           "Plate Helm"
         ],
         "is_default": false
+      },
+      "generation_aspect": {
+        "id": "story_16_9",
+        "preset": "Story",
+        "ratio": "16:9",
+        "description": "wide sheet with extra horizontal room for long spears, pikes, and lances"
       }
     },
     {
       "id": "iron_weapons__plate_helm__charge_strike",
-      "description": "Iron Weapons + Plate Helm: charge/strike; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+      "description": "Iron Weapons + Plate Helm: charge/strike action with the spear/lance allowed to angle for the attack; shield is strapped to the rider's anatomical left forearm, relaxed on the far side beside or behind the horse neck/shoulder area, about one third to one half visible; the rider's anatomical left hand still holds or gathers the reins, with reins passing naturally near the shield-side hand; keep the shield strapped, not gripped as a whole-hand object; both Plate Helm and Iron Weapons active; same Plate Helm armour package as basic_weapons__plate_helm: closed plate helm, blue plume/crest, and full plate-style rider armour silhouette; same horse armour/barding package as basic_weapons__plate_helm, with plated head armour/chanfron, neck plates/crinet, and chest/front armour/peytral; saddle/saddle cloth becomes blue #00AFFF; dark brown leather girth/belly strap under the horse remains non-team-colour and must never become blue; horse bridle/headstall/face straps and reins remain blue #00AFFF where visible; heavy mounted cavalry lance, longer than the default short spear, with wooden shaft, large bright iron lance head, visible iron socket/fittings, and metal butt cap; small practical lance pennant in blue #00AFFF with a white diagonal stripe, pointing/trailing outward away from the rider rather than inward across the rider; same pentagonal/kite-style Iron Weapons shield as iron_weapons__open_helmet, with blue #00AFFF face, white diagonal stripe, reinforced iron rim, and iron rivets/fasteners; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
       "source": "docs/tileset/realm_tileset_visual_audit.md",
       "frames_recommended": 2,
       "research_visual_variant": {
@@ -449,11 +616,17 @@
           "Plate Helm"
         ],
         "is_default": false
+      },
+      "generation_aspect": {
+        "id": "story_16_9",
+        "preset": "Story",
+        "ratio": "16:9",
+        "description": "wide sheet with extra horizontal room for long spears, pikes, and lances"
       }
     },
     {
       "id": "iron_weapons__plate_helm__hit_alert",
-      "description": "Iron Weapons + Plate Helm: hit/alert; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+      "description": "Iron Weapons + Plate Helm: hit/alert mounted pose with the spear/lance still in the rider's anatomical right hand; shield is strapped to the rider's anatomical left forearm, relaxed on the far side beside or behind the horse neck/shoulder area, about one third to one half visible; the rider's anatomical left hand still holds or gathers the reins, with reins passing naturally near the shield-side hand; shield arm remains relaxed rather than actively presenting the shield; both Plate Helm and Iron Weapons active; same Plate Helm armour package as basic_weapons__plate_helm: closed plate helm, blue plume/crest, and full plate-style rider armour silhouette; same horse armour/barding package as basic_weapons__plate_helm, with plated head armour/chanfron, neck plates/crinet, and chest/front armour/peytral; saddle/saddle cloth becomes blue #00AFFF; dark brown leather girth/belly strap under the horse remains non-team-colour and must never become blue; horse bridle/headstall/face straps and reins remain blue #00AFFF where visible; heavy mounted cavalry lance, longer than the default short spear, with wooden shaft, large bright iron lance head, visible iron socket/fittings, and metal butt cap; small practical lance pennant in blue #00AFFF with a white diagonal stripe, pointing/trailing outward away from the rider rather than inward across the rider; same pentagonal/kite-style Iron Weapons shield as iron_weapons__open_helmet, with blue #00AFFF face, white diagonal stripe, reinforced iron rim, and iron rivets/fasteners; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
       "source": "docs/tileset/realm_tileset_visual_audit.md",
       "frames_recommended": 2,
       "research_visual_variant": {
@@ -464,11 +637,17 @@
           "Plate Helm"
         ],
         "is_default": false
+      },
+      "generation_aspect": {
+        "id": "story_16_9",
+        "preset": "Story",
+        "ratio": "16:9",
+        "description": "wide sheet with extra horizontal room for long spears, pikes, and lances"
       }
     },
     {
       "id": "iron_weapons__plate_helm__dead",
-      "description": "Iron Weapons + Plate Helm: dead; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+      "description": "Iron Weapons + Plate Helm: dead; both Plate Helm and Iron Weapons active; same Plate Helm armour package as basic_weapons__plate_helm: closed plate helm, blue plume/crest, and full plate-style rider armour silhouette; same horse armour/barding package as basic_weapons__plate_helm, with plated head armour/chanfron, neck plates/crinet, and chest/front armour/peytral; saddle/saddle cloth becomes blue #00AFFF; dark brown leather girth/belly strap under the horse remains non-team-colour and must never become blue; horse bridle/headstall/face straps and reins remain blue #00AFFF where visible; heavy mounted cavalry lance, longer than the default short spear, with wooden shaft, large bright iron lance head, visible iron socket/fittings, and metal butt cap; small practical lance pennant in blue #00AFFF with a white diagonal stripe, pointing/trailing outward away from the rider rather than inward across the rider; same pentagonal/kite-style Iron Weapons shield as iron_weapons__open_helmet, with blue #00AFFF face, white diagonal stripe, reinforced iron rim, and iron rivets/fasteners; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
       "source": "docs/tileset/realm_tileset_visual_audit.md",
       "frames_recommended": 2,
       "research_visual_variant": {
@@ -479,11 +658,17 @@
           "Plate Helm"
         ],
         "is_default": false
+      },
+      "generation_aspect": {
+        "id": "story_16_9",
+        "preset": "Story",
+        "ratio": "16:9",
+        "description": "wide sheet with extra horizontal room for long spears, pikes, and lances"
       }
     },
     {
       "id": "iron_weapons__plate_helm__decayed_skeleton_with_armour_horse_gear_and_weapon",
-      "description": "Iron Weapons + Plate Helm: decayed skeleton with armour horse gear and weapon; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+      "description": "Iron Weapons + Plate Helm: decayed skeleton with armour horse gear and weapon; both Plate Helm and Iron Weapons active; same Plate Helm armour package as basic_weapons__plate_helm: closed plate helm, blue plume/crest, and full plate-style rider armour silhouette; same horse armour/barding package as basic_weapons__plate_helm, with plated head armour/chanfron, neck plates/crinet, and chest/front armour/peytral; saddle/saddle cloth becomes blue #00AFFF; dark brown leather girth/belly strap under the horse remains non-team-colour and must never become blue; horse bridle/headstall/face straps and reins remain blue #00AFFF where visible; heavy mounted cavalry lance, longer than the default short spear, with wooden shaft, large bright iron lance head, visible iron socket/fittings, and metal butt cap; small practical lance pennant in blue #00AFFF with a white diagonal stripe, pointing/trailing outward away from the rider rather than inward across the rider; same pentagonal/kite-style Iron Weapons shield as iron_weapons__open_helmet, with blue #00AFFF face, white diagonal stripe, reinforced iron rim, and iron rivets/fasteners; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
       "source": "docs/tileset/realm_tileset_visual_audit.md",
       "frames_recommended": 2,
       "research_visual_variant": {
@@ -494,6 +679,12 @@
           "Plate Helm"
         ],
         "is_default": false
+      },
+      "generation_aspect": {
+        "id": "story_16_9",
+        "preset": "Story",
+        "ratio": "16:9",
+        "description": "wide sheet with extra horizontal room for long spears, pikes, and lances"
       }
     }
   ],

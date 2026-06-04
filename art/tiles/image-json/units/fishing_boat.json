@@ -31,8 +31,8 @@
       "range": 0,
       "speed": 5,
       "attack_speed_ticks": 0,
-      "cost_gold": 50,
-      "cost_wood": 0,
+      "cost_gold": 80,
+      "cost_wood": 50,
       "train_time_ticks": 60,
       "supply_provided": 0,
       "supply_used": 1,
@@ -57,6 +57,7 @@
     "slots": [
       "tiny flag or sail patch"
     ],
+    "variant_rules": [],
     "recommended_player_colour": {
       "name": "red",
       "hex": "#FF0000"
@@ -78,7 +79,21 @@
   "art": {
     "legacy_projection": "upright sprite anchored over projected isometric map tiles",
     "visual_design": "Small brown skiff/canoe with net or fish line",
-    "source_role": "gathers fish, returns to dock"
+    "source_role": "gathers fish, returns to dock",
+    "generation_aspect": {
+      "id": "square_1_1",
+      "preset": "Square",
+      "ratio": "1:1",
+      "description": "default square image-generation aspect ratio"
+    },
+    "generation_aspect_variant_rules": [],
+    "source_canvas": {
+      "width_px": 48,
+      "height_px": 48,
+      "unit": "px",
+      "scope": "per accepted standalone actor sprite frame",
+      "source": "docs/tileset/realm_tileset_visual_audit.md core format table"
+    }
   },
   "states": [
     "idle",

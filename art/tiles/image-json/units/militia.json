@@ -31,8 +31,8 @@
       "range": 1,
       "speed": 3,
       "attack_speed_ticks": 6,
-      "cost_gold": 0,
-      "cost_wood": 20,
+      "cost_gold": 60,
+      "cost_wood": 0,
       "train_time_ticks": 50,
       "supply_provided": 0,
       "supply_used": 1,
@@ -59,6 +59,7 @@
       "tabard stripe",
       "plume"
     ],
+    "variant_rules": [],
     "recommended_player_colour": {
       "name": "blue",
       "hex": "#00AFFF"
@@ -119,7 +120,21 @@
   "art": {
     "legacy_projection": "upright sprite anchored over projected isometric map tiles",
     "visual_design": "Swordsman with simple helmet, round shield in team color, rough gambeson in team color",
-    "source_role": "melee infantry"
+    "source_role": "melee infantry",
+    "generation_aspect": {
+      "id": "square_1_1",
+      "preset": "Square",
+      "ratio": "1:1",
+      "description": "default square image-generation aspect ratio"
+    },
+    "generation_aspect_variant_rules": [],
+    "source_canvas": {
+      "width_px": 48,
+      "height_px": 48,
+      "unit": "px",
+      "scope": "per accepted standalone actor sprite frame",
+      "source": "docs/tileset/realm_tileset_visual_audit.md core format table"
+    }
   },
   "states": [
     "idle",

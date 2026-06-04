@@ -27,6 +27,21 @@
     "needs_design_review": false,
     "movement_ticks_modifier": 1
   },
+  "art": {
+    "generation_aspect": {
+      "id": "square_1_1",
+      "preset": "Square",
+      "ratio": "1:1",
+      "description": "default square image-generation aspect ratio"
+    },
+    "source_canvas": {
+      "width_px": 1024,
+      "height_px": 1024,
+      "unit": "px",
+      "scope": "per standalone high-resolution ground source tile",
+      "source": "realm-tileset-from-images ground contract"
+    }
+  },
   "paths": {
     "runtime_root": "assets/tiles/grounds/marsh",
     "base": "assets/tiles/grounds/marsh.png"

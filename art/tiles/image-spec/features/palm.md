@@ -12,11 +12,30 @@ Generate Realm image sheets for **palm feature**.
 - Directions: tile
 - Default state: `full`
 
+## Map-Integrated Feature Style Contract
+
+- Use a hand-drawn watercolor map-feature style that feels grown out of or placed into the map, not a movable paper cutout.
+- Do not add a cream paper border, sticker outline, holder, base, or freestanding paper edge.
+- Use softened painted edges, broad readable shapes, muted natural colours, and selective chunky linework only where it clarifies silhouette or resource state.
+- The lower/contact area should blend into the map with transparent softness; if alpha is not available, fade softly toward #ff00ff magenta where the sprite should become transparent.
+- Keep the anchor stable across depletion, damage, season, and weather states.
+- Concealing features should keep front/occluder areas readable without turning into opaque walls.
+
+## Aspect Ratio
+
+- Image generation preset: Square (1:1).
+- Use this aspect ratio for the whole contact sheet; crop accepted slots into production sprites after review.
+
+## Output Resolution
+
+- Final accepted standalone source canvas: 48 by 48 px.
+- Use this resolution from the generated JSON spec for every accepted standalone sprite; contact-sheet slots may be larger, but each slot must be cleanly crop/downscale-safe to 48 by 48 px.
+
 ## Image Output Contract
 
 - Output kind: reference contact sheet for planning and review.
 - Per-cell target: one complete sprite matching the listed state, centred in its grid cell.
-- Background: Use a transparent sheet background. If the image tool cannot produce alpha, use one flat #ff00ff magenta background and clear gutters between cells.
+- Background: Use transparent background, or a single flat #ff00ff magenta background if transparency is not available.
 - Gutters: keep clear separation between cells so each slot can be cropped or regenerated independently.
 - Consistency: keep the same asset identity, palette, lighting direction, scale, and outline weight across every slot in the file.
 - Margins: leave enough padding that no silhouette, weapon, tool, projectile, shadow, crop, corpse, decal, or effect touches a cell edge.
@@ -44,13 +63,14 @@ Use a **2 by 2** grid for this sheet.
 ## Production Follow-Up
 
 - Final production feature art should be exported as one standalone square image per accepted state.
-- Use transparent background or a flat #ff00ff magenta key background, with one anchored sprite and its contact shadow fully inside the square.
+- Use transparent background or a flat #ff00ff magenta key background, with one map-integrated feature and any contact blending fully inside the square.
 - Keep the tile anchor visually stable across depletion, weather, damage, and seasonal variants.
+- Let lower/contact edges fade softly to alpha or toward #ff00ff magenta when the feature should blend into the map.
 - Treat the sheet as the visual decision record; generate or crop final production sprite images only after the sheet slot is accepted.
 
 ## Prompt
 
-Generate Realm palm feature image sheets. Use transparent-background anchored sprites with no full ground tile, consistent anchor position, and readable silhouette. Create one sprite for each of the 4 listed states or variants. The default state is full.  Order items left to right and top to bottom within each sheet. Use clean readable small-RTS art, stable scale, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork. Use transparent background, or a single flat #ff00ff magenta background if transparency is not available.
+Generate Realm palm feature image sheets. Use transparent-background anchored sprites with no full ground tile, consistent anchor position, and readable silhouette. Create one sprite for each of the 4 listed states or variants. The default state is full.  Order items left to right and top to bottom within each sheet. Use clean readable map-integrated watercolor feature styling, stable scale, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork. Use transparent background, or a single flat #ff00ff magenta background if transparency is not available.
 
 Slot order:
 - Grid: 2 by 2

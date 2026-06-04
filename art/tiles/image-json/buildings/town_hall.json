@@ -31,8 +31,8 @@
       "range": 0,
       "speed": 0,
       "attack_speed_ticks": 0,
-      "cost_gold": 150,
-      "cost_wood": 0,
+      "cost_gold": 200,
+      "cost_wood": 150,
       "train_time_ticks": 100,
       "supply_provided": 10,
       "supply_used": 0,
@@ -61,6 +61,7 @@
       "roof trim",
       "town shield sign"
     ],
+    "variant_rules": [],
     "recommended_player_colour": {
       "name": "blue",
       "hex": "#00AFFF"
@@ -82,7 +83,21 @@
   "art": {
     "legacy_projection": "upright sprite anchored over projected isometric map tiles",
     "visual_design": "Clustered civic compound: central hall/keep, side annexes, courtyard, doorway facing south",
-    "source_role": "starting base, depot, supply +10, garrison 6, vision, AI can train peasants from it"
+    "source_role": "starting base, depot, supply +10, garrison 6, vision, AI can train peasants from it",
+    "generation_aspect": {
+      "id": "square_1_1",
+      "preset": "Square",
+      "ratio": "1:1",
+      "description": "default square image-generation aspect ratio"
+    },
+    "generation_aspect_variant_rules": [],
+    "source_canvas": {
+      "width_px": 32,
+      "height_px": 32,
+      "unit": "px",
+      "scope": "per occupied building footprint cell",
+      "source": "docs/tileset/realm_tileset_visual_audit.md core format table"
+    }
   },
   "states": [
     "construction_0_foundation",

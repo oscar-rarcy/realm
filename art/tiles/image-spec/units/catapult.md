@@ -28,6 +28,49 @@ Generate one Realm sprite reference sheet per direction for **Catapult**.
 - Released, airborne, or impact projectiles must be generated from the projectile files below, not baked into the unit/building frame.
 - `catapult_boulder`: `art/tiles/image-spec/projectiles/catapult_boulder.md`
 
+## Curated Reference Role
+
+- If user-supplied reference images from `art/reference/units/` are provided, use them only for gear, equipment, weapon tier, armour tier, shield placement, horse tack, and broad silhouette cues.
+- Do not copy the reference image's exact pixels, finish, lighting, proportions, pose, background, or style.
+- Redraw the result as stylized Realm small-RTS sprite art that follows this prompt's visual design, direction, team-colour slots, state grid, and output contract.
+- Siege units and ships do not yet have curated unit references; generate those from the prompt until references are supplied.
+
+## Tiny Sprite Style Contract
+
+- Convert the provided or generated subject into an ultra-simplified tiny sprite for a medieval-themed board game.
+- Preserve the same pose, facing direction, silhouette, species or character identity, clothing, armour, equipment, weapons, shields, harness, tack, accessories, gear placement, and major colour identity.
+- Only change the visual style; do not add, remove, swap, or redesign equipment or body forms.
+
+### Core Style
+
+- Highly consistent paper-cutout sprite style, like a simplified medieval manuscript or marginalia illustration turned into a paper standee.
+- Ultra-simplified shapes with a very thick, clean, continuous black outer outline around the whole subject.
+- Chunky black internal lines only where essential; no thin delicate linework, sketchiness, crosshatching, tiny texture marks, painterly micro-detail, realistic rendering, soft shading, or modern glossy cartoon polish.
+- Cream/off-white die-cut paper border following the silhouette, with black subject outline still clearly visible inside that border.
+- Flat muted medieval/storybook painted colour areas, preserving the subject's major colour identity; no gradients or glossy effects.
+- Simplify aggressively for tiny-size readability: keep silhouette, major colour blocks, essential equipment shapes, minimum facial features, and minimum tack, weapon, or shield lines needed for recognition.
+
+### Human Face Rules
+
+- Eyes are two bold tiny black dots.
+- Nose is one short bold black stroke or dot-like mark.
+- Mouth is one tiny short black line, or omitted if not needed.
+- Keep facial marks simple, thick, and readable at tiny scale; no detailed lips, eyelids, teeth, or realistic facial modelling.
+- Expression should be simple, readable, and slightly medieval-naive.
+
+### Body, Clothing, And Equipment
+
+- Preserve important armour, clothing, shields, weapons, saddles, reins, harness, tack, and accessories faithfully.
+- Represent equipment as simplified flat shapes with thick black outlines.
+- Keep only the main seams, straps, borders, and forms needed for recognition; avoid tiny buckles, stitching, ornament, and surface texture.
+- Shields, helmets, weapons, and horse tack must remain especially recognizable.
+
+### Output Background
+
+- Isolated paper-cutout sprite only, centred on a flat pure magenta background: #FF00FF.
+- No base, holder, board, terrain, scene, extra props, decorative frame, realism, 3D render, or cast shadow.
+- An extremely subtle contact shadow is allowed only if necessary for tiny-sprite readability.
+
 ## Direction And Anchor Contract
 
 - `front` means a three-quarter RTS front angle, body or object turned about 30-45 degrees toward screen right. It is not a flat face-on mascot pose.
@@ -35,11 +78,21 @@ Generate one Realm sprite reference sheet per direction for **Catapult**.
 - Do not generate mirrored left-facing source art. The renderer mirrors front/back source art when needed.
 - Keep feet, corpse baseline, wheels, boat hull contact, siege base, carried goods, and weapon arcs inside the cell with stable anchor and scale.
 
+## Aspect Ratio
+
+- Image generation preset: Square (1:1).
+- Use this aspect ratio for the whole contact sheet; crop accepted slots into production sprites after review.
+
+## Output Resolution
+
+- Final accepted standalone source canvas: 48 by 48 px.
+- Use this resolution from the generated JSON spec for every accepted standalone sprite frame; contact-sheet slots may be larger, but each slot must be cleanly crop/downscale-safe to 48 by 48 px.
+
 ## Image Output Contract
 
 - Output kind: reference contact sheet for planning and review.
 - Per-cell target: one complete sprite frame matching the listed state, centred in its grid cell.
-- Background: Use a transparent sheet background. If the image tool cannot produce alpha, use one flat #ff00ff magenta background and clear gutters between cells.
+- Background: Use a flat pure #ff00ff magenta sheet background and clear gutters between cells.
 - Gutters: keep clear separation between cells so each slot can be cropped or regenerated independently.
 - Consistency: keep the same asset identity, palette, lighting direction, scale, and outline weight across every slot in the file.
 - Margins: leave enough padding that no silhouette, weapon, tool, projectile, shadow, crop, corpse, decal, or effect touches a cell edge.
@@ -75,14 +128,15 @@ Use a **3 by 3** grid for this sheet.
 ## Production Follow-Up
 
 - Final production sprite art should be exported as one standalone square image per accepted state, direction, and frame.
-- Use transparent background or a flat #ff00ff magenta key background, with the full sprite and shadow inside the square.
-- Keep feet, hull base, wheels, siege base, or building footprint anchored consistently across variants.
+- Use a flat pure #ff00ff magenta background, with the full paper-cutout sprite inside the square.
+- Keep feet, hull base, wheels, siege base, tack, weapons, and equipment anchored consistently across variants.
+- Do not add a base, holder, terrain, board, decorative frame, or cast shadow; an extremely subtle contact shadow is acceptable only if it is needed for readability.
 - Treat the sheet as the visual decision record; generate or crop final production sprite frame images only after the sheet slot is accepted.
 
 
 ## Prompt
 
-Generate sprites for my Realm Catapult. The footprint is 1 by 1 tile(s). Team colour is required and the recommended preview player colour is blue (#00AFFF). Valid directions are front, back. Produce one sheet at a time for the requested direction, using the same state grid for each direction. Create one frame for each of the 8 listed states. Order states left to right and top to bottom within each sheet. Keep the character or building consistent across every slot. Use transparent background, or a single flat #ff00ff magenta background if transparency is not available. Use clean readable small-RTS proportions, stable anchor, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork. Use projectile reference files for released projectiles.
+Generate sprites for my Realm Catapult. The footprint is 1 by 1 tile(s). Team colour is required and the recommended preview player colour is blue (#00AFFF). Valid directions are front, back. Produce one sheet at a time for the requested direction, using the same state grid for each direction. Create one frame for each of the 8 listed states. Order states left to right and top to bottom within each sheet. Keep the subject consistent across every slot. Final accepted standalone frames use the generated spec resolution: 48 by 48 px. Use a flat pure #ff00ff magenta sheet background and clear gutters between cells. Use clean readable tiny paper-cutout sprite proportions, stable anchor, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork. If unit reference images are supplied, use them only for equipment and silhouette cues, then redraw into stylized Realm sprite art; do not copy their source style or pixels. Use projectile reference files for released projectiles.
 
 Slot order:
 - Grid: 3 by 3

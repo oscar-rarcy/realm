@@ -55,6 +55,7 @@
       "tiny post flag optional",
       "very subtle"
     ],
+    "variant_rules": [],
     "recommended_player_colour": {
       "name": "blue",
       "hex": "#00AFFF"
@@ -76,7 +77,21 @@
   "art": {
     "legacy_projection": "upright sprite anchored over projected isometric map tiles",
     "visual_design": "Cultivated wheat plot, furrows, scarecrow/sickle marker",
-    "source_role": "food generator when tended; dies in winter"
+    "source_role": "food generator when tended; dies in winter",
+    "generation_aspect": {
+      "id": "square_1_1",
+      "preset": "Square",
+      "ratio": "1:1",
+      "description": "default square image-generation aspect ratio"
+    },
+    "generation_aspect_variant_rules": [],
+    "source_canvas": {
+      "width_px": 32,
+      "height_px": 32,
+      "unit": "px",
+      "scope": "per occupied building footprint cell",
+      "source": "docs/tileset/realm_tileset_visual_audit.md core format table"
+    }
   },
   "states": [
     "construction_0_foundation",
