@@ -888,8 +888,10 @@ void toggleFullscreen() {
 }
 
 static EntityType activeBuildPreviewType() {
-    if (s.mobileBuildType != E_NONE) return s.mobileBuildType;
-    if (g.mode == M_BUILD_PLACE) return g.local.buildPending;
+    if (s.mobileBuildType > E_NONE && s.mobileBuildType < E_TYPE_COUNT) return s.mobileBuildType;
+    if (g.mode == M_BUILD_PLACE && g.local.buildPending > E_NONE && g.local.buildPending < E_TYPE_COUNT) {
+        return g.local.buildPending;
+    }
     return E_NONE;
 }
 
