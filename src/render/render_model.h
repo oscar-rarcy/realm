@@ -32,6 +32,13 @@ struct EntityRenderInfo {
     int targetY = -1;
     int facingDx = 0;
     int facingDy = 0;
+    int visualMoveFromX = 0;
+    int visualMoveFromY = 0;
+    int visualMoveToX = 0;
+    int visualMoveToY = 0;
+    int visualMoveStartedTick = 0;
+    int visualMoveDurationTicks = 0;
+    int visualMoveSeq = 0;
     int alertTicks = 0;
     bool underConstruction = false;
     bool attackMove = false;
@@ -56,11 +63,21 @@ struct ActionMarkerRenderInfo {
 };
 
 struct ProjectileRenderInfo {
+    int visualId = 0;
     ProjectileType type = PT_ARROW;
     float x = 0.0f;
     float y = 0.0f;
     float tx = 0.0f;
     float ty = 0.0f;
+    float visualSpawnX = 0.0f;
+    float visualSpawnY = 0.0f;
+    float visualMoveFromX = 0.0f;
+    float visualMoveFromY = 0.0f;
+    float visualMoveToX = 0.0f;
+    float visualMoveToY = 0.0f;
+    int visualMoveStartedTick = 0;
+    int visualMoveDurationTicks = 0;
+    int visualMoveSeq = 0;
     int tileX = 0;
     int tileY = 0;
     char glyph = 0;

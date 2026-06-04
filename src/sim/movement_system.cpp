@@ -12,11 +12,14 @@ void moveAlongPath(Game& game, const WorldIndex& world, Entity& e) {
     }
     if (e.moveCd > 0) { e.moveCd--; return; }
     auto [nx, ny] = e.path[e.pathIdx];
+    if (!isNaval(e.type) && !isLandPassableWithBridges(game, world, nx, ny)) {
+        e.stuckTicks++;
+        return;
+    }
     // Units share tiles freely; buildings block, except open gates
     Entity* blk = entityAt(game, world, nx, ny);
     if (blk && blk->id != e.id && isBuilding(blk->type)) {
-        bool isOpenGate = (blk->type == E_GATE && blk->gateOpen);
-        if (!isOpenGate) {
+        if (buildingBlocksLandMovement(*blk)) {
             // Tolerate transient blocks; only repath after several stuck ticks (staggered by id).
             e.stuckTicks++;
             int threshold = 2 + (e.id % 3);
@@ -45,6 +48,8 @@ void moveAlongPath(Game& game, const WorldIndex& world, Entity& e) {
             return;
         }
     }
+    int fromX = e.x;
+    int fromY = e.y;
     e.facingDx = (nx > e.x) - (nx < e.x);
     e.facingDy = (ny > e.y) - (ny < e.y);
     e.x = nx; e.y = ny; e.pathIdx++;
@@ -64,6 +69,13 @@ void moveAlongPath(Game& game, const WorldIndex& world, Entity& e) {
             ||ter==T_MEADOW||ter==T_DIRT||ter==T_SAND||ter==T_DUNES))
         spd += (game.weather == W_STORM) ? 2 : 1;
     e.moveCd = spd;
+    e.visualMoveFromX = fromX;
+    e.visualMoveFromY = fromY;
+    e.visualMoveToX = nx;
+    e.visualMoveToY = ny;
+    e.visualMoveStartedTick = game.tick;
+    e.visualMoveDurationTicks = std::max(1, spd + 1);
+    e.visualMoveSeq++;
 
     // Path wear — natural ground gets compacted into dirt then road by repeated traffic.
     bool pavable = (ter==T_GRASS||ter==T_TALL_GRASS||ter==T_FLOWERS||ter==T_MEADOW

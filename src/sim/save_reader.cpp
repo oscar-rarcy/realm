@@ -174,6 +174,13 @@ bool parseSaveStream(std::istream& is, Game& ng, int& version) {
         } else {
             p.type = projectileTypeFromLegacyGlyphColor(p.glyph, p.color);
         }
+        p.visualSpawnX = p.x;
+        p.visualSpawnY = p.y;
+        p.visualMoveFromX = p.x;
+        p.visualMoveFromY = p.y;
+        p.visualMoveToX = p.x;
+        p.visualMoveToY = p.y;
+        p.visualMoveDurationTicks = 1;
         ng.projectiles.push_back(p);
     }
     if (!(is >> tag >> n) || tag != "MARKERS") return false;

@@ -120,7 +120,6 @@ void tickPaving(Game& game) {
             if (!e.alive || !isBuilding(e.type) || e.underConstruction) continue;
             auto& s = STATS[e.type];
             for (int dy = -3; dy <= s.sizeH+2; dy++) for (int dx = -3; dx <= s.sizeW+2; dx++) {
-                if (dx >= 0 && dx < s.sizeW && dy >= 0 && dy < s.sizeH) continue;
                 int nx = e.x+dx, ny = e.y+dy;
                 if (!inBounds(nx,ny)) continue;
                 int ringDist = std::max(std::max(0, -dx), std::max(0, dx-s.sizeW+1))

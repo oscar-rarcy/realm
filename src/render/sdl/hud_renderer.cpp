@@ -331,7 +331,7 @@ void drawPanel(const WorldIndex& world) {
         drawTextFit(x, y, ": berries  p peasant", rgb(210,210,200), textW); y += 20;
         drawTextFit(x, y, "m militia  k cavalry", rgb(210,210,200), textW); y += 20;
         drawTextFit(x, y, "> deer  < wolf  @ boar", rgb(210,210,200), textW); y += 20;
-        drawTextFit(x, y, "Blue you; warm enemies", rgb(170,180,188), textW); y += 20;
+        drawTextFit(x, y, "Your colour; CPUs spaced", rgb(170,180,188), textW); y += 20;
         drawTextFit(x, y, "! combat; x/+/# orders", rgb(170,180,188), textW); y += 20;
     }
 }
@@ -378,7 +378,7 @@ void drawBottom(const WorldIndex& world) {
 #endif
         controls2.clear();
     }
-    else if (g.mode == M_BUILD_SELECT) { controls1 = "BUILD: H House, B Barracks, S Stable, T Tower, F Farm, W Wall, K Castle"; controls2 = "G Gate  A Armory  C Church  M Market  L Lumber  N Mine  I Mill  D Dock  Esc"; }
+    else if (g.mode == M_BUILD_SELECT) { controls1 = "BUILD: H House, B Barracks, S Stable, T Tower, F Farm, W Wall, K Castle"; controls2 = "G Gate  A Armory  C Church  M Market  L Lumber  N Mine  I Mill  D Dock  J WoodBridge  V StoneBridge  Esc"; }
     else if (g.mode == M_BUILD_PLACE) { controls1 = std::string("PLACE ") + (g.local.buildPending != E_NONE ? STATS[g.local.buildPending].name : "building"); controls2 = "Arrows/mouse to position  Enter/click build  Esc/right-click cancel"; }
     else if (g.mode == M_PATROL_SET) { controls1 = "PATROL"; controls2 = "Click target or move cursor + Enter  Esc cancels"; }
     else if (g.mode == M_TRAIN_SELECT) { controls1 = trainPromptFor(renderFindEntity(g, world, g.local.selectedId)); controls2.clear(); }

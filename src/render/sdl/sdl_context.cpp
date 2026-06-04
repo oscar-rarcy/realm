@@ -255,13 +255,27 @@ Color terrainBg(const Tile& t, int x, int y) {
     return timeTint(c);
 }
 
+Color colorFromHue(int hue) {
+    float h = normalizePlayerColorHue(hue) / 60.0f;
+    float chroma = 0.82f;
+    float x = chroma * (1.0f - std::fabs(std::fmod(h, 2.0f) - 1.0f));
+    float r = 0.0f, g = 0.0f, b = 0.0f;
+    if (h < 1.0f) { r = chroma; g = x; }
+    else if (h < 2.0f) { r = x; g = chroma; }
+    else if (h < 3.0f) { g = chroma; b = x; }
+    else if (h < 4.0f) { g = x; b = chroma; }
+    else if (h < 5.0f) { r = x; b = chroma; }
+    else { r = chroma; b = x; }
+    const float m = 0.18f;
+    return rgb((int)std::lround((r + m) * 210.0f),
+               (int)std::lround((g + m) * 210.0f),
+               (int)std::lround((b + m) * 210.0f));
+}
+
 Color ownerBg(int owner) {
-    switch (owner % MAX_PLAYERS) {
-        case 0: return rgb(35, 150, 220); // human cyan/blue
-        case 1: return rgb(190, 42, 45);  // opponent red
-        case 2: return rgb(205, 125, 40); // orange
-        default:return rgb(125, 67, 158); // purple
-    }
+    int idx = owner % MAX_PLAYERS;
+    if (idx < 0) idx += MAX_PLAYERS;
+    return colorFromHue(g.playerColorHue[idx]);
 }
 
 std::string firstExisting(const std::vector<std::string>& paths) {
@@ -279,6 +293,50 @@ TTF_Font* openFont(const std::vector<std::string>& paths, int size, std::string*
     TTF_Font* f = TTF_OpenFont(p.c_str(), size);
     if (f) TTF_SetFontHinting(f, TTF_HINTING_LIGHT);
     return f;
+}
+
+TTF_Font* openFontAtPath(const std::string& path, int size) {
+    if (path.empty()) return nullptr;
+    TTF_Font* f = TTF_OpenFont(path.c_str(), size);
+    if (f) TTF_SetFontHinting(f, TTF_HINTING_LIGHT);
+    return f;
+}
+
+TTF_Font* fittedMonoFontForCell(int maxW, int maxH, TTF_Font* fallback) {
+    if (s.monoPath.empty() || maxW <= 0 || maxH <= 0) return fallback ? fallback : s.mono;
+    int fitW = std::max(1, maxW);
+    int fitH = std::max(1, maxH);
+    std::ostringstream key;
+    key << fitW << 'x' << fitH;
+    std::string cacheKey = key.str();
+    auto it = s.sizedMonoFonts.find(cacheKey);
+    if (it != s.sizedMonoFonts.end()) return it->second ? it->second : (fallback ? fallback : s.mono);
+
+    int lo = 4;
+    int hi = std::max(4, std::min(96, maxH * 2));
+    int best = 0;
+    while (lo <= hi) {
+        int mid = (lo + hi) / 2;
+        TTF_Font* candidate = openFontAtPath(s.monoPath, mid);
+        int w = 0;
+        int h = 0;
+        if (candidate) {
+            TTF_SizeText(candidate, "M", &w, &h);
+            h = std::max(h, TTF_FontLineSkip(candidate));
+        }
+        bool fits = candidate && w <= fitW && h <= fitH;
+        if (candidate) TTF_CloseFont(candidate);
+        if (fits) {
+            best = mid;
+            lo = mid + 1;
+        } else {
+            hi = mid - 1;
+        }
+    }
+
+    TTF_Font* fitted = best > 0 ? openFontAtPath(s.monoPath, best) : nullptr;
+    s.sizedMonoFonts[cacheKey] = fitted;
+    return fitted ? fitted : (fallback ? fallback : s.mono);
 }
 
 std::string emojiFallbackGlyph(const std::string& text) {
@@ -317,7 +375,8 @@ std::string emojiFallbackGlyph(const std::string& text) {
 SDL_Texture* cachedText(TTF_Font* font, const std::string& text, Color col, bool blended) {
     if (!font) return nullptr;
     std::ostringstream k;
-    k << (void*)font << '|' << (int)col.r << ',' << (int)col.g << ',' << (int)col.b << ',' << (int)col.a << '|' << text;
+    k << (void*)font << '|' << (blended ? 'b' : 's') << '|'
+      << (int)col.r << ',' << (int)col.g << ',' << (int)col.b << ',' << (int)col.a << '|' << text;
     std::string key = k.str();
     auto it = s.textCache.find(key);
     if (it != s.textCache.end()) return it->second;
@@ -440,4 +499,20 @@ void drawCentered(const std::string& text, SDL_Rect rect, Color col, bool emoji,
     SDL_SetTextureAlphaMod(tex, col.a);
     SDL_RenderCopy(s.ren, tex, nullptr, &dst);
     SDL_SetTextureColorMod(tex, 255,255,255);
+}
+
+void drawTerminalCellGlyph(SDL_Rect rect, char ch, Color col, TTF_Font* fallback) {
+    if (ch == ' ') return;
+    TTF_Font* font = fittedMonoFontForCell(rect.w, rect.h, fallback ? fallback : s.mono);
+    std::string text(1, ch);
+    SDL_Texture* tex = cachedText(font, text, col);
+    if (!tex) return;
+    int tw = 0;
+    int th = 0;
+    SDL_QueryTexture(tex, nullptr, nullptr, &tw, &th);
+    if (tw <= 0 || th <= 0) return;
+    SDL_Rect dst{rect.x + (rect.w - tw) / 2, rect.y + (rect.h - th) / 2, tw, th};
+    SDL_SetTextureColorMod(tex, 255, 255, 255);
+    SDL_SetTextureAlphaMod(tex, col.a);
+    SDL_RenderCopy(s.ren, tex, nullptr, &dst);
 }

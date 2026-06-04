@@ -3,6 +3,8 @@
 #include "core/world_index.h"
 #include "render/entity_visual_defs.h"
 
+#include <algorithm>
+#include <cmath>
 #include <filesystem>
 
 const char* terrainGlyph(const Tile& t, int x, int y) {
@@ -65,6 +67,8 @@ const char* peasantGlyph(const Entity& e) {
 const char* tilesetEntityGlyph(const Entity& e, bool& hasTile) {
     const char* glyph = e.type == E_PEASANT ? peasantGlyph(e)
         : e.type == E_GATE && e.gateOpen ? u8"🚪"
+        : isBridge(e.type) && e.facingDy != 0 ? u8"║"
+        : isBridge(e.type) ? u8"═"
         : entitySdlGlyph(e.type);
     hasTile = glyph != nullptr;
     return glyph;
@@ -115,6 +119,19 @@ static bool runtimeAssetExists(const std::filesystem::path& path) {
     if (!path.is_absolute()) return std::filesystem::exists(std::filesystem::path("/") / path);
 #endif
     return false;
+}
+
+static bool runtimeGroundAssetLooksAccepted(GroundType ground) {
+    std::filesystem::path path = groundTilePath(ground);
+    if (!runtimeAssetExists(path)) return false;
+    std::error_code ec;
+    uintmax_t bytes = std::filesystem::file_size(path, ec);
+#if defined(REALM_WEB)
+    if (ec && !path.is_absolute()) {
+        bytes = std::filesystem::file_size(std::filesystem::path("/") / path, ec);
+    }
+#endif
+    return !ec && bytes >= 100000;
 }
 
 int displayFrameMs(const EntityActionAnimationSpec& anim) {
@@ -178,7 +195,7 @@ bool hasTerrainImageTile(Terrain terrain) {
     tile.biome = (terrain == T_SNOW || terrain == T_PINE) ? B_SNOW : B_TEMPERATE;
     tile.resources = 100;
     VisualTileParts parts = visualPartsForTile(tile);
-    if (!runtimeAssetExists(groundTilePath(parts.ground))) return false;
+    if (!runtimeGroundAssetLooksAccepted(parts.ground)) return false;
     if (parts.feature == F_NONE) return true;
     return runtimeAssetExists(featureManifestPath(parts.feature));
 }
@@ -210,7 +227,7 @@ void logMissingTerrainImageTile(Terrain t) {
 void logMissingVisualTileParts(const Tile& tile) {
     VisualTileParts parts = visualPartsForTile(tile);
     std::string ground = groundTypeName(parts.ground);
-    if (!runtimeAssetExists(groundTilePath(parts.ground))) {
+    if (!runtimeGroundAssetLooksAccepted(parts.ground)) {
         logMissingTile("ground", std::string("ground.") + ground, ground,
                        std::string(1, terrainAsciiGlyph(tile.terrain)),
                        "assets/tiles/grounds/" + ground + ".png");
@@ -283,7 +300,7 @@ bool imageTilesetEnabled() {
 #if defined(REALM_WEB)
     return false;
 #else
-    return labForcesImageTileset || envFlagEnabled("REALM_IMAGE_TILESET", false);
+    return displayMode == DM_EMOJI || labForcesImageTileset || envFlagEnabled("REALM_IMAGE_TILESET", false);
 #endif
 }
 
@@ -313,15 +330,21 @@ int animationFrameFor(const EntityActionAnimationSpec* anim, int explicitFrame =
     return animationFrameFor(anim);
 }
 
-bool drawEntityImageTile(const Game& game, const WorldIndex& world, const Entity& e, SDL_Rect dst, Color modulation,
-                                const char* forcedAction,
-                                const char* forcedDirection,
-                                int explicitFrame,
-                                SDL_Color teamColor,
-                                TilesetAssetFrame* outFrame) {
+static bool drawEntityImageResolved(const Game& game, const WorldIndex& world, const Entity& e,
+                                    SDL_Rect dst, Color modulation,
+                                    const char* forcedAction,
+                                    const char* forcedDirection,
+                                    int explicitFrame,
+                                    SDL_Color teamColor,
+                                    TilesetAssetFrame* outFrame,
+                                    double angleDegrees,
+                                    int anchorScreenX,
+                                    int anchorScreenY,
+                                    SDL_Rect* outDrawRect) {
 #if defined(REALM_WEB)
     (void)game; (void)world; (void)e; (void)dst; (void)modulation; (void)forcedAction; (void)forcedDirection;
-    (void)explicitFrame; (void)teamColor; (void)outFrame;
+    (void)explicitFrame; (void)teamColor; (void)outFrame; (void)angleDegrees; (void)anchorScreenX;
+    (void)anchorScreenY; (void)outDrawRect;
     return false;
 #else
     if (!imageTilesetEnabled()) return false;
@@ -339,20 +362,64 @@ bool drawEntityImageTile(const Game& game, const WorldIndex& world, const Entity
         return false;
     }
     if (teamColor.a == 0) teamColor = toSdlColor(ownerBg(e.owner == OWNER_NATURE ? 0 : e.owner));
-    TilesetAssetRequest request{e.type, action ? action : "idle", direction ? direction : "front", frameIndex, teamColor};
+    TilesetAssetRequest request{e.type, action ? action : "idle", direction ? direction : "front",
+                                frameIndex, teamColor, dst.w, dst.h};
     TilesetAssetFrame frame = tilesetLoadEntityFrame(s.ren, request);
     if (outFrame) *outFrame = frame;
     if (!frame.texture) return false;
     bool mirrorHorizontal = !forcedDirection && entityAnimationMirrorHorizontal(e);
+    SDL_Rect drawRect = dst;
+    if (frame.hasAnchor && anchorScreenX >= 0 && anchorScreenY >= 0) {
+        const TilesetPlacement& placement = frame.placement.valid ? frame.placement : TilesetPlacement{};
+        int sourceW = std::max(1, placement.valid ? placement.sourceWidth : frame.anchorSourceWidth);
+        int sourceH = std::max(1, placement.valid ? placement.sourceHeight : frame.anchorSourceHeight);
+        int frameAnchorX = placement.valid ? placement.anchorX : frame.anchorX;
+        int frameAnchorY = placement.valid ? placement.anchorY : frame.anchorY;
+        int anchorX = mirrorHorizontal ? sourceW - frameAnchorX : frameAnchorX;
+        int scaledAnchorX = (int)std::lround(anchorX * (drawRect.w / (double)sourceW));
+        int scaledAnchorY = (int)std::lround(frameAnchorY * (drawRect.h / (double)sourceH));
+        drawRect.x = anchorScreenX - scaledAnchorX;
+        drawRect.y = anchorScreenY - scaledAnchorY;
+    }
+    if (outDrawRect) *outDrawRect = drawRect;
 
     SDL_SetTextureColorMod(frame.texture, modulation.r, modulation.g, modulation.b);
     SDL_SetTextureAlphaMod(frame.texture, modulation.a);
-    SDL_RenderCopyEx(s.ren, frame.texture, nullptr, &dst, 0.0, nullptr,
+    SDL_RenderCopyEx(s.ren, frame.texture, nullptr, &drawRect, angleDegrees, nullptr,
                      mirrorHorizontal ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE);
     SDL_SetTextureColorMod(frame.texture, 255, 255, 255);
     SDL_SetTextureAlphaMod(frame.texture, 255);
     return true;
 #endif
+}
+
+bool drawEntityImageTile(const Game& game, const WorldIndex& world, const Entity& e, SDL_Rect dst, Color modulation,
+                         const char* forcedAction,
+                         const char* forcedDirection,
+                         int explicitFrame,
+                         SDL_Color teamColor,
+                         TilesetAssetFrame* outFrame,
+                         double angleDegrees,
+                         SDL_Rect* outDrawRect) {
+    return drawEntityImageResolved(game, world, e, dst, modulation, forcedAction, forcedDirection,
+                                   explicitFrame, teamColor, outFrame, angleDegrees, -1, -1, outDrawRect);
+}
+
+bool drawEntityImageAtAnchor(const Game& game, const WorldIndex& world, const Entity& e,
+                             int anchorScreenX, int anchorScreenY, int targetWidth, int targetHeight,
+                             Color modulation,
+                             const char* forcedAction,
+                             const char* forcedDirection,
+                             int explicitFrame,
+                             SDL_Color teamColor,
+                             TilesetAssetFrame* outFrame,
+                             SDL_Rect* outDrawRect,
+                             double angleDegrees) {
+    SDL_Rect dst{anchorScreenX - targetWidth / 2, anchorScreenY - targetHeight / 2,
+                 std::max(1, targetWidth), std::max(1, targetHeight)};
+    return drawEntityImageResolved(game, world, e, dst, modulation, forcedAction, forcedDirection,
+                                   explicitFrame, teamColor, outFrame, angleDegrees,
+                                   anchorScreenX, anchorScreenY, outDrawRect);
 }
 
 bool isResourceEmojiTerrain(Terrain t) {
@@ -403,40 +470,44 @@ float visibleFadeAt(int x, int y) {
 
 float torchStrength(EntityType type) {
     switch (type) {
-        case E_TOWNHALL:    return 0.44f;
-        case E_CASTLE:      return 0.48f;
-        case E_TOWER:       return 0.42f;
-        case E_CHURCH:      return 0.38f;
-        case E_MARKET:      return 0.34f;
+        case E_TOWNHALL:    return 0.70f;
+        case E_CASTLE:      return 0.74f;
+        case E_TOWER:       return 0.64f;
+        case E_CHURCH:      return 0.62f;
+        case E_MARKET:      return 0.56f;
         case E_BARRACKS:
         case E_STABLE:
-        case E_BLACKSMITH:  return 0.30f;
+        case E_BLACKSMITH:  return 0.52f;
         case E_HOUSE:
         case E_LUMBER_CAMP:
         case E_MINING_CAMP:
         case E_MILL:
-        case E_DOCK:        return 0.23f;
+        case E_DOCK:        return 0.42f;
         default:            return 0.0f;
     }
 }
 
 float torchRadius(EntityType type) {
     switch (type) {
-        case E_CASTLE:      return 5.6f;
-        case E_TOWNHALL:    return 5.1f;
+        case E_CASTLE:      return 2.35f;
+        case E_TOWNHALL:    return 2.25f;
         case E_TOWER:
-        case E_CHURCH:      return 4.6f;
-        case E_MARKET:      return 4.0f;
+        case E_CHURCH:      return 2.05f;
+        case E_MARKET:      return 1.90f;
         case E_BARRACKS:
         case E_STABLE:
-        case E_BLACKSMITH:  return 3.7f;
-        case E_DOCK:        return 3.5f;
+        case E_BLACKSMITH:  return 1.80f;
+        case E_DOCK:        return 1.75f;
         case E_HOUSE:
         case E_LUMBER_CAMP:
         case E_MINING_CAMP:
-        case E_MILL:        return 2.9f;
+        case E_MILL:        return 1.45f;
         default:            return 0.0f;
     }
+}
+
+float torchFalloff(float dist, float radius, float strength) {
+    return strength * std::pow(clamp01(1.0f - dist / radius), 2.65f);
 }
 
 float torchLightAt(int x, int y) {
@@ -466,7 +537,7 @@ float torchLightAt(int x, int y) {
         float dist = std::sqrt((float)(dx * dx + dy * dy));
         if (dist > radius) continue;
 
-        float local = strength * std::pow(clamp01(1.0f - dist / radius), 1.85f);
+        float local = torchFalloff(dist, radius, strength);
         if (dx == 0 && dy == 0) local *= 0.40f;
         light = std::max(light, local);
     }
@@ -475,12 +546,20 @@ float torchLightAt(int x, int y) {
         float dy = (float)(y - labLightOverride.y);
         float d = std::sqrt(dx * dx + dy * dy);
         if (d <= labLightOverride.radius) {
-            float local = labLightOverride.strength
-                * std::pow(clamp01(1.0f - d / labLightOverride.radius), 1.85f);
+            float local = torchFalloff(d, labLightOverride.radius, labLightOverride.strength);
             light = std::max(light, local);
         }
     }
     return clamp01(light * nightNeed);
+}
+
+Color applyTorchTint(Color c, float torch, bool sprite) {
+    if (torch <= 0.0f) return c;
+    Color warm = rgb(255, 166, 72);
+    float tint = sprite ? 0.42f : 0.38f;
+    float lift = sprite ? 0.26f : 0.03f;
+    c = blend(c, warm, torch * tint);
+    return scale(c, 1.0f + torch * lift);
 }
 
 Color applyVisionAndLight(Color c, int x, int y) {
@@ -489,20 +568,22 @@ Color applyVisionAndLight(Color c, int x, int y) {
     if (vis < 1.0f) c = blend(scale(c, 0.34f + 0.66f * vis), rgb(5, 7, 12), (1.0f - vis) * 0.22f);
 
     float torch = torchLightAt(x, y);
-    if (torch > 0.0f) {
-        c = blend(c, rgb(238, 122, 52), torch * 0.14f);
-        c = scale(c, 1.0f + torch * 0.12f);
+    float nightNeed = clamp01((0.88f - getBrightness(g)) / 0.88f);
+    if (nightNeed > 0.02f) {
+        float localRelief = clamp01(torch * 3.2f);
+        float unlit = 1.0f - localRelief;
+        c = scale(c, 1.0f - nightNeed * 0.48f * unlit);
+        c = blend(c, rgb(8, 15, 32), nightNeed * 0.08f * unlit);
     }
-    return c;
+
+    return applyTorchTint(c, torch, false);
 }
 
 Color applyVisionToGlyph(Color c, int x, int y) {
     c = timeTint(c);
     float vis = visibleFadeAt(x, y);
     if (vis < 1.0f) c = scale(c, 0.50f + 0.50f * vis);
-    float torch = torchLightAt(x, y);
-    if (torch > 0.0f) c = blend(c, rgb(238, 150, 82), torch * 0.10f);
-    return c;
+    return applyTorchTint(c, torchLightAt(x, y), true);
 }
 
 void hatch(SDL_Rect r, Color c, int step, bool diagonal) {
@@ -517,7 +598,43 @@ void hatch(SDL_Rect r, Color c, int step, bool diagonal) {
     }
 }
 
+static bool drawTextureFrame(const TilesetAssetFrame& frame, SDL_Rect dst, Color mod) {
+    if (!frame.texture || frame.placeholder) return false;
+    float cropFraction = 0.0f;
+    if (dst.w < 48 && (frame.width != dst.w || frame.height != dst.h)) {
+        cropFraction = dst.w <= 24 ? 0.045f : 0.045f * (48.0f - dst.w) / 24.0f;
+    }
+    SDL_Rect src{0, 0, frame.width, frame.height};
+    if (cropFraction > 0.001f && frame.width > 0 && frame.height > 0) {
+        int cropX = std::min(frame.width / 4, (int)std::lround(frame.width * cropFraction));
+        int cropY = std::min(frame.height / 4, (int)std::lround(frame.height * cropFraction));
+        src = SDL_Rect{cropX, cropY, std::max(1, frame.width - cropX * 2), std::max(1, frame.height - cropY * 2)};
+    }
+    SDL_SetTextureColorMod(frame.texture, mod.r, mod.g, mod.b);
+    SDL_SetTextureAlphaMod(frame.texture, mod.a);
+    SDL_RenderCopy(s.ren, frame.texture, &src, &dst);
+    SDL_SetTextureColorMod(frame.texture, 255, 255, 255);
+    SDL_SetTextureAlphaMod(frame.texture, 255);
+    return true;
+}
+
+static bool drawGroundTexture(SDL_Rect r, GroundType ground, Color mod) {
+    if (!imageTilesetEnabled()) return false;
+    return drawTextureFrame(tilesetLoadGroundTileScaled(s.ren, ground, r.w, r.h), r, mod);
+}
+
+bool drawUnknownGroundTexture(SDL_Rect r, int x, int y) {
+    (void)x; (void)y;
+    if (!imageTilesetEnabled()) return false;
+    return drawTextureFrame(tilesetLoadUnknownGroundTileScaled(s.ren, r.w, r.h), r, rgb(118, 118, 124, 224));
+}
+
 void applyTerrainTexture(SDL_Rect r, const Tile& t, int x, int y) {
+    VisualTileParts parts = visualPartsForTile(t);
+    if (drawGroundTexture(r, parts.ground, applyVisionAndLight(timeTint(rgb(255, 255, 255)), x, y))) {
+        return;
+    }
+
     unsigned h = hash2(x,y,1900u);
     switch (t.terrain) {
         case T_TALL_GRASS:

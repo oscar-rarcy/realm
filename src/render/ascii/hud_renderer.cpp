@@ -378,7 +378,7 @@ void renderUI(const WorldIndex& world) {
     int botY2 = maxY-2, botY1 = maxY-1;
     attron(COLOR_PAIR(CP_UI_BAR)); mvhline(botY2, 0, ' ', maxX);
     if (g.mode == M_BUILD_SELECT)
-        mvprintw(botY2, 1, " BUILD: [H]ouse [B]arracks [S]table [T]ower [F]arm [W]all [G]ate [A]rmory [C]hurch [M]arket [K]Castle [L]umber [N]mine [I]mill [D]ock [Esc] ");
+        mvprintw(botY2, 1, " BUILD: [H]ouse [B]arracks [S]table [T]ower [F]arm [W]all [G]ate [A]rmory [C]hurch [M]arket [K]Castle [L]umber [N]mine [I]mill [D]ock [J]wood bridge [V]stone bridge [Esc] ");
     else if (g.mode == M_BUILD_PLACE) {
         const char* name = (g.local.buildPending != E_NONE) ? STATS[g.local.buildPending].name : "building";
         mvprintw(botY2, 1, " PLACE %s: Arrows/Mouse, [Enter]/Click to build, [Esc]/RClick cancel ", name);

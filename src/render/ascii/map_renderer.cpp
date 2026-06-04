@@ -236,6 +236,11 @@ void renderMap(const WorldIndex& world) {
                     // ▬ = open (horizontal bar), ║ = closed (double vertical)
                     emojiStr = ent->gateOpen ? "\xe2\x96\xac" : "\xe2\x95\x91";
                 }
+                if (isBridge(ent->type) && !ent->underConstruction) {
+                    ch = ent->facingDy != 0 ? '|' : '=';
+                    drawCh = (chtype)ch;
+                    emojiStr = ent->facingDy != 0 ? "\xe2\x95\x91" : "\xe2\x95\x90";
+                }
                 if (ent->underConstruction && g.tick%10 < 5) {
                     ch = '#'; drawCh = (chtype)ch;
                     emojiStr = "\xe2\x96\xa0";  // ■ pulsing during construction

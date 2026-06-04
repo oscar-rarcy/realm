@@ -154,7 +154,7 @@ int dumpMissingTilesetAssets() {
     for (const char* effect : effects)
         report("effect-ui", effect, fs::path("assets") / "tiles" / "effects-ui" / (std::string(effect) + ".png"));
 
-    for (int type = E_PEASANT; type <= E_BOAR; ++type) {
+    for (int type = E_PEASANT; type < E_TYPE_COUNT; ++type) {
         EntityType entityType = (EntityType)type;
         std::string slug = lowerAssetSlug(STATS[entityType].name ? STATS[entityType].name : "unknown");
         fs::path entityRoot = fs::path("assets") / "tiles" / "entities" / slug;
@@ -202,6 +202,8 @@ static bool hydrateLoadedGameInto(Game& target, Game&& ng, int version) {
     if (!migrateLoadedGame(ng, version)) return false;
     recalculateSupply(ng);
     if (!validateOrRecoverLoadedGame(ng)) return false;
+    setHumanPlayerColorHue(ng, target.playerColorHue[0]);
+    configurePlayerColorHues(ng, ng.startupAIs);
     target = std::move(ng);
     return true;
 }
