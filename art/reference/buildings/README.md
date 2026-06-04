@@ -12,4 +12,4 @@ Style target for this batch:
 - blue team-colour accents
 - not final magenta-background mini sprites
 
-Current generated set is partial because image generation hit a rate limit before all building specs completed.
+Current generated set covers every building image spec present when this catalogue was created.
