@@ -103,7 +103,6 @@ static bool captureUiFrame(const std::string& path) {
 static bool setupNightLightView(int zoom) {
     Entity* townHall = firstOwned(E_TOWNHALL, 0);
     if (!townHall) return false;
-    std::cerr << "realm: night light setup townhall=" << townHall->x << "," << townHall->y << "\n";
     g.dayPhase = 0.0f;
     g.weather = W_CLEAR;
     updateFog(g);
@@ -129,9 +128,6 @@ static bool setupNightLightView(int zoom) {
     }
     gfxOnNewGame();
     ui.statusTimer = 0;
-    std::cerr << "realm: night light setup cursor=" << view.cursorX << "," << view.cursorY
-              << " visible=" << (inBounds(view.cursorX, view.cursorY) && g.map[view.cursorY][view.cursorX].visible[0] ? 1 : 0)
-              << "\n";
     return true;
 }
 
@@ -146,6 +142,7 @@ static int runNightLightTestMode() {
                             envIntLocal("REALM_UI_TEST_HEIGHT", 827));
     displayMode = DM_EMOJI;
     gfxSetAsciiOnly(false);
+    gfxResetZoomForDisplayMode();
     gfxSetProjection(true);
 
     g.biomeChoice = envIntLocal("REALM_BIOME", B_TEMPERATE);
