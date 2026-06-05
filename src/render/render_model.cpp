@@ -1,8 +1,32 @@
 #include "render/render_model.h"
 #include "realm.h"
 
+#include <cmath>
+
 static bool isAnimalEntityType(EntityType type) {
     return type == E_DEER || type == E_WOLF || type == E_SHEEP || type == E_BOAR;
+}
+
+static void tileGateState(const Game& game, int x, int y, bool& gateOpen, bool& gateLocked) {
+    gateOpen = false;
+    gateLocked = false;
+    for (const Entity& entity : game.entities) {
+        if (!entity.alive || entity.type != E_GATE) continue;
+        if (entity.x != x || entity.y != y) continue;
+        gateOpen = entity.gateOpen;
+        gateLocked = entity.gateLocked;
+        return;
+    }
+}
+
+static const char* overlayAssetIdForMarkerGlyph(char glyph) {
+    switch (glyph) {
+        case '!': return "attack_marker";
+        case '#': return "build_marker";
+        case '+': return "gather_marker";
+        case 'r': return "rally_marker";
+        default: return "move_marker";
+    }
 }
 
 RenderModel buildRenderModel(const Game& game, const std::vector<ActionMarker>& actionMarkers,
@@ -26,6 +50,13 @@ RenderModel buildRenderModel(const Game& game, const std::vector<ActionMarker>& 
         info.x = x;
         info.y = y;
         info.terrain = tile.terrain;
+        if (tile.terrain == T_CASTLE_GATE) {
+            tileGateState(game, x, y, info.gateOpen, info.gateLocked);
+            info.visualParts = visualPartsForTerrain(tile.terrain, tile.biome, tile.resources, tile.wear,
+                                                     info.gateOpen, info.gateLocked);
+        } else {
+            info.visualParts = visualPartsForTile(tile);
+        }
         if (observerOwner >= 0 && observerOwner < MAX_PLAYERS) {
             info.visible = tile.visible[observerOwner];
             info.explored = tile.explored[observerOwner];
@@ -50,6 +81,13 @@ RenderModel buildRenderModel(const Game& game, const std::vector<ActionMarker>& 
         info.targetY = entity.targetY;
         info.facingDx = entity.facingDx;
         info.facingDy = entity.facingDy;
+        info.visualMoveFromX = entity.visualMoveFromX;
+        info.visualMoveFromY = entity.visualMoveFromY;
+        info.visualMoveToX = entity.visualMoveToX;
+        info.visualMoveToY = entity.visualMoveToY;
+        info.visualMoveStartedTick = entity.visualMoveStartedTick;
+        info.visualMoveDurationTicks = entity.visualMoveDurationTicks;
+        info.visualMoveSeq = entity.visualMoveSeq;
         info.alertTicks = entity.alertTicks;
         info.underConstruction = entity.underConstruction;
         info.attackMove = entity.attackMove != 0;
@@ -68,9 +106,42 @@ RenderModel buildRenderModel(const Game& game, const std::vector<ActionMarker>& 
         if (entity.type == E_TRANSPORT) info.transportState = transportVisualState(entity);
         model.entities.push_back(info);
     }
+    for (const Projectile& projectile : game.projectiles) {
+        if (!projectile.alive) continue;
+        int mx = (int)std::lround(projectile.x);
+        int my = (int)std::lround(projectile.y);
+        if (mx < x0 || my < y0 || mx >= x1 || my >= y1) continue;
+        ProjectileRenderInfo info;
+        info.visualId = projectile.visualId;
+        info.type = projectile.type;
+        info.x = projectile.x;
+        info.y = projectile.y;
+        info.tx = projectile.tx;
+        info.ty = projectile.ty;
+        info.visualSpawnX = projectile.visualSpawnX;
+        info.visualSpawnY = projectile.visualSpawnY;
+        info.visualMoveFromX = projectile.visualMoveFromX;
+        info.visualMoveFromY = projectile.visualMoveFromY;
+        info.visualMoveToX = projectile.visualMoveToX;
+        info.visualMoveToY = projectile.visualMoveToY;
+        info.visualMoveStartedTick = projectile.visualMoveStartedTick;
+        info.visualMoveDurationTicks = projectile.visualMoveDurationTicks;
+        info.visualMoveSeq = projectile.visualMoveSeq;
+        info.tileX = mx;
+        info.tileY = my;
+        info.glyph = projectile.glyph;
+        info.color = projectile.color;
+        info.life = projectile.life;
+        info.alive = projectile.alive;
+        info.visible = observerOwner < 0 || observerOwner >= MAX_PLAYERS
+            || game.map[my][mx].visible[observerOwner];
+        model.projectiles.push_back(info);
+    }
     for (const ActionMarker& marker : actionMarkers) {
         if (marker.x < x0 || marker.y < y0 || marker.x >= x1 || marker.y >= y1) continue;
         model.actionMarkers.push_back({ marker.x, marker.y, marker.ticks, marker.glyph });
+        model.uiOverlays.push_back({ overlayAssetIdForMarkerGlyph(marker.glyph), marker.x, marker.y, marker.ticks,
+                                     marker.glyph, false });
     }
     return model;
 }

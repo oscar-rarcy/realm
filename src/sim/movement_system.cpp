@@ -12,11 +12,14 @@ void moveAlongPath(Game& game, const WorldIndex& world, Entity& e) {
     }
     if (e.moveCd > 0) { e.moveCd--; return; }
     auto [nx, ny] = e.path[e.pathIdx];
+    if (!isNaval(e.type) && !isLandPassableWithBridges(game, world, nx, ny)) {
+        e.stuckTicks++;
+        return;
+    }
     // Units share tiles freely; buildings block, except open gates
     Entity* blk = entityAt(game, world, nx, ny);
     if (blk && blk->id != e.id && isBuilding(blk->type)) {
-        bool isOpenGate = (blk->type == E_GATE && blk->gateOpen);
-        if (!isOpenGate) {
+        if (buildingBlocksLandMovement(*blk)) {
             // Tolerate transient blocks; only repath after several stuck ticks (staggered by id).
             e.stuckTicks++;
             int threshold = 2 + (e.id % 3);
@@ -45,32 +48,42 @@ void moveAlongPath(Game& game, const WorldIndex& world, Entity& e) {
             return;
         }
     }
+    int fromX = e.x;
+    int fromY = e.y;
     e.facingDx = (nx > e.x) - (nx < e.x);
     e.facingDy = (ny > e.y) - (ny < e.y);
     e.x = nx; e.y = ny; e.pathIdx++;
     e.stuckTicks = 0;
-    Terrain ter = game.map[ny][nx].terrain;
+    Tile& tt = game.map[ny][nx];
+    Terrain ter = tt.terrain;
+    const bool roadSurface = tileHasRoadVisual(tt);
     int spd = STATS[e.type].speed;
-    if (ter==T_ROAD||ter==T_DIRT||ter==T_CASTLE_FLOOR) spd = std::max(1, spd-1);
+    if (roadSurface||ter==T_DIRT||ter==T_CASTLE_FLOOR) spd = std::max(1, spd-1);
     else if (ter==T_MARSH||ter==T_SHALLOWS||ter==T_SAND||ter==T_SNOW||ter==T_ICE||ter==T_ASH) spd += 1;
     else if (ter==T_MUD) spd += 2; // bogged down
-    spd += movementPenaltyForTile(game.map[ny][nx]);
+    spd += movementPenaltyForTile(tt);
     if ((ter==T_FOREST||ter==T_PINE||ter==T_PALM||ter==T_DEAD_TREE) && e.type == E_KNIGHT) spd += 1;
     if (getSeason(game) == WINTER) spd = std::max(spd, STATS[e.type].speed+1);
     // Weather: rain and storm bog down movement on natural ground.
-    if (game.weather != W_CLEAR && (ter==T_GRASS||ter==T_TALL_GRASS||ter==T_FLOWERS
+    if (game.weather != W_CLEAR && !roadSurface && (ter==T_GRASS||ter==T_TALL_GRASS||ter==T_FLOWERS
             ||ter==T_MEADOW||ter==T_DIRT||ter==T_SAND||ter==T_DUNES))
         spd += (game.weather == W_STORM) ? 2 : 1;
     e.moveCd = spd;
+    e.visualMoveFromX = fromX;
+    e.visualMoveFromY = fromY;
+    e.visualMoveToX = nx;
+    e.visualMoveToY = ny;
+    e.visualMoveStartedTick = game.tick;
+    e.visualMoveDurationTicks = std::max(1, spd + 1);
+    e.visualMoveSeq++;
 
     // Path wear — natural ground gets compacted into dirt then road by repeated traffic.
-    Tile& tt = game.map[ny][nx];
     bool pavable = (ter==T_GRASS||ter==T_TALL_GRASS||ter==T_FLOWERS||ter==T_MEADOW
                  ||ter==T_DIRT||ter==T_SAND||ter==T_DUNES);
     if (pavable && tt.wear < 100) {
         tt.wear += 1;
-        if (tt.wear >= 80 && ter != T_ROAD) {
-            tt.terrain = T_ROAD; tt.preWinterTerrain = T_ROAD;
+        if (tt.wear >= 80) {
+            promoteTileToLegacyRoad(tt);
         } else if (tt.wear >= 40 && (ter==T_GRASS||ter==T_TALL_GRASS||ter==T_FLOWERS||ter==T_MEADOW)) {
             tt.terrain = T_DIRT; tt.preWinterTerrain = T_DIRT;
         }

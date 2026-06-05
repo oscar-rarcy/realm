@@ -86,15 +86,6 @@ static bool mouseShiftDown(const MEVENT& event) {
 #endif
 }
 
-static bool selectionHasLandUnit(Game& game, const WorldIndex& world, PlayerId issuer) {
-    for (int id : currentSelection(game).ids) {
-        Entity* entity = entityById(game, world, id);
-        if (entity && entity->alive && entity->owner == issuer && isUnit(entity->type) && !isNaval(entity->type))
-            return true;
-    }
-    return false;
-}
-
 static void moveCursorToSelected(PlayerId issuer) {
     std::optional<MapPos> pos = selectedEntityPosition(g, issuer);
     if (!pos) return;
@@ -125,6 +116,24 @@ static void handleInputForPlayer(int ch, PlayerId issuer) {
     auto status = [issuer](const std::string& message) {
         gameEvents().emit({ GameEventType::StatusMessage, issuer, -1, { -1, -1 }, message, 0 });
     };
+    auto commandOptions = [&](CommandPreviewMode mode, int tx, int ty, EntityType buildType = E_NONE) {
+        CommandPreviewRequest request;
+        request.issuer = issuer;
+        request.selection = currentSelection(g);
+        request.target = {tx, ty};
+        request.mode = mode;
+        request.buildType = buildType;
+        return resolveCommandOptions(g, worldForInput(), request);
+    };
+    auto dispatchRecommendedAt = [&](CommandPreviewMode mode, int tx, int ty, EntityType buildType = E_NONE) {
+        CommandOptions options = commandOptions(mode, tx, ty, buildType);
+        const CommandOption* option = recommendedCommandOption(options);
+        if (option) {
+            dispatchCommandForLocalGame(g, gameEvents(), option->command);
+        } else if (!options.options.empty() && !options.options.front().disabledReason.empty()) {
+            status(options.options.front().disabledReason);
+        }
+    };
 
     // Build mode
     if (g.mode == M_BUILD_SELECT) {
@@ -141,7 +150,7 @@ static void handleInputForPlayer(int ch, PlayerId issuer) {
         }
         if (tb == E_NONE) return;
         if (tb != E_NONE) {
-            beginBuildPlacementMode(g, tb);
+            startBuildPlacementMode(g, tb);
             status(std::string("Place ") + STATS[tb].name + ": arrows/mouse then Enter. [Esc]");
         }
         return;
@@ -160,12 +169,8 @@ static void handleInputForPlayer(int ch, PlayerId issuer) {
         if (ch == KEY_LEFT)  { view.cursorX--; goto clamp; }
         if (ch == KEY_RIGHT) { view.cursorX++; goto clamp; }
         auto commitBuild = [&](int tx, int ty) {
-            std::optional<EntityType> type = activeBuildType(g);
-            if (!type) {
-                cancelInputMode(g);
-                return;
-            }
-            dispatchCommandForLocalGame(g, gameEvents(), inputCommand(issuer, BuildCommand{ currentSelection(g), *type, {tx, ty} }));
+            EntityType bt = pendingBuildType(g);
+            dispatchRecommendedAt(CommandPreviewMode::BuildPlace, tx, ty, bt);
             cancelInputMode(g);
         };
         if (ch == ' ' || ch == '\n' || ch == '\r' || ch == KEY_ENTER) {
@@ -275,7 +280,12 @@ static void handleInputForPlayer(int ch, PlayerId issuer) {
         if (ch == KEY_LEFT)  { view.cursorX--; goto clamp; }
         if (ch == KEY_RIGHT) { view.cursorX++; goto clamp; }
         auto commit = [issuer](int tx, int ty) {
-            dispatchCommandForLocalGame(g, gameEvents(), inputCommand(issuer, SetRallyCommand{ currentSelection(g), {tx, ty} }));
+            CommandPreviewRequest request;
+            request.issuer = issuer;
+            request.selection = currentSelection(g);
+            request.target = {tx, ty};
+            request.mode = CommandPreviewMode::Rally;
+            dispatchCommandForLocalGame(g, gameEvents(), resolveRecommendedCommand(g, buildWorldIndex(g), request));
             cancelInputMode(g);
         };
         if (ch == '\n' || ch == '\r' || ch == KEY_ENTER) { commit(view.cursorX, view.cursorY); goto clamp; }
@@ -298,7 +308,12 @@ static void handleInputForPlayer(int ch, PlayerId issuer) {
         if (ch == KEY_LEFT)  { view.cursorX--; goto clamp; }
         if (ch == KEY_RIGHT) { view.cursorX++; goto clamp; }
         auto commit = [issuer](int tx, int ty) {
-            dispatchCommandForLocalGame(g, gameEvents(), inputCommand(issuer, AttackMoveCommand{ currentSelection(g), {tx, ty} }));
+            CommandPreviewRequest request;
+            request.issuer = issuer;
+            request.selection = currentSelection(g);
+            request.target = {tx, ty};
+            request.mode = CommandPreviewMode::AttackMove;
+            dispatchCommandForLocalGame(g, gameEvents(), resolveRecommendedCommand(g, buildWorldIndex(g), request));
             cancelInputMode(g);
         };
         if (ch == '\n' || ch == '\r' || ch == KEY_ENTER) { commit(view.cursorX, view.cursorY); goto clamp; }
@@ -325,7 +340,12 @@ static void handleInputForPlayer(int ch, PlayerId issuer) {
         if (ch == KEY_LEFT)  { view.cursorX--; goto clamp; }
         if (ch == KEY_RIGHT) { view.cursorX++; goto clamp; }
         auto commit = [issuer](int tx, int ty) {
-            dispatchCommandForLocalGame(g, gameEvents(), inputCommand(issuer, PatrolCommand{ currentSelection(g), {tx, ty} }));
+            CommandPreviewRequest request;
+            request.issuer = issuer;
+            request.selection = currentSelection(g);
+            request.target = {tx, ty};
+            request.mode = CommandPreviewMode::Patrol;
+            dispatchCommandForLocalGame(g, gameEvents(), resolveRecommendedCommand(g, buildWorldIndex(g), request));
             cancelInputMode(g);
         };
         if (ch == ' ' || ch == '\n' || ch == '\r' || ch == KEY_ENTER) { commit(view.cursorX, view.cursorY); goto clamp; }
@@ -399,9 +419,7 @@ static void handleInputForPlayer(int ch, PlayerId issuer) {
     }
 
     case InputIntent::Confirm: {
-        const WorldIndex& world = worldForInput();
-        Command command = resolveContextCommand(g, world, issuer, currentSelection(g), {view.cursorX, view.cursorY});
-        dispatchCommandForLocalGame(g, gameEvents(), command);
+        dispatchRecommendedAt(CommandPreviewMode::Context, view.cursorX, view.cursorY);
         break;
     }
 
@@ -499,7 +517,7 @@ static void handleInputForPlayer(int ch, PlayerId issuer) {
 
     case InputIntent::Patrol: {
         const WorldIndex& world = worldForInput();
-        if (selectionHasLandUnit(g, world, issuer)) {
+        if (selectionContainsLandUnits(g, world, issuer, currentSelection(g))) {
             setInputMode(g, M_PATROL_SET);
             status("Patrol: click target. [Esc] cancel");
         } else {
@@ -591,9 +609,7 @@ static void handleInputForPlayer(int ch, PlayerId issuer) {
             lastMx = mapX; lastMy = mapY;
         }
         if (!clickEvt) {
-            const int edgeMargin = 2;
-            const int edgeStep = 2;
-            panViewportAtScreenEdge(view, me.x, me.y, 2, edgeMargin, edgeStep);
+            edgeScrollViewport(view, me.x, me.y, 2);
         }
         bool shift = mouseShiftDown(me);
 
@@ -643,10 +659,12 @@ static void handleInputForPlayer(int ch, PlayerId issuer) {
             // Right click: issue command at cursor position
             view.dragging = false;
             const WorldIndex& world = worldForInput();
-            Command command = shift
-                ? inputCommand(issuer, WaypointCommand{ currentSelection(g), {mapX, mapY} })
-                : resolveContextCommand(g, world, issuer, currentSelection(g), {mapX, mapY});
-            dispatchCommandForLocalGame(g, gameEvents(), command);
+            CommandPreviewRequest request;
+            request.issuer = issuer;
+            request.selection = currentSelection(g);
+            request.target = {mapX, mapY};
+            request.mode = shift ? CommandPreviewMode::Waypoint : CommandPreviewMode::Context;
+            dispatchCommandForLocalGame(g, gameEvents(), resolveRecommendedCommand(g, world, request));
         }
         // All other events (pure movement): cursor already updated above
         break;

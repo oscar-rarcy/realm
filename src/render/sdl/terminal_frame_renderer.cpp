@@ -26,6 +26,11 @@ void terminalMapCellMetrics(int& cellW, int& cellH) {
     float zoom = terminalZoomScale();
     cellW = std::max(5, (int)std::lround(cellW * zoom));
     cellH = std::max(9, (int)std::lround(cellH * zoom));
+    if (s.asciiSquareMapCells) {
+        int side = std::max(cellW, cellH);
+        cellW = side;
+        cellH = side;
+    }
 }
 
 SDL_Rect terminalMapPixelRect(const TerminalFrame& frame) {
@@ -399,7 +404,7 @@ void terminalDrawBottom(TerminalFrame& frame, const WorldIndex& world) {
     termFillH(frame, botY1, 0, frame.cols, ' ', termFg(), termBar());
     std::string line;
     if (g.mode == M_BUILD_SELECT)
-        line = " BUILD: [H]ouse [B]arracks [S]table [T]ower [F]arm [W]all [G]ate [A]rmory [C]hurch [M]arket [K]Castle [L]umber [N]mine [I]mill [D]ock [Esc] ";
+        line = " BUILD: [H]ouse [B]arracks [S]table [T]ower [F]arm [W]all [G]ate [A]rmory [C]hurch [M]arket [K]Castle [L]umber [N]mine [I]mill [D]ock [J]wood bridge [V]stone bridge [Esc] ";
     else if (g.mode == M_BUILD_PLACE) {
         const char* name = (g.local.buildPending != E_NONE) ? STATS[g.local.buildPending].name : "building";
         line = std::string(" PLACE ") + name + ": Arrows/Mouse, [Enter]/Click build, [Esc]/RClick cancel ";
@@ -433,7 +438,7 @@ void registerTerminalKeyTokens(const TerminalFrame& frame, const WorldIndex& wor
     std::string line;
     std::vector<std::pair<std::string, int>> tokens;
     if (g.mode == M_BUILD_SELECT) {
-        line = " BUILD: [H]ouse [B]arracks [S]table [T]ower [F]arm [W]all [G]ate [A]rmory [C]hurch [M]arket [K]Castle [L]umber [N]mine [I]mill [D]ock [Esc] ";
+        line = " BUILD: [H]ouse [B]arracks [S]table [T]ower [F]arm [W]all [G]ate [A]rmory [C]hurch [M]arket [K]Castle [L]umber [N]mine [I]mill [D]ock [J]wood bridge [V]stone bridge [Esc] ";
         tokens = terminalBuildTokens();
     } else if (g.mode == M_BUILD_PLACE) {
         const char* name = (g.local.buildPending != E_NONE) ? STATS[g.local.buildPending].name : "building";
@@ -528,19 +533,7 @@ void drawTerminalCellAt(const SDL_Rect& r, const TerminalCell& cell, TTF_Font* f
     setDraw(cell.bg);
     SDL_RenderFillRect(s.ren, &r);
     if (cell.ch == ' ') return;
-    std::string text(1, cell.ch);
-    SDL_Texture* tex = cachedText(font ? font : s.mono, text, cell.fg);
-    if (!tex) return;
-    int w = 0, h = 0;
-    SDL_QueryTexture(tex, nullptr, nullptr, &w, &h);
-    if (w <= 0 || h <= 0) return;
-    float scale = std::min(r.w / (float)w, r.h / (float)h);
-    int dw = std::max(1, (int)std::lround(w * scale));
-    int dh = std::max(1, (int)std::lround(h * scale));
-    SDL_Rect dst{r.x + (r.w - dw) / 2, r.y + (r.h - dh) / 2, dw, dh};
-    SDL_SetTextureColorMod(tex, 255, 255, 255);
-    SDL_SetTextureAlphaMod(tex, cell.fg.a);
-    SDL_RenderCopy(s.ren, tex, nullptr, &dst);
+    drawTerminalCellGlyph(r, cell.ch, cell.fg, font ? font : s.mono);
 }
 
 void drawAsciiTerminalMap(const TerminalFrame& frame, const WorldIndex& world) {

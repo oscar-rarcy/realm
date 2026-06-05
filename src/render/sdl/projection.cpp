@@ -2,12 +2,16 @@
 #include "realm.h"
 #include "view_state.h"
 
+#include <cmath>
+
 void isoTileCenterFromScreenOffset(int sx, int sy, int& cx, int& cy) {
     int ox, oy; isoOrigin(ox, oy);
     int hw = isoHalfW();
     int hh = isoHalfH();
-    cx = ox + (sx - sy) * hw;
-    cy = oy + (sx + sy) * hh + hh;
+    float fx = sx - (isoCameraViewX() - view.viewX);
+    float fy = sy - (isoCameraViewY() - view.viewY);
+    cx = (int)std::lround(ox + (fx - fy) * hw);
+    cy = (int)std::lround(oy + (fx + fy) * hh + hh);
 }
 
 void isoScreenToOffsetFloat(int px, int py, float& sx, float& sy) {
@@ -16,8 +20,8 @@ void isoScreenToOffsetFloat(int px, int py, float& sx, float& sy) {
     int hh = isoHalfH();
     float fx = (px - ox) / (float)hw;
     float fy = (py - oy - hh) / (float)hh;
-    sx = (fy + fx) * 0.5f;
-    sy = (fy - fx) * 0.5f;
+    sx = (fy + fx) * 0.5f + (isoCameraViewX() - view.viewX);
+    sy = (fy - fx) * 0.5f + (isoCameraViewY() - view.viewY);
 }
 
 bool pointInDiamond(int px, int py, int cx, int cy, int hw, int hh) {

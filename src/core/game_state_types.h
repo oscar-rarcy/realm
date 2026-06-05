@@ -7,10 +7,21 @@
 #include <vector>
 
 struct Projectile {
+    ProjectileType type = PT_ARROW;
     float x, y, tx, ty;
     char glyph;
     int color, life;
     bool alive;
+    int visualId = 0;
+    float visualSpawnX = 0.0f;
+    float visualSpawnY = 0.0f;
+    float visualMoveFromX = 0.0f;
+    float visualMoveFromY = 0.0f;
+    float visualMoveToX = 0.0f;
+    float visualMoveToY = 0.0f;
+    int visualMoveStartedTick = 0;
+    int visualMoveDurationTicks = 0;
+    int visualMoveSeq = 0;
 };
 
 struct Cargo {
@@ -56,6 +67,13 @@ struct Entity {
     int holdPosition;
     int facingDx;
     int facingDy;
+    int visualMoveFromX;
+    int visualMoveFromY;
+    int visualMoveToX;
+    int visualMoveToY;
+    int visualMoveStartedTick;
+    int visualMoveDurationTicks;
+    int visualMoveSeq;
     bool gateOpen;
     bool gateLocked;
     int convertTicks;
@@ -107,5 +125,6 @@ struct Game {
     int startupAIs;
     int humanCorner;
     int matchNumber;
+    int playerColorHue[MAX_PLAYERS] = {200, 20, 120, 290};
     unsigned rngState;
 };

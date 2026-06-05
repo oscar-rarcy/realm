@@ -94,6 +94,7 @@ bool parseSaveStream(std::istream& is, Game& ng, int& version) {
         t.terrain = (Terrain)ter;
         t.biome = (Biome)biome;
         t.preWinterTerrain = (Terrain)pre;
+        if (version < 12) normalizeLegacyRoadTile(t);
         for (int p = 0; p < MAX_PLAYERS; p++) { int v = 0; if (!(is >> v)) return false; t.visible[p] = v != 0; }
         for (int p = 0; p < MAX_PLAYERS; p++) { int v = 0; if (!(is >> v)) return false; t.explored[p] = v != 0; }
         ng.map[y][x] = t;
@@ -166,6 +167,20 @@ bool parseSaveStream(std::istream& is, Game& ng, int& version) {
         if (!(is >> p.x >> p.y >> p.tx >> p.ty >> glyph >> p.color >> p.life >> alive)) return false;
         p.glyph = (char)glyph;
         p.alive = alive != 0;
+        if (version >= 12) {
+            int type = 0;
+            if (!(is >> type)) return false;
+            p.type = (ProjectileType)type;
+        } else {
+            p.type = projectileTypeFromLegacyGlyphColor(p.glyph, p.color);
+        }
+        p.visualSpawnX = p.x;
+        p.visualSpawnY = p.y;
+        p.visualMoveFromX = p.x;
+        p.visualMoveFromY = p.y;
+        p.visualMoveToX = p.x;
+        p.visualMoveToY = p.y;
+        p.visualMoveDurationTicks = 1;
         ng.projectiles.push_back(p);
     }
     if (!(is >> tag >> n) || tag != "MARKERS") return false;

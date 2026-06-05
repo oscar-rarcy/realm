@@ -22,6 +22,10 @@ const char* visualDecalName(VisualDecalType decal);
 VisualTileParts visualPartsForTile(const Tile& tile);
 VisualTileParts visualPartsForTerrain(Terrain terrain, Biome biome, int resources, int wear,
                                       bool gateOpen, bool gateLocked);
+bool tileHasRoadVisual(const Tile& tile);
+void promoteTileToLegacyRoad(Tile& tile);
+void demoteLegacyRoadToDirt(Tile& tile);
+void normalizeLegacyRoadTile(Tile& tile);
 uint32_t featureTraits(FeatureType feature);
 bool featureConceals(FeatureType feature);
 bool isConcealingTile(int x, int y);

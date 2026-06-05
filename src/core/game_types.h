@@ -47,6 +47,7 @@ enum EntityType {
     E_FARM, E_BLACKSMITH, E_CHURCH, E_MARKET, E_WALL, E_GATE, E_CASTLE,
     E_LUMBER_CAMP, E_MINING_CAMP, E_MILL, E_DOCK,
     E_DEER, E_WOLF, E_SHEEP, E_BOAR,
+    E_WOODEN_BRIDGE, E_STONE_BRIDGE,
     E_TYPE_COUNT
 };
 
@@ -95,6 +96,7 @@ enum FeatureTrait : uint32_t {
 };
 
 enum VisualDecalType {
+    VD_ROAD,
     VD_FLOWERS,
     VD_TALL_GRASS,
     VD_SCUFFS,
@@ -107,6 +109,16 @@ enum VisualDecalType {
     VD_FARM_TRACKS,
     VD_MUDDY_FOOTPRINTS,
     VD_SNOW_TRAMPLED_PATH
+};
+
+enum ProjectileType {
+    PT_ARROW,
+    PT_CROSSBOW_BOLT,
+    PT_FLAMING_ARROW,
+    PT_TOWER_BOLT,
+    PT_WARSHIP_ARROW_VOLLEY,
+    PT_CATAPULT_BOULDER,
+    PT_TREBUCHET_BOULDER
 };
 
 enum BuildingVisualState {

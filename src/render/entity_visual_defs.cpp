@@ -33,6 +33,8 @@ static const EntityVisualDef ENTITY_VISUAL_DEFS[] = {
     { E_WOLF,         "\xe2\x97\x81", u8"🐺",     "wolf" },
     { E_SHEEP,        "\xe2\x97\x8c", u8"🐑",     "sheep" },
     { E_BOAR,         "\xe2\x97\x8f", u8"🐗",     "boar" },
+    { E_WOODEN_BRIDGE,"=",          u8"=",      "wooden_bridge" },
+    { E_STONE_BRIDGE, "=",          u8"=",      "stone_bridge" },
 };
 
 static_assert(sizeof(ENTITY_VISUAL_DEFS) / sizeof(ENTITY_VISUAL_DEFS[0]) == E_TYPE_COUNT,

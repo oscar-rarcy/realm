@@ -179,6 +179,7 @@ const char* featureStateName(FeatureState state) {
 
 const char* visualDecalName(VisualDecalType decal) {
     switch (decal) {
+        case VD_ROAD: return "road";
         case VD_FLOWERS: return "flowers";
         case VD_TALL_GRASS: return "tall_grass";
         case VD_SCUFFS: return "scuffs";
@@ -283,7 +284,10 @@ VisualTileParts visualPartsForTerrain(Terrain terrain, Biome biome, int resource
         case T_SNOW: parts.ground = biome == B_SNOW ? G_TUNDRA : G_SNOW; break;
         case T_ICE: parts.ground = G_ICE; break;
         case T_DIRT: parts.ground = G_DIRT; break;
-        case T_ROAD: parts.ground = G_ROAD; break;
+        case T_ROAD:
+            parts.ground = G_DIRT;
+            parts.decals.push_back(VD_ROAD);
+            break;
         case T_MUD: parts.ground = G_MUD; break;
         case T_WHEAT:
             parts.ground = G_DIRT;
@@ -335,6 +339,30 @@ VisualTileParts visualPartsForTerrain(Terrain terrain, Biome biome, int resource
 
 VisualTileParts visualPartsForTile(const Tile& tile) {
     return visualPartsForTerrain(tile.terrain, tile.biome, tile.resources, tile.wear);
+}
+
+bool tileHasRoadVisual(const Tile& tile) {
+    const VisualTileParts parts = visualPartsForTile(tile);
+    for (VisualDecalType decal : parts.decals) {
+        if (decal == VD_ROAD) return true;
+    }
+    return false;
+}
+
+void promoteTileToLegacyRoad(Tile& tile) {
+    tile.terrain = T_ROAD;
+    tile.preWinterTerrain = T_ROAD;
+    if (tile.wear < 80) tile.wear = 80;
+}
+
+void demoteLegacyRoadToDirt(Tile& tile) {
+    tile.terrain = T_DIRT;
+    tile.preWinterTerrain = T_DIRT;
+}
+
+void normalizeLegacyRoadTile(Tile& tile) {
+    if (tile.wear == 0 && (tile.terrain == T_ROAD || tile.preWinterTerrain == T_ROAD))
+        tile.wear = 80;
 }
 
 bool isConcealingTile(int x, int y) {

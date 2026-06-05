@@ -198,7 +198,7 @@ void addRoads(Game& game, const MapNoise& noise) {
             if (inBounds(cx,cy) && game.map[cy][cx].terrain != T_WATER
                 && game.map[cy][cx].terrain != T_MOUNTAIN && game.map[cy][cx].terrain != T_GOLD
                 && game.map[cy][cx].terrain != T_SHALLOWS)
-                { game.map[cy][cx].terrain = T_ROAD; game.map[cy][cx].resources = 0; }
+                { promoteTileToLegacyRoad(game.map[cy][cx]); game.map[cy][cx].resources = 0; }
             if (realmRand(game)%2==0) { if(cx<ex)cx++; else if(cx>ex)cx--; }
             else              { if(cy<ey)cy++; else if(cy>ey)cy--; }
             if (realmRand(game)%5==0) { cx += (realmRand(game)%3)-1; cy += (realmRand(game)%3)-1; }

@@ -1,6 +1,7 @@
 #include "realm.h"
 #include "view_state.h"
 
+#include <cstdlib>
 #include <iostream>
 #include <vector>
 
@@ -26,6 +27,14 @@ struct StartupOccupancy {
 static void spawnStartupEntity(Game& game, StartupOccupancy& occupancy, EntityType type, int owner, int x, int y) {
     spawnEntity(game, type, owner, x, y);
     occupancy.markFootprint(type, x, y);
+}
+
+static float envFloatLocal(const char* name, float fallback) {
+    const char* v = std::getenv(name);
+    if (!v || !*v) return fallback;
+    char* end = nullptr;
+    float parsed = std::strtof(v, &end);
+    return (end && *end == '\0') ? parsed : fallback;
 }
 
 static void placeStartResources(const StartupOccupancy& occupancy, int thX, int thY) {
@@ -79,12 +88,14 @@ void initGameWithSeed(int numAIs, unsigned seed, int humanCorner, const MapGener
             g.controlGroupsByOwner[p][i].clear();
     g.winner = -1; g.aiTimer = 0; g.farmTimer = 0; g.animalTimer = 0;
     g.local.buildPending = E_NONE; view.wallDragX = 0; view.wallDragY = 0;
-    g.dayPhase = 0.25f; g.seasonPhase = 0.0f; g.prevSeason = -1;
+    g.dayPhase = std::max(0.0f, std::min(1.0f, envFloatLocal("REALM_START_DAY_PHASE", 0.25f)));
+    g.seasonPhase = 0.0f; g.prevSeason = -1;
     g.prevTimePhase = 0; g.attackNotifyCd = 0;
     g.weather = W_CLEAR; g.weatherTimer = 0;
     g.returnToMenu = false;
     g.seed = seed;
     g.startupAIs = numAIs;
+    configurePlayerColorHues(g, numAIs);
     g.humanCorner = -1;
     g.matchNumber = matchNumber;
     g.local.diagnostics = std::getenv("REALM_DIAGNOSTICS") != nullptr;

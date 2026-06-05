@@ -13,6 +13,7 @@ void registerKeyHit(SDL_Rect r, int ch);
 void drawHoverMark(SDL_Rect r, Color color);
 void drawTextFit(int x, int y, const std::string& text, Color col, int maxW, TTF_Font* font = nullptr);
 void drawCentered(const std::string& text, SDL_Rect rect, Color col, bool emoji, bool tint = false);
+void drawTerminalCellGlyph(SDL_Rect rect, char ch, Color col, TTF_Font* fallback = nullptr);
 void drawKeyOptionText(int x, int y, const std::string& text, int ch,
                        Color color, int maxW, TTF_Font* font = nullptr);
 void drawKeyTokensInText(int x, int y, const std::string& text,

@@ -17,19 +17,18 @@ bool isInputBlockedByMode(GameMode mode) {
     return mode == M_PAUSED || mode == M_GAME_OVER;
 }
 
-void beginBuildPlacementMode(Game& game, EntityType type) {
+void startWallBuildMode(Game& game) {
+    game.local.buildPending = E_WALL;
+    setInputMode(game, M_WALL_DRAG);
+}
+
+void startBuildPlacementMode(Game& game, EntityType type) {
     game.local.buildPending = type;
     setInputMode(game, M_BUILD_PLACE);
 }
 
-std::optional<EntityType> activeBuildType(const Game& game) {
-    if (game.local.buildPending == E_NONE) return std::nullopt;
+EntityType pendingBuildType(const Game& game) {
     return game.local.buildPending;
-}
-
-void startWallBuildMode(Game& game) {
-    game.local.buildPending = E_WALL;
-    setInputMode(game, M_WALL_DRAG);
 }
 
 bool toggleHelpOverlay(Game& game) {

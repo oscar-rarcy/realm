@@ -203,12 +203,70 @@ It writes verification captures to `build/lab-screenshots`, including the
 default no-entity state, tile-only, combined peasant, team-colour variants,
 missing-placeholder, night/candle, and ASCII preview scenarios.
 
-PNG image sprites in the normal game are still opt-in:
+To open the repeated grass-map preview in the lab:
 
-    REALM_IMAGE_TILESET=1 ./bin/realm.exe
+    REALM_LAB_GRASS_MAP=1 ./bin/realm-lab.exe
 
-Without that flag, the normal Tileset mode continues to use the existing
-symbol/emoji placeholders and missing-tile audit.
+That mode draws the accepted runtime grass tile across an unbounded isometric
+field for pan/zoom inspection. Use the mouse wheel or `+`/`-` to zoom, drag to
+pan, `S` to write `build/lab-screenshots/grass-map-preview.bmp`, and `Esc` to
+quit. For a non-interactive capture:
+
+    REALM_LAB_GRASS_MAP=1 REALM_LAB_GRASS_MAP_SMOKE=1 ./bin/realm-lab.exe
+
+PNG image tiles in the native normal game are enabled automatically whenever the
+GUI is in Tileset visual mode. `REALM_IMAGE_TILESET=1` is still accepted as a
+legacy/test override, but it is no longer required for native Tileset mode.
+
+Texture size handling is automatic by default. Keep one reviewed source PNG per
+runtime asset unless a sprite has explicitly gone through the zoom-stop pipeline.
+The SDL tileset loader decodes each PNG once, then builds and caches draw-size
+texture variants on demand. This is Realm's SDL2 equivalent of using mipmaps:
+zoomed-out ground tiles are area-resampled before projection, entity sprites can
+be cached at the actual draw size, and the renderer reuses those textures until
+the tileset cache is cleared.
+
+Zoom-stop entity sprites are the exception for tiny AI-redrawn actor art. They
+are optional runtime overrides that live beside the normal frame:
+
+    assets/tiles/entities/<entity>/<action>/<direction>/frame_XX_zoom_NNN_base.png
+    assets/tiles/entities/<entity>/<action>/<direction>/frame_XX_zoom_NNN_teammask.png
+
+`NNN` is the square draw size in pixels. The sheet/status helper reads the
+renderer zoom ladder from `src/render/sdl/camera.cpp`; the current tileset
+ladder has 16 stops from tile size 14 to 288, producing entity sprite sizes
+21 to 446 with the default `entity_tile_zoom_1_55` scale. The loader uses an
+exact stop for the requested draw size, then falls back to the normal
+`frame_XX_base.png` and
+`frame_XX_teammask.png` path if no stop exists. This keeps zoom-stop work
+incremental: missing stops never blank gameplay.
+
+The helper for this workflow is:
+
+    python scripts/prepare_zoom_stop_sprite_sheet.py status --entity peasant --action idle --direction front --frame 0
+
+It reports whether the base and team-mask zoom-stop files exist for a frame.
+
+For focused visual QA of newly added ground tiles, run with:
+
+    REALM_TILESET_TEST_MAP=1 ./bin/realm.exe
+
+This creates a paused, non-playable test map made from the currently accepted
+grass tile, surrounded by never-explored unknown tiles. It is intended for
+checking ground/decal/sprite wiring without unrelated mapgen terrain.
+
+For focused night lighting QA around the starting town hall, run with:
+
+    REALM_UI_NIGHT_LIGHT_TEST=1 ./bin/realm.exe
+
+It starts a deterministic Tileset-mode match at midnight, centers the camera on
+the player town hall, and writes `build/night-light-screenshots/01-night-townhall-light.bmp`.
+Use `REALM_SEED`, `REALM_HUMAN_CORNER`, `REALM_BIOME`, and
+`REALM_UI_TEST_ZOOM` to vary the fixture.
+
+To start a normal manual match at a specific time, set `REALM_START_DAY_PHASE`.
+For example, `REALM_START_DAY_PHASE=0 ./bin/realm.exe` starts new matches at
+midnight.
 
 Build separation
 ----------------

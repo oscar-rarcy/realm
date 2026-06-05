@@ -68,6 +68,11 @@ Entity* corpseAt(Game& game, const WorldIndex& world, int x, int y) {
     return found;
 }
 
+static const Entity* constEntityAt(const Game& game, const WorldIndex& world, int x, int y) {
+    EntityId id = topEntityAt(game, world, { x, y });
+    return id >= 0 ? entityById(game, world, id) : nullptr;
+}
+
 static bool isLandPassableFor(const Game& game, int x, int y) {
     if (!inBounds(x, y)) return false;
     return terrainDef(game.map[y][x].terrain).passableLand;
@@ -76,6 +81,78 @@ static bool isLandPassableFor(const Game& game, int x, int y) {
 static bool isWaterPassableFor(const Game& game, int x, int y) {
     if (!inBounds(x, y)) return false;
     return terrainDef(game.map[y][x].terrain).passableWater;
+}
+
+static bool bridgeAxisSupportsPlacement(const Game& game, EntityType type, int x, int y, int dx, int dy) {
+    bool nearA = isLandPassableFor(game, x - dx, y - dy);
+    bool nearB = isLandPassableFor(game, x + dx, y + dy);
+    if (type == E_WOODEN_BRIDGE) return nearA && nearB;
+    if (type != E_STONE_BRIDGE) return false;
+    if (nearA && nearB) return true;
+    if (nearA && isWaterPassableFor(game, x + dx, y + dy) && isLandPassableFor(game, x + 2 * dx, y + 2 * dy)) return true;
+    if (nearB && isWaterPassableFor(game, x - dx, y - dy) && isLandPassableFor(game, x - 2 * dx, y - 2 * dy)) return true;
+    return false;
+}
+
+static bool bridgePlacementAxis(const Game& game, EntityType type, int x, int y, int& outDx, int& outDy) {
+    if (bridgeAxisSupportsPlacement(game, type, x, y, 1, 0)) {
+        outDx = 1; outDy = 0; return true;
+    }
+    if (bridgeAxisSupportsPlacement(game, type, x, y, 0, 1)) {
+        outDx = 0; outDy = 1; return true;
+    }
+    return false;
+}
+
+static bool hasLandBridgeBank(const Game& game, int x, int y) {
+    static const int dirs[4][2] = {{1,0},{-1,0},{0,1},{0,-1}};
+    for (const auto& dir : dirs) {
+        if (isLandPassableFor(game, x + dir[0], y + dir[1])) return true;
+    }
+    return false;
+}
+
+static bool hasCompletedStoneBridgeAt(const Game& game, const WorldIndex& world, int x, int y) {
+    const Entity* entity = constEntityAt(game, world, x, y);
+    return entity && entity->type == E_STONE_BRIDGE && isCompletedBridge(*entity);
+}
+
+static bool stoneBridgeSpanCompleteAt(const Game& game, const WorldIndex& world, int x, int y) {
+    int unusedDx = 0, unusedDy = 0;
+    if (bridgePlacementAxis(game, E_WOODEN_BRIDGE, x, y, unusedDx, unusedDy)) return true;
+    if (hasCompletedStoneBridgeAt(game, world, x + 1, y)
+            && isLandPassableFor(game, x - 1, y) && isLandPassableFor(game, x + 2, y)) return true;
+    if (hasCompletedStoneBridgeAt(game, world, x - 1, y)
+            && isLandPassableFor(game, x + 1, y) && isLandPassableFor(game, x - 2, y)) return true;
+    if (hasCompletedStoneBridgeAt(game, world, x, y + 1)
+            && isLandPassableFor(game, x, y - 1) && isLandPassableFor(game, x, y + 2)) return true;
+    if (hasCompletedStoneBridgeAt(game, world, x, y - 1)
+            && isLandPassableFor(game, x, y + 1) && isLandPassableFor(game, x, y - 2)) return true;
+    return false;
+}
+
+bool isCompletedBridgeAt(const Game& game, const WorldIndex& world, int x, int y) {
+    const Entity* entity = constEntityAt(game, world, x, y);
+    if (!entity || !isCompletedBridge(*entity)) return false;
+    if (entity->type == E_WOODEN_BRIDGE) {
+        int dx = 0, dy = 0;
+        return bridgePlacementAxis(game, E_WOODEN_BRIDGE, x, y, dx, dy);
+    }
+    if (entity->type == E_STONE_BRIDGE) {
+        return stoneBridgeSpanCompleteAt(game, world, x, y);
+    }
+    return false;
+}
+
+bool isLandPassableWithBridges(const Game& game, const WorldIndex& world, int x, int y) {
+    if (isLandPassableFor(game, x, y)) return true;
+    return isCompletedBridgeAt(game, world, x, y);
+}
+
+bool buildingBlocksLandMovement(const Entity& e) {
+    if (e.type == E_GATE && e.gateOpen) return false;
+    if (isCompletedBridge(e)) return false;
+    return isBuilding(e.type);
 }
 
 bool canPlace(const Game& game, const WorldIndex& world, EntityType type, int x, int y, int owner, int ignoreEntityId) {
@@ -88,6 +165,15 @@ bool canPlace(const Game& game, const WorldIndex& world, EntityType type, int x,
         if ((Season)((int)game.seasonPhase % 4) == WINTER) return false;
         Terrain t = game.map[y][x].terrain;
         if (t!=T_GRASS&&t!=T_MEADOW&&t!=T_TALL_GRASS&&t!=T_FLOWERS&&t!=T_DIRT&&t!=T_WHEAT&&t!=T_SNOW) return false;
+    }
+    if (isBridge(type)) {
+        if (!isWaterPassableFor(game, x, y)) return false;
+        if (resourceForTerrain(game.map[y][x].terrain) != CR_NONE || game.map[y][x].resources > 0) return false;
+        if (isOccupied(world, { x, y }, OccupancyLayer::Buildings)) return false;
+        if (isOccupied(world, { x, y }, OccupancyLayer::Units)) return false;
+        if (!hasLandBridgeBank(game, x, y)) return false;
+        int dx = 0, dy = 0;
+        return bridgePlacementAxis(game, type, x, y, dx, dy);
     }
     auto& s = STATS[type];
     for (int dy = 0; dy < s.sizeH; dy++) for (int dx = 0; dx < s.sizeW; dx++) {

@@ -210,7 +210,15 @@ static void tickUnitState(Game& game, WorldIndex& world, EventSink& events, Enti
                 if (isRanged(e.type)) {
                     char pc = (e.type==E_CATAPULT || e.type==E_TREBUCHET) ? 'o' : '-';
                     int pcol = (e.type==E_CATAPULT || e.type==E_TREBUCHET) ? CP_PROJ_BOULDER : CP_PROJ_ARROW;
-                    spawnProjectile(game, e.x, e.y, t->x, t->y, pc, pcol);
+                    ProjectileType projectileType = PT_ARROW;
+                    if (e.type == E_CATAPULT) projectileType = PT_CATAPULT_BOULDER;
+                    else if (e.type == E_TREBUCHET) projectileType = PT_TREBUCHET_BOULDER;
+                    else if (e.type == E_WARSHIP) projectileType = PT_WARSHIP_ARROW_VOLLEY;
+                    else if (e.type == E_ARCHER && e.owner >= 0 && e.owner < MAX_PLAYERS
+                             && (game.players[e.owner].research & R_CROSSBOWS)) {
+                        projectileType = PT_CROSSBOW_BOLT;
+                    }
+                    spawnProjectile(game, e.x, e.y, t->x, t->y, pc, pcol, projectileType);
                 }
                 // Catapult splash: 1-tile radius around impact centre, ~1/3 of the
                 // raw damage to anyone but the prime target (per-victim building

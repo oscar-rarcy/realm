@@ -120,7 +120,6 @@ void tickPaving(Game& game) {
             if (!e.alive || !isBuilding(e.type) || e.underConstruction) continue;
             auto& s = STATS[e.type];
             for (int dy = -3; dy <= s.sizeH+2; dy++) for (int dx = -3; dx <= s.sizeW+2; dx++) {
-                if (dx >= 0 && dx < s.sizeW && dy >= 0 && dy < s.sizeH) continue;
                 int nx = e.x+dx, ny = e.y+dy;
                 if (!inBounds(nx,ny)) continue;
                 int ringDist = std::max(std::max(0, -dx), std::max(0, dx-s.sizeW+1))
@@ -129,11 +128,13 @@ void tickPaving(Game& game) {
                 Tile& t = game.map[ny][nx];
                 Terrain ter = t.terrain;
                 if (ter==T_GRASS||ter==T_TALL_GRASS||ter==T_FLOWERS||ter==T_MEADOW
-                 || ter==T_SAND ||ter==T_DUNES) {
+                 || ter==T_DIRT ||ter==T_SAND ||ter==T_DUNES) {
                     int gain = (ringDist <= 1) ? 5 : (ringDist == 2) ? 3 : 1;
-                    if (t.wear < 80) t.wear += gain;
+                    if (t.wear < 100) t.wear = std::min(100, t.wear + gain);
                     // Lower threshold so visible haloes appear within ~50 seconds.
-                    if (t.wear >= 30 && (ter==T_GRASS||ter==T_TALL_GRASS||ter==T_FLOWERS||ter==T_MEADOW)) {
+                    if (t.wear >= 80) {
+                        promoteTileToLegacyRoad(t);
+                    } else if (t.wear >= 30 && (ter==T_GRASS||ter==T_TALL_GRASS||ter==T_FLOWERS||ter==T_MEADOW)) {
                         t.terrain = T_DIRT; t.preWinterTerrain = T_DIRT;
                     }
                 }
@@ -145,8 +146,8 @@ void tickPaving(Game& game) {
         for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
             Tile& t = game.map[y][x];
             if (t.wear > 0) t.wear--;
-            if (t.wear == 0 && t.terrain == T_ROAD) {
-                t.terrain = T_DIRT; t.preWinterTerrain = T_DIRT;
+            if (t.wear == 0 && tileHasRoadVisual(t)) {
+                demoteLegacyRoadToDirt(t);
             }
             // Dirt slowly regrows — patches of grass return after long disuse
             if (t.wear == 0 && t.terrain == T_DIRT && (realmRand(game) % 500) == 0) {
