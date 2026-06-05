@@ -1,5 +1,7 @@
 #include "entity_animation.h"
 #include "realm.h"
+#include "core/entity_facing.h"
+#include "core/entity_motion.h"
 #include "core/world_index.h"
 
 #include <cstring>
@@ -215,11 +217,6 @@ const char* peasantBuildAction(const Game& game, const WorldIndex& world, const 
     return "build";
 }
 
-bool entityHasActivePathMotion(const Entity& e) {
-    return e.state == S_MOVING || e.state == S_RETURNING
-        || (e.state != S_IDLE && e.pathIdx < (int)e.path.size());
-}
-
 void jsonString(std::ostream& out, const char* value) {
     out << '"';
     if (value) {
@@ -336,32 +333,14 @@ const EntityActionAnimationSpec* entityActionAnimationSpecFor(const Game& game, 
     return findEntityActionAnimationSpec(e.type, action);
 }
 
-namespace {
-
-int signum(int value) {
-    return (value > 0) - (value < 0);
-}
-
-std::pair<int, int> entityAnimationFacingDelta(const Entity& e) {
-    if (entityHasActivePathMotion(e) && e.pathIdx < (int)e.path.size()) {
-        return {signum(e.path[e.pathIdx].first - e.x), signum(e.path[e.pathIdx].second - e.y)};
-    }
-    if (inBounds(e.targetX, e.targetY) && (e.targetX != e.x || e.targetY != e.y)) {
-        return {signum(e.targetX - e.x), signum(e.targetY - e.y)};
-    }
-    return {signum(e.facingDx), signum(e.facingDy)};
-}
-
-} // namespace
-
 const char* entityAnimationDirectionBucket(const Entity& e) {
-    auto [dx, dy] = entityAnimationFacingDelta(e);
+    auto [dx, dy] = entityVisualFacingDelta(e);
     int screenY = dx + dy;
     return screenY < 0 ? "back" : "front";
 }
 
 bool entityAnimationMirrorHorizontal(const Entity& e) {
-    auto [dx, dy] = entityAnimationFacingDelta(e);
+    auto [dx, dy] = entityVisualFacingDelta(e);
     int screenX = dx - dy;
     return screenX < 0;
 }

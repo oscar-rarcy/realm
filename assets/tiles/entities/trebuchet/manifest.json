@@ -454,7 +454,63 @@
           }
         ]
       }
+    },
+    "idle": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Runtime alias for traction_trebuchet__idle",
+      "directions": {
+        "front": [
+          {
+            "base": "idle/front/frame_00_base.png",
+            "team_mask": "idle/front/frame_00_teammask.png"
+          },
+          {
+            "base": "idle/front/frame_01_base.png",
+            "team_mask": "idle/front/frame_01_teammask.png"
+          }
+        ],
+        "back": [
+          {
+            "base": "idle/back/frame_00_base.png",
+            "team_mask": "idle/back/frame_00_teammask.png"
+          },
+          {
+            "base": "idle/back/frame_01_base.png",
+            "team_mask": "idle/back/frame_01_teammask.png"
+          }
+        ]
+      }
+    },
+    "death": {
+      "frame_ms": 250,
+      "loop": false,
+      "hold_last": true,
+      "description": "Runtime alias for traction_trebuchet__destroyed_wreck",
+      "directions": {
+        "front": [
+          {
+            "base": "death/front/frame_00_base.png",
+            "team_mask": "death/front/frame_00_teammask.png"
+          },
+          {
+            "base": "death/front/frame_01_base.png",
+            "team_mask": "death/front/frame_01_teammask.png"
+          }
+        ],
+        "back": [
+          {
+            "base": "death/back/frame_00_base.png",
+            "team_mask": "death/back/frame_00_teammask.png"
+          },
+          {
+            "base": "death/back/frame_01_base.png",
+            "team_mask": "death/back/frame_01_teammask.png"
+          }
+        ]
+      }
     }
   },
-  "notes": "Generated trebuchet tileset from two 2x8 image-gen contact sheets. Each authored action has front/back 48x48 base and team-mask frames; frame_01 duplicates frame_00 pending hand-authored animation polish."
+  "notes": "Generated trebuchet tileset from two 2x8 image-gen contact sheets. Each authored action has front/back 48x48 base and team-mask frames; frame_01 duplicates frame_00 pending hand-authored animation polish. Runtime idle/death aliases added from closest generated action variants; opaque magenta cleanup applied where needed."
 }

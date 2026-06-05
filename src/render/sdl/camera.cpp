@@ -96,6 +96,9 @@ int mobileHudExtent() {
 }
 
 SDL_Rect mapRect() {
+    if (s.viewportOnly) {
+        return SDL_Rect{0, 0, std::max(1, s.winW), std::max(1, s.winH)};
+    }
     if (isMobileGui()) {
         int hud = mobileHudExtent();
         if (mobilePortrait()) {
@@ -131,6 +134,7 @@ SDL_Rect panelRect() {
 }
 
 SDL_Rect miniMapRect() {
+    if (s.viewportOnly) return SDL_Rect{0, 0, 0, 0};
     SDL_Rect pr = panelRect();
     if (isMobileGui()) {
         int pad = mobileSafePad();
@@ -251,6 +255,17 @@ void cameraBounds(int& minX, int& maxX, int& minY, int& maxY) {
 
 void fillDiamond(int cx, int cy, int hw, int hh, Color c) {
     SDL_SetRenderDrawBlendMode(s.ren, SDL_BLENDMODE_BLEND);
+#if SDL_VERSION_ATLEAST(2, 0, 18)
+    SDL_Color color{c.r, c.g, c.b, c.a};
+    SDL_Vertex vertices[4] = {
+        {SDL_FPoint{(float)cx, (float)(cy - hh)}, color, SDL_FPoint{0.0f, 0.0f}},
+        {SDL_FPoint{(float)(cx + hw), (float)cy}, color, SDL_FPoint{0.0f, 0.0f}},
+        {SDL_FPoint{(float)cx, (float)(cy + hh)}, color, SDL_FPoint{0.0f, 0.0f}},
+        {SDL_FPoint{(float)(cx - hw), (float)cy}, color, SDL_FPoint{0.0f, 0.0f}},
+    };
+    int indices[6] = {0, 1, 3, 1, 2, 3};
+    if (SDL_RenderGeometry(s.ren, nullptr, vertices, 4, indices, 6) == 0) return;
+#endif
     setDraw(c);
     for (int dy = -hh; dy <= hh; ++dy) {
         float t = 1.0f - std::abs(dy) / (float)std::max(1, hh);
@@ -304,6 +319,25 @@ static bool drawTextureFrameIso(const TilesetAssetFrame& frame, int cx, int cy, 
     return true;
 }
 
+static Color groundShaderOverlayColorIso(const GroundShaderResult& shader, int x, int y) {
+    Color overlay = timeTint(groundShaderColor(shader.overlayTint));
+    overlay.a = (Uint8)std::max(0, std::min(255, (int)std::lround(shader.overlayTint.a * visibleFadeAt(x, y))));
+    return overlay;
+}
+
+static void drawGroundShaderOverlayIso(int cx, int cy, int hw, int hh,
+                                       const GroundShaderResult& shader, int x, int y) {
+    if (!shader.drawOverlay || shader.overlayTint.a == 0) return;
+    Color overlay = groundShaderOverlayColorIso(shader, x, y);
+    if (overlay.a == 0) return;
+    fillDiamond(cx, cy, hw, hh, overlay);
+}
+
+static SDL_Rect featureSpriteRectIso(int cx, int cy, int hw, int hh) {
+    int size = std::max(16, (int)std::lround(hw * 1.12f));
+    return SDL_Rect{cx - size / 2, cy + hh - size, size, size};
+}
+
 bool drawUnknownGroundTextureIso(int cx, int cy, int hw, int hh, int x, int y) {
     (void)x; (void)y;
     if (!imageTilesetEnabled()) return false;
@@ -312,41 +346,86 @@ bool drawUnknownGroundTextureIso(int cx, int cy, int hw, int hh, int x, int y) {
         cx, cy, hw, hh, rgb(118, 118, 124, 224));
 }
 
+static bool drawFeatureTextureIso(int cx, int cy, int hw, int hh, FeatureType feature,
+                                  FeatureState state, const char* layer, Color mod) {
+    if (!imageTilesetEnabled() || feature == F_NONE || !layer || !*layer) return false;
+    SDL_Rect dst = featureSpriteRectIso(cx, cy, hw, hh);
+    TilesetAssetFrame frame = tilesetLoadFeatureTileScaled(s.ren, feature, state, layer, dst.w, dst.h);
+    if (!frame.texture || frame.placeholder) return false;
+    SDL_SetTextureColorMod(frame.texture, mod.r, mod.g, mod.b);
+    SDL_SetTextureAlphaMod(frame.texture, mod.a);
+    SDL_RenderCopy(s.ren, frame.texture, nullptr, &dst);
+    SDL_SetTextureColorMod(frame.texture, 255, 255, 255);
+    SDL_SetTextureAlphaMod(frame.texture, 255);
+    return true;
+}
+
+static bool drawDecalTextureIso(int cx, int cy, int hw, int hh, VisualDecalType decal, Color mod) {
+    if (!imageTilesetEnabled()) return false;
+    SDL_Rect dst{cx - hw, cy - hh, hw * 2 + 1, hh * 2 + 1};
+    TilesetAssetFrame frame = tilesetLoadDecalTileScaled(s.ren, decal, dst.w, dst.h);
+    if (!frame.texture || frame.placeholder) return false;
+    SDL_SetTextureColorMod(frame.texture, mod.r, mod.g, mod.b);
+    SDL_SetTextureAlphaMod(frame.texture, mod.a);
+    SDL_RenderCopy(s.ren, frame.texture, nullptr, &dst);
+    SDL_SetTextureColorMod(frame.texture, 255, 255, 255);
+    SDL_SetTextureAlphaMod(frame.texture, 255);
+    return true;
+}
+
+static void drawVisualTilePartImagesIso(int cx, int cy, int hw, int hh,
+                                        const VisualTileParts& parts, Color mod) {
+    for (VisualDecalType decal : parts.decals) {
+        drawDecalTextureIso(cx, cy, hw, hh, decal, mod);
+    }
+    if (parts.feature != F_NONE) {
+        if (drawFeatureTextureIso(cx, cy, hw, hh, parts.feature, parts.featureState, "base", mod)) return;
+        if (drawFeatureTextureIso(cx, cy, hw, hh, parts.feature, parts.featureState, "back", mod)) return;
+        if (parts.featureState != FS_FULL && drawFeatureTextureIso(cx, cy, hw, hh, parts.feature, FS_FULL, "base", mod)) return;
+        if (parts.featureState != FS_FULL) drawFeatureTextureIso(cx, cy, hw, hh, parts.feature, FS_FULL, "back", mod);
+    }
+}
+
 void applyTerrainTextureIso(int cx, int cy, int hw, int hh, const Tile& t, int x, int y) {
+    VisualTileParts parts = visualPartsForTile(t);
+    GroundShaderResult shader = shadeGroundTileForCurrentGame(t, parts, x, y);
+    Color mod = applyVisionAndLight(timeTint(groundShaderColor(shader.textureMod)), x, y);
+    bool drewGround = false;
     if (imageTilesetEnabled()) {
-        VisualTileParts parts = visualPartsForTile(t);
-        if (drawTextureFrameIso(
+        drewGround = drawTextureFrameIso(
                 tilesetLoadGroundTileIso(s.ren, parts.ground, hw * 2 + 1, hh * 2 + 1),
-                cx, cy, hw, hh, applyVisionAndLight(timeTint(rgb(255, 255, 255)), x, y))) {
-            return;
-        }
+                cx, cy, hw, hh, mod);
     }
 
-    switch (t.terrain) {
-        case T_TALL_GRASS:
-        case T_REEDS:
-            hatchDiamond(cx, cy, hw, hh, rgb(225,255,210,48), std::max(4, s.tile/5)); break;
-        case T_FOREST:
-        case T_PINE:
-            hatchDiamond(cx, cy, hw, hh, rgb(5,30,10,58), std::max(5, s.tile/4)); break;
-        case T_WATER:
-        case T_SHALLOWS:
-            hatchDiamond(cx, cy, hw, hh, rgb(200,240,255,42), std::max(5, s.tile/4)); break;
-        case T_SAND:
-        case T_DUNES:
-            hatchDiamond(cx, cy, hw, hh, rgb(255,230,165,36), std::max(5, s.tile/4)); break;
-        case T_STONE:
-        case T_GRAVEL:
-        case T_MOUNTAIN:
-            hatchDiamond(cx, cy, hw, hh, rgb(255,255,255,24), std::max(5, s.tile/4)); break;
-        case T_LAVA:
-            hatchDiamond(cx, cy, hw, hh, rgb(255,160,60,58), std::max(4, s.tile/5)); break;
-        case T_FLOWERS:
-            sparkleDiamond(cx, cy, hw, hh, rgb(255,220,250,70), x, y); break;
-        default:
-            if (terrainFamily(t.terrain) == 0) sparkleDiamond(cx, cy, hw, hh, rgb(230,255,210,32), x, y);
-            break;
+    if (!drewGround) {
+        switch (t.terrain) {
+            case T_TALL_GRASS:
+            case T_REEDS:
+                hatchDiamond(cx, cy, hw, hh, rgb(225,255,210,48), std::max(4, s.tile/5)); break;
+            case T_FOREST:
+            case T_PINE:
+                hatchDiamond(cx, cy, hw, hh, rgb(5,30,10,58), std::max(5, s.tile/4)); break;
+            case T_WATER:
+            case T_SHALLOWS:
+                hatchDiamond(cx, cy, hw, hh, rgb(200,240,255,42), std::max(5, s.tile/4)); break;
+            case T_SAND:
+            case T_DUNES:
+                hatchDiamond(cx, cy, hw, hh, rgb(255,230,165,36), std::max(5, s.tile/4)); break;
+            case T_STONE:
+            case T_GRAVEL:
+            case T_MOUNTAIN:
+                hatchDiamond(cx, cy, hw, hh, rgb(255,255,255,24), std::max(5, s.tile/4)); break;
+            case T_LAVA:
+                hatchDiamond(cx, cy, hw, hh, rgb(255,160,60,58), std::max(4, s.tile/5)); break;
+            case T_FLOWERS:
+                sparkleDiamond(cx, cy, hw, hh, rgb(255,220,250,70), x, y); break;
+            default:
+                if (terrainFamily(t.terrain) == 0) sparkleDiamond(cx, cy, hw, hh, rgb(230,255,210,32), x, y);
+                break;
+        }
     }
+    drawGroundShaderOverlayIso(cx, cy, hw, hh, shader, x, y);
+    drawVisualTilePartImagesIso(cx, cy, hw, hh, parts, mod);
 }
 
 void updateViewMetrics(bool keepCursor) {
@@ -463,6 +542,7 @@ void centerViewOnTile(int mx, int my) {
 }
 
 bool screenToMiniMapTile(int px, int py, int& mx, int& my, bool clampToMiniMap) {
+    if (s.viewportOnly) return false;
     if (displayMode == DM_ASCII && !isAsciiMobileGui()) {
         SDL_GetWindowSize(s.win, &s.winW, &s.winH);
         TerminalFrame frame = makeBlankTerminalFrame();

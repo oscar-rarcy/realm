@@ -134,8 +134,8 @@ Generate the complete state set for each equipment tier below.
 
 ## Output Resolution
 
-- Final accepted standalone source canvas: 48 by 48 px.
-- Use this resolution from the generated JSON spec for every accepted standalone sprite frame; contact-sheet slots may be larger, but each slot must be cleanly crop/downscale-safe to 48 by 48 px.
+- Final accepted standalone source canvas: 512 by 512 px.
+- Use this resolution from the generated JSON spec for every accepted standalone sprite frame; contact-sheet slots may be larger, but each slot must be cleanly crop/downscale-safe to 512 by 512 px.
 
 ## Image Output Contract
 
@@ -212,7 +212,7 @@ Leave unused cells empty.
 
 ## Prompt
 
-Generate sprites for my Realm Knight. The footprint is 1 by 1 tile(s). Team colour is required and the recommended preview player colour is blue (#00AFFF). Valid directions are front, back. Produce one sheet at a time for the requested direction, using the same state grid for each direction. Create one frame for each of the 24 listed states. Since there are more than 16 states, split them across multiple images, each image using a 4 by 4 grid. Order states left to right and top to bottom within each sheet. Keep the subject consistent across every slot. Final accepted standalone frames use the generated spec resolution: 48 by 48 px. Use a flat pure #ff00ff magenta sheet background and clear gutters between cells. Use clean readable tiny paper-cutout sprite proportions, stable anchor, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork. If unit reference images are supplied, use them only for equipment and silhouette cues, then redraw into stylized Realm sprite art; do not copy their source style or pixels.
+Generate sprites for my Realm Knight. The footprint is 1 by 1 tile(s). Team colour is required and the recommended preview player colour is blue (#00AFFF). Valid directions are front, back. Produce one sheet at a time for the requested direction, using the same state grid for each direction. Create one frame for each of the 24 listed states. Since there are more than 16 states, split them across multiple images, each image using a 4 by 4 grid. Order states left to right and top to bottom within each sheet. Keep the subject consistent across every slot. Final accepted standalone frames use the generated spec resolution: 512 by 512 px. Use a flat pure #ff00ff magenta sheet background and clear gutters between cells. Use clean readable tiny paper-cutout sprite proportions, stable anchor, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork. If unit reference images are supplied, use them only for equipment and silhouette cues, then redraw into stylized Realm sprite art; do not copy their source style or pixels.
 
 Slot order:
 - Sheet 1 of 2: 4 by 4 grid

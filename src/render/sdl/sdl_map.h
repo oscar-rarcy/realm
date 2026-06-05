@@ -18,6 +18,7 @@ bool renderCanPlace(Game& game, const WorldIndex& world, EntityType type, int x,
 std::string cursorTileSummary();
 std::string cursorStackSummary();
 void drawMap(const WorldIndex& world);
+void clearIsoMapLayerCache();
 void drawCommandContextMenu();
 void commandContextMenuOpen(const Game& game, const WorldIndex& world, const CommandPreviewRequest& request, int anchorX, int anchorY);
 void commandContextMenuClose();
@@ -57,6 +58,7 @@ bool drawEntityImageAtAnchor(const Game& game, const WorldIndex& world, const En
                              double angleDegrees = 0.0);
 std::string tilesetEntityVisual(const Game& game, const WorldIndex& world, const Entity& e, bool& usesSymbolFont);
 Color glyphColorForTerrain(const Tile& t, int x, int y);
+float visibleFadeAt(int x, int y);
 Color applyVisionAndLight(Color c, int x, int y);
 Color applyVisionToGlyph(Color c, int x, int y);
 void applyTerrainTexture(SDL_Rect r, const Tile& t, int x, int y);

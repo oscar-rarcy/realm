@@ -40,7 +40,7 @@
       "height_px": 1024,
       "unit": "px",
       "scope": "per standalone high-resolution ground source tile",
-      "source": "realm-tileset-from-images ground contract"
+      "source": "realm high-resolution source-quality contract"
     }
   },
   "paths": {

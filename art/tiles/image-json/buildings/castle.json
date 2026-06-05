@@ -95,11 +95,16 @@
     },
     "generation_aspect_variant_rules": [],
     "source_canvas": {
-      "width_px": 32,
-      "height_px": 32,
+      "width_px": 2048,
+      "height_px": 2048,
       "unit": "px",
-      "scope": "per occupied building footprint cell",
-      "source": "docs/tileset/realm_tileset_visual_audit.md core format table"
+      "scope": "per accepted standalone high-resolution building footprint sprite; 512px per footprint tile on the largest footprint axis",
+      "source": "realm high-resolution source-quality contract",
+      "footprint": {
+        "w": 4,
+        "h": 4
+      },
+      "source_px_per_footprint_tile": 512
     }
   },
   "states": [

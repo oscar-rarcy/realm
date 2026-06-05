@@ -66,7 +66,10 @@ RenderModel buildRenderModel(const Game& game, const std::vector<ActionMarker>& 
 
     for (const Entity& entity : game.entities) {
         if (!entity.alive || entity.state == S_GARRISONED) continue;
-        if (entity.x < x0 || entity.y < y0 || entity.x >= x1 || entity.y >= y1) continue;
+        const EntityStats& stats = STATS[entity.type];
+        int footprintW = isBuilding(entity.type) ? stats.sizeW : 1;
+        int footprintH = isBuilding(entity.type) ? stats.sizeH : 1;
+        if (entity.x + footprintW <= x0 || entity.y + footprintH <= y0 || entity.x >= x1 || entity.y >= y1) continue;
         EntityRenderInfo info;
         info.id = entity.id;
         info.type = entity.type;
@@ -97,8 +100,14 @@ RenderModel buildRenderModel(const Game& game, const std::vector<ActionMarker>& 
         info.rallySet = entity.rallySet != 0;
         info.rallyX = entity.rallyX;
         info.rallyY = entity.rallyY;
-        info.visible = observerOwner < 0 || observerOwner >= MAX_PLAYERS
-            || game.map[entity.y][entity.x].visible[observerOwner];
+        info.visible = observerOwner < 0 || observerOwner >= MAX_PLAYERS;
+        if (!info.visible) {
+            for (int yy = entity.y; yy < entity.y + footprintH && !info.visible; ++yy) {
+                for (int xx = entity.x; xx < entity.x + footprintW && !info.visible; ++xx) {
+                    if (inBounds(xx, yy) && game.map[yy][xx].visible[observerOwner]) info.visible = true;
+                }
+            }
+        }
         info.selected = entity.id == game.local.selectedId
             || std::find(game.local.selectedIds.begin(), game.local.selectedIds.end(), entity.id) != game.local.selectedIds.end();
         if (isBuilding(entity.type)) info.buildingState = buildingVisualState(entity);

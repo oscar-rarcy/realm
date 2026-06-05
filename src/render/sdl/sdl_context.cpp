@@ -1,5 +1,6 @@
 #include "render/sdl/sdl_text.h"
 #include "realm.h"
+#include "render/ground_shader.h"
 
 Gfx s;
 bool labForcesImageTileset = false;
@@ -18,6 +19,23 @@ Color scale(Color c, float f) {
 Color blend(Color a, Color b, float t) {
     return rgb((int)(a.r + (b.r-a.r)*t), (int)(a.g + (b.g-a.g)*t), (int)(a.b + (b.b-a.b)*t),
                (int)(a.a + (b.a-a.a)*t));
+}
+
+Color groundShaderColor(GroundShaderColor c) {
+    return rgb(c.r, c.g, c.b, c.a);
+}
+
+GroundShaderContext currentGroundShaderContext() {
+    GroundShaderContext context;
+    context.season = getSeason(g);
+    context.seasonProgress = getSeasonProgress(g);
+    context.weather = (Weather)g.weather;
+    context.tick = g.tick;
+    return context;
+}
+
+GroundShaderResult shadeGroundTileForCurrentGame(const Tile& tile, const VisualTileParts& parts, int x, int y) {
+    return shadeGroundTile(tile, parts, x, y, currentGroundShaderContext());
 }
 
 std::string lowerSlug(const std::string& text) {
@@ -226,29 +244,9 @@ Color biomeBase(Biome b) {
 }
 
 Color terrainBg(const Tile& t, int x, int y) {
-    Color c = biomeBase(t.biome);
-    switch (t.terrain) {
-        case T_WATER:    c = rgb(22, 74, 118); break;
-        case T_SHALLOWS: c = rgb(43, 115, 128); break;
-        case T_FISH:     c = rgb(28, 88, 130); break;
-        case T_ICE:      c = rgb(135, 178, 196); break;
-        case T_SNOW:     c = rgb(200, 211, 218); break;
-        case T_SAND:     c = rgb(165, 134, 78); break;
-        case T_DUNES:    c = rgb(181, 151, 90); break;
-        case T_DIRT:     c = rgb(104, 73, 43); break;
-        case T_ROAD:     c = rgb(83, 76, 63); break;
-        case T_MUD:      c = rgb(72, 61, 42); break;
-        case T_LAVA:     c = rgb(114, 40, 24); break;
-        case T_ASH:      c = rgb(56, 54, 52); break;
-        case T_CASTLE_WALL: c = rgb(72,72,74); break;
-        case T_CASTLE_FLOOR: c = rgb(91,74,53); break;
-        case T_CASTLE_GATE: c = rgb(62,55,49); break;
-        default: break;
-    }
-
-    c = seasonTint(c);
-    float n = noisePatch(x, y, 811u + (unsigned)t.biome*17u + (unsigned)getSeason(g)*37u);
-    float shade = 0.90f + n * 0.22f;
+    VisualTileParts parts = visualPartsForTile(t);
+    Color c = groundShaderColor(shadeGroundTileForCurrentGame(t, parts, x, y).baseFill);
+    float shade = 1.0f;
     int edge = boundaryStrength(x,y);
     if (edge) shade += 0.04f * edge;
     c = scale(c, shade);

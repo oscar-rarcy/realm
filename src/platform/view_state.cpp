@@ -6,6 +6,7 @@
 
 ViewState view;
 UiState ui;
+static bool g_edgeScrollEnabled = true;
 
 void resetViewState() {
     view = ViewState{};
@@ -32,7 +33,16 @@ void panViewport(ViewState& state, int dx, int dy) {
     state.viewY = std::max(0, std::min(state.viewY + dy, MAP_H - state.viewH));
 }
 
+void setEdgeScrollEnabled(bool enabled) {
+    g_edgeScrollEnabled = enabled;
+}
+
+bool edgeScrollEnabled() {
+    return g_edgeScrollEnabled;
+}
+
 bool edgeScrollViewport(ViewState& state, int screenX, int screenY, int mapTopY, int edgeMargin, int edgeStep) {
+    if (!g_edgeScrollEnabled) return false;
     int mapScreenY = screenY - mapTopY;
     int dx = 0;
     int dy = 0;

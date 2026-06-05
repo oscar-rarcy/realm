@@ -1,5 +1,6 @@
 #include "render/sdl/sdl_map.h"
 #include "realm.h"
+#include "core/entity_motion.h"
 #include "core/world_index.h"
 #include "render/entity_visual_defs.h"
 
@@ -58,8 +59,7 @@ const char* terrainGlyph(const Tile& t, int x, int y) {
 }
 
 const char* peasantGlyph(const Entity& e) {
-    if (e.state == S_MOVING || e.state == S_RETURNING
-        || (e.state != S_IDLE && e.pathIdx < (int)e.path.size())) return u8"🚶";
+    if (entityHasActivePathMotion(e)) return u8"🚶";
     if (e.state == S_GATHERING && (e.cargo.type == CR_FISH || e.cargo.type == CR_FOOD)) return u8"🧎";
     if (e.state == S_GATHERING || e.state == S_BUILDING || e.state == S_ATTACKING) return u8"🏌";
     return u8"🧍";
@@ -88,6 +88,9 @@ struct EntitySpriteSpec {
 
 [[maybe_unused]] static int animationFrameForEntity(const Entity& e, const EntityActionAnimationSpec* anim,
                                                     int explicitFrame);
+static bool drawFeatureTextureWithFallbacks(SDL_Rect r, FeatureType feature, FeatureState state,
+                                            const char* primaryLayer, const char* secondaryLayer,
+                                            Color mod);
 
 static std::string entityFrameAssetPath(EntityType type, const std::string& action,
                                         const std::string& direction, int frameIndex) {
@@ -107,6 +110,11 @@ static std::filesystem::path groundTilePath(GroundType ground) {
 static std::filesystem::path featureManifestPath(FeatureType feature) {
     return std::filesystem::path("assets") / "tiles" / "features"
         / featureTypeName(feature) / "manifest.json";
+}
+
+static std::filesystem::path featureLayerPath(FeatureType feature, FeatureState state, const char* layer) {
+    return std::filesystem::path("assets") / "tiles" / "features"
+        / featureTypeName(feature) / featureStateName(state) / (std::string(layer) + ".png");
 }
 
 static std::filesystem::path decalTilePath(VisualDecalType decal) {
@@ -133,6 +141,25 @@ static bool runtimeGroundAssetLooksAccepted(GroundType ground) {
     }
 #endif
     return !ec && bytes >= 100000;
+}
+
+static bool runtimeFeatureLayerExists(FeatureType feature, FeatureState state, const char* layer) {
+    return feature != F_NONE && layer && *layer && runtimeAssetExists(featureLayerPath(feature, state, layer));
+}
+
+static bool runtimeFeatureImageExists(FeatureType feature, FeatureState state) {
+    if (feature == F_NONE) return false;
+    if (runtimeFeatureLayerExists(feature, state, "base")) return true;
+    if (runtimeFeatureLayerExists(feature, state, "back")) return true;
+    if (state != FS_FULL) {
+        if (runtimeFeatureLayerExists(feature, FS_FULL, "base")) return true;
+        if (runtimeFeatureLayerExists(feature, FS_FULL, "back")) return true;
+    }
+    if (state != FS_DEFAULT) {
+        if (runtimeFeatureLayerExists(feature, FS_DEFAULT, "base")) return true;
+        if (runtimeFeatureLayerExists(feature, FS_DEFAULT, "back")) return true;
+    }
+    return false;
 }
 
 int displayFrameMs(const EntityActionAnimationSpec& anim) {
@@ -198,7 +225,7 @@ bool hasTerrainImageTile(Terrain terrain) {
     VisualTileParts parts = visualPartsForTile(tile);
     if (!runtimeGroundAssetLooksAccepted(parts.ground)) return false;
     if (parts.feature == F_NONE) return true;
-    return runtimeAssetExists(featureManifestPath(parts.feature));
+    return runtimeFeatureImageExists(parts.feature, parts.featureState);
 }
 
 void logMissingEntityImageTile(const Game& game, const WorldIndex& world, const Entity& e) {
@@ -262,9 +289,13 @@ const char* featureOccluderGlyph(FeatureType feature) {
 void drawFeatureOccluderIfNeeded(Game& game, const WorldIndex& world, int mx, int my, SDL_Rect rect) {
     if (!inBounds(mx, my) || !game.map[my][mx].visible[0]) return;
     Entity* ent = renderEntityAt(game, world, mx, my);
-    if (!ent || !ent->alive || isBuilding(ent->type)) return;
     VisualTileParts parts = visualPartsForTile(game.map[my][mx]);
     if (!featureConceals(parts.feature)) return;
+    Color mod = applyVisionToGlyph(rgb(255,255,255), mx, my);
+    if (drawFeatureTextureWithFallbacks(rect, parts.feature, parts.featureState, "front_occluder", nullptr, mod)) {
+        return;
+    }
+    if (!ent || !ent->alive || isBuilding(ent->type)) return;
     const char* glyph = featureOccluderGlyph(parts.feature);
     if (!glyph || !*glyph) return;
     Color col = rgb(105, 180, 95, 185);
@@ -619,9 +650,54 @@ static bool drawTextureFrame(const TilesetAssetFrame& frame, SDL_Rect dst, Color
     return true;
 }
 
+static Color groundShaderOverlayColor(const GroundShaderResult& shader, int x, int y) {
+    Color overlay = timeTint(groundShaderColor(shader.overlayTint));
+    overlay.a = (Uint8)std::max(0, std::min(255, (int)std::lround(shader.overlayTint.a * visibleFadeAt(x, y))));
+    return overlay;
+}
+
+static void drawGroundShaderOverlay(SDL_Rect r, const GroundShaderResult& shader, int x, int y) {
+    if (!shader.drawOverlay || shader.overlayTint.a == 0) return;
+    Color overlay = groundShaderOverlayColor(shader, x, y);
+    if (overlay.a == 0) return;
+    SDL_SetRenderDrawBlendMode(s.ren, SDL_BLENDMODE_BLEND);
+    setDraw(overlay);
+    SDL_RenderFillRect(s.ren, &r);
+}
+
 static bool drawGroundTexture(SDL_Rect r, GroundType ground, Color mod) {
     if (!imageTilesetEnabled()) return false;
     return drawTextureFrame(tilesetLoadGroundTileScaled(s.ren, ground, r.w, r.h), r, mod);
+}
+
+static bool drawFeatureTexture(SDL_Rect r, FeatureType feature, FeatureState state,
+                               const char* layer, Color mod) {
+    if (!imageTilesetEnabled() || feature == F_NONE || !layer || !*layer) return false;
+    return drawTextureFrame(tilesetLoadFeatureTileScaled(s.ren, feature, state, layer, r.w, r.h), r, mod);
+}
+
+static bool drawFeatureTextureWithFallbacks(SDL_Rect r, FeatureType feature, FeatureState state,
+                                            const char* primaryLayer, const char* secondaryLayer,
+                                            Color mod) {
+    if (drawFeatureTexture(r, feature, state, primaryLayer, mod)) return true;
+    if (secondaryLayer && drawFeatureTexture(r, feature, state, secondaryLayer, mod)) return true;
+    if (state != FS_FULL && drawFeatureTexture(r, feature, FS_FULL, primaryLayer, mod)) return true;
+    if (state != FS_DEFAULT && drawFeatureTexture(r, feature, FS_DEFAULT, primaryLayer, mod)) return true;
+    return secondaryLayer && state != FS_FULL && drawFeatureTexture(r, feature, FS_FULL, secondaryLayer, mod);
+}
+
+static bool drawDecalTexture(SDL_Rect r, VisualDecalType decal, Color mod) {
+    if (!imageTilesetEnabled()) return false;
+    return drawTextureFrame(tilesetLoadDecalTileScaled(s.ren, decal, r.w, r.h), r, mod);
+}
+
+static void drawVisualTilePartImages(SDL_Rect r, const VisualTileParts& parts, Color mod) {
+    for (VisualDecalType decal : parts.decals) {
+        drawDecalTexture(r, decal, mod);
+    }
+    if (parts.feature != F_NONE) {
+        drawFeatureTextureWithFallbacks(r, parts.feature, parts.featureState, "base", "back", mod);
+    }
 }
 
 bool drawUnknownGroundTexture(SDL_Rect r, int x, int y) {
@@ -632,33 +708,37 @@ bool drawUnknownGroundTexture(SDL_Rect r, int x, int y) {
 
 void applyTerrainTexture(SDL_Rect r, const Tile& t, int x, int y) {
     VisualTileParts parts = visualPartsForTile(t);
-    if (drawGroundTexture(r, parts.ground, applyVisionAndLight(timeTint(rgb(255, 255, 255)), x, y))) {
-        return;
-    }
+    GroundShaderResult shader = shadeGroundTileForCurrentGame(t, parts, x, y);
+    Color mod = applyVisionAndLight(timeTint(groundShaderColor(shader.textureMod)), x, y);
+    bool drewGround = drawGroundTexture(r, parts.ground, mod);
 
-    unsigned h = hash2(x,y,1900u);
-    switch (t.terrain) {
-        case T_TALL_GRASS:
-        case T_REEDS:
-            hatch(r, rgb(220,255,210,42), std::max(5, s.tile/3), false); break;
-        case T_FOREST:
-        case T_PINE:
-            hatch(r, rgb(8,35,12,45), std::max(6, s.tile/3), true); break;
-        case T_WATER:
-        case T_SHALLOWS:
-            hatch(r, rgb(190,235,255,38), std::max(6, s.tile/3), false); break;
-        case T_DUNES:
-        case T_SAND:
-            hatch(r, rgb(255,230,160,32), std::max(7, s.tile/2), false); break;
-        case T_GRAVEL:
-        case T_STONE:
-        case T_MOUNTAIN:
-            if (h & 1u) {
-                hatch(r, rgb(255,255,255,26), std::max(5, s.tile/3), true);
-            }
-            break;
-        case T_LAVA:
-            hatch(r, rgb(255,160,60,55), std::max(5, s.tile/3), true); break;
-        default: break;
+    if (!drewGround) {
+        unsigned h = hash2(x,y,1900u);
+        switch (t.terrain) {
+            case T_TALL_GRASS:
+            case T_REEDS:
+                hatch(r, rgb(220,255,210,42), std::max(5, s.tile/3), false); break;
+            case T_FOREST:
+            case T_PINE:
+                hatch(r, rgb(8,35,12,45), std::max(6, s.tile/3), true); break;
+            case T_WATER:
+            case T_SHALLOWS:
+                hatch(r, rgb(190,235,255,38), std::max(6, s.tile/3), false); break;
+            case T_DUNES:
+            case T_SAND:
+                hatch(r, rgb(255,230,160,32), std::max(7, s.tile/2), false); break;
+            case T_GRAVEL:
+            case T_STONE:
+            case T_MOUNTAIN:
+                if (h & 1u) {
+                    hatch(r, rgb(255,255,255,26), std::max(5, s.tile/3), true);
+                }
+                break;
+            case T_LAVA:
+                hatch(r, rgb(255,160,60,55), std::max(5, s.tile/3), true); break;
+            default: break;
+        }
     }
+    drawGroundShaderOverlay(r, shader, x, y);
+    drawVisualTilePartImages(r, parts, mod);
 }

@@ -608,7 +608,7 @@ static void handleInputForPlayer(int ch, PlayerId issuer) {
             view.cursorX = mapX; view.cursorY = mapY;
             lastMx = mapX; lastMy = mapY;
         }
-        if (!clickEvt) {
+        if (!clickEvt && edgeScrollEnabled()) {
             edgeScrollViewport(view, me.x, me.y, 2);
         }
         bool shift = mouseShiftDown(me);

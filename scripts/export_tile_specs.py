@@ -808,51 +808,60 @@ def generation_aspect_variant_rules_for_entity(enum_name: str, category: str) ->
     return rules
 
 
-def source_canvas_for_entity(enum_name: str, category: str) -> dict[str, Any]:
-    if category in {"units", "animals"}:
+HIGH_RES_GROUND_SOURCE_PX = 1024
+HIGH_RES_ASSET_SOURCE_PX = 512
+
+
+def high_res_source_canvas(group: str, *, footprint: dict[str, int] | None = None) -> dict[str, Any]:
+    if group == "grounds":
         return {
-            "width_px": 48,
-            "height_px": 48,
+            "width_px": HIGH_RES_GROUND_SOURCE_PX,
+            "height_px": HIGH_RES_GROUND_SOURCE_PX,
             "unit": "px",
-            "scope": "per accepted standalone actor sprite frame",
-            "source": "docs/tileset/realm_tileset_visual_audit.md core format table",
+            "scope": "per standalone high-resolution ground source tile",
+            "source": "realm high-resolution source-quality contract",
         }
-    if category == "buildings":
-        return {
-            "width_px": 32,
-            "height_px": 32,
-            "unit": "px",
-            "scope": "per occupied building footprint cell",
-            "source": "docs/tileset/realm_tileset_visual_audit.md core format table",
-        }
+
+    footprint = footprint or {"w": 1, "h": 1}
+    footprint_w = max(1, int(footprint.get("w", 1)))
+    footprint_h = max(1, int(footprint.get("h", 1)))
+    footprint_max = max(footprint_w, footprint_h)
+    source_px = HIGH_RES_ASSET_SOURCE_PX * footprint_max
+    scope = "per accepted standalone high-resolution runtime source image"
+    if group == "buildings":
+        scope = (
+            f"per accepted standalone high-resolution building footprint sprite; "
+            f"{HIGH_RES_ASSET_SOURCE_PX}px per footprint tile on the largest footprint axis"
+        )
+    elif group in {"units", "animals"}:
+        scope = "per accepted standalone high-resolution actor sprite frame"
+    elif group in {"features", "decals"}:
+        scope = "per accepted standalone high-resolution tile-anchored source image"
+    elif group in {"projectiles", "effects", "user_interface"}:
+        scope = "per accepted standalone high-resolution overlay, projectile, effect, or UI source image"
+
+    canvas: dict[str, Any] = {
+        "width_px": source_px,
+        "height_px": source_px,
+        "unit": "px",
+        "scope": scope,
+        "source": "realm high-resolution source-quality contract",
+    }
+    if footprint_w > 1 or footprint_h > 1:
+        canvas["footprint"] = {"w": footprint_w, "h": footprint_h}
+        canvas["source_px_per_footprint_tile"] = HIGH_RES_ASSET_SOURCE_PX
+    return canvas
+
+
+def source_canvas_for_entity(enum_name: str, category: str, footprint: dict[str, int] | None = None) -> dict[str, Any]:
+    if category in {"units", "animals", "buildings"}:
+        return high_res_source_canvas(category, footprint=footprint)
     return {}
 
 
 def source_canvas_for_group(group: str) -> dict[str, Any]:
-    if group == "grounds":
-        return {
-            "width_px": 1024,
-            "height_px": 1024,
-            "unit": "px",
-            "scope": "per standalone high-resolution ground source tile",
-            "source": "realm-tileset-from-images ground contract",
-        }
-    if group in {"features", "decals"}:
-        return {
-            "width_px": 48,
-            "height_px": 48,
-            "unit": "px",
-            "scope": "per accepted standalone tile-anchored source image",
-            "source": "docs/tileset/realm_tileset_visual_audit.md core format table",
-        }
-    if group in {"projectiles", "effects", "user_interface"}:
-        return {
-            "width_px": 32,
-            "height_px": 32,
-            "unit": "px",
-            "scope": "per accepted standalone overlay, projectile, or UI source image",
-            "source": "docs/tileset/realm_tileset_visual_audit.md core format table",
-        }
+    if group in {"grounds", "features", "decals", "projectiles", "effects", "user_interface"}:
+        return high_res_source_canvas(group)
     return {}
 
 
@@ -1139,12 +1148,43 @@ def default_entity_actions(category: str, required_states: str) -> list[dict[str
         action_id = lower_slug(state.replace("/", " "))
         if not action_id:
             continue
+        if category == "animals" and action_id == "idle_graze":
+            action_id = "idle"
+        if category == "animals" and (
+            action_id in {
+                "dead",
+                "decayed",
+                "decayed_skeleton",
+                "dead_unharvested",
+                "partly_harvested",
+                "mostly_harvested",
+                "depleted_skeleton",
+            }
+            or "dead" in state.lower()
+            or "decayed" in state.lower()
+            or "harvested" in state.lower()
+            or "skeleton" in state.lower()
+        ):
+            continue
         actions.append(
             {
                 "id": action_id,
                 "description": state,
                 "source": "docs/tileset/realm_tileset_visual_audit.md",
                 "frames_recommended": 2 if category != "buildings" else 1,
+            }
+        )
+    if category == "animals":
+        actions.append(
+            {
+                "id": "death",
+                "description": "runtime animal death sequence: frame 00 is the freshly dead readable carcass; frame 01 is the same animal's clean depleted skeleton remains",
+                "source": "src/core/entity_animation.cpp",
+                "frames_recommended": 2,
+                "phases": [
+                    "freshly dead animal body lying on the ground, species silhouette still readable",
+                    "clean depleted skeleton remains of the same animal, species silhouette still readable",
+                ],
             }
         )
     return actions
@@ -1280,7 +1320,7 @@ def entity_spec(
             "source_role": profile.get("role", ""),
             "generation_aspect": generation_aspect_spec,
             "generation_aspect_variant_rules": generation_aspect_variant_rules_for_entity(enum_name, category),
-            "source_canvas": source_canvas_for_entity(enum_name, category),
+            "source_canvas": source_canvas_for_entity(enum_name, category, stats["footprint"]),
         },
         "states": states,
         "actions": actions,
@@ -1663,8 +1703,6 @@ def export_specs(out_dir: Path, clean: bool) -> dict[str, Any]:
         )
 
     for enum_name in ground_order:
-        if enum_name == "G_ROAD":
-            continue
         slug = ground_names.get(enum_name, lower_slug(enum_name.removeprefix("G_")))
         spec = ground_spec_v2(enum_name, slug)
         rel = Path("grounds") / f"{slug}.json"

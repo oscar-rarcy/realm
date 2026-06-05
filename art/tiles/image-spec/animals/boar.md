@@ -63,8 +63,8 @@ Generate one Realm sprite reference sheet per direction for **Boar**.
 
 ## Output Resolution
 
-- Final accepted standalone source canvas: 48 by 48 px.
-- Use this resolution from the generated JSON spec for every accepted standalone sprite frame; contact-sheet slots may be larger, but each slot must be cleanly crop/downscale-safe to 48 by 48 px.
+- Final accepted standalone source canvas: 512 by 512 px.
+- Use this resolution from the generated JSON spec for every accepted standalone sprite frame; contact-sheet slots may be larger, but each slot must be cleanly crop/downscale-safe to 512 by 512 px.
 
 ## Image Output Contract
 
@@ -78,29 +78,26 @@ Generate one Realm sprite reference sheet per direction for **Boar**.
 
 ## Entity-Specific Art Notes
 
-- Keep species silhouette readable in living, attacking, fleeing, dead, partly harvested, mostly harvested, and skeleton states.
-- Carcass states should lie naturally on the ground and stay inside the cell; avoid gore-heavy imagery.
-- The depleted skeleton must still suggest the original animal species rather than a generic bone pile.
+- Keep species silhouette readable in living, attacking, fleeing, and runtime death frames.
+- The runtime death action has two frames: frame 00 is the freshly dead animal body, and frame 01 is the same animal's clean depleted skeleton remains.
+- Carcass and skeleton frames should lie naturally on the ground and stay inside the cell; avoid gore-heavy imagery.
 
 ## States To Generate
 
-Generate **one frame for each state**. There are 8 state(s). Each image may contain at most **16 states** in a **4 by 4** grid.
+Generate **one frame for each state**. There are 5 state(s). Each image may contain at most **16 states** in a **4 by 4** grid.
 
-Animal carcass states use four depletion levels: dead unharvested, partly harvested, mostly harvested, and depleted skeleton.
-Harvested animal states must look butchered and processed for food or hide, not rotten, moldy, or naturally decayed.
+Animal runtime death uses two frames: freshly dead readable carcass, then the same animal's clean depleted skeleton remains.
+Do not generate separate partly harvested or mostly harvested runtime actions unless the C++ animation contract adds them.
 
 ### Sheet
 
-Use a **3 by 3** grid for this sheet.
+Use a **3 by 2** grid for this sheet.
 
 - row 1, column 1: `idle` - idle
 - row 1, column 2: `walk` - walk
 - row 1, column 3: `charge` - charge
 - row 2, column 1: `attack` - attack
-- row 2, column 2: `dead_unharvested` - freshly killed animal body lying on the ground, full carcass, species silhouette still readable
-- row 2, column 3: `partly_harvested` - partly butchered and harvested carcass, some meat or hide cleanly removed, species still readable
-- row 3, column 1: `mostly_harvested` - mostly butchered and harvested carcass, clean bones beginning to show, not rotting
-- row 3, column 2: `depleted_skeleton` - fully harvested clean skeleton remains, species silhouette still readable, not decayed or rotten
+- row 2, column 2: `death` - runtime two-frame animal death sequence: freshly dead readable carcass followed by the same animal's clean depleted skeleton remains
 
 ## Production Follow-Up
 
@@ -113,15 +110,12 @@ Use a **3 by 3** grid for this sheet.
 
 ## Prompt
 
-Generate sprites for my Realm Boar. The footprint is 1 by 1 tile(s). Valid directions are front, back. Produce one sheet at a time for the requested direction, using the same state grid for each direction. Create one frame for each of the 8 listed states. Order states left to right and top to bottom within each sheet. Keep the subject consistent across every slot. Final accepted standalone frames use the generated spec resolution: 48 by 48 px. Use a flat pure #ff00ff magenta sheet background and clear gutters between cells. Use clean readable tiny paper-cutout sprite proportions, stable anchor, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork. If animal reference images are supplied, use them only for species identity, pose, facing direction, silhouette, and major colour cues, then redraw into stylized Realm sprite art; do not copy their source style or pixels.
+Generate sprites for my Realm Boar. The footprint is 1 by 1 tile(s). Valid directions are front, back. Produce one sheet at a time for the requested direction, using the same state grid for each direction. Create one frame for each of the 5 listed states. Order states left to right and top to bottom within each sheet. Keep the subject consistent across every slot. Final accepted standalone frames use the generated spec resolution: 512 by 512 px. Use a flat pure #ff00ff magenta sheet background and clear gutters between cells. Use clean readable tiny paper-cutout sprite proportions, stable anchor, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork. If animal reference images are supplied, use them only for species identity, pose, facing direction, silhouette, and major colour cues, then redraw into stylized Realm sprite art; do not copy their source style or pixels.
 
 Slot order:
-- Grid: 3 by 3
+- Grid: 3 by 2
   - row 1, column 1: idle
   - row 1, column 2: walk
   - row 1, column 3: charge
   - row 2, column 1: attack
-  - row 2, column 2: freshly killed animal body lying on the ground, full carcass, species silhouette still readable
-  - row 2, column 3: partly butchered and harvested carcass, some meat or hide cleanly removed, species still readable
-  - row 3, column 1: mostly butchered and harvested carcass, clean bones beginning to show, not rotting
-  - row 3, column 2: fully harvested clean skeleton remains, species silhouette still readable, not decayed or rotten
+  - row 2, column 2: runtime two-frame animal death sequence: freshly dead readable carcass followed by the same animal's clean depleted skeleton remains

@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Realm tileset production review",
+  "type": "object",
+  "properties": {
+    "assets": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/reviewRecord" }
+    },
+    "patterns": {
+      "type": "array",
+      "items": {
+        "allOf": [
+          { "$ref": "#/$defs/reviewRecord" },
+          {
+            "type": "object",
+            "required": ["glob"],
+            "properties": {
+              "glob": { "type": "string" }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "reviewRecord": {
+      "type": "object",
+      "required": ["status", "style_contract"],
+      "properties": {
+        "status": {
+          "enum": [
+            "accepted_runtime_art",
+            "procedural_by_design",
+            "runtime_placeholder",
+            "mockup_runtime_placeholder",
+            "wrong_style_runtime_art",
+            "needs_regeneration"
+          ]
+        },
+        "style_contract": { "type": "string" },
+        "canonical_prompt_export": { "type": "string" },
+        "reference_images": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "generation_ledger_id": { "type": "string" },
+        "reviewed_at": { "type": "string" },
+        "reviewer": { "type": "string" },
+        "notes": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  }
+}

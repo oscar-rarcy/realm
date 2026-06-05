@@ -1,9 +1,10 @@
 {
   "schema": "realm.projectile_tileset.v1",
   "projectile": "tower_bolt",
-  "image": "../effects-ui/tower_bolt_projectile.png",
+  "image": "../../effects-ui/tower_bolt_projectile.png",
   "states": {
-    "in_flight": "../effects-ui/tower_bolt_projectile.png"
+    "in_flight": "../../effects-ui/tower_bolt_projectile.png"
   },
   "notes": "Generated or aliased projectile sprite per exported runtime path."
 }
+

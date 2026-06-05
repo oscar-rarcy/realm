@@ -83,11 +83,11 @@
     },
     "generation_aspect_variant_rules": [],
     "source_canvas": {
-      "width_px": 48,
-      "height_px": 48,
+      "width_px": 512,
+      "height_px": 512,
       "unit": "px",
-      "scope": "per accepted standalone actor sprite frame",
-      "source": "docs/tileset/realm_tileset_visual_audit.md core format table"
+      "scope": "per accepted standalone high-resolution actor sprite frame",
+      "source": "realm high-resolution source-quality contract"
     }
   },
   "states": [
@@ -123,16 +123,14 @@
       "frames_recommended": 2
     },
     {
-      "id": "dead",
-      "description": "dead",
-      "source": "docs/tileset/realm_tileset_visual_audit.md",
-      "frames_recommended": 2
-    },
-    {
-      "id": "decayed_skeleton",
-      "description": "decayed skeleton",
-      "source": "docs/tileset/realm_tileset_visual_audit.md",
-      "frames_recommended": 2
+      "id": "death",
+      "description": "runtime animal death sequence: frame 00 is the freshly dead readable carcass; frame 01 is the same animal's clean depleted skeleton remains",
+      "source": "src/core/entity_animation.cpp",
+      "frames_recommended": 2,
+      "phases": [
+        "freshly dead animal body lying on the ground, species silhouette still readable",
+        "clean depleted skeleton remains of the same animal, species silhouette still readable"
+      ]
     }
   ],
   "paths": {

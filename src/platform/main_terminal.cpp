@@ -4,9 +4,16 @@
 #include "entity_animation.h"
 #include "core/game_events.h"
 #include "input_keys.h"
+#include "platform/fixed_timestep.h"
 
 #include <chrono>
 #include <iostream>
+
+static double steadyNowMs() {
+    using Clock = std::chrono::steady_clock;
+    using MsDouble = std::chrono::duration<double, std::milli>;
+    return std::chrono::duration_cast<MsDouble>(Clock::now().time_since_epoch()).count();
+}
 
 #ifndef USE_SDL_RENDERER
 // Full splash screen. Sets g.biomeChoice and displayMode. Returns numAIs.
@@ -128,21 +135,18 @@ int main(int argc, char** argv) {
     mousemask(ALL_MOUSE_EVENTS | REPORT_MOUSE_POSITION, NULL);
     initColors();
 
-    using Clock = std::chrono::steady_clock;
-    using Ms    = std::chrono::milliseconds;
-
     while (true) {
         int numAIs = showSplash();
         initGame(numAIs);
         emitUiStatusEvent(-1, "Dawn breaks over the realm. Select peasants [Space] and gather [Enter]. [A]=select all military.");
 
-        auto nextTick = Clock::now() + Ms(TICK_MS);
+        double nextTickMs = steadyNowMs() + TICK_MS;
         int lastCx = view.cursorX, lastCy = view.cursorY;
         bool lastDrag = view.dragging;
 
         while (!g.returnToMenu) {
             // Block only as long as needed to reach the next game tick
-            int wait = (int)std::chrono::duration_cast<Ms>(nextTick - Clock::now()).count();
+            int wait = (int)std::max(0.0, nextTickMs - steadyNowMs());
             timeout(std::max(0, wait));
             int ch = getch();
             handleInput(ch);
@@ -155,15 +159,16 @@ int main(int argc, char** argv) {
 
             // Tick and render at fixed rate regardless of input volume
             bool ticked = false;
-            if (Clock::now() >= nextTick) {
-                nextTick += Ms(TICK_MS);
+            FixedTickPlan tickPlan = planFixedTicks(steadyNowMs(), nextTickMs, TICK_MS);
+            nextTickMs = tickPlan.nextTickMs;
+            for (int i = 0; i < tickPlan.ticksToRun; ++i) {
                 if (g.mode != M_PAUSED && g.mode != M_GAME_OVER) {
                     tickSimulationOnce(g, gameEvents(), true);
                     tickUiState(ui);
                 }
-                render();
                 ticked = true;
             }
+            if (ticked) render();
             // Snappy cursor: redraw between ticks when the mouse moved or a drag updated.
             bool cursorMoved = (view.cursorX != lastCx || view.cursorY != lastCy || view.dragging != lastDrag);
             if (!ticked && cursorMoved) render();

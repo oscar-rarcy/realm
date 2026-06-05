@@ -1,9 +1,10 @@
 {
   "schema": "realm.projectile_tileset.v1",
   "projectile": "trebuchet_boulder",
-  "image": "../effects-ui/catapult_boulder_projectile.png",
+  "image": "../../effects-ui/catapult_boulder_projectile.png",
   "states": {
-    "in_flight": "../effects-ui/catapult_boulder_projectile.png"
+    "in_flight": "../../effects-ui/catapult_boulder_projectile.png"
   },
   "notes": "Generated or aliased projectile sprite per exported runtime path."
 }
+

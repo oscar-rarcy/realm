@@ -5,6 +5,7 @@
 #include "input_keys.h"
 #include "gfx_renderer.h"
 #include "entity_animation.h"
+#include "render/ground_shader.h"
 #include "tileset_assets.h"
 
 #include <SDL.h>
@@ -65,6 +66,7 @@ struct Gfx {
 
     bool isometric = true;
     bool asciiOnly = false;
+    bool viewportOnly = false;
     bool asciiSquareMapCells = true;
     bool fullscreen = false;
 
@@ -146,6 +148,9 @@ Color seasonTint(Color base);
 Color timeTint(Color base);
 Color biomeBase(Biome b);
 Color terrainBg(const Tile& t, int x, int y);
+Color groundShaderColor(GroundShaderColor c);
+GroundShaderContext currentGroundShaderContext();
+GroundShaderResult shadeGroundTileForCurrentGame(const Tile& tile, const VisualTileParts& parts, int x, int y);
 Color colorFromHue(int hue);
 Color ownerBg(int owner);
 bool pointInRect(int x, int y, SDL_Rect r);

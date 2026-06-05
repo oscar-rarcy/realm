@@ -41,8 +41,8 @@ Generate a Realm sprite reference sheet for **Lumber Camp**.
 
 ## Output Resolution
 
-- Final accepted standalone source canvas: 32 by 32 px.
-- Use this resolution from the generated JSON spec for every accepted standalone sprite frame; contact-sheet slots may be larger, but each slot must be cleanly crop/downscale-safe to 32 by 32 px.
+- Final accepted standalone source canvas: 1024 by 1024 px.
+- Use this resolution from the generated JSON spec for every accepted standalone sprite frame; contact-sheet slots may be larger, but each slot must be cleanly crop/downscale-safe to 1024 by 1024 px.
 
 ## Image Output Contract
 
@@ -97,7 +97,7 @@ Use a **4 by 4** grid for this sheet.
 
 ## Prompt
 
-Generate sprites for my Realm Lumber Camp. The footprint is 2 by 2 tile(s). Team colour is required and the recommended preview player colour is blue (#00AFFF). Use south direction artwork. Create one frame for each of the 13 listed states. Order states left to right and top to bottom within each sheet. Keep the subject consistent across every slot. Final accepted standalone frames use the generated spec resolution: 32 by 32 px. Use transparent background, or a single flat #ff00ff magenta background if transparency is not available. Use clean readable simplified medieval painted-building proportions, stable anchor, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork. 
+Generate sprites for my Realm Lumber Camp. The footprint is 2 by 2 tile(s). Team colour is required and the recommended preview player colour is blue (#00AFFF). Use south direction artwork. Create one frame for each of the 13 listed states. Order states left to right and top to bottom within each sheet. Keep the subject consistent across every slot. Final accepted standalone frames use the generated spec resolution: 1024 by 1024 px. Use transparent background, or a single flat #ff00ff magenta background if transparency is not available. Use clean readable simplified medieval painted-building proportions, stable anchor, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork. 
 
 Slot order:
 - Grid: 4 by 4

@@ -34,6 +34,6 @@ This prompt set treats seasons, weather, night, and depletion as visual states f
 
 ## Animals
 
-- Animals use four carcass states after death: dead unharvested, partly harvested, mostly harvested, and depleted skeleton.
-- The depleted state for animals is always a skeleton.
+- Animals use the runtime `death` action with two frames: freshly dead readable carcass, then the same animal's clean depleted skeleton remains.
+- Do not create separate partly harvested or mostly harvested runtime actions unless the C++ animation contract adds them.
 - Equipment and durable objects should remain visible on military units and vehicles; animal carcasses should keep species silhouette readable.

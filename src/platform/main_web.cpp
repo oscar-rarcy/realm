@@ -7,6 +7,7 @@
 #include "commands/command.h"
 #include "commands/command_runner.h"
 #include "core/game_events.h"
+#include "platform/fixed_timestep.h"
 
 #include <emscripten/emscripten.h>
 #include <SDL.h>
@@ -22,6 +23,8 @@ double nextTickMs = 0.0;
 bool initialized = false;
 bool menuReadyLogged = false;
 bool asciiOnlySurface = false;
+bool embedMode = false;
+bool embedLossNotified = false;
 int menuAIs = 1;
 int menuBiomeIdx = 7;
 
@@ -97,14 +100,9 @@ static bool isEmbedRoute() {
         if (typeof window === 'undefined' || !window.location || typeof window.location.pathname !== 'string') {
             return 0;
         }
-        var path = window.location.pathname.toLowerCase();
-        var search = (window.location.search || "").toLowerCase();
-        var hash = (window.location.hash || "").toLowerCase();
-        if (search.indexOf('embed') !== -1 || hash.indexOf('embed') !== -1) return 1;
-
-        var segments = path.split('/');
+        var segments = String(window.location.pathname || "/").split("/");
         for (var i = 0; i < segments.length; i++) {
-            if (segments[i] === 'embed') return 1;
+            if (String(segments[i]).toLowerCase() === "embed") return 1;
         }
         return 0;
     });
@@ -135,7 +133,16 @@ void notifyReady() {
     });
 }
 
+void notifyEmbedLoss() {
+    EM_ASM({
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('realm-embed-loss'));
+        }
+    });
+}
+
 void startMatch(int numAIs, bool deterministic) {
+    embedLossNotified = false;
     if (deterministic) {
         g.biomeChoice = settingInt("REALM_WEB_BIOME", "biome", B_TEMPERATE);
         if (g.biomeChoice < -1 || g.biomeChoice > B_OCEAN) g.biomeChoice = B_TEMPERATE;
@@ -215,15 +222,18 @@ void frame() {
         return;
     }
 
-    double now = emscripten_get_now();
-    int safety = 0;
-    while (now >= nextTickMs && safety < 4) {
-        nextTickMs += TICK_MS;
+    FixedTickPlan tickPlan = planFixedTicks(emscripten_get_now(), nextTickMs, TICK_MS);
+    nextTickMs = tickPlan.nextTickMs;
+    for (int i = 0; i < tickPlan.ticksToRun; ++i) {
         if (g.mode != M_PAUSED && g.mode != M_GAME_OVER) {
             tickSimulationOnce(g, gameEvents(), true);
             tickUiState(ui);
         }
-        safety++;
+    }
+
+    if (embedMode && g.mode == M_GAME_OVER && g.winner != 0 && !embedLossNotified) {
+        embedLossNotified = true;
+        notifyEmbedLoss();
     }
 
     gfxRender();
@@ -363,6 +373,14 @@ int realm_web_context_menu_option_count() {
     return commandContextMenuOptionCount();
 }
 
+EMSCRIPTEN_KEEPALIVE
+void realm_web_test_force_loss() {
+    if (webScreen != WEB_MATCH) return;
+    g.players[0].alive = false;
+    g.winner = -1;
+    g.mode = M_GAME_OVER;
+}
+
 }
 
 int main() {
@@ -379,6 +397,7 @@ int main() {
         displayMode = DM_EMOJI;
     }
     const bool startedFromEmbed = isEmbedRoute();
+    embedMode = startedFromEmbed;
 
     if (!gfxInit()) {
         std::cerr << "realm: web gfxInit failed\n";
@@ -387,6 +406,8 @@ int main() {
 
     gfxSetAsciiSquareMapCells(settings.asciiSquareMapCells);
     gfxSetAsciiOnly(asciiOnlySurface);
+    gfxSetViewportOnly(startedFromEmbed);
+    gfxSetEdgeScrollEnabled(!startedFromEmbed);
     gfxResetZoomForDisplayMode();
     gfxSetProjection(true);
 

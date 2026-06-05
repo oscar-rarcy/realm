@@ -1,5 +1,6 @@
 #include "order_service.h"
 #include "realm.h"
+#include "core/entity_facing.h"
 #include "core/entity_query.h"
 #include "core/game_events.h"
 #include "core/world_index.h"
@@ -144,6 +145,16 @@ ServiceResult startSingleAttack(Game& game, const WorldIndex& world, EventSink& 
     unit.holdPosition = 0;
     unit.state = S_ATTACKING;
     unit.targetId = targetId;
+    unit.targetX = target->x;
+    unit.targetY = target->y;
+    unit.stuckTicks = 0;
+    faceEntityTowardTile(unit, target->x, target->y);
+    if (dist(unit.x, unit.y, target->x, target->y) > unitRange(game, unit)) {
+        unit.path = findPathFor(game, unit, target->x, target->y);
+    } else {
+        unit.path.clear();
+    }
+    unit.pathIdx = 0;
     emitActionMarker(events, unit.owner, { target->x, target->y }, '!');
     return ok();
 }
@@ -162,6 +173,7 @@ ServiceResult startSingleGather(Game& game, const WorldIndex& world, EventSink& 
         unit.targetX = target.x;
         unit.targetY = target.y;
         unit.targetId = -1;
+        faceEntityTowardTile(unit, target.x, target.y);
         emitActionMarker(events, unit.owner, target, '+');
         int bestAX = target.x, bestAY = target.y, bestAD = 99999;
         for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
@@ -198,6 +210,8 @@ ServiceResult startSingleGather(Game& game, const WorldIndex& world, EventSink& 
     unit.state = S_GATHERING;
     unit.targetX = target.x;
     unit.targetY = target.y;
+    unit.targetId = -1;
+    faceEntityTowardTile(unit, target.x, target.y);
     emitActionMarker(events, unit.owner, target, '+');
     bool naval = isNaval(unit.type);
     int bestAX = target.x, bestAY = target.y, bestAD = 99999;
@@ -227,6 +241,7 @@ ServiceResult startSingleHelp(Game& game, const WorldIndex& world, Entity& unit,
     unit.targetId = targetId;
     unit.targetX = target->x;
     unit.targetY = target->y;
+    faceEntityTowardTile(unit, target->x, target->y);
     int targetW = STATS[target->type].sizeW;
     int targetH = STATS[target->type].sizeH;
     int bestAX = target->x - 1, bestAY = target->y, bestAD = 99999;

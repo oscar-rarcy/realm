@@ -21,6 +21,7 @@ from PIL import Image, ImageColor, ImageDraw, ImageFont
 
 SELF_TILE = "self_tile"
 ADJACENT_TARGET = "adjacent_target_tile_or_entity"
+DEFAULT_RUNTIME_SPRITE_SIZE = 512
 
 FIT_PROFILES: dict[str, dict[str, Any]] = {
     "standing": {"max_w": 34, "max_h": 42, "anchor": [24, 39], "padding": 4},
@@ -142,6 +143,44 @@ def normalize_unit_spec(raw: dict[str, Any], source: str) -> dict[str, Any]:
         else:
             raw["directions"] = ["front", "back"]
     return raw
+
+
+def spec_source_canvas(spec: dict[str, Any] | None) -> dict[str, Any]:
+    if not isinstance(spec, dict):
+        return {}
+    art = spec.get("art")
+    if isinstance(art, dict) and isinstance(art.get("source_canvas"), dict):
+        return art["source_canvas"]
+    if isinstance(spec.get("source_canvas"), dict):
+        return spec["source_canvas"]
+    return {}
+
+
+def runtime_size_for_spec(spec: dict[str, Any] | None, requested_size: int | None = None) -> int:
+    if requested_size and requested_size > 0:
+        return int(requested_size)
+    canvas = spec_source_canvas(spec)
+    try:
+        width = int(canvas.get("width_px", 0))
+        height = int(canvas.get("height_px", 0))
+    except (TypeError, ValueError):
+        width = 0
+        height = 0
+    return max(DEFAULT_RUNTIME_SPRITE_SIZE, width, height)
+
+
+def spec_footprint(spec: dict[str, Any] | None) -> tuple[int, int]:
+    if not isinstance(spec, dict):
+        return (1, 1)
+    placement = spec.get("placement")
+    if isinstance(placement, dict) and isinstance(placement.get("footprint"), dict):
+        fp = placement["footprint"]
+        return (max(1, int(fp.get("w", 1))), max(1, int(fp.get("h", 1))))
+    runtime = spec.get("runtime")
+    if isinstance(runtime, dict) and isinstance(runtime.get("legacy_footprint"), dict):
+        fp = runtime["legacy_footprint"]
+        return (max(1, int(fp.get("w", 1))), max(1, int(fp.get("h", 1))))
+    return (1, 1)
 
 
 def default_spec_binary() -> Path | None:
@@ -1053,6 +1092,9 @@ def frame_prompt_text(
     ref_lines = "\n".join(f"- Use visual reference: {ref}" for ref in refs) or "- No external reference image was provided; use the generated image-json/image-spec contract and any user-pasted reference."
     tool_line = f"\nTool/object constraint: show a {spec['tool']}." if "tool" in spec else ""
     carry_line = f"\nCarried object constraint: keep the {spec['carry']} stable and readable across gait phases." if "carry" in spec else ""
+    canvas = spec_source_canvas(unit_spec)
+    canvas_w = int(canvas.get("width_px", 512) or 512)
+    canvas_h = int(canvas.get("height_px", canvas_w) or canvas_w)
     if asset_type in {"ground", "decal"}:
         target_line = "This is surface artwork; do not include upright units, buildings, UI labels, or unrelated neighbouring tiles."
     elif asset_type in {"feature", "building"}:
@@ -1067,9 +1109,9 @@ def frame_prompt_text(
         )
     return f"""Use case: stylized-concept
 Asset type: single production source sprite for a 2D RTS game tileset
-Primary request: Generate exactly one square 1024x1024 image for Realm {asset_name} ({asset_type}) action `{action_id}`, direction `{direction}`, frame {frame}.
+Primary request: Generate exactly one {canvas_w}x{canvas_h} image for Realm {asset_name} ({asset_type}) action `{action_id}`, direction `{direction}`, frame {frame}.
 
-Style and identity: {sentence(design_line)} Keep the same Realm small-RTS camera angle, scale, lighting, palette, outline thickness, and readable 48x48 silhouette across frames.{team_line}
+Style and identity: {sentence(design_line)} Keep the same Realm small-RTS camera angle, scale, lighting, palette, outline thickness, and readable close-zoom silhouette across frames.{team_line}
 
 Action meaning: {spec.get("description", "")}
 
@@ -1185,6 +1227,7 @@ def default_manifest_placement(asset_type: str, size: int) -> dict[str, Any]:
 
 
 def build_manifest(args: argparse.Namespace, assumptions: list[str], unit_spec: dict[str, Any] | None = None) -> dict[str, Any]:
+    args.size = runtime_size_for_spec(unit_spec, getattr(args, "size", None))
     directions = spec_directions(unit_spec)
     actions = {}
     for spec in spec_actions(unit_spec):
@@ -1207,14 +1250,19 @@ def build_manifest(args: argparse.Namespace, assumptions: list[str], unit_spec: 
             entry["transition_after_ms"] = spec["transition_after_ms"]
         actions[spec["id"]] = entry
     asset_type = spec_asset_type(unit_spec or {})
+    placement = default_manifest_placement(asset_type, args.size)
+    footprint_w, footprint_h = spec_footprint(unit_spec)
+    placement["footprint"] = [footprint_w, footprint_h]
+    source_canvas = spec_source_canvas(unit_spec)
     return {
         "schema": "realm.entity_tileset.v1",
         "entity": args.entity,
         "asset_type": asset_type,
         "sprite_size": args.size,
+        "source_canvas": source_canvas,
         "team_color_source": getattr(args, "team_color", "#0088cc"),
         "source_key_color": getattr(args, "magenta", "#ff00ff"),
-        "placement": default_manifest_placement(asset_type, args.size),
+        "placement": placement,
         "directions": directions,
         "actions": actions,
         "assumptions": assumptions,
@@ -1535,7 +1583,7 @@ def safe_int(value: Any, default: int = 0) -> int:
 
 
 def resolved_row_placement(manifest: dict[str, Any], action: dict[str, Any], frame: dict[str, Any]) -> dict[str, Any]:
-    size = int(manifest.get("sprite_size", 48) or 48)
+    size = int(manifest.get("sprite_size", DEFAULT_RUNTIME_SPRITE_SIZE) or DEFAULT_RUNTIME_SPRITE_SIZE)
     placement = default_manifest_placement(str(manifest.get("asset_type", "unit")), size)
     if isinstance(manifest.get("placement"), dict):
         placement.update(manifest["placement"])
@@ -2215,6 +2263,7 @@ def command_split_batch_source(args: argparse.Namespace) -> None:
 def command_process_frame(args: argparse.Namespace) -> None:
     entity = args.entity.strip().lower().replace("_", "-")
     unit_spec = load_unit_spec(entity, args.spec_source, args.spec_binary, args.spec_json)
+    args.size = runtime_size_for_spec(unit_spec, args.size)
     spec = action_spec(args.action, unit_spec)
     if args.direction not in spec_directions(unit_spec):
         raise SystemExit(f"unknown direction for {entity}: {args.direction}. Known directions: {', '.join(spec_directions(unit_spec))}")
@@ -2511,7 +2560,7 @@ def build_parser() -> argparse.ArgumentParser:
     process.add_argument("--input", required=True)
     process.add_argument("--out", default="assets/tiles/entities")
     process.add_argument("--workbench", default="art/tiles/workbench")
-    process.add_argument("--size", type=int, default=48)
+    process.add_argument("--size", type=int, help="override generated spec source-canvas size")
     process.add_argument("--magenta", default="#ff00ff")
     process.add_argument("--magenta-threshold", type=float, default=62.0)
     process.add_argument("--team-color", default="#0088cc")
@@ -2528,7 +2577,7 @@ def build_parser() -> argparse.ArgumentParser:
     assemble.add_argument("--out", default="assets/tiles/entities")
     assemble.add_argument("--workbench", default="art/tiles/workbench")
     assemble.add_argument("--review-out", default="build/tileset-review/peasant-single")
-    assemble.add_argument("--size", type=int, default=48)
+    assemble.add_argument("--size", type=int, help="override generated spec source-canvas size")
     assemble.add_argument("--magenta", default="#ff00ff")
     assemble.add_argument("--team-color", default="#0088cc")
     assemble.set_defaults(func=command_assemble)

@@ -11,15 +11,18 @@
 #include "core/build_service.h"
 #include "core/game_context.h"
 #include "core/game_events.h"
+#include "core/entity_motion.h"
 #include "core/order_service.h"
 #include "core/production_service.h"
 #include "core/research_service.h"
 #include "core/market_service.h"
 #include "core/world_index.h"
+#include "render/ground_shader.h"
 #include "render/render_model.h"
 #include "sim/save_migration.h"
 #include "sim/save_reader.h"
 #include "sim/save_service.h"
+#include "platform/fixed_timestep.h"
 
 #include <cassert>
 #include <algorithm>
@@ -401,6 +404,73 @@ static void testVisualTileBridgeMappings() {
     assert(tile.wear == 80);
 }
 
+static bool sameGroundShaderColor(GroundShaderColor a, GroundShaderColor b) {
+    return a.r == b.r && a.g == b.g && a.b == b.b && a.a == b.a;
+}
+
+static bool sameGroundShaderResult(const GroundShaderResult& a, const GroundShaderResult& b) {
+    return sameGroundShaderColor(a.baseFill, b.baseFill)
+        && sameGroundShaderColor(a.textureMod, b.textureMod)
+        && sameGroundShaderColor(a.overlayTint, b.overlayTint)
+        && a.drawOverlay == b.drawOverlay;
+}
+
+static void assertShaderColorInRange(GroundShaderColor c) {
+    assert(c.r <= 255);
+    assert(c.g <= 255);
+    assert(c.b <= 255);
+    assert(c.a <= 255);
+}
+
+static void testGroundShaderDeterministicVariation() {
+    GroundShaderContext context{};
+    context.season = SUMMER;
+    context.seasonProgress = 0.65f;
+    context.weather = W_CLEAR;
+    context.tick = 240;
+
+    Tile grass{};
+    grass.terrain = T_GRASS;
+    grass.biome = B_TEMPERATE;
+    grass.resources = 0;
+    grass.wear = 0;
+    VisualTileParts grassParts = visualPartsForTile(grass);
+
+    GroundShaderResult first = shadeGroundTile(grass, grassParts, 12, 18, context);
+    GroundShaderResult repeated = shadeGroundTile(grass, grassParts, 12, 18, context);
+    GroundShaderResult neighbor = shadeGroundTile(grass, grassParts, 13, 18, context);
+    assert(sameGroundShaderResult(first, repeated));
+    assert(!sameGroundShaderResult(first, neighbor));
+    assert(first.drawOverlay);
+    assert(first.overlayTint.a > 0);
+    assertShaderColorInRange(first.baseFill);
+    assertShaderColorInRange(first.textureMod);
+    assertShaderColorInRange(first.overlayTint);
+
+    Tile berry = grass;
+    berry.terrain = T_BERRY;
+    berry.resources = 70;
+    VisualTileParts berryParts = visualPartsForTile(berry);
+    assert(berryParts.ground == grassParts.ground);
+    GroundShaderResult berryShade = shadeGroundTile(berry, berryParts, 12, 18, context);
+    assert(sameGroundShaderColor(first.textureMod, berryShade.textureMod));
+
+    Tile water = grass;
+    water.terrain = T_WATER;
+    water.biome = B_OCEAN;
+    VisualTileParts waterParts = visualPartsForTile(water);
+    GroundShaderResult waterShade = shadeGroundTile(water, waterParts, 12, 18, context);
+    assert(waterShade.drawOverlay);
+    assert(waterShade.overlayTint.a < first.overlayTint.a);
+    assert(!sameGroundShaderColor(first.textureMod, waterShade.textureMod));
+
+    GroundShaderContext winter = context;
+    winter.season = WINTER;
+    winter.weather = W_SNOW;
+    GroundShaderResult winterGrass = shadeGroundTile(grass, grassParts, 12, 18, winter);
+    assert(!sameGroundShaderColor(first.baseFill, winterGrass.baseFill));
+}
+
 static void testWeatherSightAndForestMovementPenalties() {
     initGameWithSeed(0, 2751u, 0);
     for (int y = 40; y <= 60; y++) for (int x = 40; x <= 65; x++) {
@@ -439,6 +509,95 @@ static void testWeatherSightAndForestMovementPenalties() {
     assert(knight->visualMoveToX == 53 && knight->visualMoveToY == 50);
     assert(knight->visualMoveDurationTicks == knight->moveCd + 1);
     assert(knight->visualMoveSeq > 0);
+}
+
+static void testAdjacentActionsWaitForCompletedApproach() {
+    Game local{};
+    local.nextId = 1;
+    local.map[10][11].terrain = T_GOLD;
+    local.map[10][11].resources = 100;
+
+    int peasantId = spawnEntity(local, E_PEASANT, 0, 9, 10);
+    WorldIndex world = buildWorldIndex(local);
+    ServiceResult gather = startGather(local, world, gameEvents(), 0,
+                                       Selection{ peasantId, { peasantId } }, { 11, 10 });
+    assert(gather.ok);
+    Entity* peasant = findEntity(local, world, peasantId);
+    assert(peasant);
+    assert(!peasant->path.empty());
+    assert(std::string(entityAnimationActionId(local, world, *peasant)) == "walk");
+
+    auto tickPeasant = [&]() {
+        world = buildWorldIndex(local);
+        Entity* current = findEntity(local, world, peasantId);
+        assert(current);
+        tickEntity(local, world, gameEvents(), *current);
+        world = buildWorldIndex(local);
+        peasant = findEntity(local, world, peasantId);
+        assert(peasant);
+    };
+
+    tickPeasant();
+    assert(peasant->x == 10 && peasant->y == 10);
+    int gatherSettleTicks = peasant->moveCd;
+    assert(gatherSettleTicks > 0);
+    assert(entityHasActivePathMotion(*peasant));
+    assert(std::string(entityAnimationActionId(local, world, *peasant)) == "walk");
+    assert(peasant->gatherCd == 0);
+    assert(local.map[10][11].resources == 100);
+
+    for (int i = 0; i < gatherSettleTicks; ++i) {
+        tickPeasant();
+        assert(peasant->gatherCd == 0);
+        assert(local.map[10][11].resources == 100);
+    }
+    assert(peasant->moveCd == 0);
+    assert(!entityHasActivePathMotion(*peasant));
+    tickPeasant();
+    assert(peasant->gatherCd == 1);
+    assert(std::string(entityAnimationActionId(local, world, *peasant)) == "mine_gold");
+
+    Game attackLocal{};
+    attackLocal.nextId = 1;
+    int attackerId = spawnEntity(attackLocal, E_PEASANT, 0, 9, 10);
+    int targetId = spawnEntity(attackLocal, E_BOAR, OWNER_NATURE, 11, 10);
+    WorldIndex attackWorld = buildWorldIndex(attackLocal);
+    Entity* target = findEntity(attackLocal, attackWorld, targetId);
+    assert(target);
+    int targetHpBefore = target->hp;
+    ServiceResult attack = startAttack(attackLocal, attackWorld, gameEvents(), 0,
+                                       Selection{ attackerId, { attackerId } }, targetId);
+    assert(attack.ok);
+    Entity* attacker = findEntity(attackLocal, attackWorld, attackerId);
+    assert(attacker);
+    assert(!attacker->path.empty());
+    assert(std::string(entityAnimationActionId(attackLocal, attackWorld, *attacker)) == "walk");
+
+    auto tickAttacker = [&]() {
+        attackWorld = buildWorldIndex(attackLocal);
+        Entity* current = findEntity(attackLocal, attackWorld, attackerId);
+        assert(current);
+        tickEntity(attackLocal, attackWorld, gameEvents(), *current);
+        attackWorld = buildWorldIndex(attackLocal);
+        attacker = findEntity(attackLocal, attackWorld, attackerId);
+        target = findEntity(attackLocal, attackWorld, targetId);
+        assert(attacker && target);
+    };
+
+    tickAttacker();
+    assert(attacker->x == 10 && attacker->y == 10);
+    int attackSettleTicks = attacker->moveCd;
+    assert(attackSettleTicks > 0);
+    assert(entityHasActivePathMotion(*attacker));
+    assert(target->hp == targetHpBefore);
+    for (int i = 0; i < attackSettleTicks; ++i) {
+        tickAttacker();
+        assert(target->hp == targetHpBefore);
+    }
+    assert(attacker->moveCd == 0);
+    tickAttacker();
+    assert(target->hp < targetHpBefore);
+    assert(std::string(entityAnimationActionId(attackLocal, attackWorld, *attacker)) == "club_attack");
 }
 
 static void testVisualEntityStateSelectors() {
@@ -673,6 +832,15 @@ static void testViewStateHelpers() {
     state.cursorY = MAP_H + 10;
     clampCursorToMap(state);
     assert(state.cursorX == 0 && state.cursorY == MAP_H - 1);
+
+    state.viewX = 5;
+    state.viewY = 7;
+    setEdgeScrollEnabled(false);
+    assert(!edgeScrollViewport(state, 0, 2, 2));
+    assert(state.viewX == 5 && state.viewY == 7);
+    setEdgeScrollEnabled(true);
+    assert(edgeScrollViewport(state, 0, 2, 2));
+    assert(state.viewX == 3 && state.viewY == 5);
 
     const int screenWidth = 100;
     const int panelW = 24;
@@ -994,6 +1162,8 @@ static void testSupplyAndTownHallCost() {
     assert(localMilitia);
     assert(localMilitia->state == S_ATTACKING);
     assert(localMilitia->targetId == localEnemyId);
+    assert(localMilitia->targetX == 65 && localMilitia->targetY == 55);
+    assert(localMilitia->facingDx == 1 && localMilitia->facingDy == 0);
     Entity* localEnemy = findEntity(local, attackWorld, localEnemyId);
     assert(localEnemy);
     localMilitia->x = localEnemy->x;
@@ -1010,6 +1180,20 @@ static void testSupplyAndTownHallCost() {
     assert(local.attackNotifyCd == 200);
     assert(g.attackNotifyCd == globalAttackNotifyBefore);
     assert(g.projectiles.size() == globalProjectileCountBefore);
+
+    int localPeasantId = spawnEntity(local, E_PEASANT, 0, 66, 56);
+    int localBoarId = spawnEntity(local, E_BOAR, OWNER_NATURE, 65, 55);
+    WorldIndex boarAttackWorld = buildWorldIndex(local);
+    ServiceResult boarAttackResult = startAttack(local, boarAttackWorld, gameEvents(), 0,
+                                                 Selection{ localPeasantId, { localPeasantId } }, localBoarId);
+    assert(boarAttackResult.ok);
+    Entity* localPeasant = findEntity(local, boarAttackWorld, localPeasantId);
+    assert(localPeasant);
+    assert(localPeasant->state == S_ATTACKING);
+    assert(localPeasant->targetX == 65 && localPeasant->targetY == 55);
+    assert(localPeasant->facingDx == -1 && localPeasant->facingDy == -1);
+    assert(std::string(entityAnimationActionId(local, boarAttackWorld, *localPeasant)) == "club_attack");
+    assert(std::string(entityAnimationDirectionBucket(*localPeasant)) == "back");
 
     int localTowerId = spawnEntity(local, E_TOWER, 0, 58, 55);
     int localArcherId = spawnEntity(local, E_ARCHER, 0, 58, 56);
@@ -2962,6 +3146,18 @@ static void testEntityAnimationSpecs() {
     assert(std::string(entityAnimationDirectionBucket(e)) == "back");
     assert(entityAnimationMirrorHorizontal(e));
 
+    e.state = S_ATTACKING;
+    e.x = 10;
+    e.y = 10;
+    e.targetX = 9;
+    e.targetY = 9;
+    e.facingDx = 1;
+    e.facingDy = 0;
+    e.path.clear();
+    e.pathIdx = 0;
+    assert(std::string(entityAnimationActionId(animationGame, animationWorld, e)) == "club_attack");
+    assert(std::string(entityAnimationDirectionBucket(e)) == "back");
+
     e.state = S_MOVING;
     e.path = {{11, 10}};
     e.pathIdx = 0;
@@ -3527,11 +3723,31 @@ static void testSimulationTickWorldIndexBuildBudget() {
     assert(worldIndexBuildCount() <= 6);
 }
 
+static void testFixedTickPlanDropsStaleBacklog() {
+    FixedTickPlan notDue = planFixedTicks(1000.0, 1080.0, 80);
+    assert(notDue.ticksToRun == 0);
+    assert(notDue.nextTickMs == 1080.0);
+
+    FixedTickPlan due = planFixedTicks(1000.0, 1000.0, 80);
+    assert(due.ticksToRun == 1);
+    assert(due.nextTickMs == 1080.0);
+
+    FixedTickPlan capped = planFixedTicks(1240.0, 1000.0, 80);
+    assert(capped.ticksToRun == 2);
+    assert(capped.nextTickMs == 1320.0);
+
+    FixedTickPlan stale = planFixedTicks(10000.0, 1000.0, 80);
+    assert(stale.ticksToRun == 1);
+    assert(stale.nextTickMs == 10080.0);
+}
+
 int main() {
     testEntityAnimationSpecs();
     testCorpseDecayLifecycle();
     testVisualTileBridgeMappings();
+    testGroundShaderDeterministicVariation();
     testWeatherSightAndForestMovementPenalties();
+    testAdjacentActionsWaitForCompletedApproach();
     testVisualEntityStateSelectors();
     testRenderModelBuildsViewport();
     testLocalGameRng();
@@ -3571,6 +3787,7 @@ int main() {
     testWorldIndexParity();
     testStopCurrentSelectionDispatchesCommand();
     testSimulationTickWorldIndexBuildBudget();
+    testFixedTickPlanDropsStaleBacklog();
     testBerryGatherAndDepletion();
     testMillFoodStockpile();
     testWinterPartialWaterFreeze();

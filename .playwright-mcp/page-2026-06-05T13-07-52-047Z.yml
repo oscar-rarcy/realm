@@ -1,0 +1,49 @@
+- main [ref=e2]:
+  - generic:
+    - generic:
+      - generic:
+        - generic: REALM
+        - generic: "-- Medieval Warlord --"
+        - generic:
+          - generic:
+            - generic: You are lord of a small settlement in a hostile realm. Gather resources, build an army, and outlast every rival.
+            - generic:
+              - generic: CONTROLS
+              - generic:
+                - generic:
+                  - generic: Space/click
+                  - generic: Select unit or building
+                - generic:
+                  - generic: Enter/R-click
+                  - generic: Command (move/attack/gather)
+                - generic:
+                  - generic: Mouse wheel
+                  - generic: Zoom in/out
+                - generic:
+                  - generic: Middle-drag
+                  - generic: Pan the map
+                - generic:
+                  - generic: B/T/A/H/P
+                  - generic: Build / Train / Military / Town hall / Pause
+            - generic:
+              - generic: OPPONENTS
+              - generic: "[1] Duel [2] Three-way [3] Four-way"
+            - generic:
+              - generic: BIOME
+              - generic: "[0] Random [T] Temperate [D] Desert [S] Snow [W] Swamp [F] Forest [C] Coastal"
+            - generic:
+              - generic: DISPLAY
+              - generic: "[4] ASCII [5] Tileset > Tileset"
+            - generic:
+              - generic: ASCII MAP
+              - generic: "[6] Map cells: Square"
+            - generic:
+              - generic: "> Opponents: 1 Biome: Random"
+              - generic: "[Enter] Start game [Q/X] Quit"
+          - generic:
+            - generic: PLAYER COLOUR
+            - generic: You + CPUs
+      - generic:
+        - generic:
+          - generic: ">"
+          - generic: Downloading data... (18022277/45337041)

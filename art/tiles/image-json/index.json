@@ -30,6 +30,12 @@
         "path": "grounds/dirt.json"
       },
       {
+        "enum": "G_ROAD",
+        "name": "Road",
+        "slug": "road",
+        "path": "grounds/road.json"
+      },
+      {
         "enum": "G_MUD",
         "name": "Mud",
         "slug": "mud",

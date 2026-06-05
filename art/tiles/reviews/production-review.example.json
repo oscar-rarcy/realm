@@ -1,0 +1,25 @@
+{
+  "assets": {
+    "assets/tiles/entities/peasant/idle/front/frame_00_base.png": {
+      "status": "accepted_runtime_art",
+      "style_contract": "realm_paper_cutout_small_tile",
+      "canonical_prompt_export": "art/tiles/image-spec/entities/peasant.md",
+      "reference_images": [
+        "art/reference/ground/grass.png",
+        "art/tiles/candidates/entities/peasant/idle_seed.png"
+      ],
+      "generation_ledger_id": "tileset-20260605T000000Z-example",
+      "reviewed_at": "2026-06-05",
+      "reviewer": "human",
+      "notes": "Example only. Replace with real accepted art evidence."
+    }
+  },
+  "patterns": [
+    {
+      "glob": "assets/tiles/effects-ui/debug_*.png",
+      "status": "procedural_by_design",
+      "style_contract": "debug_overlay",
+      "notes": "Debug-only overlay; not production art."
+    }
+  ]
+}

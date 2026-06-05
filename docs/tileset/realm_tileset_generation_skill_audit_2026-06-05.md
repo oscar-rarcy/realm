@@ -793,3 +793,20 @@ The generation run did not fail because image generation is unusable. It failed 
 - runtime-selected vs visually coherent.
 
 The paper-cutout style can work. The archer, animals, and fishing boat show the direction. The next iteration should focus on enforcing the style and evidence pipeline before generating more assets.
+
+## Follow-Up Implementation Notes: 2026-06-05 Ground And Wiring Pass
+
+After the skill hardening pass, the immediate production blockers were reduced to ground placeholders and missing SDL draw paths.
+
+- Added `road` as a canonical ground export instead of treating the runtime `assets/tiles/grounds/road.png` requirement as an ad-hoc prompt exception.
+- Regenerated canonical `art/tiles/image-spec` and `art/tiles/image-json` exports; the export count is now 19 grounds.
+- Generated the 18 placeholder-sized ground assets from prebuilt 2 by 2 grids with visible positive ground references and complete candidate/provenance files under `art/tiles/candidates/grounds/generated_ground_batch_2026-06-05`.
+- Promoted those 18 grounds to `assets/tiles/grounds/*.png` as 1024 by 1024 runtime PNGs with zero opaque magenta in the promoted crops.
+- Added SDL tileset loader/draw support for feature, decal, projectile, and effects/UI image lanes so those asset groups are no longer only file-system artifacts.
+- Updated `scripts/tileset_quality_audit.py` so the lane-wiring gate is evidence-based rather than hard-coded to fail whenever those asset folders exist.
+- The targeted quality audit now reports `issues=0`.
+
+Caveats:
+
+- This follow-up did not re-run a native build, graphical smoke test, or browser smoke test.
+- The broad visual-style problem for many older generated actors/buildings still remains a quality concern even though the current runtime asset/wiring audit is green.

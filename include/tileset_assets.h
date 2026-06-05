@@ -99,4 +99,13 @@ TilesetAssetFrame tilesetLoadGroundTileIso(SDL_Renderer* renderer, GroundType gr
                                            int width, int height);
 TilesetAssetFrame tilesetLoadUnknownGroundTileIso(SDL_Renderer* renderer,
                                                   int width, int height);
+TilesetAssetFrame tilesetLoadFeatureTileScaled(SDL_Renderer* renderer, FeatureType feature,
+                                               FeatureState state, const std::string& layer,
+                                               int width, int height);
+TilesetAssetFrame tilesetLoadDecalTileScaled(SDL_Renderer* renderer, VisualDecalType decal,
+                                             int width, int height);
+TilesetAssetFrame tilesetLoadProjectileTileScaled(SDL_Renderer* renderer, ProjectileType projectile,
+                                                  int width, int height);
+TilesetAssetFrame tilesetLoadEffectUiTileScaled(SDL_Renderer* renderer, const std::string& assetId,
+                                                int width, int height);
 void tilesetAssetsClear();

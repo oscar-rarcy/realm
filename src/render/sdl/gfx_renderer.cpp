@@ -1,4 +1,5 @@
 #include "render/sdl/sdl_splash.h"
+#include "render/sdl/sdl_profiler.h"
 #include "realm.h"
 #include "commands/command.h"
 #include "commands/command_runner.h"
@@ -19,13 +20,28 @@ bool gfxInit() {
         std::cerr << "TTF_Init failed: " << TTF_GetError() << "\n"; return false;
     }
 
-    s.win = SDL_CreateWindow("Realm - graphical terminal renderer",
+    s.win = SDL_CreateWindow("Realm",
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, s.winW, s.winH,
         SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
     if (!s.win) { std::cerr << "SDL_CreateWindow failed: " << SDL_GetError() << "\n"; return false; }
-    s.ren = SDL_CreateRenderer(s.win, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    const bool profiling = std::getenv("REALM_PROFILE_TILESET") != nullptr;
+    Uint32 rendererFlags = SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE;
+    if (!profiling) rendererFlags |= SDL_RENDERER_PRESENTVSYNC;
+    s.ren = SDL_CreateRenderer(s.win, -1, rendererFlags);
     if (!s.ren) s.ren = SDL_CreateRenderer(s.win, -1, SDL_RENDERER_SOFTWARE);
     if (!s.ren) { std::cerr << "SDL_CreateRenderer failed: " << SDL_GetError() << "\n"; return false; }
+#if SDL_VERSION_ATLEAST(2, 0, 18)
+    if (profiling) SDL_RenderSetVSync(s.ren, 0);
+#endif
+    SDL_RendererInfo rendererInfo{};
+    if (SDL_GetRendererInfo(s.ren, &rendererInfo) == 0) {
+        std::cerr << "SDL renderer: " << (rendererInfo.name ? rendererInfo.name : "<unknown>")
+                  << " flags=" << rendererInfo.flags
+                  << " target_texture=" << ((rendererInfo.flags & SDL_RENDERER_TARGETTEXTURE) ? "yes" : "no")
+                  << " accelerated=" << ((rendererInfo.flags & SDL_RENDERER_ACCELERATED) ? "yes" : "no")
+                  << " vsync=" << ((rendererInfo.flags & SDL_RENDERER_PRESENTVSYNC) ? "yes" : "no")
+                  << "\n";
+    }
     SDL_SetRenderDrawBlendMode(s.ren, SDL_BLENDMODE_BLEND);
 
     std::vector<std::string> monoPaths = {
@@ -82,6 +98,7 @@ void gfxShutdown() {
 #if !defined(REALM_WEB)
     tilesetAssetsClear();
 #endif
+    clearIsoMapLayerCache();
     clearTextCache();
     if (s.mono) TTF_CloseFont(s.mono);
     if (s.monoSmall) TTF_CloseFont(s.monoSmall);
@@ -347,6 +364,7 @@ void handleMobileHudButton(const std::string& id, const WorldIndex& world) {
 }
 
 bool handleMobileHudHit(int px, int py) {
+    if (s.viewportOnly) return false;
     if (!isMobileGui()) return false;
     if (!pointInRect(px, py, panelRect())) return false;
     if (s.mobileMinimapTap && pointInRect(px, py, miniMapRect())) {
@@ -665,7 +683,9 @@ void gfxPollInput(bool& quitRequested) {
             }
             int mx,my;
             if (screenToMap(e.motion.x, e.motion.y, mx, my)) {
-                view.cursorX = mx; view.cursorY = my;
+                if (edgeScrollEnabled() || s.leftDown || (s.rightDown && !s.rightDownOnMiniMap)) {
+                    view.cursorX = mx; view.cursorY = my;
+                }
                 if (s.leftDown) { s.lastMouseMapX = mx; s.lastMouseMapY = my; }
                 if (s.rightDown && !s.rightDownOnMiniMap && !s.rightDragPath.empty()) appendRightDragPathTile(mx, my);
             }
@@ -918,34 +938,88 @@ void gfxPollInput(bool& quitRequested) {
 }
 
 void drawFrame(bool present) {
+    RealmProfileScope frameScope("frame.total");
+    realmProfilerBeginFrame();
     SDL_GetWindowSize(s.win, &s.winW, &s.winH);
     applyRendererOutputScale();
     s.keyHits.clear();
     SDL_GetMouseState(&s.mouseX, &s.mouseY);
+    if (s.viewportOnly) {
+        s.isometric = displayMode == DM_EMOJI;
+        WorldIndex world;
+        {
+            RealmProfileScope scope("frame.world_index");
+            world = buildWorldIndex(g);
+        }
+        setDraw(rgb(3,5,8)); SDL_RenderClear(s.ren);
+        drawMap(world);
+        if (present) SDL_RenderPresent(s.ren);
+        realmProfilerEndFrame();
+        return;
+    }
     if (displayMode == DM_ASCII && isMobileGui()) {
-        WorldIndex world = buildWorldIndex(g);
+        WorldIndex world;
+        {
+            RealmProfileScope scope("frame.world_index");
+            world = buildWorldIndex(g);
+        }
         drawAsciiMobileFrame(world, present);
+        realmProfilerEndFrame();
         return;
     }
     if (displayMode == DM_ASCII && !isMobileGui()) {
-        WorldIndex world = buildWorldIndex(g);
+        WorldIndex world;
+        {
+            RealmProfileScope scope("frame.world_index");
+            world = buildWorldIndex(g);
+        }
         drawAsciiTerminalFrame(world, present);
+        realmProfilerEndFrame();
         return;
     }
     if (displayMode == DM_EMOJI) s.isometric = true;
-    WorldIndex world = buildWorldIndex(g);
-    setDraw(rgb(3,5,8)); SDL_RenderClear(s.ren);
-    if (!isMobileGui()) drawTopBar();
-    drawMap(world);
-    drawPanel(world);
-    if (!isMobileGui()) drawBottom(world);
-    drawCommandContextMenu();
-    drawHelpOverlay();
-    if (present) SDL_RenderPresent(s.ren);
+    WorldIndex world;
+    {
+        RealmProfileScope scope("frame.world_index");
+        world = buildWorldIndex(g);
+    }
+    {
+        RealmProfileScope scope("frame.clear");
+        setDraw(rgb(3,5,8)); SDL_RenderClear(s.ren);
+    }
+    if (!isMobileGui()) {
+        RealmProfileScope scope("frame.top_bar");
+        drawTopBar();
+    }
+    {
+        RealmProfileScope scope("frame.map");
+        drawMap(world);
+    }
+    {
+        RealmProfileScope scope("frame.panel");
+        drawPanel(world);
+    }
+    if (!isMobileGui()) {
+        RealmProfileScope scope("frame.bottom_bar");
+        drawBottom(world);
+    }
+    {
+        RealmProfileScope scope("frame.menus_overlays");
+        drawCommandContextMenu();
+        drawHelpOverlay();
+    }
+    if (present) {
+        RealmProfileScope scope("frame.present");
+        SDL_RenderPresent(s.ren);
+    }
+    realmProfilerEndFrame();
 }
 
 void gfxRender() {
-    flushGameEventsToUi(ui, 0);
+    {
+        RealmProfileScope scope("frame.events_to_ui");
+        flushGameEventsToUi(ui, 0);
+    }
     drawFrame(true);
 }
 
@@ -955,6 +1029,21 @@ void gfxDelay(int ms) {
 
 void gfxResetZoomForDisplayMode() {
     resetZoomForDisplayMode();
+}
+
+void gfxSetViewportOnly(bool viewportOnly) {
+    s.viewportOnly = viewportOnly;
+    if (viewportOnly) {
+        s.leftDown = false;
+        s.middleDown = false;
+        s.miniMapDown = false;
+        s.rightDownOnMiniMap = false;
+    }
+    updateViewMetrics(true);
+}
+
+void gfxSetEdgeScrollEnabled(bool enabled) {
+    setEdgeScrollEnabled(enabled);
 }
 
 void gfxSetProjection(bool isometric) {

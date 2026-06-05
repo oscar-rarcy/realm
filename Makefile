@@ -37,14 +37,14 @@ MAP_SRCS := $(wildcard $(SRC_DIR)/map/*.cpp)
 PLATFORM_COMMON_SRCS := $(SRC_DIR)/platform/app_config.cpp $(SRC_DIR)/platform/game_init.cpp $(SRC_DIR)/platform/user_settings.cpp $(SRC_DIR)/platform/view_state.cpp
 GAME_SRCS := $(CORE_SRCS) $(SIM_SRCS) $(COMMAND_SRCS) $(AI_SRCS) $(MAP_SRCS) $(PLATFORM_COMMON_SRCS)
 
-RENDER_MODEL_SRCS := $(SRC_DIR)/render/display_model.cpp $(SRC_DIR)/render/entity_visual_defs.cpp $(SRC_DIR)/render/render_model.cpp
+RENDER_MODEL_SRCS := $(SRC_DIR)/render/display_model.cpp $(SRC_DIR)/render/entity_visual_defs.cpp $(SRC_DIR)/render/ground_shader.cpp $(SRC_DIR)/render/render_model.cpp
 ASCII_RENDER_SRCS := $(RENDER_MODEL_SRCS) $(wildcard $(SRC_DIR)/render/ascii/*.cpp)
 SDL_RENDER_SRCS := $(RENDER_MODEL_SRCS) $(wildcard $(SRC_DIR)/render/sdl/*.cpp)
 
 TERM_SRCS := $(SRC_DIR)/platform/main_terminal.cpp $(GAME_SRCS) $(ASCII_RENDER_SRCS)
 GFX_SRCS := $(SRC_DIR)/platform/main_sdl.cpp $(GAME_SRCS) $(SDL_RENDER_SRCS)
 LAB_SRCS := $(SRC_DIR)/platform/main_lab.cpp $(GAME_SRCS) $(SDL_RENDER_SRCS)
-TEST_SRCS := tests/realm_headless_tests.cpp $(GAME_SRCS) $(SRC_DIR)/render/render_model.cpp
+TEST_SRCS := tests/realm_headless_tests.cpp $(GAME_SRCS) $(SRC_DIR)/render/ground_shader.cpp $(SRC_DIR)/render/render_model.cpp
 WEB_SRCS := $(SRC_DIR)/platform/main_web.cpp $(GAME_SRCS) $(SDL_RENDER_SRCS)
 
 NCURSES_CFLAGS := $(shell $(PKG_CONFIG) --cflags ncursesw 2>/dev/null)

@@ -92,6 +92,8 @@ For sprite/contact sheets, programmatically create the grid before using Image G
 
 The default sheet is a 4 by 4 grid. If an asset needs more than 16 states or variants, split it into multiple 4 by 4 sheets. Use a smaller fixed grid only when the canonical exported prompt or slot map explicitly requires it, and record that exception in provenance.
 
+Ground tiles are the main exception to the 4 by 4 default when the final source must remain high-resolution. If a 4 by 4 sheet would make each crop too small for the exported ground source-canvas contract, create a smaller fixed grid such as 2 by 2, record the resolution exception in the grid manifest, and still split only by the manifest. Do not use this exception for actor sheets merely to avoid making multiple 4 by 4 sheets.
+
 The grid should be an image-edit base target:
 
 * pure magenta cell backgrounds for actor/projectile sprites that will be alpha-cleaned,
@@ -1170,7 +1172,8 @@ Every generated asset set needs these facts available before final production:
 
 * Lane: `ground`, `decal`, `feature`, `unit`, `animal`, `building`, `projectile`, `effect`, or `user_interface`.
 * Runtime path: final `assets/tiles/...` output path or manifest path.
-* Source contract: full top-down tile, transparent overlay, upright sprite, building footprint/slice, projectile/effect, or UI icon.
+* Source contract: full top-down tile, transparent overlay, upright sprite, building footprint sprite, projectile/effect, or UI icon.
+* Source resolution: use the generated JSON `art.source_canvas` as the accepted runtime-source size. Do not shrink any accepted runtime asset to `48x48` or another tiny draw-size proxy before promotion.
 * Projection and anchor: enough to place the asset without guessing.
 * Footprint: especially for buildings, ships, siege engines, and large features.
 * Directions: usually `front` and `back` for mirrorable actors, `south` for buildings, or `default` for non-directional art.
@@ -1181,6 +1184,18 @@ Every generated asset set needs these facts available before final production:
 * QA gate: what must be inspected before accepting the runtime asset.
 
 If any of those facts are missing, do not hard-code a local exception in this skill. Patch the source data, docs, or exporters, regenerate `art/tiles/image-json` and `art/tiles/image-spec`, then continue.
+
+## Source Resolution Contract
+
+Realm keeps runtime PNGs as high-resolution sources and lets the SDL loader build draw-size cached textures from them. This applies to every lane by default:
+
+* Grounds use high-resolution top-down source tiles, currently `1024x1024`.
+* Units, animals, one-tile features, decals, projectiles, effects, and UI markers use high-resolution standalone sources, currently `512x512`.
+* Buildings and other footprint sprites scale source size by footprint: `512px` per footprint tile on the largest footprint axis. A 3 by 3 building is therefore a `1536x1536` source sprite, not a `48x48` sprite scaled up.
+* The renderer draw size can be much smaller or larger than the source. The loader is responsible for alpha-aware downscaling and draw-size caching.
+* Zoom-stop sprites are optional hand-redrawn overrides. They do not replace the normal high-resolution source contract.
+
+If a source needs a different size for a real reason, add that exception to the generated JSON spec and the exporter. Do not pass an ad-hoc `--size 48` or promote a tiny file just because the current viewport happened to draw it small.
 
 ## Generic Sprite Set Workflow
 
@@ -1200,10 +1215,10 @@ Use this for any actor-like lane: units, animals, ships, siege engines, most pro
 
 5. Choose the smallest useful batch. Prefer one coherent batch per action or per closely related state group. Do not try to generate a whole unit's complete lifetime in one huge image if consistency or cropping will suffer.
 6. Generate a reference/contact sheet only when it helps choose style, state order, or visual identity. Reference sheets are not final production sources.
-7. Generate production sources as standalone square images or small batch sheets that split into standalone square images.
+7. Generate production sources at the JSON `art.source_canvas` size as standalone images or small batch sheets that split into standalone images.
 8. Store keepers under `art/tiles/candidates/...`.
 9. Split batch sheets into workbench `source.png` frames.
-10. Process each accepted actor-like frame into runtime base and team-mask files.
+10. Process each accepted actor-like frame into runtime base and team-mask files using the JSON `art.source_canvas` size unless an explicit spec override says otherwise.
 11. Assemble the manifest from image-json-backed actions and directions.
 12. Run review artifacts and inspect contact sheet, isometric placement, alpha/mask, bbox/anchor overlay, and manifest assumptions.
 
@@ -1215,7 +1230,7 @@ Use this for grounds, decals, feature layers, weather overlays, tactical markers
 
 1. Load generated JSON and Markdown.
 2. Confirm source contract and runtime path.
-3. Generate the lane-correct image: top-down full square for grounds, transparent square overlay for decals/effects/UI, transparent upright sprite or split layer for features.
+3. Generate the lane-correct image at the JSON `art.source_canvas` size: top-down full square for grounds, transparent overlay for decals/effects/UI, transparent upright sprite or split layer for features.
 4. Store the keeper under `art/tiles/candidates/...`.
 5. Split state sheets into one file per state if a sheet was used.
 6. Write or place final files under the JSON runtime path.
@@ -1281,3 +1296,98 @@ Before saying tileset work is ready, confirm:
 * Fallback path still works for missing states.
 * Review artifacts or manual previews were inspected.
 * Unsupported helper behaviour or temporary assumptions were reported.
+
+## Production-readiness audit: do not fight blind
+
+`scripts/tileset_quality_audit.py` is only the loader/runtime blocker gate. It is not enough to claim the tileset is complete. A batch can pass that audit while still containing stale references, procedural mockups, duplicated animation frames, wrong-style sprites, or assets with no traceable prompt/reference provenance.
+
+After any generated batch and before accepting coverage, run:
+
+```sh
+python scripts/tileset_production_audit.py --json-out build/tileset-production-audit.json --md-out build/tileset-production-audit.md --sheet-dir build/tileset-production-audit
+```
+
+Use the resulting Markdown, JSON, and contact sheets as the evidence surface. Treat `blocker` and `high` findings as not production-ready. Treat `review` findings as unresolved until a human or explicit art-review pass records a status.
+
+Required future evidence:
+
+- Every generated runtime PNG must be linked to a canonical prompt export from `scripts/export_image_generation_prompts.py`; do not use improvised prompts as the acceptance record.
+- Every generated runtime PNG should have generation lineage in `art/tiles/generation-ledger.jsonl`: canonical prompt path, prompt hash, reference images, reference hashes, premade grid path, seed asset path when used, candidate outputs, split outputs, accepted runtime paths, and notes.
+- Every accepted runtime PNG should have a record in `art/tiles/reviews/production-review.json` with `status: accepted_runtime_art` and `style_contract: realm_paper_cutout_small_tile`.
+- If an asset is intentionally procedural or debug-only, mark it as `procedural_by_design`; otherwise low-information decals/effects/UI should be considered mockups that need regeneration.
+- If a generated asset is visibly the wrong style, mark it as `wrong_style_runtime_art` or `needs_regeneration` rather than silently leaving it in runtime paths.
+
+Ground references must use the current small-tile-optimized reference set. Mirror or document these under `art/tiles/reference/grounds/current/` before exporting new ground prompts:
+
+- `art/reference/ground/shades-of-grey`
+- `art/reference/ground/blank.png`
+- `art/reference/ground/grass.png`
+
+Old examples under `art/tiles/reference/grounds/examples/`, `art/tiles/reference/grounds/generated/unknown/`, and loose `blank-*` or stale `grass.png` files must not be used by canonical prompt exports unless explicitly marked as deprecated/non-source references.
+
+For grid-based sprites and animation sheets, prefer a programmatically generated premade grid. Generate the closest accepted seed asset first, place it into the idle/source cell when useful, then branch to the closest next asset or action. This keeps style propagation concrete instead of relying on a text-only prompt to recreate the style each time.
+
+Additional production-audit helper tools:
+
+- Use `scripts/tileset_make_grid_template.py` to create exact white-background magenta grid templates before image generation. Default 4x4 1024px grids are appropriate for most unit/action sheets. Use `--seed` and `--seed-cell row,col` when carrying an accepted idle/source asset into the next generation.
+- Use `scripts/tileset_generation_ledger_append.py` after every image generation or edit. It records prompt, reference image, grid, seed, candidate, split, and accepted runtime paths plus SHA-256 hashes in `art/tiles/generation-ledger.jsonl`.
+- Use `art/tiles/reviews/production-review.schema.json` and `art/tiles/reviews/production-review.example.json` for final production review metadata.
+- Use `art/tiles/generation-ledger.schema.json` as the expected shape for each generation ledger JSONL entry.
+
+## Batch tooling rules added after production-audit friction
+
+Use the helper scripts for batch evidence instead of hand-written one-off promotion code.
+
+Generated-output capture:
+
+```powershell
+python scripts\tileset_capture_generated_output.py --input C:\Users\Edward\.codex\generated_images\...\generated.png --out art\tiles\candidates\<lane>\<slug>\<version>\batch_source.png --prompt-file art\tiles\candidates\<lane>\<slug>\<version>\prompt.txt --grid-template art\tiles\workbench\grids\<slug>.png
+```
+
+Do not find "latest generated image" manually unless no exact path is available. Copy the exact generated output into the candidate folder immediately and keep the original under `C:\Users\Edward\.codex\generated_images\...`.
+
+Actor grids:
+
+```powershell
+python scripts\tileset_make_grid_template.py --out art\tiles\workbench\grids\<slug>-4x4.png --cols 4 --rows 4 --size 1024 --cell-fill magenta --gutter 8
+```
+
+For actor, animal, ship, siege, and building sprite sheets, use magenta-filled cells with neutral gutters. Do not use white-filled actor cells; they caused visible crop-box artifacts in deer frames. Use `--seed` and `--seed-cell row,col` when carrying an accepted seed into the next sheet.
+
+Promote reviewed grids:
+
+```powershell
+python scripts\tileset_promote_grid_batch.py --sheet art\tiles\candidates\<lane>\<slug>\<version>\batch_source.png --grid-manifest art\tiles\workbench\grids\<slug>-4x4.manifest.json --slot-map art\tiles\candidates\<lane>\<slug>\<version>\slot-map.json --candidate-dir art\tiles\candidates\<lane>\<slug>\<version>\split --batch-id <slug>-<version> --clean-mode actor --review-note "accepted after contact-sheet review" --review-artifact build\tileset-review\<slug>-<version>.png --accept-coverage
+```
+
+The slot map must list runtime path, slot number, size, work id when coverage acceptance is desired, canonical prompt export, canonical JSON spec, and style contract for every promoted cell. This helper splits the sheet, cleans lane-specific background artifacts, writes runtime PNGs, updates `art/tiles/reviews/production-review.json`, appends `art/tiles/generation-ledger.jsonl`, and can call `scripts\tileset_coverage.py accept`.
+
+Review existing runtime art:
+
+```powershell
+python scripts\tileset_review_existing_batch.py --batch build\tileset-next-batch.json --out build\tileset-review\<slug>-batch.png --label-strip assets/tiles/entities/<slug>/ --review-note "matches canonical style" --write-review --append-ledger --accept
+```
+
+Use this when the next coverage batch is already good runtime art and only needs evidence/acceptance. Do not regenerate acceptable art just because it appears in the queue as `needs_review`.
+
+Rejected generations:
+
+```powershell
+python scripts\tileset_record_rejected_generation.py --id <slug>-<version>-rejected --candidate art\tiles\candidates\<lane>\<slug>\<version>\batch_source.png --canonical-prompt-export art\tiles\image-spec\...\<slug>.md --canonical-json-spec art\tiles\image-json\...\<slug>.json --grid-template art\tiles\workbench\grids\<slug>-4x4.png --reason "visible reason" --review-artifact build\tileset-review\<slug>-rejected.png
+```
+
+Record rejected sheets when style, grid geometry, background, crop, direction, or semantic state is wrong. Future prompts must not use rejected outputs as positive references.
+
+Lane style contracts for production review:
+
+- Grounds: `realm_ground_slab_small_tile`.
+- Decals: `realm_simplified_hand_painted_ground_decal`.
+- Actor/entity sprites: `realm_paper_cutout_small_tile`.
+- Features: `realm_paper_cutout_small_tile` or `realm_map_integrated_painted_feature`.
+- Projectiles: `realm_projectile_cutout`.
+- Tactical effects: `realm_effect_overlay`.
+- UI markers: `realm_ui_marker`.
+
+`art\tiles\production-ledger.jsonl` is the coverage acceptance ledger written by `scripts\tileset_coverage.py accept`. `art\tiles\generation-ledger.jsonl` is the prompt/reference/grid/provenance ledger. Production audit consumes both; helpers should write generation provenance and call coverage acceptance when production review passes.
+
+Production audit now detects `bright_crop_box_artifact` in entity sprites. If this appears, reject or regenerate the sheet; do not accept white crop boxes, transparency checkerboard remnants, or rectangular outlines around actor sprites.

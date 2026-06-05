@@ -3,6 +3,8 @@
 #include "core/world_index.h"
 #include "view_state.h"
 
+#include <cstdlib>
+
 namespace {
 
 constexpr int LAB_X = MAP_W / 2;
@@ -188,6 +190,16 @@ const char* previewModeName(int mode) {
         case 1: return "Entity only";
         default: return "Tile + Entity";
     }
+}
+
+int labEntitySpriteSize() {
+    int size = 128;
+    if (const char* raw = std::getenv("REALM_LAB_ENTITY_SPRITE_SIZE")) {
+        char* end = nullptr;
+        long parsed = std::strtol(raw, &end, 10);
+        if (end && *end == '\0') size = (int)parsed;
+    }
+    return std::max(32, std::min(512, size));
 }
 
 const char* fogName(int fog) {
@@ -727,11 +739,11 @@ void drawLabPreview(const LabState& lab, SDL_Rect area, TilesetAssetFrame& asset
     WorldIndex world = buildWorldIndex(g);
     Entity* ent = renderEntityAt(g, world, LAB_X, LAB_Y);
     if (lab.previewMode != 0 && ent) {
-        int spriteSize = 128;
+        int spriteSize = labEntitySpriteSize();
         SDL_Rect dst{cx - spriteSize / 2, cy - spriteSize / 2, spriteSize, spriteSize};
         SDL_Color team = hueColor(lab.hue);
         Color mod = applyVisionToGlyph(rgb(255,255,255), LAB_X, LAB_Y);
-        if (!drawEntityImageAtAnchor(g, world, *ent, cx, cy, spriteSize, spriteSize, mod,
+        if (!drawEntityImageAtAnchor(g, world, *ent, cx, cy + hh, spriteSize, spriteSize, mod,
                                      labActionId(lab), directionId(lab.direction),
                                      lab.frame, team, &assetFrame, nullptr)) {
             bool usesSymbolFont = false;
@@ -954,6 +966,17 @@ int runLabSmoke() {
     lab.lightMode = 0;
     lab.weather = W_CLEAR;
     ok = saveLabShot(lab, outDir / "07-bullseye-peasant-anchor.bmp") && ok;
+
+    lab.previewMode = 2;
+    lab.terrain = LAB_TERRAIN_BULLSEYE;
+    lab.entityType = E_TOWNHALL;
+    lab.actionIndex = 0;
+    lab.direction = 0;
+    lab.frame = 0;
+    lab.timeStep = 3;
+    lab.lightMode = 0;
+    lab.weather = W_CLEAR;
+    ok = saveLabShot(lab, outDir / "08-bullseye-town-hall-footprint.bmp") && ok;
 
     std::cerr << "realm: lab smoke " << (ok ? "complete" : "failed")
               << " dir=" << outDir.string() << "\n";

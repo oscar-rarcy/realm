@@ -1,0 +1,178 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - link "Skip to content" [ref=e3] [cursor=pointer]:
+      - /url: "#main-content"
+    - navigation "Primary" [ref=e4]:
+      - link "Home" [ref=e5] [cursor=pointer]:
+        - /url: /
+      - link "Contact" [ref=e6] [cursor=pointer]:
+        - /url: /contact/
+      - link "About" [ref=e7] [cursor=pointer]:
+        - /url: /about/
+      - link "Map" [ref=e8] [cursor=pointer]:
+        - /url: /map/
+  - main "Edward Coventry" [ref=e9]:
+    - heading "Edward Coventry" [level=1] [ref=e10]
+    - search "Feed search" [ref=e11]:
+      - generic [ref=e12]: Search feed
+      - searchbox "Search feed" [ref=e13]
+    - heading "Project feed" [level=2] [ref=e14]
+    - region "Project feed" [ref=e15]:
+      - link "Visit Thumbfing" [ref=e16]:
+        - generic [ref=e17]:
+          - generic [ref=e18]:
+            - generic [ref=e20]: 20 Jun 2026
+            - heading "Thumbfing Coming Soon" [level=3] [ref=e21]:
+              - text: Thumbfing
+              - generic [ref=e22]: Coming Soon
+          - generic "Thumbfing actions" [ref=e23]:
+            - link "Open Thumbfing in new tab" [ref=e24] [cursor=pointer]:
+              - /url: https://thumbfing.com/
+              - text: Open
+            - button "Share Thumbfing" [ref=e25]: Share
+        - iframe [ref=e27]:
+          
+      - link "Visit oscarrainbirdchill.com's Realm" [ref=e28]:
+        - generic [ref=e29]:
+          - generic [ref=e30]:
+            - generic [ref=e32]: 05 Jun 2026
+            - heading "oscarrainbirdchill.com's Realm" [level=3] [ref=e33]:
+              - link "oscarrainbirdchill.com" [ref=e34] [cursor=pointer]:
+                - /url: https://oscarrainbirdchill.com/
+              - text: "'s"
+              - emphasis [ref=e35]: Realm
+          - generic "oscarrainbirdchill.com's Realm actions" [ref=e36]:
+            - link "Open oscarrainbirdchill.com's Realm in new tab" [ref=e37] [cursor=pointer]:
+              - /url: /apps/realm-ascii
+              - text: Open
+            - button "Share oscarrainbirdchill.com's Realm" [ref=e38]: Share
+        - iframe [ref=e40]:
+          
+      - link "Visit LMTV" [ref=e41]:
+        - generic [ref=e42]:
+          - generic [ref=e43]:
+            - generic [ref=e45]: 13 May 2026
+            - heading "LMTV Coming Soon" [level=3] [ref=e46]:
+              - text: LMTV
+              - generic [ref=e47]: Coming Soon
+          - generic "LMTV actions" [ref=e48]:
+            - link "Open LMTV in new tab" [ref=e49] [cursor=pointer]:
+              - /url: https://lmtv.app/
+              - text: Open
+            - button "Share LMTV" [ref=e50]: Share
+        - iframe [ref=e52]:
+          
+      - link "Visit Edbot" [ref=e53]:
+        - generic [ref=e54]:
+          - generic [ref=e55]:
+            - generic [ref=e57]: 16 Apr 2026
+            - heading "Edbot" [level=3] [ref=e58]
+          - generic "Edbot actions" [ref=e59]:
+            - link "Open Edbot in new tab" [ref=e60] [cursor=pointer]:
+              - /url: https://edbot.edwardcoventry.com/
+              - text: Open
+            - button "Share Edbot" [ref=e61]: Share
+        - iframe [ref=e63]:
+          
+      - link "Visit Bots Click Here" [ref=e64]:
+        - generic [ref=e65]:
+          - generic [ref=e66]:
+            - generic [ref=e68]: 02 Feb 2026
+            - heading "Bots Click Here" [level=3] [ref=e69]:
+              - link "Bots Click Here" [ref=e70] [cursor=pointer]:
+                - /url: https://bot.edwardcoventry.com/
+          - generic "Bots Click Here actions" [ref=e71]:
+            - link "Open Bots Click Here in new tab" [ref=e72] [cursor=pointer]:
+              - /url: https://bot.edwardcoventry.com/
+              - text: Open
+            - button "Share Bots Click Here" [ref=e73]: Share
+        - iframe [ref=e75]:
+          
+      - link "Visit Recipe App" [ref=e76]:
+        - generic [ref=e77]:
+          - generic [ref=e78]:
+            - generic [ref=e80]: 31 Dec 2025
+            - heading "Recipe App WIP" [level=3] [ref=e81]:
+              - text: Recipe App
+              - generic [ref=e82]: WIP
+          - generic "Recipe App actions" [ref=e83]:
+            - link "Open Recipe App in new tab" [ref=e84] [cursor=pointer]:
+              - /url: https://recipeeditor.com/
+              - text: Open
+            - button "Share Recipe App" [ref=e85]: Share
+        - iframe [ref=e87]:
+          
+      - link "Visit Political Compass" [ref=e88]:
+        - generic [ref=e89]:
+          - generic [ref=e90]:
+            - generic [ref=e92]: 22 Nov 2025
+            - heading "Political Compass" [level=3] [ref=e93]
+          - generic "Political Compass actions" [ref=e94]:
+            - link "Open Political Compass in new tab" [ref=e95] [cursor=pointer]:
+              - /url: https://politicalcompass.uk
+              - text: Open
+            - button "Share Political Compass" [ref=e96]: Share
+        - iframe [ref=e98]:
+          
+      - link "Visit Water Calculator" [ref=e99]:
+        - generic [ref=e100]:
+          - generic [ref=e101]:
+            - generic [ref=e103]: 20 Oct 2025
+            - heading "Water Calculator" [level=3] [ref=e104]
+          - generic "Water Calculator actions" [ref=e105]:
+            - link "Open Water Calculator in new tab" [ref=e106] [cursor=pointer]:
+              - /url: /apps/water-calculator
+              - text: Open
+            - button "Share Water Calculator" [ref=e107]: Share
+        - iframe [ref=e109]:
+          
+      - link "Visit What Kind Of Are You" [ref=e110]:
+        - generic [ref=e111]:
+          - generic [ref=e112]:
+            - generic [ref=e114]: 26 Aug 2025
+            - heading "What Kind Of Are You" [level=3] [ref=e115]
+          - generic "What Kind Of Are You actions" [ref=e116]:
+            - link "Open What Kind Of Are You in new tab" [ref=e117] [cursor=pointer]:
+              - /url: https://whatkindofareyou.com/
+              - text: Open
+            - button "Share What Kind Of Are You" [ref=e118]: Share
+        - iframe [ref=e120]:
+          
+      - link "Visit Color Palette Generator" [ref=e121]:
+        - generic [ref=e122]:
+          - generic [ref=e123]:
+            - generic [ref=e125]: 15 Jul 2025
+            - heading "Color Palette Generator" [level=3] [ref=e126]
+          - generic "Color Palette Generator actions" [ref=e127]:
+            - link "Open Color Palette Generator in new tab" [ref=e128] [cursor=pointer]:
+              - /url: /apps/color-palette-generator?history=replace
+              - text: Open
+            - button "Share Color Palette Generator" [ref=e129]: Share
+        - iframe [ref=e131]:
+          
+      - link "Visit edwardcoventry.com" [ref=e132]:
+        - generic [ref=e133]:
+          - generic [ref=e134]:
+            - generic [ref=e136]: 30 Jun 2025
+            - heading "edwardcoventry.com" [level=3] [ref=e137]
+          - generic "edwardcoventry.com actions" [ref=e138]:
+            - link "Open edwardcoventry.com in new tab" [ref=e139] [cursor=pointer]:
+              - /url: https://edwardcoventry.com/
+              - text: Open
+            - button "Share edwardcoventry.com" [ref=e140]: Share
+        - iframe [ref=e142]:
+          
+  - contentinfo "Site footer" [ref=e144]:
+    - generic [ref=e145]:
+      - link "Terms of Use|" [ref=e146] [cursor=pointer]:
+        - /url: /terms/
+      - link "Privacy Policy|" [ref=e147] [cursor=pointer]:
+        - /url: /privacy/
+      - link "Contact" [ref=e148] [cursor=pointer]:
+        - /url: /contact/
+    - generic [ref=e149]:
+      - text: "|"
+      - link "This site is written by AI|" [ref=e150] [cursor=pointer]:
+        - /url: /this-site-is-written-by-ai/
+      - link "© 2026 Edward Coventry" [ref=e151] [cursor=pointer]:
+        - /url: /copyright/

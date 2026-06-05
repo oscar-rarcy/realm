@@ -9,6 +9,7 @@ const [viewportWidth, viewportHeight] = (process.env.REALM_WEB_VIEWPORT || '1280
   .split('x')
   .map((part) => Number.parseInt(part, 10));
 const expectedAsciiOnly = process.env.REALM_EXPECT_ASCII_ONLY === '1';
+const allowMissingTilesetAssets = process.env.REALM_ALLOW_MISSING_TILESET_ASSETS === '1';
 
 const common = new URLSearchParams({
   seed: '2468',
@@ -102,6 +103,12 @@ async function runCase(browser, testCase) {
 
   const stats = await canvasStats(page);
   const displayMode = await page.evaluate(() => globalThis.Module._realm_web_display_mode());
+  const chrome = await page.evaluate(() => ({
+    minimapProbeX: globalThis.Module._realm_web_minimap_x_for_screen(window.innerWidth - 60, 72),
+    minimapProbeY: globalThis.Module._realm_web_minimap_y_for_screen(window.innerWidth - 60, 72),
+    viewW: globalThis.Module._realm_web_view_w(),
+    viewH: globalThis.Module._realm_web_view_h(),
+  }));
   const screenshotHash = hashBuffer(screenshot);
   await page.locator('canvas').click({ position: { x: Math.floor(viewportWidth / 2), y: Math.floor(viewportHeight / 2) } });
   await page.waitForTimeout(100);
@@ -130,6 +137,7 @@ async function runCase(browser, testCase) {
     selectedAfter,
     screenshotHash,
     displayMode,
+    chrome,
     stats,
     controls: {
       zoomChangedFrame: afterZoomHash !== screenshotHash,
@@ -173,6 +181,9 @@ for (const result of results) {
   if (!result.controls.zoomChangedFrame) {
     failures.push(`${result.name}: mouse-wheel zoom did not change the rendered frame`);
   }
+  if (result.chrome.minimapProbeX !== -1 || result.chrome.minimapProbeY !== -1) {
+    failures.push(`${result.name}: embed route exposed minimap hit target ${JSON.stringify(result.chrome)}`);
+  }
 
   const text = result.messages.map((message) => message.text).join('\n');
   if (/uncaught|exception|abort|content security|webassembly|wasm/i.test(text)) {
@@ -181,7 +192,7 @@ for (const result of results) {
   if (/No tileset symbol font found/i.test(text)) {
     failures.push(`${result.name}: tileset symbol font fallback was used`);
   }
-  if (!expectedAsciiOnly && result.display === 'tileset' && /\[Realm missing tile\]/.test(text)) {
+  if (!expectedAsciiOnly && !allowMissingTilesetAssets && result.display === 'tileset' && /\[Realm missing tile\]/.test(text)) {
     failures.push(`${result.name}: missing tileset asset fallback was logged\n${text}`);
   }
   if (!expectedAsciiOnly && result.display === 'tileset' && !/Tileset symbol font: \/assets\/fonts\/RealmSymbols\.ttf/i.test(text)) {

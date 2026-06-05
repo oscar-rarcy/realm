@@ -1,11 +1,15 @@
 #include "render/sdl/sdl_map.h"
+#include "render/sdl/sdl_profiler.h"
 #include "realm.h"
 #include "commands/command.h"
+#include "core/entity_facing.h"
 #include "core/game_events.h"
+#include "core/entity_motion.h"
 #include "core/world_index.h"
 #include "entity_animation.h"
 #include "render/render_model.h"
 #include "view_state.h"
+#include "tileset_assets.h"
 
 #include <algorithm>
 #include <cmath>
@@ -284,6 +288,11 @@ static void drawHoverCornersDiamond(int cx, int cy, int hw, int hh, IsoHoverCorn
     pass(yellow, inner);
 }
 
+static SDL_Rect featureSpriteRectIso(int cx, int cy, int hw, int hh) {
+    int size = std::max(16, (int)std::lround(hw * 1.12f));
+    return SDL_Rect{cx - size / 2, cy + hh - size, size, size};
+}
+
 static void drawAttackCenterIndicator(int cx, int cy, int hw, int hh) {
     float pulse = indicatorPulse();
     int markW = std::max(7, (int)std::lround(hw * (0.34f + pulse * 0.04f)));
@@ -351,6 +360,29 @@ static void drawActionSquareIndicator(int cx, int cy, int half) {
 }
 
 static void drawActionMarkerIndicator(char glyph, int cx, int cy, int spanX, int spanY) {
+    auto actionMarkerAssetId = [](char markerGlyph) -> const char* {
+        switch (markerGlyph) {
+            case '!': return "attack_marker";
+            case '#': return "build_marker";
+            case '+': return "gather_marker";
+            case 'r': return "rally_marker";
+            default: return "move_marker";
+        }
+    };
+    if (imageTilesetEnabled()) {
+        int size = std::max(12, std::max(spanX, spanY) * 4);
+        SDL_Rect dst{cx - size / 2, cy - size / 2, size, size};
+        TilesetAssetFrame frame = tilesetLoadEffectUiTileScaled(s.ren, actionMarkerAssetId(glyph), dst.w, dst.h);
+        if (frame.texture && !frame.placeholder) {
+            Color mod = indicatorCommandColor(230);
+            SDL_SetTextureColorMod(frame.texture, mod.r, mod.g, mod.b);
+            SDL_SetTextureAlphaMod(frame.texture, mod.a);
+            SDL_RenderCopy(s.ren, frame.texture, nullptr, &dst);
+            SDL_SetTextureColorMod(frame.texture, 255, 255, 255);
+            SDL_SetTextureAlphaMod(frame.texture, 255);
+            return;
+        }
+    }
     switch (glyph) {
         case '#':
             drawActionSquareIndicator(cx, cy, std::max(4, std::min(spanX, spanY)));
@@ -515,8 +547,7 @@ static EntityMotionProfile motionProfileForEntity(const Entity& ent, const Entit
     if (isNaval(ent.type)) return EntityMotionProfile::BoatSlide;
     if (isSiege(ent.type) || ent.type == E_RAM) return EntityMotionProfile::HeavySlide;
     if (anim && anim->family && std::strstr(anim->family, "gait")) return EntityMotionProfile::PaperWalk;
-    if (ent.state == S_MOVING || ent.state == S_RETURNING
-        || (ent.state != S_IDLE && ent.pathIdx < (int)ent.path.size())) {
+    if (entityHasActivePathMotion(ent)) {
         return EntityMotionProfile::PaperWalk;
     }
     return EntityMotionProfile::None;
@@ -612,6 +643,65 @@ static void topDownTileCenterFloat(float mx, float my, int& cx, int& cy) {
     cy = (int)std::lround(mr.y + (my - view.viewY + 0.5f) * s.tile);
 }
 
+static bool entityHasMultiTileFootprint(const Entity& ent) {
+    const EntityStats& stats = STATS[ent.type];
+    return stats.sizeW > 1 || stats.sizeH > 1;
+}
+
+static bool entityDrawsFromFootprintTile(Game& game, const WorldIndex& world, const RenderModel& model,
+                                         const Entity& ent, int mx, int my) {
+    if (!entityHasMultiTileFootprint(ent)) return true;
+
+    const EntityStats& stats = STATS[ent.type];
+    int x0 = std::max(ent.x, model.viewX);
+    int y0 = std::max(ent.y, model.viewY);
+    int x1 = std::min(ent.x + stats.sizeW, model.viewX + model.viewW);
+    int y1 = std::min(ent.y + stats.sizeH, model.viewY + model.viewH);
+    for (int y = y0; y < y1; ++y) {
+        for (int x = x0; x < x1; ++x) {
+            const TileRenderInfo* info = tileInfoAt(model, x, y);
+            Entity* visibleEntity = info && info->visible ? renderEntityAt(game, world, x, y) : nullptr;
+            if (visibleEntity && visibleEntity->id == ent.id) return x == mx && y == my;
+        }
+    }
+    return mx == ent.x && my == ent.y;
+}
+
+static int entityFootprintSpriteSize(const Entity& ent, int fallbackSize) {
+    if (!entityHasMultiTileFootprint(ent)) return fallbackSize;
+    const EntityStats& stats = STATS[ent.type];
+    int footprintScale = std::max(1, std::max(stats.sizeW, stats.sizeH));
+    return std::max(fallbackSize, fallbackSize * footprintScale);
+}
+
+static void isoEntityFootprintCenter(const Entity& ent, int fallbackCx, int fallbackCy, int& cx, int& cy) {
+    if (!entityHasMultiTileFootprint(ent)) {
+        cx = fallbackCx;
+        cy = fallbackCy;
+        return;
+    }
+    const EntityStats& stats = STATS[ent.type];
+    isoTileCenterFloat(ent.x + (stats.sizeW - 1) * 0.5f,
+                       ent.y + (stats.sizeH - 1) * 0.5f,
+                       cx, cy);
+}
+
+static int isoEntityFeetAnchorY(int tileCenterY) {
+    return tileCenterY + isoHalfH();
+}
+
+static int isoEntityFootprintAnchorY(const Entity& ent, int footprintCenterY) {
+    if (!entityHasMultiTileFootprint(ent)) return isoEntityFeetAnchorY(footprintCenterY);
+    const EntityStats& stats = STATS[ent.type];
+    return footprintCenterY + (int)std::lround((stats.sizeW + stats.sizeH) * isoHalfH() * 0.5f);
+}
+
+static int entityFootprintHpBarWidth(const Entity& ent) {
+    if (!entityHasMultiTileFootprint(ent)) return std::max(8, s.tile);
+    const EntityStats& stats = STATS[ent.type];
+    return std::max(8, s.tile * std::max(stats.sizeW, stats.sizeH));
+}
+
 static void drawEntityHpBarAt(const Entity& ent, int cx, int cy, int width) {
     if (!ent.alive || ent.hp >= ent.maxHp) return;
     int barW = std::max(8, width);
@@ -626,12 +716,17 @@ static void drawEntitySpriteAt(Game& game, const WorldIndex& world, const Entity
                                const SpriteMotionSample& motion, int cx, int cy, bool isometric) {
     const EntityActionAnimationSpec* anim = entityActionAnimationSpecFor(game, world, ent);
     int glyphSize = std::max(12, (int)(s.tile * (imageTilesetEnabled() ? 1.55f : 0.96f)));
+    glyphSize = entityFootprintSpriteSize(ent, glyphSize);
+    int entityCx = cx;
+    int entityCy = cy;
+    if (isometric) isoEntityFootprintCenter(ent, cx, cy, entityCx, entityCy);
     int lift = motion.liftPx;
-    SDL_Rect fallbackRect{cx - glyphSize / 2, cy - glyphSize / 2 - lift, glyphSize, glyphSize};
+    SDL_Rect fallbackRect{entityCx - glyphSize / 2, entityCy - glyphSize / 2 - lift, glyphSize, glyphSize};
     SDL_Rect imageDrawRect = fallbackRect;
     Color mod = applyVisionToGlyph(rgb(255,255,255), ent.x, ent.y);
+    int anchorY = isometric ? isoEntityFootprintAnchorY(ent, entityCy) : entityCy;
     bool drewImage = drawEntityImageAtAnchor(game, world, ent,
-                                             cx, cy - lift, glyphSize, glyphSize, mod,
+                                             entityCx, anchorY - lift, glyphSize, glyphSize, mod,
                                              anim ? anim->action : nullptr,
                                              nullptr,
                                              motion.explicitFrame,
@@ -646,10 +741,9 @@ static void drawEntitySpriteAt(Game& game, const WorldIndex& world, const Entity
         drawCentered(glyph, fallbackRect, applyVisionToGlyph(fg, ent.x, ent.y), usesSymbolFont, usesSymbolFont);
     }
     if (isometric) {
-        drawFeatureOccluderIfNeeded(game, world, ent.x, ent.y, drewImage ? imageDrawRect : fallbackRect);
-        drawEntityHpBarAt(ent, cx, cy + isoHalfH() - 5, std::max(8, s.tile));
+        drawEntityHpBarAt(ent, entityCx, anchorY - 5, entityFootprintHpBarWidth(ent));
     } else {
-        drawEntityHpBarAt(ent, cx, cy + s.tile / 2 - 4, std::max(8, s.tile - 4));
+        drawEntityHpBarAt(ent, entityCx, entityCy + s.tile / 2 - 4, std::max(8, s.tile - 4));
     }
 }
 
@@ -664,51 +758,243 @@ static void drawProjectileSpriteAt(const ProjectileRenderInfo& projectile, const
         setDraw(rgb(20,18,12,70)); SDL_RenderFillRect(s.ren, &shadow);
     }
     SDL_Rect gr{cx - glyphSize / 2, cy - glyphSize / 2 - motion.liftPx, glyphSize, glyphSize};
+    if (imageTilesetEnabled()) {
+        TilesetAssetFrame frame = tilesetLoadProjectileTileScaled(s.ren, projectile.type, gr.w, gr.h);
+        if (frame.texture && !frame.placeholder) {
+            Color mod = applyVisionToGlyph(rgb(255,255,255), projectile.tileX, projectile.tileY);
+            SDL_SetTextureColorMod(frame.texture, mod.r, mod.g, mod.b);
+            SDL_SetTextureAlphaMod(frame.texture, mod.a);
+            SDL_RenderCopy(s.ren, frame.texture, nullptr, &gr);
+            SDL_SetTextureColorMod(frame.texture, 255, 255, 255);
+            SDL_SetTextureAlphaMod(frame.texture, 255);
+            return;
+        }
+    }
     drawCentered(std::string(1, projectile.glyph), gr,
                  applyVisionToGlyph(projectileGlyphColor(projectile.color), projectile.tileX, projectile.tileY),
                  false, false);
 }
 
 struct SpriteDrawItem {
-    enum class Kind { Entity, Projectile } kind = Kind::Entity;
+    enum class Kind { Entity, Projectile, FeatureFront } kind = Kind::Entity;
     int entityId = -1;
     int projectileIndex = -1;
     float x = 0.0f;
     float y = 0.0f;
     float depth = 0.0f;
+    int tileX = -1;
+    int tileY = -1;
     SpriteMotionSample motion;
 };
 
+struct IsoMapLayerCache {
+    SDL_Texture* texture = nullptr;
+    bool valid = false;
+    bool unavailable = false;
+    int winW = 0;
+    int winH = 0;
+    SDL_Rect mapRect{0, 0, 0, 0};
+    int viewX = 0;
+    int viewY = 0;
+    int viewW = 0;
+    int viewH = 0;
+    int tile = 0;
+    int tick = -1;
+    int mode = 0;
+    int isoViewMilliX = 0;
+    int isoViewMilliY = 0;
+    unsigned actionMarkerHash = 0;
+};
+
+static IsoMapLayerCache isoMapLayerCache;
+
+static unsigned hashActionMarkersForCache() {
+    unsigned h = 2166136261u;
+    for (const ActionMarker& marker : ui.actionMarkers) {
+        h ^= (unsigned)(marker.x + 4099 * marker.y + 131 * marker.ticks + (int)marker.glyph);
+        h *= 16777619u;
+    }
+    return h;
+}
+
+static int cameraMilli(float value) {
+    return (int)std::lround(value * 1000.0f);
+}
+
+static bool isoMapLayerCacheMatches(SDL_Rect mr) {
+    return isoMapLayerCache.texture
+        && isoMapLayerCache.valid
+        && !isoMapLayerCache.unavailable
+        && isoMapLayerCache.winW == s.winW
+        && isoMapLayerCache.winH == s.winH
+        && isoMapLayerCache.mapRect.x == mr.x
+        && isoMapLayerCache.mapRect.y == mr.y
+        && isoMapLayerCache.mapRect.w == mr.w
+        && isoMapLayerCache.mapRect.h == mr.h
+        && isoMapLayerCache.viewX == view.viewX
+        && isoMapLayerCache.viewY == view.viewY
+        && isoMapLayerCache.viewW == view.viewW
+        && isoMapLayerCache.viewH == view.viewH
+        && isoMapLayerCache.tile == s.tile
+        && isoMapLayerCache.tick == g.tick
+        && isoMapLayerCache.mode == (int)g.mode
+        && isoMapLayerCache.isoViewMilliX == cameraMilli(s.isoCameraActive ? s.isoViewX : (float)view.viewX)
+        && isoMapLayerCache.isoViewMilliY == cameraMilli(s.isoCameraActive ? s.isoViewY : (float)view.viewY)
+        && isoMapLayerCache.actionMarkerHash == hashActionMarkersForCache();
+}
+
+static bool ensureIsoMapLayerCacheTexture() {
+    if (isoMapLayerCache.unavailable) return false;
+    if (isoMapLayerCache.texture
+        && isoMapLayerCache.winW == s.winW
+        && isoMapLayerCache.winH == s.winH) {
+        return true;
+    }
+    clearIsoMapLayerCache();
+    isoMapLayerCache.texture = SDL_CreateTexture(s.ren, SDL_PIXELFORMAT_RGBA32,
+                                                 SDL_TEXTUREACCESS_TARGET, s.winW, s.winH);
+    if (!isoMapLayerCache.texture) {
+        isoMapLayerCache.unavailable = true;
+        std::cerr << "realm: isometric map layer cache disabled: " << SDL_GetError() << "\n";
+        return false;
+    }
+    SDL_SetTextureBlendMode(isoMapLayerCache.texture, SDL_BLENDMODE_BLEND);
+    isoMapLayerCache.winW = s.winW;
+    isoMapLayerCache.winH = s.winH;
+    return true;
+}
+
+static void updateIsoMapLayerCacheKey(SDL_Rect mr) {
+    isoMapLayerCache.valid = true;
+    isoMapLayerCache.mapRect = mr;
+    isoMapLayerCache.viewX = view.viewX;
+    isoMapLayerCache.viewY = view.viewY;
+    isoMapLayerCache.viewW = view.viewW;
+    isoMapLayerCache.viewH = view.viewH;
+    isoMapLayerCache.tile = s.tile;
+    isoMapLayerCache.tick = g.tick;
+    isoMapLayerCache.mode = (int)g.mode;
+    isoMapLayerCache.isoViewMilliX = cameraMilli(s.isoCameraActive ? s.isoViewX : (float)view.viewX);
+    isoMapLayerCache.isoViewMilliY = cameraMilli(s.isoCameraActive ? s.isoViewY : (float)view.viewY);
+    isoMapLayerCache.actionMarkerHash = hashActionMarkersForCache();
+}
+
+void clearIsoMapLayerCache() {
+    if (isoMapLayerCache.texture) SDL_DestroyTexture(isoMapLayerCache.texture);
+    isoMapLayerCache = IsoMapLayerCache{};
+}
+
+static float entityTileDepthFraction() {
+    return 0.5f;
+}
+
+static float projectileTileDepthFraction() {
+    return 0.5f;
+}
+
+static float featureFrontDepthFraction(FeatureType feature) {
+    switch (feature) {
+        case F_FOREST:
+        case F_PINE:
+        case F_REEDS:
+            return 0.5f;
+        default:
+            return 0.5f;
+    }
+}
+
+static int spriteDrawKindOrder(SpriteDrawItem::Kind kind) {
+    switch (kind) {
+        case SpriteDrawItem::Kind::Entity: return 0;
+        case SpriteDrawItem::Kind::Projectile: return 1;
+        case SpriteDrawItem::Kind::FeatureFront: return 2;
+    }
+    return 0;
+}
+
+static bool tileNeedsFeatureFront(const TileRenderInfo& info) {
+    return info.visible && featureConceals(info.visualParts.feature);
+}
+
 static std::vector<SpriteDrawItem> buildSpriteDrawItems(Game& game, const WorldIndex& world, const RenderModel& model) {
+    RealmProfileScope scope("map.sprite_items");
     syncEntityMotionCache(game, model);
     syncProjectileMotionCache(game, model);
 
     std::vector<SpriteDrawItem> items;
+    for (const TileRenderInfo& info : model.tiles) {
+        if (!tileNeedsFeatureFront(info)) continue;
+        SpriteDrawItem item;
+        item.kind = SpriteDrawItem::Kind::FeatureFront;
+        item.x = (float)info.x;
+        item.y = (float)info.y;
+        item.tileX = info.x;
+        item.tileY = info.y;
+        item.depth = item.x + item.y + featureFrontDepthFraction(info.visualParts.feature);
+        items.push_back(item);
+    }
     for (const EntityRenderInfo& info : model.entities) {
         Entity* ent = renderFindEntity(game, world, info.id);
         if (!handledByTilesetSpritePass(ent) || !info.visible) continue;
         const EntityActionAnimationSpec* anim = entityActionAnimationSpecFor(game, world, *ent);
         SpriteMotionSample motion = sampleEntityMotion(*ent, anim);
-        items.push_back({SpriteDrawItem::Kind::Entity, ent->id, -1, motion.x, motion.y, motion.x + motion.y, motion});
+        SpriteDrawItem item;
+        item.kind = SpriteDrawItem::Kind::Entity;
+        item.entityId = ent->id;
+        item.x = motion.x;
+        item.y = motion.y;
+        item.depth = motion.x + motion.y + entityTileDepthFraction();
+        item.motion = motion;
+        items.push_back(item);
     }
     for (int i = 0; i < (int)model.projectiles.size(); ++i) {
         const ProjectileRenderInfo& projectile = model.projectiles[i];
         if (!projectile.visible || !projectile.alive) continue;
         SpriteMotionSample motion = sampleProjectileMotion(projectile, i);
-        items.push_back({SpriteDrawItem::Kind::Projectile, -1, i, motion.x, motion.y, motion.x + motion.y, motion});
+        SpriteDrawItem item;
+        item.kind = SpriteDrawItem::Kind::Projectile;
+        item.projectileIndex = i;
+        item.x = motion.x;
+        item.y = motion.y;
+        item.depth = motion.x + motion.y + projectileTileDepthFraction();
+        item.motion = motion;
+        items.push_back(item);
     }
     std::sort(items.begin(), items.end(), [](const SpriteDrawItem& a, const SpriteDrawItem& b) {
         if (a.depth != b.depth) return a.depth < b.depth;
         if (a.y != b.y) return a.y < b.y;
+        int ak = spriteDrawKindOrder(a.kind);
+        int bk = spriteDrawKindOrder(b.kind);
+        if (ak != bk) return ak < bk;
         return a.entityId < b.entityId;
     });
     return items;
 }
 
+static void drawFeatureFrontIso(Game& game, const WorldIndex& world, int mx, int my) {
+    int cx = 0, cy = 0;
+    isoTileCenterFloat((float)mx, (float)my, cx, cy);
+    SDL_Rect featureRect = featureSpriteRectIso(cx, cy, isoHalfW(), isoHalfH());
+    drawFeatureOccluderIfNeeded(game, world, mx, my, featureRect);
+}
+
+static void drawFeatureFrontTopDown(Game& game, const WorldIndex& world, int mx, int my) {
+    SDL_Rect mr = mapRect();
+    SDL_Rect r{mr.x + (mx - view.viewX) * s.tile,
+               mr.y + (my - view.viewY) * s.tile,
+               s.tile, s.tile};
+    drawFeatureOccluderIfNeeded(game, world, mx, my, r);
+}
+
 static void drawMovingSpritesIso(Game& game, const WorldIndex& world, const RenderModel& model) {
     if (!tilesetMovingSpritePassEnabled()) return;
+    RealmProfileScope scope("map.moving_sprites_iso");
     std::vector<SpriteDrawItem> items = buildSpriteDrawItems(game, world, model);
     for (const SpriteDrawItem& item : items) {
+        if (item.kind == SpriteDrawItem::Kind::FeatureFront) {
+            drawFeatureFrontIso(game, world, item.tileX, item.tileY);
+            continue;
+        }
         int cx = 0, cy = 0;
         isoTileCenterFloat(item.x, item.y, cx, cy);
         if (item.kind == SpriteDrawItem::Kind::Entity) {
@@ -722,8 +1008,13 @@ static void drawMovingSpritesIso(Game& game, const WorldIndex& world, const Rend
 
 static void drawMovingSpritesTopDown(Game& game, const WorldIndex& world, const RenderModel& model) {
     if (!tilesetMovingSpritePassEnabled()) return;
+    RealmProfileScope scope("map.moving_sprites_top_down");
     std::vector<SpriteDrawItem> items = buildSpriteDrawItems(game, world, model);
     for (const SpriteDrawItem& item : items) {
+        if (item.kind == SpriteDrawItem::Kind::FeatureFront) {
+            drawFeatureFrontTopDown(game, world, item.tileX, item.tileY);
+            continue;
+        }
         int cx = 0, cy = 0;
         topDownTileCenterFloat(item.x, item.y, cx, cy);
         if (item.kind == SpriteDrawItem::Kind::Entity) {
@@ -791,7 +1082,7 @@ TileVisual makeTileVisual(Game& game, const WorldIndex& world, const RenderModel
     } else if (v.visible) {
         logMissingTerrainImageTile(tile.terrain);
         logMissingVisualTileParts(tile);
-        if (imageTilesetEnabled() && hasTerrainImageTile(tile.terrain) && !isResourceEmojiTerrain(tile.terrain)) {
+        if (imageTilesetEnabled() && hasTerrainImageTile(tile.terrain)) {
             v.glyph.clear();
             v.emoji = false;
             v.tint = false;
@@ -843,7 +1134,7 @@ void drawTile(Game& game, const WorldIndex& world, const RenderModel& model, int
                                       std::max(4, (int)std::lround(s.tile * 0.16f)));
         }
     }
-    drawFeatureOccluderIfNeeded(game, world, mx, my, r);
+    if (!tilesetMovingSpritePassEnabled()) drawFeatureOccluderIfNeeded(game, world, mx, my, r);
 
     // HP sliver for damaged visible entities.
     if (!tileSpriteMovedToOverlay && v.visible && v.ent && v.ent->alive && v.ent->hp < v.ent->maxHp) {
@@ -1420,6 +1711,7 @@ static void drawCursorOverlayTopDown() {
 
 static void drawTilesetOverlayIsoBack(const Game& game, const WorldIndex& world) {
     if (!tilesetIndicatorsEnabled()) return;
+    RealmProfileScope scope("map.overlay_iso_back");
     updateCursorOverlayState(game, world);
     drawRightDragPathIso();
     if (s.leftDown) drawDragSelectionCornersIso(true);
@@ -1429,6 +1721,7 @@ static void drawTilesetOverlayIsoBack(const Game& game, const WorldIndex& world)
 
 static void drawTilesetOverlayIsoFront(const Game& game, const WorldIndex& world) {
     if (!tilesetIndicatorsEnabled()) return;
+    RealmProfileScope scope("map.overlay_iso_front");
     updateCursorOverlayState(game, world);
     if (s.leftDown) drawDragSelectionCornersIso(false);
     else drawCursorOverlayIsoFront();
@@ -1438,6 +1731,7 @@ static void drawTilesetOverlayIsoFront(const Game& game, const WorldIndex& world
 
 static void drawTilesetOverlayTopDown(const Game& game, const WorldIndex& world) {
     if (!tilesetIndicatorsEnabled()) return;
+    RealmProfileScope scope("map.overlay_top_down");
     updateCursorOverlayState(game, world);
     drawRightDragPathTopDown();
     if (s.leftDown) drawDragSelectionCornersTopDown();
@@ -1504,28 +1798,40 @@ void drawIsoTileForeground(Game& game, const WorldIndex& world, const RenderMode
     int hw = isoHalfW(), hh = isoHalfH();
     TileVisual v = makeTileVisual(game, world, model, mx, my);
 
-    bool tileSpriteMovedToOverlay = handledByTilesetSpritePass(v.ent) || (tilesetMovingSpritePassEnabled() && v.projectile);
-    if (!v.glyph.empty() && !tileSpriteMovedToOverlay) {
+    bool entityDrawsHere = !v.ent || entityDrawsFromFootprintTile(game, world, model, *v.ent, mx, my);
+    bool tileSpriteMovedToOverlay = (entityDrawsHere && handledByTilesetSpritePass(v.ent))
+        || (tilesetMovingSpritePassEnabled() && v.projectile);
+    if (!v.glyph.empty() && !tileSpriteMovedToOverlay && entityDrawsHere) {
         // Upright sprite/glyph over the flat isometric board.  The diamond is
         // isometric; the emoji/text itself is not skewed.
         int glyphSize = v.emoji ? std::max(16, (int)(s.tile * 0.96f)) : std::max(12, (int)(s.tile * 0.78f));
         if (v.visible && v.ent && imageTilesetEnabled()) {
             glyphSize = std::max(glyphSize, (int)(s.tile * 1.55f));
+            glyphSize = entityFootprintSpriteSize(*v.ent, glyphSize);
         }
-        SDL_Rect gr{cx - glyphSize/2, cy - glyphSize/2, glyphSize, glyphSize};
+        int entityCx = cx;
+        int entityCy = cy;
+        if (v.visible && v.ent) isoEntityFootprintCenter(*v.ent, cx, cy, entityCx, entityCy);
+        SDL_Rect gr{entityCx - glyphSize/2, entityCy - glyphSize/2, glyphSize, glyphSize};
         SDL_Rect imageDrawRect = gr;
         bool drewImage = false;
         if (v.visible && v.ent) {
             Color mod = applyVisionToGlyph(rgb(255,255,255), mx, my);
             drewImage = drawEntityImageAtAnchor(game, world, *v.ent,
-                                                cx, cy, glyphSize, glyphSize, mod,
+                                                entityCx, isoEntityFootprintAnchorY(*v.ent, entityCy), glyphSize, glyphSize, mod,
                                                 nullptr, nullptr, -1, SDL_Color{0,0,0,0},
                                                 nullptr, &imageDrawRect);
         }
         if (!drewImage) {
             drawCentered(v.glyph, gr, v.visible ? v.fg : scale(v.fg, 0.55f), v.emoji, v.tint);
         }
-        drawFeatureOccluderIfNeeded(game, world, mx, my, drewImage ? imageDrawRect : gr);
+        if (!tilesetMovingSpritePassEnabled()) {
+            drawFeatureOccluderIfNeeded(game, world, mx, my, drewImage ? imageDrawRect : gr);
+        }
+    }
+    if (!tilesetMovingSpritePassEnabled() && !v.ent && v.glyph.empty()) {
+        SDL_Rect featureRect = featureSpriteRectIso(cx, cy, hw, hh);
+        drawFeatureOccluderIfNeeded(game, world, mx, my, featureRect);
     }
     if (tilesetIndicatorsEnabled() && v.visible && !v.ent && !v.projectile) {
         const ActionMarkerRenderInfo* marker = actionMarkerAt(model, mx, my);
@@ -1536,9 +1842,12 @@ void drawIsoTileForeground(Game& game, const WorldIndex& world, const RenderMode
         }
     }
 
-    if (!tileSpriteMovedToOverlay && v.visible && v.ent && v.ent->alive && v.ent->hp < v.ent->maxHp) {
-        int barW = std::max(8, s.tile);
-        SDL_Rect hb{cx - barW/2, cy + hh - 5, barW, 3};
+    if (!tileSpriteMovedToOverlay && entityDrawsHere && v.visible && v.ent && v.ent->alive && v.ent->hp < v.ent->maxHp) {
+        int barCx = cx;
+        int barCy = cy;
+        isoEntityFootprintCenter(*v.ent, cx, cy, barCx, barCy);
+        int barW = entityFootprintHpBarWidth(*v.ent);
+        SDL_Rect hb{barCx - barW/2, isoEntityFootprintAnchorY(*v.ent, barCy) - 5, barW, 3};
         setDraw(rgb(80,20,20,190)); SDL_RenderFillRect(s.ren, &hb);
         hb.w = std::max(1, barW * v.ent->hp / std::max(1, v.ent->maxHp));
         setDraw(v.ent->hp*3 > v.ent->maxHp*2 ? rgb(65,230,90) : v.ent->hp*3 > v.ent->maxHp ? rgb(230,210,70) : rgb(230,60,55));
@@ -1560,27 +1869,91 @@ void drawMapIso(const WorldIndex& world) {
     setDraw(rgb(4,6,8)); SDL_RenderFillRect(s.ren, &mr);
     updateViewMetrics(!s.middleDown);
     SDL_RenderSetClipRect(s.ren, &mr);
-    RenderModel model = buildRenderModel(g, ui.actionMarkers, 0, view.viewX, view.viewY, view.viewW, view.viewH);
+    RenderModel model;
+    {
+        RealmProfileScope scope("map.render_model");
+        model = buildRenderModel(g, ui.actionMarkers, 0, view.viewX, view.viewY, view.viewW, view.viewH);
+    }
 
     IsoOffsetBounds b = isoVisibleOffsetBounds();
     int minSum = b.minSx + b.minSy;
     int maxSum = b.maxSx + b.maxSy;
-    for (int sum = minSum; sum <= maxSum; ++sum) {
-        for (int sy = b.minSy; sy <= b.maxSy; ++sy) {
-            int sx = sum - sy;
-            if (sx < b.minSx || sx > b.maxSx) continue;
-            int mx = view.viewX + sx, my = view.viewY + sy;
-            if (!inBounds(mx, my)) continue;
-            drawIsoTileBase(g, world, model, mx, my);
+    bool drewCachedLayer = false;
+    if (ensureIsoMapLayerCacheTexture()) {
+        if (!isoMapLayerCacheMatches(mr)) {
+            RealmProfileScope rebuildScope("map.iso_layer_cache_rebuild");
+            SDL_Texture* previousTarget = SDL_GetRenderTarget(s.ren);
+            SDL_Rect previousClip{};
+            SDL_bool clipEnabled = SDL_RenderIsClipEnabled(s.ren);
+            if (clipEnabled) SDL_RenderGetClipRect(s.ren, &previousClip);
+
+            SDL_SetRenderTarget(s.ren, isoMapLayerCache.texture);
+            SDL_RenderSetClipRect(s.ren, nullptr);
+            SDL_SetRenderDrawBlendMode(s.ren, SDL_BLENDMODE_BLEND);
+            setDraw(rgb(0, 0, 0, 0));
+            SDL_RenderClear(s.ren);
+            SDL_RenderSetClipRect(s.ren, &mr);
+            {
+                RealmProfileScope scope("map.iso_base_tiles");
+                for (int sum = minSum; sum <= maxSum; ++sum) {
+                    for (int sy = b.minSy; sy <= b.maxSy; ++sy) {
+                        int sx = sum - sy;
+                        if (sx < b.minSx || sx > b.maxSx) continue;
+                        int mx = view.viewX + sx, my = view.viewY + sy;
+                        if (!inBounds(mx, my)) continue;
+                        drawIsoTileBase(g, world, model, mx, my);
+                    }
+                }
+            }
+            {
+                RealmProfileScope scope("map.iso_foreground_tiles");
+                for (int sum = minSum; sum <= maxSum; ++sum) {
+                    for (int sy = b.minSy; sy <= b.maxSy; ++sy) {
+                        int sx = sum - sy;
+                        if (sx < b.minSx || sx > b.maxSx) continue;
+                        int mx = view.viewX + sx, my = view.viewY + sy;
+                        if (!inBounds(mx, my)) continue;
+                        drawIsoTileForeground(g, world, model, mx, my);
+                    }
+                }
+            }
+
+            SDL_SetRenderTarget(s.ren, previousTarget);
+            if (clipEnabled) SDL_RenderSetClipRect(s.ren, &previousClip);
+            else SDL_RenderSetClipRect(s.ren, nullptr);
+            updateIsoMapLayerCacheKey(mr);
         }
+        {
+            RealmProfileScope scope("map.iso_layer_cache_copy");
+            SDL_RenderCopy(s.ren, isoMapLayerCache.texture, &mr, &mr);
+        }
+        drewCachedLayer = true;
     }
-    for (int sum = minSum; sum <= maxSum; ++sum) {
-        for (int sy = b.minSy; sy <= b.maxSy; ++sy) {
-            int sx = sum - sy;
-            if (sx < b.minSx || sx > b.maxSx) continue;
-            int mx = view.viewX + sx, my = view.viewY + sy;
-            if (!inBounds(mx, my)) continue;
-            drawIsoTileForeground(g, world, model, mx, my);
+
+    if (!drewCachedLayer) {
+        {
+            RealmProfileScope scope("map.iso_base_tiles");
+            for (int sum = minSum; sum <= maxSum; ++sum) {
+                for (int sy = b.minSy; sy <= b.maxSy; ++sy) {
+                    int sx = sum - sy;
+                    if (sx < b.minSx || sx > b.maxSx) continue;
+                    int mx = view.viewX + sx, my = view.viewY + sy;
+                    if (!inBounds(mx, my)) continue;
+                    drawIsoTileBase(g, world, model, mx, my);
+                }
+            }
+        }
+        {
+            RealmProfileScope scope("map.iso_foreground_tiles");
+            for (int sum = minSum; sum <= maxSum; ++sum) {
+                for (int sy = b.minSy; sy <= b.maxSy; ++sy) {
+                    int sx = sum - sy;
+                    if (sx < b.minSx || sx > b.maxSx) continue;
+                    int mx = view.viewX + sx, my = view.viewY + sy;
+                    if (!inBounds(mx, my)) continue;
+                    drawIsoTileForeground(g, world, model, mx, my);
+                }
+            }
         }
     }
 
@@ -1610,14 +1983,21 @@ void drawMap(const WorldIndex& world) {
     setDraw(rgb(4,6,8)); SDL_RenderFillRect(s.ren, &mr);
     updateViewMetrics(!s.middleDown);
     SDL_RenderSetClipRect(s.ren, &mr);
-    RenderModel model = buildRenderModel(g, ui.actionMarkers, 0, view.viewX, view.viewY, view.viewW, view.viewH);
+    RenderModel model;
+    {
+        RealmProfileScope scope("map.render_model");
+        model = buildRenderModel(g, ui.actionMarkers, 0, view.viewX, view.viewY, view.viewW, view.viewH);
+    }
 
-    for (int sy=0; sy<view.viewH; ++sy) {
-        for (int sx=0; sx<view.viewW; ++sx) {
-            int mx = view.viewX + sx, my = view.viewY + sy;
-            if (!inBounds(mx, my)) continue;
-            SDL_Rect r{mr.x + sx*s.tile, mr.y + sy*s.tile, s.tile, s.tile};
-            drawTile(g, world, model, mx, my, r);
+    {
+        RealmProfileScope scope("map.top_down_tiles");
+        for (int sy=0; sy<view.viewH; ++sy) {
+            for (int sx=0; sx<view.viewW; ++sx) {
+                int mx = view.viewX + sx, my = view.viewY + sy;
+                if (!inBounds(mx, my)) continue;
+                SDL_Rect r{mr.x + sx*s.tile, mr.y + sy*s.tile, s.tile, s.tile};
+                drawTile(g, world, model, mx, my, r);
+            }
         }
     }
 

@@ -88,11 +88,11 @@
     },
     "generation_aspect_variant_rules": [],
     "source_canvas": {
-      "width_px": 48,
-      "height_px": 48,
+      "width_px": 512,
+      "height_px": 512,
       "unit": "px",
-      "scope": "per accepted standalone actor sprite frame",
-      "source": "docs/tileset/realm_tileset_visual_audit.md core format table"
+      "scope": "per accepted standalone high-resolution actor sprite frame",
+      "source": "realm high-resolution source-quality contract"
     }
   },
   "states": [

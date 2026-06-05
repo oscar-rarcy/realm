@@ -194,6 +194,7 @@ COMMON_SOURCES=(
   src/platform/view_state.cpp
   src/render/display_model.cpp
   src/render/entity_visual_defs.cpp
+  src/render/ground_shader.cpp
   src/render/render_model.cpp
   src/render/sdl/*.cpp
 )
@@ -211,7 +212,7 @@ em++ "${COMMON_SOURCES[@]}" \
   -sSTACK_SIZE=8388608 \
   -sEXIT_RUNTIME=0 \
   -sASSERTIONS=1 \
-  -sEXPORTED_FUNCTIONS='["_main","_realm_web_tick","_realm_web_entity_count","_realm_web_selected_id","_realm_web_selected_count","_realm_web_view_x","_realm_web_view_y","_realm_web_view_w","_realm_web_view_h","_realm_web_cursor_x","_realm_web_cursor_y","_realm_web_first_owned_unit_x","_realm_web_first_owned_unit_y","_realm_web_screen_x_for_tile","_realm_web_screen_y_for_tile","_realm_web_screen","_realm_web_ascii_only","_realm_web_display_mode","_realm_web_context_menu_open","_realm_web_context_menu_option_count"]' \
+  -sEXPORTED_FUNCTIONS='["_main","_realm_web_tick","_realm_web_entity_count","_realm_web_selected_id","_realm_web_selected_count","_realm_web_view_x","_realm_web_view_y","_realm_web_view_w","_realm_web_view_h","_realm_web_cursor_x","_realm_web_cursor_y","_realm_web_first_owned_unit_x","_realm_web_first_owned_unit_y","_realm_web_screen_x_for_tile","_realm_web_screen_y_for_tile","_realm_web_screen","_realm_web_ascii_only","_realm_web_display_mode","_realm_web_context_menu_open","_realm_web_context_menu_option_count","_realm_web_test_force_loss"]' \
   -sEXPORTED_RUNTIME_METHODS='["ccall","cwrap"]' \
   --preload-file "$ASSET_DIR@/assets" \
   --preload-file "$FONT_DIR/DejaVuSansMono.ttf@/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf" \

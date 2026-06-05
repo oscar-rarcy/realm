@@ -40,11 +40,11 @@
       "description": "default square image-generation aspect ratio"
     },
     "source_canvas": {
-      "width_px": 48,
-      "height_px": 48,
+      "width_px": 512,
+      "height_px": 512,
       "unit": "px",
-      "scope": "per accepted standalone tile-anchored source image",
-      "source": "docs/tileset/realm_tileset_visual_audit.md core format table"
+      "scope": "per accepted standalone high-resolution tile-anchored source image",
+      "source": "realm high-resolution source-quality contract"
     }
   },
   "paths": {

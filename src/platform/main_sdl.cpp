@@ -7,6 +7,8 @@
 #include "commands/command.h"
 #include "commands/command_runner.h"
 #include "core/game_events.h"
+#include "platform/fixed_timestep.h"
+#include "render/sdl/sdl_profiler.h"
 
 #include <SDL.h>
 
@@ -16,8 +18,16 @@
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
+#include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <string>
+
+static double steadyNowMs() {
+    using Clock = std::chrono::steady_clock;
+    using MsDouble = std::chrono::duration<double, std::milli>;
+    return std::chrono::duration_cast<MsDouble>(Clock::now().time_since_epoch()).count();
+}
 
 static Entity* firstOwned(EntityType type, int owner) {
     for (auto& e : g.entities)
@@ -75,6 +85,24 @@ static void applyTilesetTestMap() {
             g.map[y][x].explored[0] = true;
         }
     }
+
+    auto setFeatureSample = [&](int dx, int dy, Terrain terrain, int resources, Biome biome = B_TEMPERATE) {
+        int x = cx + dx;
+        int y = cy + dy;
+        if (!inBounds(x, y)) return;
+        Tile& tile = g.map[y][x];
+        tile.terrain = terrain;
+        tile.resources = resources;
+        tile.biome = biome;
+        tile.preWinterTerrain = terrain;
+        tile.visible[0] = true;
+        tile.explored[0] = true;
+    };
+    setFeatureSample(-4, 0, T_BERRY, 70);
+    setFeatureSample(-2, 0, T_GOLD, 300);
+    setFeatureSample(0, 0, T_FOREST, 120);
+    setFeatureSample(2, 0, T_PINE, 120);
+    setFeatureSample(4, 0, T_MOUNTAIN, 0);
 
     g.entities.clear();
     g.projectiles.clear();
@@ -548,6 +576,103 @@ static int runUiTestMode() {
     return ok ? 0 : 1;
 }
 
+static int runTilesetProfileMode() {
+    std::filesystem::path outDir = "build/profiles";
+    if (const char* env = std::getenv("REALM_PROFILE_DIR")) {
+        if (*env) outDir = env;
+    }
+    std::filesystem::create_directories(outDir);
+
+    const int width = envIntLocal("REALM_PROFILE_WIDTH", 1280);
+    const int height = envIntLocal("REALM_PROFILE_HEIGHT", 800);
+    const int frames = std::max(1, envIntLocal("REALM_PROFILE_FRAMES", 600));
+    const int warmupFrames = std::max(0, envIntLocal("REALM_PROFILE_WARMUP_FRAMES", 120));
+    const int tickEvery = std::max(0, envIntLocal("REALM_PROFILE_TICK_EVERY", 6));
+    const int zoom = envIntLocal("REALM_PROFILE_ZOOM", 20);
+    const int ais = std::max(0, std::min(3, envIntLocal("REALM_PROFILE_AIS", 3)));
+    const unsigned seed = (unsigned)envIntLocal("REALM_PROFILE_SEED", 2468);
+    const int humanCorner = envIntLocal("REALM_PROFILE_HUMAN_CORNER", 1);
+
+    gfxSetWindowSizeForTest(width, height);
+    displayMode = DM_EMOJI;
+    gfxSetAsciiOnly(false);
+    gfxSetProjection(true);
+    gfxSetZoomForTest(zoom);
+
+    g.biomeChoice = envIntLocal("REALM_BIOME", B_TEMPERATE);
+    initGameWithSeed(ais, seed, humanCorner);
+    if (tilesetTestMapEnabled()) applyTilesetTestMap();
+    gfxOnNewGame();
+    ui.statusTimer = 0;
+    updateFog(g);
+
+    std::cerr << "realm: tileset profile warmup frames=" << warmupFrames
+              << " measured_frames=" << frames
+              << " tick_every=" << tickEvery
+              << " window=" << width << "x" << height
+              << " zoom=" << zoom
+              << " ais=" << ais << "\n";
+
+    realmProfilerSetEnabled(false);
+    for (int i = 0; i < warmupFrames; ++i) {
+        SDL_PumpEvents();
+        if (tickEvery > 0 && (i % tickEvery) == 0) {
+            tickSimulationOnce(g, gameEvents(), true);
+            tickUiState(ui);
+        }
+        gfxRender();
+    }
+
+    realmProfilerReset();
+    realmProfilerSetEnabled(true);
+    double startMs = steadyNowMs();
+    for (int i = 0; i < frames; ++i) {
+        SDL_PumpEvents();
+        if (tickEvery > 0 && (i % tickEvery) == 0) {
+            RealmProfileScope scope("loop.sim_tick");
+            tickSimulationOnce(g, gameEvents(), true);
+            tickUiState(ui);
+        }
+        gfxRender();
+    }
+    double elapsedMs = std::max(0.001, steadyNowMs() - startMs);
+    realmProfilerSetEnabled(false);
+
+    const double fps = frames * 1000.0 / elapsedMs;
+    std::filesystem::path jsonPath = outDir / "tileset-profile-sections.json";
+    std::filesystem::path csvPath = outDir / "tileset-profile-sections.csv";
+    realmProfilerSetEnabled(true);
+    realmProfilerWriteReports(jsonPath.string(), csvPath.string());
+    realmProfilerSetEnabled(false);
+
+    std::filesystem::path summaryPath = outDir / "tileset-profile-summary.json";
+    {
+        std::ofstream out(summaryPath, std::ios::binary);
+        out << std::fixed << std::setprecision(4);
+        out << "{\n";
+        out << "  \"schema\": \"realm.tileset_profile_summary.v1\",\n";
+        out << "  \"frames\": " << frames << ",\n";
+        out << "  \"warmup_frames\": " << warmupFrames << ",\n";
+        out << "  \"elapsed_ms\": " << elapsedMs << ",\n";
+        out << "  \"fps\": " << fps << ",\n";
+        out << "  \"target_fps\": 120.0,\n";
+        out << "  \"min_acceptable_fps\": 60.0,\n";
+        out << "  \"width\": " << width << ",\n";
+        out << "  \"height\": " << height << ",\n";
+        out << "  \"zoom\": " << zoom << ",\n";
+        out << "  \"ais\": " << ais << ",\n";
+        out << "  \"seed\": " << seed << ",\n";
+        out << "  \"tick_every\": " << tickEvery << "\n";
+        out << "}\n";
+    }
+
+    std::cerr << "realm: tileset profile complete fps=" << fps
+              << " elapsed_ms=" << elapsedMs
+              << " summary=" << summaryPath.string()
+              << " sections=" << jsonPath.string() << "\n";
+    return fps >= 120.0 ? 0 : 2;
+}
+
 int main(int argc, char** argv) {
     if (argc >= 2 && std::string(argv[1]) == "--dump-missing-tileset-assets") {
         return dumpMissingTilesetAssets();
@@ -596,8 +721,11 @@ int main(int argc, char** argv) {
         return code;
     }
 
-    using Clock = std::chrono::steady_clock;
-    using Ms    = std::chrono::milliseconds;
+    if (std::getenv("REALM_PROFILE_TILESET")) {
+        int code = runTilesetProfileMode();
+        gfxShutdown();
+        return code;
+    }
 
     while (true) {
         std::cerr << "realm: entering main screen\n";
@@ -638,15 +766,16 @@ int main(int argc, char** argv) {
             return 0;
         }
 
-        auto nextTick = Clock::now() + Ms(TICK_MS);
+        double nextTickMs = steadyNowMs() + TICK_MS;
         while (!g.returnToMenu) {
             bool quit = false;
             gfxPollInput(quit);
             if (quit) { gfxShutdown(); return 0; }
 
             bool ticked = false;
-            if (Clock::now() >= nextTick) {
-                nextTick += Ms(TICK_MS);
+            FixedTickPlan tickPlan = planFixedTicks(steadyNowMs(), nextTickMs, TICK_MS);
+            nextTickMs = tickPlan.nextTickMs;
+            for (int i = 0; i < tickPlan.ticksToRun; ++i) {
                 if (g.mode != M_PAUSED && g.mode != M_GAME_OVER) {
                     tickSimulationOnce(g, gameEvents(), true);
                     tickUiState(ui);
@@ -663,5 +792,3 @@ int main(int argc, char** argv) {
     gfxShutdown();
     return 0;
 }
-
-

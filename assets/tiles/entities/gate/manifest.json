@@ -75,7 +75,63 @@
           }
         ]
       }
+    },
+    "idle": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "Runtime alias for closed",
+      "directions": {
+        "front": [
+          {
+            "base": "idle/front/frame_00_base.png",
+            "team_mask": "idle/front/frame_00_teammask.png"
+          },
+          {
+            "base": "idle/front/frame_01_base.png",
+            "team_mask": "idle/front/frame_01_teammask.png"
+          }
+        ],
+        "back": [
+          {
+            "base": "idle/back/frame_00_base.png",
+            "team_mask": "idle/back/frame_00_teammask.png"
+          },
+          {
+            "base": "idle/back/frame_01_base.png",
+            "team_mask": "idle/back/frame_01_teammask.png"
+          }
+        ]
+      }
+    },
+    "death": {
+      "frame_ms": 250,
+      "loop": false,
+      "hold_last": true,
+      "description": "Runtime alias for closed",
+      "directions": {
+        "front": [
+          {
+            "base": "death/front/frame_00_base.png",
+            "team_mask": "death/front/frame_00_teammask.png"
+          },
+          {
+            "base": "death/front/frame_01_base.png",
+            "team_mask": "death/front/frame_01_teammask.png"
+          }
+        ],
+        "back": [
+          {
+            "base": "death/back/frame_00_base.png",
+            "team_mask": "death/back/frame_00_teammask.png"
+          },
+          {
+            "base": "death/back/frame_01_base.png",
+            "team_mask": "death/back/frame_01_teammask.png"
+          }
+        ]
+      }
     }
   },
-  "notes": "Generated from accepted gate contact sheet under art/tiles/candidates/buildings/gate/sheets."
+  "notes": "Generated from accepted gate contact sheet under art/tiles/candidates/buildings/gate/sheets. Structural runtime idle/death aliases added from closest generated building/bridge/wall state."
 }

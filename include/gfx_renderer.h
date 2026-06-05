@@ -10,6 +10,8 @@ void gfxShutdown();
 int  gfxShowSplash();
 int  gfxSplashFrame(int& numAIs, int& biomeIdx);
 void gfxSetAsciiOnly(bool asciiOnly);
+void gfxSetViewportOnly(bool viewportOnly);
+void gfxSetEdgeScrollEnabled(bool enabled);
 bool gfxConsumeLoadGameRequest();
 void gfxOnNewGame();
 void gfxPollInput(bool& quitRequested);

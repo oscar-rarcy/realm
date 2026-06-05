@@ -1,5 +1,7 @@
 #include "realm.h"
+#include "core/entity_facing.h"
 #include "core/game_events.h"
+#include "core/entity_motion.h"
 #include "core/order_service.h"
 #include "core/world_index.h"
 
@@ -34,6 +36,13 @@ namespace {
 
 void emitStatus(EventSink& events, int player, const std::string& message, GameEventType type = GameEventType::StatusMessage) {
     events.emit({ type, player, -1, { -1, -1 }, message, 0 });
+}
+
+bool waitForActionApproach(Entity& e, int targetX, int targetY) {
+    faceEntityTowardTile(e, targetX, targetY);
+    e.path.clear();
+    e.pathIdx = 0;
+    return consumeEntityMoveCooldown(e);
 }
 
 } // namespace
@@ -148,6 +157,7 @@ static void tickRetreat(Game& game, const WorldIndex& world, EventSink& events, 
 static void tickUnitState(Game& game, WorldIndex& world, EventSink& events, Entity& e) {
     switch (e.state) {
     case S_IDLE:
+        if (consumeEntityMoveCooldown(e)) break;
         // Military auto-engages anything visible within fog radius — units now
         // close in on threats they can see rather than waiting to be poked.
         if (!e.retreating && !e.holdPosition && isMilitary(e.type) && canAttack(e.type) && e.type != E_RAM
@@ -181,7 +191,7 @@ static void tickUnitState(Game& game, WorldIndex& world, EventSink& events, Enti
             if (en) { orderAttackForTick(game, world, events, e, en->id); break; }
         }
         moveAlongPath(game, world, e);
-        if (e.path.empty() || e.pathIdx >= (int)e.path.size()) {
+        if (e.path.empty()) {
             e.state = S_IDLE; e.attackMove = 0;
         }
         break;
@@ -197,6 +207,9 @@ static void tickUnitState(Game& game, WorldIndex& world, EventSink& events, Enti
         // Catapults need standoff — too close to arm the sling properly.
         if (e.type == E_CATAPULT && d < 2) { e.state = S_IDLE; break; }
         if (d <= unitRange(game, e)) {
+            e.targetX = t->x;
+            e.targetY = t->y;
+            if (waitForActionApproach(e, t->x, t->y)) break;
             if (e.atkCd <= 0) {
                 int rawDmg = unitAtk(game, e);
                 int dmg = damageVs(game, e.type, t->type, rawDmg, t->owner);
@@ -278,6 +291,7 @@ static void tickUnitState(Game& game, WorldIndex& world, EventSink& events, Enti
     case S_GATHERING: {
         int d = dist(e.x, e.y, e.targetX, e.targetY);
         if (d <= 1) {
+            if (waitForActionApproach(e, e.targetX, e.targetY)) break;
             Entity* carcass = corpseAtForTick(game, world, e.targetX, e.targetY);
             if (carcass && e.type == E_PEASANT && e.cargo.type == CR_FOOD) {
                 if (isHarvestableCarcass(*carcass)) {
@@ -438,6 +452,7 @@ static void tickUnitState(Game& game, WorldIndex& world, EventSink& events, Enti
         // Tending a completed farm — stay adjacent and ferry ripe harvest to a depot
         if (!bld->underConstruction && bld->type == E_FARM) {
             int d = dist(e.x, e.y, bld->x, bld->y);
+            if (d <= 1 && waitForActionApproach(e, bld->x, bld->y)) break;
             // Pick up ripe wheat once enough has accumulated to make the trip worthwhile
             if (d <= 1 && bld->storedFood >= 3 && e.cargo.amount == 0) {
                 int take = std::min(bld->storedFood, CARRY_MAX);
@@ -481,6 +496,8 @@ static void tickUnitState(Game& game, WorldIndex& world, EventSink& events, Enti
                 }
                 e.path = findPathFor(game, e, bestAX, bestAY); e.pathIdx = 0;
             }
+        } else {
+            if (waitForActionApproach(e, cx, cy)) break;
         }
         break;
     }

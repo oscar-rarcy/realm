@@ -74,6 +74,7 @@ GROUND_SIDE_MATERIAL_GUIDANCE = {
     "grass": "faded olive, yellow-green, and darker earthy green side material, like worn grass over a compacted soil slab; not bright gold and not grey stone.",
     "meadow": "soft meadow green side material with muted earth-green and tan undertones; small flower colours stay on the top face, not on the side faces.",
     "dirt": "compacted ochre-brown and dark soil side material, with dry dusty chips or darker damp chips matching the state.",
+    "road": "packed-road and worn cobble side material, grey-brown with chipped stone edges, compacted dirt in cracks, and darker contact-shadow chips underneath.",
     "mud": "dark wet brown peat and clay side material, with subtle glossy damp highlights; not green grass sides and not clean stone.",
     "sand": "warm tan, ochre, and shaded sandy side material, like compressed sand with darker worn underside chips.",
     "dunes": "warm sand-coloured side material with wind-worn tan ridges continuing softly into the bevel; avoid stone-grey sides.",
@@ -110,6 +111,14 @@ def ground_specs() -> list[tuple[str, str, str, list[dict[str, str]]]]:
         state_item("winter_frozen", "bare earth in winter, frozen with frost and patchy snow"),
         *rain_frames("rain", "bare earth"),
         *rain_frames("storm", "bare earth"),
+    ]),
+    ("road", "road ground", "top-down square packed road or worn cobble floor, readable as a movement route and not a transparent overlay", [
+        state_item("spring_clear", "packed road or worn cobble ground in clear spring weather"),
+        state_item("summer_dry", "packed road or worn cobble ground in dry summer weather"),
+        state_item("autumn_leaf_litter", "packed road or worn cobble ground with autumn leaf litter caught at the edges"),
+        state_item("winter_snow_edges", "packed road or worn cobble ground with snow gathered on edges but the route still readable"),
+        *rain_frames("rain", "packed road or worn cobble ground"),
+        *rain_frames("storm", "packed road or worn cobble ground"),
     ]),
     ("mud", "mud ground", "top-down square wet mud floor with ruts and puddled surface", [
         state_item("clear_wet", "mud terrain in clear weather, wet dark surface and puddles"),
@@ -365,10 +374,7 @@ def rain_frames(prefix: str, subject: str) -> list[dict[str, str]]:
 def death_states_for(enum_name: str, category: str) -> list[dict[str, str]]:
     if category == "animals":
         return [
-            {"id": "dead_unharvested", "description": "freshly killed animal body lying on the ground, full carcass, species silhouette still readable"},
-            {"id": "partly_harvested", "description": "partly butchered and harvested carcass, some meat or hide cleanly removed, species still readable"},
-            {"id": "mostly_harvested", "description": "mostly butchered and harvested carcass, clean bones beginning to show, not rotting"},
-            {"id": "depleted_skeleton", "description": "fully harvested clean skeleton remains, species silhouette still readable, not decayed or rotten"},
+            {"id": "death", "description": "runtime two-frame animal death sequence: freshly dead readable carcass followed by the same animal's clean depleted skeleton remains"},
         ]
     if category != "units":
         return []
@@ -561,6 +567,8 @@ def entity_actions(enum_name: str, category: str, stats: dict[str, Any], audit: 
     profile = entity_profile(enum_name, audit)
     for state in split_list(profile.get("required_states", "")):
         action_id = lower_slug(state.replace("/", " "))
+        if category == "animals" and action_id == "idle_graze":
+            action_id = "idle"
         out.append({"id": action_id, "description": guided_action_description(enum_name, action_id, state)})
     if category == "buildings":
         if enum_name == "E_WOODEN_BRIDGE":
@@ -1308,9 +1316,9 @@ def entity_quality_notes(enum_name: str, category: str, stats: dict[str, Any]) -
         return [
             "## Entity-Specific Art Notes",
             "",
-            "- Keep species silhouette readable in living, attacking, fleeing, dead, partly harvested, mostly harvested, and skeleton states.",
-            "- Carcass states should lie naturally on the ground and stay inside the cell; avoid gore-heavy imagery.",
-            "- The depleted skeleton must still suggest the original animal species rather than a generic bone pile.",
+            "- Keep species silhouette readable in living, attacking, fleeing, and runtime death frames.",
+            "- The runtime death action has two frames: frame 00 is the freshly dead animal body, and frame 01 is the same animal's clean depleted skeleton remains.",
+            "- Carcass and skeleton frames should lie naturally on the ground and stay inside the cell; avoid gore-heavy imagery.",
             "",
         ]
     if category == "units":
@@ -1377,9 +1385,9 @@ def entity_markdown(enum_name: str, category: str, stats: dict[str, Any], audit:
     player_colour = recommended_player_colour(enum_name, stats, audit) if team_color_required else None
     generation_aspect = generation_aspect_for_entity(enum_name, category)
     aspect_variant_rules = generation_aspect_variant_rules_for_entity(enum_name, category)
-    source_canvas = source_canvas_for_entity(enum_name, category)
     projectile_sentence = " Use projectile reference files for released projectiles." if ammunition_refs_for_entity(enum_name) else ""
     footprint = stats["footprint"]
+    source_canvas = source_canvas_for_entity(enum_name, category, footprint)
 
     direction_sentence = (
         f"Generate one Realm sprite reference sheet per direction for **{stats['name']}**."
@@ -1446,15 +1454,15 @@ def entity_markdown(enum_name: str, category: str, stats: dict[str, Any], audit:
     elif category == "animals":
         lines.extend(
             [
-                "Animal carcass states use four depletion levels: dead unharvested, partly harvested, mostly harvested, and depleted skeleton.",
-                "Harvested animal states must look butchered and processed for food or hide, not rotten, moldy, or naturally decayed.",
+                "Animal runtime death uses two frames: freshly dead readable carcass, then the same animal's clean depleted skeleton remains.",
+                "Do not generate separate partly harvested or mostly harvested runtime actions unless the C++ animation contract adds them.",
                 "",
             ]
         )
         if enum_name == "E_WOLF":
             lines.extend(
                 [
-                    "Wolf carcass depletion states are for visual consistency with other animals only; wolf carcass harvesting is not enabled in gameplay.",
+                    "Wolf death frames are for visual consistency with other animals only; wolf carcass harvesting is not enabled in gameplay.",
                     "",
                 ]
             )
@@ -1901,7 +1909,7 @@ def index_markdown(index: dict[str, list[tuple[str, str]]]) -> str:
         "- Peasant idle is the only sprite lane assumed to already exist; every other prompt should be treated as needed art.",
         "- Ground prompts are top-down square tile art. Feature prompts are transparent anchored sprites. Decal prompts are transparent ground overlays. Projectile, effect, and user-interface prompts are transparent overlays.",
         "- User-supplied unit references under `art/reference/units/` are equipment and silhouette references only; generated unit sheets must be stylized Realm art, not copies of the reference image style or pixels.",
-        "- Unit and animal actor prompts use the generated JSON source-canvas resolution for accepted standalone frames. Current actor sprites are 48 by 48 px.",
+        "- Every runtime asset group uses the generated JSON source-canvas resolution for accepted standalone frames. Grounds are high-resolution tile sources; actors, buildings, features, decals, projectiles, effects, and UI markers preserve enough source resolution for close zoom instead of collapsing to 48 by 48 px.",
         "- Unit and animal actor prompts use the tiny medieval paper-cutout style. Human face rules appear only for unit prompts; animal face rules appear for animal prompts and Knight.",
         "- Projectile prompts use the same moving paper-cutout treatment because projectiles move through the world.",
         "- Building and decal prompts use simplified painted map-art, not paper cutouts.",
@@ -1960,8 +1968,8 @@ This prompt set treats seasons, weather, night, and depletion as visual states f
 
 ## Animals
 
-- Animals use four carcass states after death: dead unharvested, partly harvested, mostly harvested, and depleted skeleton.
-- The depleted state for animals is always a skeleton.
+- Animals use the runtime `death` action with two frames: freshly dead readable carcass, then the same animal's clean depleted skeleton remains.
+- Do not create separate partly harvested or mostly harvested runtime actions unless the C++ animation contract adds them.
 - Equipment and durable objects should remain visible on military units and vehicles; animal carcasses should keep species silhouette readable.
 """
 

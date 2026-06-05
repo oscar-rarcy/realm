@@ -1,6 +1,7 @@
 #include "tileset_assets.h"
 #include "realm.h"
 #include "render/entity_visual_defs.h"
+#include "render/sdl/sdl_profiler.h"
 
 #include <png.h>
 
@@ -82,6 +83,25 @@ std::filesystem::path entityFrameDir(EntityType type, const std::string& action,
 std::filesystem::path entityManifestPath(EntityType type) {
     return std::filesystem::path("assets") / "tiles" / "entities" / tilesetEntitySlug(type)
         / "manifest.json";
+}
+
+std::filesystem::path featureTilePath(FeatureType feature, FeatureState state, const std::string& layer) {
+    return std::filesystem::path("assets") / "tiles" / "features" / featureTypeName(feature)
+        / featureStateName(state) / (layer + ".png");
+}
+
+std::filesystem::path decalTilePath(VisualDecalType decal) {
+    return std::filesystem::path("assets") / "tiles" / "decals"
+        / (std::string(visualDecalName(decal)) + ".png");
+}
+
+std::filesystem::path projectileManifestPath(ProjectileType projectile) {
+    return std::filesystem::path("assets") / "tiles" / "projectiles"
+        / projectileTypeName(projectile) / "manifest.json";
+}
+
+std::filesystem::path effectUiTilePath(const std::string& assetId) {
+    return std::filesystem::path("assets") / "tiles" / "effects-ui" / (assetId + ".png");
 }
 
 std::string readTextFile(const std::filesystem::path& path) {
@@ -172,6 +192,30 @@ std::string parseObjectField(const std::string& text, const std::string& field) 
     size_t close = findMatchingBrace(text, open);
     if (close == std::string::npos) return {};
     return text.substr(open, close - open + 1);
+}
+
+std::filesystem::path normalizedRelativeTo(const std::filesystem::path& base, const std::string& raw) {
+    if (raw.empty()) return {};
+    std::filesystem::path path(raw);
+    if (path.is_absolute()) return path.lexically_normal();
+    return (base / path).lexically_normal();
+}
+
+std::filesystem::path projectileTilePath(ProjectileType projectile) {
+    std::filesystem::path manifestPath = projectileManifestPath(projectile);
+    std::string manifest = readTextFile(manifestPath);
+    std::string image = parseStringField(manifest, "image");
+    std::filesystem::path resolved = normalizedRelativeTo(manifestPath.parent_path(), image);
+    if (!resolved.empty() && std::filesystem::exists(resolved)) return resolved;
+    if (!image.empty()) {
+        std::filesystem::path named(image);
+        if (named.filename() != named && image.find("effects-ui") != std::string::npos) {
+            std::filesystem::path effectPath = std::filesystem::path("assets") / "tiles" / "effects-ui" / named.filename();
+            if (std::filesystem::exists(effectPath)) return effectPath;
+        }
+        if (!resolved.empty()) return resolved;
+    }
+    return effectUiTilePath(std::string(projectileTypeName(projectile)) + "_projectile");
 }
 
 bool parseIntPairAfter(const std::string& text, size_t from, const std::string& field, int& x, int& y) {
@@ -390,25 +434,65 @@ struct EntityFramePaths {
     bool usesZoomMask = false;
 };
 
+struct EntityFrameCandidate {
+    std::string action;
+    std::string direction;
+    int frameIndex = 0;
+};
+
+std::vector<EntityFrameCandidate> entityFrameCandidates(const TilesetAssetRequest& request) {
+    std::vector<EntityFrameCandidate> candidates;
+    auto addCandidate = [&](std::string action, std::string direction, int frameIndex) {
+        for (const EntityFrameCandidate& candidate : candidates) {
+            if (candidate.action == action && candidate.direction == direction && candidate.frameIndex == frameIndex) {
+                return;
+            }
+        }
+        candidates.push_back({std::move(action), std::move(direction), frameIndex});
+    };
+    bool building = request.type > E_NONE && request.type < E_TYPE_COUNT && STATS[request.type].isBuilding;
+    if (building && request.action == "idle") {
+        addCandidate("complete", "south", 0);
+    } else if (building && request.action == "death") {
+        addCandidate("ruin_footprint", "south", 0);
+    }
+    addCandidate(request.action, request.direction, request.frameIndex);
+    if (request.direction != "south") {
+        addCandidate(request.action, "south", request.frameIndex);
+    }
+    if (building && request.action != "complete") {
+        addCandidate("complete", "south", 0);
+    }
+    return candidates;
+}
+
 EntityFramePaths selectEntityFramePaths(const TilesetAssetRequest& request) {
     EntityFramePaths paths;
-    paths.basePath = entityFramePath(request.type, request.action, request.direction,
-                                     request.frameIndex, "_base.png");
-    paths.maskPath = entityFramePath(request.type, request.action, request.direction,
-                                     request.frameIndex, "_teammask.png");
+    EntityFrameCandidate selected{request.action, request.direction, request.frameIndex};
+    for (const EntityFrameCandidate& candidate : entityFrameCandidates(request)) {
+        if (std::filesystem::exists(entityFramePath(request.type, candidate.action, candidate.direction,
+                                                    candidate.frameIndex, "_base.png"))) {
+            selected = candidate;
+            break;
+        }
+    }
+    paths.basePath = entityFramePath(request.type, selected.action, selected.direction,
+                                     selected.frameIndex, "_base.png");
+    paths.maskPath = entityFramePath(request.type, selected.action, selected.direction,
+                                     selected.frameIndex, "_teammask.png");
 
     if (request.targetWidth <= 0 || request.targetHeight <= 0 || request.targetWidth != request.targetHeight) {
         return paths;
     }
 
-    int stopSize = exactZoomStopSize(request.type, request.action, request.direction,
-                                     request.frameIndex, request.targetWidth);
+    int stopSize = exactZoomStopSize(request.type, selected.action, selected.direction,
+                                     selected.frameIndex, request.targetWidth);
     if (stopSize <= 0) return paths;
 
-    std::filesystem::path zoomBase = entityZoomFramePath(request.type, request.action, request.direction,
-                                                        request.frameIndex, stopSize, "_base.png");
-    std::filesystem::path zoomMask = entityZoomFramePath(request.type, request.action, request.direction,
-                                                        request.frameIndex, stopSize, "_teammask.png");
+    std::filesystem::path zoomBase = entityZoomFramePath(request.type, selected.action, selected.direction,
+                                                        selected.frameIndex, stopSize, "_base.png");
+    std::filesystem::path zoomMask = entityZoomFramePath(request.type, selected.action, selected.direction,
+                                                        selected.frameIndex, stopSize, "_teammask.png");
     if (std::filesystem::exists(zoomBase)) {
         paths.basePath = zoomBase;
         paths.zoomStopSize = stopSize;
@@ -665,6 +749,23 @@ TilesetAssetFrame copyFrame(const TextureRecord& record) {
                              record.basePath, record.maskPath, record.status};
 }
 
+void alignEntityPlacementToDecodedImage(TextureRecord& record, int imageWidth, int imageHeight) {
+    if (!record.hasAnchor || !record.placement.valid || imageWidth <= 0 || imageHeight <= 0) return;
+
+    int sourceW = record.placement.sourceWidth > 0 ? record.placement.sourceWidth : record.anchorSourceWidth;
+    int sourceH = record.placement.sourceHeight > 0 ? record.placement.sourceHeight : record.anchorSourceHeight;
+    if (sourceW <= 0 || sourceH <= 0 || (sourceW == imageWidth && sourceH == imageHeight)) return;
+
+    record.placement.anchorX = (int)std::lround(record.placement.anchorX * (imageWidth / (double)sourceW));
+    record.placement.anchorY = (int)std::lround(record.placement.anchorY * (imageHeight / (double)sourceH));
+    record.placement.sourceWidth = imageWidth;
+    record.placement.sourceHeight = imageHeight;
+    record.anchorX = record.placement.anchorX;
+    record.anchorY = record.placement.anchorY;
+    record.anchorSourceWidth = imageWidth;
+    record.anchorSourceHeight = imageHeight;
+}
+
 bool isGroundImageKind(const std::string& kind) {
     return kind.rfind("ground", 0) == 0;
 }
@@ -749,12 +850,16 @@ TilesetAssetFrame loadImageTexture(SDL_Renderer* renderer, const std::filesystem
     std::string key = imageCacheKey(kind, pathString, targetWidth, targetHeight);
     auto found = gTextureCache.find(key);
     if (found != gTextureCache.end()) return copyFrame(found->second);
+    RealmProfileScope cacheMissScope("assets.image_cache_miss");
 
     TextureRecord record;
     record.basePath = pathString;
     Image image;
     std::string error;
-    record.baseLoaded = loadDecodedImage(pathString, image, error);
+    {
+        RealmProfileScope scope("assets.decode_image");
+        record.baseLoaded = loadDecodedImage(pathString, image, error);
+    }
     if (!record.baseLoaded) {
         record.status = "missing image: " + error;
         record.placeholder = true;
@@ -772,17 +877,22 @@ TilesetAssetFrame loadImageTexture(SDL_Renderer* renderer, const std::filesystem
     }
 
     if (targetWidth > 0 && targetHeight > 0 && transform == ImageTransform::ProjectedIso) {
+        RealmProfileScope scope("assets.project_iso");
         float crop = isGroundImageKind(kind) ? zoomedOutGroundCropFraction((targetWidth - 1) / 2) : 0.0f;
         int mipSize = std::max(targetWidth, targetHeight);
         Image projectionSource = resizeImage(cropImageFraction(image, crop), mipSize, mipSize);
         image = projectSquareToDiamond(projectionSource, targetWidth, targetHeight, 0.0f);
     } else if (targetWidth > 0 && targetHeight > 0 && transform == ImageTransform::Scaled) {
+        RealmProfileScope scope("assets.scale_image");
         float crop = isGroundImageKind(kind) ? zoomedOutGroundCropFraction(std::min(targetWidth, targetHeight)) : 0.0f;
         image = resizeImage(cropImageFraction(image, crop), targetWidth, targetHeight);
     }
     record.width = image.width;
     record.height = image.height;
-    record.texture = textureFromImage(renderer, image);
+    {
+        RealmProfileScope scope("assets.create_texture");
+        record.texture = textureFromImage(renderer, image);
+    }
     if (!record.texture) {
         record.status = "texture creation failed";
     } else {
@@ -812,6 +922,7 @@ TilesetAssetFrame tilesetLoadEntityFrame(SDL_Renderer* renderer, const TilesetAs
     std::string key = cacheKey(request);
     auto found = gTextureCache.find(key);
     if (found != gTextureCache.end()) return copyFrame(found->second);
+    RealmProfileScope cacheMissScope("assets.entity_cache_miss");
 
     EntityFramePaths paths = selectEntityFramePaths(request);
 
@@ -832,14 +943,21 @@ TilesetAssetFrame tilesetLoadEntityFrame(SDL_Renderer* renderer, const TilesetAs
     Image mask;
     std::string baseError;
     std::string maskError;
-    record.baseLoaded = loadDecodedImage(record.basePath, base, baseError);
+    {
+        RealmProfileScope scope("assets.decode_entity_base");
+        record.baseLoaded = loadDecodedImage(record.basePath, base, baseError);
+    }
     if (!record.baseLoaded) {
         base = makePlaceholder(48, 48);
         record.placeholder = true;
         record.status = "missing base: " + baseError;
     }
+    alignEntityPlacementToDecodedImage(record, base.width, base.height);
 
-    record.maskLoaded = loadDecodedImage(record.maskPath, mask, maskError);
+    {
+        RealmProfileScope scope("assets.decode_entity_mask");
+        record.maskLoaded = loadDecodedImage(record.maskPath, mask, maskError);
+    }
     if (record.maskLoaded) {
         if (mask.width != base.width || mask.height != base.height) {
             mask = resizeImage(mask, base.width, base.height);
@@ -850,11 +968,15 @@ TilesetAssetFrame tilesetLoadEntityFrame(SDL_Renderer* renderer, const TilesetAs
     }
 
     if (request.targetWidth > 0 && request.targetHeight > 0) {
+        RealmProfileScope scope("assets.scale_entity");
         base = resizeImage(base, request.targetWidth, request.targetHeight);
     }
     record.width = base.width;
     record.height = base.height;
-    record.texture = textureFromImage(renderer, base);
+    {
+        RealmProfileScope scope("assets.create_entity_texture");
+        record.texture = textureFromImage(renderer, base);
+    }
     if (!record.texture) {
         record.status = "texture creation failed";
     } else if (paths.usesZoomBase) {
@@ -877,7 +999,14 @@ TilesetAssetFrame tilesetLoadEntityFrame(SDL_Renderer* renderer, const TilesetAs
 
 bool tilesetEntityFrameExists(EntityType type, const std::string& action,
                               const std::string& direction, int frameIndex) {
-    return std::filesystem::exists(entityFramePath(type, action, direction, frameIndex, "_base.png"));
+    TilesetAssetRequest request{type, action, direction, frameIndex, SDL_Color{255,255,255,255}, 0, 0};
+    for (const EntityFrameCandidate& candidate : entityFrameCandidates(request)) {
+        if (std::filesystem::exists(entityFramePath(type, candidate.action, candidate.direction,
+                                                    candidate.frameIndex, "_base.png"))) {
+            return true;
+        }
+    }
+    return false;
 }
 
 TilesetAssetFrame tilesetLoadGroundTile(SDL_Renderer* renderer, GroundType ground) {
@@ -910,6 +1039,31 @@ TilesetAssetFrame tilesetLoadUnknownGroundTileIso(SDL_Renderer* renderer,
                                                   int width, int height) {
     return loadImageTexture(renderer, groundTilePath("unknown"), "ground.unknown.iso", width, height,
                             ImageTransform::ProjectedIso);
+}
+
+TilesetAssetFrame tilesetLoadFeatureTileScaled(SDL_Renderer* renderer, FeatureType feature,
+                                               FeatureState state, const std::string& layer,
+                                               int width, int height) {
+    return loadImageTexture(renderer, featureTilePath(feature, state, layer), "feature." + layer,
+                            width, height, ImageTransform::Scaled);
+}
+
+TilesetAssetFrame tilesetLoadDecalTileScaled(SDL_Renderer* renderer, VisualDecalType decal,
+                                             int width, int height) {
+    return loadImageTexture(renderer, decalTilePath(decal), "decal", width, height,
+                            ImageTransform::Scaled);
+}
+
+TilesetAssetFrame tilesetLoadProjectileTileScaled(SDL_Renderer* renderer, ProjectileType projectile,
+                                                  int width, int height) {
+    return loadImageTexture(renderer, projectileTilePath(projectile), "projectile", width, height,
+                            ImageTransform::Scaled);
+}
+
+TilesetAssetFrame tilesetLoadEffectUiTileScaled(SDL_Renderer* renderer, const std::string& assetId,
+                                                int width, int height) {
+    return loadImageTexture(renderer, effectUiTilePath(assetId), "effects-ui", width, height,
+                            ImageTransform::Scaled);
 }
 
 void tilesetAssetsClear() {

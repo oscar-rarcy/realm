@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Realm tileset generation ledger entry",
+  "type": "object",
+  "required": ["id", "created_at", "canonical_prompt_export", "accepted_runtime_paths"],
+  "properties": {
+    "id": { "type": "string" },
+    "created_at": { "type": "string" },
+    "asset_ids": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "canonical_prompt_export": { "type": "string" },
+    "prompt_sha256": { "type": ["string", "null"] },
+    "reference_images": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "reference_image_sha256": { "type": "object" },
+    "premade_grid_path": { "type": ["string", "null"] },
+    "premade_grid_sha256": { "type": ["string", "null"] },
+    "seed_asset_path": { "type": ["string", "null"] },
+    "seed_asset_sha256": { "type": ["string", "null"] },
+    "imagegen_operation": { "type": "string" },
+    "candidate_output_paths": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "candidate_output_sha256": { "type": "object" },
+    "split_output_paths": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "split_output_sha256": { "type": "object" },
+    "accepted_runtime_paths": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "accepted_runtime_sha256": { "type": "object" },
+    "review_status": { "type": "string" },
+    "notes": { "type": "string" }
+  },
+  "additionalProperties": true
+}

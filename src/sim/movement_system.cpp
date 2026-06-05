@@ -1,16 +1,19 @@
 #include "realm.h"
+#include "core/entity_facing.h"
 #include "core/game_events.h"
+#include "core/entity_motion.h"
 #include "core/order_service.h"
 #include "core/world_index.h"
 
 void moveAlongPath(Game& game, const WorldIndex& world, Entity& e) {
-    if (e.pathIdx >= (int)e.path.size()) {
+    if (!entityHasQueuedPathStep(e)) {
+        if (consumeEntityMoveCooldown(e)) return;
         e.path.clear(); e.pathIdx = 0;
         e.stuckTicks = 0;
         if (e.state == S_MOVING) e.state = S_IDLE;
         return;
     }
-    if (e.moveCd > 0) { e.moveCd--; return; }
+    if (consumeEntityMoveCooldown(e)) return;
     auto [nx, ny] = e.path[e.pathIdx];
     if (!isNaval(e.type) && !isLandPassableWithBridges(game, world, nx, ny)) {
         e.stuckTicks++;
@@ -50,8 +53,7 @@ void moveAlongPath(Game& game, const WorldIndex& world, Entity& e) {
     }
     int fromX = e.x;
     int fromY = e.y;
-    e.facingDx = (nx > e.x) - (nx < e.x);
-    e.facingDy = (ny > e.y) - (ny < e.y);
+    faceEntityTowardTile(e, nx, ny);
     e.x = nx; e.y = ny; e.pathIdx++;
     e.stuckTicks = 0;
     Tile& tt = game.map[ny][nx];

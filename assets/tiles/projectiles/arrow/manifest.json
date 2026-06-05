@@ -1,9 +1,10 @@
 {
   "schema": "realm.projectile_tileset.v1",
   "projectile": "arrow",
-  "image": "../effects-ui/arrow_projectile.png",
+  "image": "../../effects-ui/arrow_projectile.png",
   "states": {
-    "in_flight": "../effects-ui/arrow_projectile.png"
+    "in_flight": "../../effects-ui/arrow_projectile.png"
   },
   "notes": "Generated projectile sprite from image-gen contact sheet."
 }
+

@@ -28,8 +28,8 @@ Generate Realm image sheets for **yard clutter decal**.
 
 ## Output Resolution
 
-- Final accepted standalone source canvas: 48 by 48 px.
-- Use this resolution from the generated JSON spec for every accepted standalone decal; contact-sheet slots may be larger, but each slot must be cleanly crop/downscale-safe to 48 by 48 px.
+- Final accepted standalone source canvas: 512 by 512 px.
+- Use this resolution from the generated JSON spec for every accepted standalone decal; contact-sheet slots may be larger, but each slot must be cleanly crop/downscale-safe to 512 by 512 px.
 
 ## Image Output Contract
 

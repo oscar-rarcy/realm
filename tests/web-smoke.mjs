@@ -19,7 +19,9 @@ const errors = [];
 
 function routeUrl(base, segment) {
   const routed = new URL(base);
-  routed.pathname = `${routed.pathname.replace(/\/$/, '')}/${segment}`;
+  const [pathname, query = ''] = segment.split('?');
+  routed.pathname = `${routed.pathname.replace(/\/$/, '')}/${pathname}`;
+  routed.search = query ? `?${query}` : '';
   return routed.toString();
 }
 
@@ -143,6 +145,31 @@ if (afterQState.screen !== 0) {
   throw new Error(`Q should resign to the web menu: ${JSON.stringify(afterQState)}`);
 }
 
+const queryOnlyEmbedPage = await browser.newPage({
+  viewport: { width: viewportWidth, height: viewportHeight },
+  deviceScaleFactor,
+  isMobile,
+  hasTouch: isMobile,
+});
+queryOnlyEmbedPage.on('console', (msg) => {
+  if (msg.type() === 'error') errors.push(msg.text());
+});
+queryOnlyEmbedPage.on('pageerror', (err) => errors.push(err.message));
+const queryOnlyEmbedUrl = routeUrl(url, '?embed=1');
+await queryOnlyEmbedPage.goto(queryOnlyEmbedUrl, { waitUntil: 'domcontentloaded' });
+await waitReady(queryOnlyEmbedPage);
+await queryOnlyEmbedPage.waitForTimeout(500);
+await assertCanvasReady(queryOnlyEmbedPage);
+const queryOnlyEmbedState = await readState(queryOnlyEmbedPage);
+if (queryOnlyEmbedState.screen !== 0 || queryOnlyEmbedState.tick !== 0 || queryOnlyEmbedState.entities !== 0) {
+  throw new Error(`query-only embed must not start embed mode: ${JSON.stringify(queryOnlyEmbedState)}`);
+}
+const queryOnlyShellMode = await queryOnlyEmbedPage.evaluate(() => document.documentElement.dataset.realmShell);
+if (queryOnlyShellMode !== 'menu') {
+  throw new Error(`query-only embed shell should stay in menu mode, got ${queryOnlyShellMode}`);
+}
+await queryOnlyEmbedPage.close();
+
 const asciiPage = await browser.newPage({
   viewport: { width: viewportWidth, height: viewportHeight },
   deviceScaleFactor,
@@ -177,4 +204,4 @@ if (errors.some((line) => /uncaught|exception|abort|content security|webassembly
 await embedPage.close();
 await browser.close();
 console.log(`Realm web smoke passed at ${url}`);
-console.log(JSON.stringify({ menuState, startedState, embedUrl, embedState, afterXState, afterQState, asciiUrl, asciiMenuState, asciiAfterTilesetKey }, null, 2));
+console.log(JSON.stringify({ menuState, startedState, embedUrl, embedState, afterXState, afterQState, queryOnlyEmbedUrl, queryOnlyEmbedState, asciiUrl, asciiMenuState, asciiAfterTilesetKey }, null, 2));

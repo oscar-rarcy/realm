@@ -226,6 +226,15 @@ zoomed-out ground tiles are area-resampled before projection, entity sprites can
 be cached at the actual draw size, and the renderer reuses those textures until
 the tileset cache is cleared.
 
+Runtime PNGs should remain high-resolution source images, so close zoom draws
+down from real source detail. Current generated specs use 1024 by 1024 px for
+grounds and 512 by 512 px for one-tile sprites, decals, projectiles, effects,
+and UI markers. Footprint sprites such as buildings scale from that same rule:
+512 px per footprint tile on the largest footprint axis, so a 3 by 3 building
+source is 1536 by 1536 px. Do not promote ordinary runtime art by shrinking it
+to 48 by 48 px first; that makes close zoom enlarge an already-lossy sprite
+while neighbouring ground tiles still draw from high-resolution sources.
+
 Zoom-stop entity sprites are the exception for tiny AI-redrawn actor art. They
 are optional runtime overrides that live beside the normal frame:
 
