@@ -38,6 +38,7 @@ void resetViewState();
 void resetUiState();
 void tickUiState(UiState& state);
 void clampCursorToMap(ViewState& state);
+void panViewport(ViewState& state, int dx, int dy);
+bool edgeScrollViewport(ViewState& state, int screenX, int screenY, int mapTopY, int edgeMargin = 2, int edgeStep = 2);
 ViewportCell viewportCellAt(const ViewState& state, int screenX, int screenY, int mapTopY);
 bool handleMinimapClick(ViewState& state, int screenWidth, int mouseX, int mouseY, bool activate);
-void panViewportAtScreenEdge(ViewState& state, int screenX, int screenY, int mapTopY, int edgeMargin, int edgeStep);

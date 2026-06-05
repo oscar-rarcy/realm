@@ -27,7 +27,9 @@ async function waitReady(page) {
     return module
       && typeof module._realm_web_tick === 'function'
       && typeof module._realm_web_view_x === 'function'
-      && typeof module._realm_web_screen_x_for_tile === 'function';
+      && typeof module._realm_web_screen_x_for_tile === 'function'
+      && typeof module._realm_web_selected_target_x === 'function'
+      && typeof module._realm_web_minimap_x_for_screen === 'function';
   }, null, { timeout: 60000 });
   await page.waitForFunction(() => globalThis.Module._realm_web_screen() === 1
     && globalThis.Module._realm_web_tick() > 5
@@ -45,6 +47,8 @@ async function state(page) {
     viewH: Module._realm_web_view_h(),
     cursorX: Module._realm_web_cursor_x(),
     cursorY: Module._realm_web_cursor_y(),
+    selectedTargetX: Module._realm_web_selected_target_x(),
+    selectedTargetY: Module._realm_web_selected_target_y(),
     unitX: Module._realm_web_first_owned_unit_x(),
     unitY: Module._realm_web_first_owned_unit_y(),
     displayMode: Module._realm_web_display_mode(),
@@ -131,6 +135,37 @@ async function runCase(browser, testCase) {
   assert(current.cursorX !== beforeMini.cursorX || current.cursorY !== beforeMini.cursorY
     || current.viewX !== beforeMini.viewX || current.viewY !== beforeMini.viewY,
     `${testCase.name}: minimap click/drag did not move viewport`);
+
+  const middleMiniEnd = { x: current.width - 58, y: 124 };
+  const middleMiniTarget = await page.evaluate(([px, py]) => ({
+    x: Module._realm_web_minimap_x_for_screen(px, py),
+    y: Module._realm_web_minimap_y_for_screen(px, py),
+  }), [middleMiniEnd.x, middleMiniEnd.y]);
+  assert(middleMiniTarget.x >= 0 && middleMiniTarget.y >= 0,
+    `${testCase.name}: middle minimap drag end is not inside minimap`);
+  await page.mouse.move(current.width - 62, 84);
+  await page.mouse.down({ button: 'middle' });
+  await page.mouse.move(middleMiniEnd.x, middleMiniEnd.y, { steps: 5 });
+  await page.mouse.up({ button: 'middle' });
+  await page.waitForTimeout(300);
+  current = await state(page);
+  assert(current.cursorX === middleMiniTarget.x && current.cursorY === middleMiniTarget.y,
+    `${testCase.name}: middle-drag minimap did not move cursor to minimap target (${current.cursorX},${current.cursorY})`);
+
+  const miniMovePoint = { x: current.width - 72, y: 118 };
+  const miniMoveTarget = await page.evaluate(([px, py]) => ({
+    x: Module._realm_web_minimap_x_for_screen(px, py),
+    y: Module._realm_web_minimap_y_for_screen(px, py),
+  }), [miniMovePoint.x, miniMovePoint.y]);
+  assert(miniMoveTarget.x >= 0 && miniMoveTarget.y >= 0,
+    `${testCase.name}: minimap move point is not inside minimap`);
+  await page.mouse.click(miniMovePoint.x, miniMovePoint.y, { button: 'right' });
+  await page.waitForTimeout(350);
+  current = await state(page);
+  assert(current.cursorX === miniMoveTarget.x && current.cursorY === miniMoveTarget.y,
+    `${testCase.name}: right-click minimap did not move cursor to minimap target`);
+  assert(current.selectedTargetX === miniMoveTarget.x && current.selectedTargetY === miniMoveTarget.y,
+    `${testCase.name}: right-click minimap did not issue move-only target (${current.selectedTargetX},${current.selectedTargetY})`);
 
   const screenshotPath = path.join(outDir, `${testCase.name}-controls.png`);
   await page.screenshot({ path: screenshotPath, fullPage: false });

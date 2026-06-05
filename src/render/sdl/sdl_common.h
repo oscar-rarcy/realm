@@ -65,14 +65,27 @@ struct Gfx {
 
     bool isometric = true;
     bool asciiOnly = false;
+    bool asciiSquareMapCells = true;
     bool fullscreen = false;
 
     bool leftDown = false;
+    bool rightDown = false;
+    bool rightHoldMenuOpened = false;
+    bool rightDownOnMiniMap = false;
     bool middleDown = false;
     bool miniMapDown = false;
     int dragStartX = 0, dragStartY = 0;
+    int rightDownX = 0, rightDownY = 0;
+    int rightDownMapX = -1, rightDownMapY = -1;
+    bool rightDownShift = false;
+    Uint32 rightDownTicks = 0;
+    bool rightDragPathActive = false;
+    std::vector<std::pair<int, int>> rightDragPath;
     int panStartMouseX = 0, panStartMouseY = 0;
     int panStartViewX = 0, panStartViewY = 0;
+    bool isoCameraActive = false;
+    float isoViewX = 0.0f, isoViewY = 0.0f;
+    float panStartIsoViewX = 0.0f, panStartIsoViewY = 0.0f;
     int lastMouseMapX = -9999, lastMouseMapY = -9999;
     int mouseX = -10000, mouseY = -10000;
     std::vector<KeyHit> keyHits;
@@ -97,6 +110,7 @@ struct Gfx {
     int touchLastX = 0, touchLastY = 0;
 
     std::unordered_map<std::string, SDL_Texture*> textCache;
+    std::unordered_map<std::string, TTF_Font*> sizedMonoFonts;
     std::unordered_set<std::string> missingTileKeys;
     bool missingTileLogStarted = false;
 };
@@ -132,5 +146,6 @@ Color seasonTint(Color base);
 Color timeTint(Color base);
 Color biomeBase(Biome b);
 Color terrainBg(const Tile& t, int x, int y);
+Color colorFromHue(int hue);
 Color ownerBg(int owner);
 bool pointInRect(int x, int y, SDL_Rect r);

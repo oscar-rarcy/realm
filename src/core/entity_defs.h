@@ -9,8 +9,11 @@ const EntityDefinition& entityDef(EntityType type);
 inline bool isUnit(EntityType type) {
     return (type >= E_PEASANT && type <= E_RAM) || (type >= E_DEER && type <= E_BOAR);
 }
+inline bool isBridge(EntityType type) {
+    return type == E_WOODEN_BRIDGE || type == E_STONE_BRIDGE;
+}
 inline bool isBuilding(EntityType type) {
-    return type >= E_TOWNHALL && type <= E_DOCK;
+    return (type >= E_TOWNHALL && type <= E_DOCK) || isBridge(type);
 }
 inline bool hasTrait(EntityType type, EntityTrait trait) {
     return (STATS[type].traits & trait) != 0;

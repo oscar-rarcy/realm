@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Realm tile specs index v2",
+  "type": "object",
+  "required": ["schema", "generated_by", "groups"],
+  "properties": {
+    "schema": { "const": "realm.tile_specs_index.v2" },
+    "generated_by": { "type": "string" },
+    "schema_version": { "type": "integer" },
+    "compatibility": { "type": "object" },
+    "groups": { "type": "object" }
+  }
+}

@@ -3,6 +3,7 @@
 #include "gfx_renderer.h"
 #include "env_config.h"
 #include "entity_animation.h"
+#include "user_settings.h"
 #include "commands/command.h"
 #include "commands/command_runner.h"
 #include "core/game_events.h"
@@ -11,6 +12,7 @@
 
 #include <chrono>
 #include <algorithm>
+#include <cctype>
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
@@ -31,11 +33,129 @@ static int envIntLocal(const char* name, int fallback) {
     return (end && *end == '\0') ? (int)parsed : fallback;
 }
 
+static bool envFlagLocal(const char* name, bool fallback = false) {
+    const char* value = std::getenv(name);
+    if (!value || !*value) return fallback;
+    std::string text(value);
+    std::transform(text.begin(), text.end(), text.begin(), [](unsigned char c) {
+        return (char)std::tolower(c);
+    });
+    if (text == "0" || text == "false" || text == "no" || text == "off") return false;
+    return true;
+}
+
+static bool tilesetTestMapEnabled() {
+    return envFlagLocal("REALM_TILESET_TEST_MAP", false);
+}
+
+static void applyTilesetTestMap() {
+    const int cx = MAP_W / 2;
+    const int cy = MAP_H / 2;
+    for (int y = 0; y < MAP_H; ++y) {
+        for (int x = 0; x < MAP_W; ++x) {
+            Tile& tile = g.map[y][x];
+            tile.terrain = T_GRASS;
+            tile.resources = 0;
+            tile.biome = B_TEMPERATE;
+            tile.preWinterTerrain = T_GRASS;
+            tile.wear = 0;
+            for (int p = 0; p < MAX_PLAYERS; ++p) {
+                tile.visible[p] = false;
+                tile.explored[p] = false;
+            }
+        }
+    }
+
+    const int visibleRx = envIntLocal("REALM_TILESET_TEST_VISIBLE_RX", 12);
+    const int visibleRy = envIntLocal("REALM_TILESET_TEST_VISIBLE_RY", 8);
+    for (int y = cy - visibleRy; y <= cy + visibleRy; ++y) {
+        for (int x = cx - visibleRx; x <= cx + visibleRx; ++x) {
+            if (!inBounds(x, y)) continue;
+            g.map[y][x].visible[0] = true;
+            g.map[y][x].explored[0] = true;
+        }
+    }
+
+    g.entities.clear();
+    g.projectiles.clear();
+    g.local.selectedId = -1;
+    g.local.selectedIds.clear();
+    g.local.buildPending = E_NONE;
+    g.players[0].alive = true;
+    for (int p = 1; p < MAX_PLAYERS; ++p) g.players[p].alive = false;
+    g.mode = M_PAUSED;
+    view.cursorX = cx;
+    view.cursorY = cy;
+    view.viewX = std::max(0, cx - 18);
+    view.viewY = std::max(0, cy - 14);
+    ui.statusTimer = 0;
+    std::cerr << "realm: tileset test map enabled grass=visible unknown=unexplored center="
+              << cx << "," << cy << "\n";
+}
+
 static bool captureUiFrame(const std::string& path) {
     bool ok = gfxSaveScreenshot(path);
     gfxDelay(40);
     std::cerr << "realm: ui screenshot " << (ok ? "ok " : "failed ") << path << "\n";
     return ok;
+}
+
+static bool setupNightLightView(int zoom) {
+    Entity* townHall = firstOwned(E_TOWNHALL, 0);
+    if (!townHall) return false;
+    g.dayPhase = 0.0f;
+    g.weather = W_CLEAR;
+    updateFog(g);
+    g.local.selectedId = -1;
+    g.local.selectedIds.clear();
+    int centerX = townHall->x + STATS[townHall->type].sizeW / 2;
+    int centerY = townHall->y + STATS[townHall->type].sizeH / 2;
+    gfxSetProjection(true);
+    gfxSetZoomForTest(zoom);
+    view.cursorX = centerX;
+    view.cursorY = centerY;
+    if (std::getenv("REALM_UI_NIGHT_LIGHT_TEST")) {
+        const int radius = 9;
+        for (int dy = -radius; dy <= radius; ++dy) {
+            for (int dx = -radius; dx <= radius; ++dx) {
+                int mx = centerX + dx;
+                int my = centerY + dy;
+                if (!inBounds(mx, my) || dx * dx + dy * dy > radius * radius) continue;
+                g.map[my][mx].visible[0] = true;
+                g.map[my][mx].explored[0] = true;
+            }
+        }
+    }
+    gfxOnNewGame();
+    ui.statusTimer = 0;
+    return true;
+}
+
+static int runNightLightTestMode() {
+    std::filesystem::path outDir = "build/night-light-screenshots";
+    if (const char* env = std::getenv("REALM_UI_NIGHT_LIGHT_TEST_DIR")) {
+        if (*env) outDir = env;
+    }
+    std::filesystem::create_directories(outDir);
+
+    gfxSetWindowSizeForTest(envIntLocal("REALM_UI_TEST_WIDTH", 1074),
+                            envIntLocal("REALM_UI_TEST_HEIGHT", 827));
+    displayMode = DM_EMOJI;
+    gfxSetAsciiOnly(false);
+    gfxResetZoomForDisplayMode();
+    gfxSetProjection(true);
+
+    g.biomeChoice = envIntLocal("REALM_BIOME", B_TEMPERATE);
+    int ais = envIntLocal("REALM_NIGHT_LIGHT_TEST_AIS", 0);
+    initGameWithSeed(ais, (unsigned)envIntLocal("REALM_SEED", 2468),
+                     envIntLocal("REALM_HUMAN_CORNER", 1));
+
+    bool ok = setupNightLightView(envIntLocal("REALM_UI_TEST_ZOOM", 26));
+    if (ok) ok = captureUiFrame((outDir / "01-night-townhall-light.bmp").string()) && ok;
+
+    std::cerr << "realm: night light test " << (ok ? "complete" : "failed")
+              << " dir=" << outDir.string() << "\n";
+    return ok ? 0 : 1;
 }
 
 static bool captureAsciiComparePair(const std::filesystem::path& outDir, const std::string& name) {
@@ -107,13 +227,17 @@ static int runUiTestMode() {
     int height = envIntLocal("REALM_UI_TEST_HEIGHT", 827);
     gfxSetWindowSizeForTest(width, height);
 
+    bool ok = true;
+    configurePlayerColorHues(g, 3);
+    ok = gfxSaveSplashScreenshot((outDir / "00-splash-color-wheel.bmp").string(), 3, 7) && ok;
+
     g.biomeChoice = envIntLocal("REALM_BIOME", B_TEMPERATE);
     initGameWithSeed(1, (unsigned)envIntLocal("REALM_SEED", 2468), envIntLocal("REALM_HUMAN_CORNER", 1));
+    if (tilesetTestMapEnabled()) applyTilesetTestMap();
     gfxSetZoomForTest(envIntLocal("REALM_UI_TEST_ZOOM", 20));
     gfxOnNewGame();
     ui.statusTimer = 0;
 
-    bool ok = true;
     gfxSetProjection(false);
     gfxOnNewGame();
     ok = captureUiFrame((outDir / "01-topdown-overview.bmp").string()) && ok;
@@ -285,15 +409,7 @@ static int runUiTestMode() {
         ok = captureUiFrame((outDir / "14-middle-pan-edge.bmp").string()) && ok;
     }
 
-    if (Entity* townHall = firstOwned(E_TOWNHALL, 0)) {
-        g.dayPhase = 0.0f;
-        g.weather = W_CLEAR;
-        updateFog(g);
-        view.cursorX = townHall->x + STATS[townHall->type].sizeW / 2;
-        view.cursorY = townHall->y + STATS[townHall->type].sizeH / 2;
-        gfxSetZoomForTest(26);
-        gfxSetProjection(true);
-        gfxOnNewGame();
+    if (setupNightLightView(26)) {
         ok = captureUiFrame((outDir / "15-night-torch-light.bmp").string()) && ok;
     }
 
@@ -452,11 +568,21 @@ int main(int argc, char** argv) {
     loadRealmEnvironmentFiles();
     const bool asciiOnly = realmVisualModeIsAsciiOnly();
     displayMode = asciiOnly ? DM_ASCII : DM_EMOJI;
+    UserSettings settings = loadUserSettings();
+    applyUserSettingsToGame(g, settings);
 
     if (!gfxInit()) return 1;
+    gfxSetAsciiSquareMapCells(settings.asciiSquareMapCells);
     gfxSetAsciiOnly(asciiOnly);
+    gfxResetZoomForDisplayMode();
     gfxSetProjection(true);
     std::cerr << "realm: gfxInit ok\n";
+
+    if (std::getenv("REALM_UI_NIGHT_LIGHT_TEST")) {
+        int code = runNightLightTestMode();
+        gfxShutdown();
+        return code;
+    }
 
     if (std::getenv("REALM_UI_TEST")) {
         int code = runUiTestMode();
@@ -492,6 +618,7 @@ int main(int argc, char** argv) {
                 std::cerr << "realm: GUI menu load failed; continuing new game\n";
             }
         }
+        if (tilesetTestMapEnabled()) applyTilesetTestMap();
         std::cerr << "realm: game initialized\n";
         gfxOnNewGame();
         emitUiStatusEvent(-1, "Dawn breaks over the realm. Select peasants [Space/click] and gather [Enter/R-click].");

@@ -1,5 +1,6 @@
 #include "render/sdl/sdl_splash.h"
 #include "realm.h"
+#include "user_settings.h"
 #include "core/game_events.h"
 
 bool saveRendererPixels(const std::string& path) {
@@ -50,10 +51,103 @@ void drawHelpOverlay() {
 void clearTextCache() {
     for (auto& kv : s.textCache) SDL_DestroyTexture(kv.second);
     s.textCache.clear();
+    for (auto& kv : s.sizedMonoFonts) {
+        if (kv.second) TTF_CloseFont(kv.second);
+    }
+    s.sizedMonoFonts.clear();
 }
 
 bool pointInRect(int x, int y, SDL_Rect r) {
     return x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h;
+}
+
+static SDL_Point splashColorWheelCenter() {
+    int col = s.winW / 2 - 360;
+    return SDL_Point{col + 610, std::max(40, s.winH / 2 - 255) + 218};
+}
+
+static int splashColorWheelRadius() {
+    return std::max(44, std::min(60, s.winW / 24));
+}
+
+static int hueFromWheelPoint(int px, int py, SDL_Point c) {
+    constexpr double pi = 3.14159265358979323846;
+    double angle = std::atan2((double)(py - c.y), (double)(px - c.x));
+    int hue = (int)std::lround(angle * 180.0 / pi);
+    return normalizePlayerColorHue(hue);
+}
+
+static bool saveCurrentUserSettings() {
+    UserSettings settings = userSettingsFromGame(g);
+    settings.asciiSquareMapCells = s.asciiSquareMapCells;
+    return saveUserSettings(settings);
+}
+
+static void toggleAsciiMapCellAspect() {
+    s.asciiSquareMapCells = !s.asciiSquareMapCells;
+    saveCurrentUserSettings();
+}
+
+static bool handleSplashColorWheelClick(int px, int py, int numAIs) {
+    SDL_Point c = splashColorWheelCenter();
+    int radius = splashColorWheelRadius();
+    int dx = px - c.x;
+    int dy = py - c.y;
+    int d2 = dx * dx + dy * dy;
+    if (d2 > (radius + 12) * (radius + 12) || d2 < (radius - 24) * (radius - 24)) {
+        return false;
+    }
+    setHumanPlayerColorHue(g, hueFromWheelPoint(px, py, c));
+    configurePlayerColorHues(g, numAIs);
+    saveCurrentUserSettings();
+    return true;
+}
+
+static void drawSplashColorWheel(int numAIs) {
+    configurePlayerColorHues(g, numAIs);
+    SDL_Point c = splashColorWheelCenter();
+    int radius = splashColorWheelRadius();
+    int inner = std::max(12, radius - 18);
+    SDL_SetRenderDrawBlendMode(s.ren, SDL_BLENDMODE_BLEND);
+    constexpr double pi = 3.14159265358979323846;
+    for (int hue = 0; hue < 360; ++hue) {
+        double a = hue * pi / 180.0;
+        Color col = colorFromHue(hue);
+        setDraw(col);
+        for (int r = inner; r <= radius; ++r) {
+            int x = c.x + (int)std::lround(std::cos(a) * r);
+            int y = c.y + (int)std::lround(std::sin(a) * r);
+            SDL_RenderDrawPoint(s.ren, x, y);
+            SDL_RenderDrawPoint(s.ren, x + 1, y);
+        }
+    }
+
+    setDraw(rgb(12, 18, 25, 230));
+    for (int r = 0; r < inner - 2; ++r) {
+        for (int x = -r; x <= r; ++x) {
+            int y = (int)std::lround(std::sqrt((double)(r * r - x * x)));
+            SDL_RenderDrawPoint(s.ren, c.x + x, c.y + y);
+            SDL_RenderDrawPoint(s.ren, c.x + x, c.y - y);
+        }
+    }
+    int humanHue = normalizePlayerColorHue(g.playerColorHue[0]);
+    double selected = humanHue * pi / 180.0;
+    int sx = c.x + (int)std::lround(std::cos(selected) * radius);
+    int sy = c.y + (int)std::lround(std::sin(selected) * radius);
+    SDL_Rect marker{sx - 5, sy - 5, 10, 10};
+    setDraw(rgb(5, 8, 12, 235)); SDL_RenderFillRect(s.ren, &marker);
+    setDraw(rgb(255, 245, 190, 255)); SDL_RenderDrawRect(s.ren, &marker);
+
+    drawTextFit(c.x - radius, c.y - radius - 30, "PLAYER COLOUR", rgb(255,230,135), radius * 2 + 90);
+    int activePlayers = std::max(2, std::min(MAX_PLAYERS, 1 + numAIs));
+    int swatchY = c.y + radius + 18;
+    int swatchX = c.x - radius;
+    for (int owner = 0; owner < activePlayers; ++owner) {
+        SDL_Rect swatch{swatchX + owner * 34, swatchY, 24, 16};
+        setDraw(colorFromHue(g.playerColorHue[owner])); SDL_RenderFillRect(s.ren, &swatch);
+        setDraw(owner == 0 ? rgb(255,245,190) : rgb(150,165,175)); SDL_RenderDrawRect(s.ren, &swatch);
+    }
+    drawTextFit(c.x - radius, swatchY + 22, "You + CPUs", rgb(185,195,200), radius * 2 + 34);
 }
 
 std::vector<MobileButton> mobileSplashButtons() {
@@ -67,6 +161,7 @@ std::vector<MobileButton> mobileSplashButtons() {
             {{"orient", s.mobileOrientation == 0 ? "Orientation Auto" : s.mobileOrientation == 1 ? "Portrait Lock" : "Landscape Lock"},
              {"uiscale", "UI Scale"},
              {"zoom", "Zoom Level"},
+             {"mapaspect", s.asciiSquareMapCells ? "Map Square" : "Map Terminal"},
              {"minimap", s.mobileMinimapTap ? "Minimap On" : "Minimap Off"},
              {"confirm", s.mobileConfirmCommands ? "Confirm On" : "Confirm Off"},
              {"edge", s.mobileEdgeScroll ? "Edge Scroll On" : "Edge Scroll Off"},
@@ -179,7 +274,7 @@ bool handleMobileSplashTap(int px, int py, int& numAIs, int& biomeIdx, bool& don
                 displayMode = DM_ASCII;
                 s.isometric = false;
             }
-            updateViewMetrics(true);
+            resetZoomForDisplayMode();
             return true;
         }
         if (b.id == "quit") { gfxShutdown(); std::exit(0); }
@@ -188,7 +283,12 @@ bool handleMobileSplashTap(int px, int py, int& numAIs, int& biomeIdx, bool& don
         if (b.id == "helpback") { s.mobileSplashHelp = false; return true; }
         if (b.id == "orient") { s.mobileOrientation = (s.mobileOrientation + 1) % 3; return true; }
         if (b.id == "uiscale") { s.mobileUiScale = s.mobileUiScale >= 1.25f ? 0.9f : s.mobileUiScale + 0.1f; return true; }
-        if (b.id == "zoom") { setZoom(s.tile >= 36 ? 20 : s.tile + 4); return true; }
+        if (b.id == "zoom") {
+            if (s.tile >= zoomMaxTilePx()) setZoom(zoomDefaultTilePx());
+            else zoomBySteps(1);
+            return true;
+        }
+        if (b.id == "mapaspect") { toggleAsciiMapCellAspect(); return true; }
         if (b.id == "minimap") { s.mobileMinimapTap = !s.mobileMinimapTap; return true; }
         if (b.id == "confirm") { s.mobileConfirmCommands = !s.mobileConfirmCommands; return true; }
         if (b.id == "edge") { s.mobileEdgeScroll = !s.mobileEdgeScroll; return true; }
@@ -220,12 +320,26 @@ int applySplashChoice(int ch, int& numAIs, int& biomeIdx) {
     else if (ch == 'w' || ch == 'W') biomeIdx = 3;
     else if (ch == 'f' || ch == 'F') biomeIdx = 4;
     else if (ch == 'c' || ch == 'C') biomeIdx = 6;
-    else if (ch == '4') displayMode = DM_ASCII;
-    else if (ch == '5' && !s.asciiOnly) { displayMode = DM_EMOJI; s.isometric = true; }
+    else if (ch == '4') {
+        displayMode = DM_ASCII;
+        resetZoomForDisplayMode();
+    }
+    else if (ch == '5' && !s.asciiOnly) {
+        displayMode = DM_EMOJI;
+        s.isometric = true;
+        resetZoomForDisplayMode();
+    }
+    else if (ch == '6') {
+        toggleAsciiMapCellAspect();
+    }
     return 0;
 }
 
 bool handleSplashKeyHit(int px, int py, int& numAIs, int& biomeIdx, int& result) {
+    if (handleSplashColorWheelClick(px, py, numAIs)) {
+        result = 0;
+        return true;
+    }
     for (const KeyHit& hit : s.keyHits) {
         if (!pointInRect(px, py, hit.r)) continue;
         result = applySplashChoice(hit.ch, numAIs, biomeIdx);
@@ -281,6 +395,11 @@ void drawSplash(int numAIs, int biomeIdx) {
         drawKeyTokensInText(col, y, displayLine, {{"[4]", '4'}, {"[5]", '5'}},
                             rgb(220,225,220), 720); y += 22;
     }
+    y += 4;
+    line("ASCII MAP", rgb(255,230,135));
+    std::string mapLine = std::string("  [6] Map cells: ") + (s.asciiSquareMapCells ? "Square" : "Terminal");
+    drawKeyTokensInText(col, y, mapLine, {{"[6]", '6'}}, rgb(220,225,220), 720); y += 22;
+    drawSplashColorWheel(numAIs);
     y += 10;
     static const char* biomeNames[] = {"Temperate","Desert","Snow","Swamp","Forest","Volcanic","Ocean","Random"};
     std::ostringstream ss; ss << "  > Opponents: " << numAIs << "    Biome: " << biomeNames[biomeIdx];

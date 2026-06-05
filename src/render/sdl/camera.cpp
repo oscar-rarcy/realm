@@ -2,6 +2,44 @@
 #include "realm.h"
 #include "view_state.h"
 
+#include <array>
+#include <cmath>
+
+namespace {
+
+constexpr std::array<int, 16> kTilesetZoomTiles = {
+    14, 17, 21, 26, 31, 38, 47, 57,
+    70, 86, 105, 129, 157, 192, 235, 288,
+};
+
+constexpr std::array<int, 16> kAsciiZoomTiles = {
+    14, 15, 16, 17, 18, 19, 21, 22,
+    24, 26, 28, 30, 33, 35, 38, 44,
+};
+
+const std::array<int, 16>& activeZoomTiles() {
+    return displayMode == DM_EMOJI ? kTilesetZoomTiles : kAsciiZoomTiles;
+}
+
+int nearestZoomIndex(const std::array<int, 16>& tiles, int tilePx) {
+    int best = 0;
+    int bestDistance = std::abs(tilePx - tiles[0]);
+    for (int i = 1; i < (int)tiles.size(); ++i) {
+        int distance = std::abs(tilePx - tiles[(size_t)i]);
+        if (distance < bestDistance) {
+            best = i;
+            bestDistance = distance;
+        }
+    }
+    return best;
+}
+
+int nearestZoomTile(const std::array<int, 16>& tiles, int tilePx) {
+    return tiles[(size_t)nearestZoomIndex(tiles, tilePx)];
+}
+
+}
+
 bool mobileForcedByEnv(bool& value) {
     const char* env = std::getenv("REALM_MOBILE_GUI");
     if (!env || !*env) return false;
@@ -35,6 +73,11 @@ void asciiMobileCellMetrics(int& cellW, int& cellH) {
     if (font) TTF_SizeText(font, "M", &w, &h);
     cellW = std::max(8, w);
     cellH = std::max(15, font ? TTF_FontLineSkip(font) : h);
+    if (s.asciiSquareMapCells) {
+        int side = std::max(cellW, cellH);
+        cellW = side;
+        cellH = side;
+    }
 }
 
 int mobileSafePad() {
@@ -105,6 +148,28 @@ SDL_Rect miniMapRect() {
 
 int isoHalfW() { return std::max(8, s.tile); }
 int isoHalfH() { return std::max(5, s.tile / 2); }
+
+float isoCameraViewX() {
+    return (s.isometric && displayMode == DM_EMOJI && s.isoCameraActive) ? s.isoViewX : (float)view.viewX;
+}
+
+float isoCameraViewY() {
+    return (s.isometric && displayMode == DM_EMOJI && s.isoCameraActive) ? s.isoViewY : (float)view.viewY;
+}
+
+void syncIsoCameraToView() {
+    s.isoCameraActive = true;
+    s.isoViewX = (float)view.viewX;
+    s.isoViewY = (float)view.viewY;
+}
+
+static void setIsoCamera(float x, float y) {
+    s.isoCameraActive = true;
+    s.isoViewX = x;
+    s.isoViewY = y;
+    view.viewX = (int)std::floor(s.isoViewX);
+    view.viewY = (int)std::floor(s.isoViewY);
+}
 
 void isoOrigin(int& ox, int& oy) {
     SDL_Rect mr = mapRect();
@@ -228,7 +293,35 @@ void sparkleDiamond(int cx, int cy, int hw, int hh, Color c, int x, int y) {
     }
 }
 
+static bool drawTextureFrameIso(const TilesetAssetFrame& frame, int cx, int cy, int hw, int hh, Color mod) {
+    if (!frame.texture || frame.placeholder) return false;
+    SDL_Rect dst{cx - hw, cy - hh, hw * 2 + 1, hh * 2 + 1};
+    SDL_SetTextureColorMod(frame.texture, mod.r, mod.g, mod.b);
+    SDL_SetTextureAlphaMod(frame.texture, mod.a);
+    SDL_RenderCopy(s.ren, frame.texture, nullptr, &dst);
+    SDL_SetTextureColorMod(frame.texture, 255, 255, 255);
+    SDL_SetTextureAlphaMod(frame.texture, 255);
+    return true;
+}
+
+bool drawUnknownGroundTextureIso(int cx, int cy, int hw, int hh, int x, int y) {
+    (void)x; (void)y;
+    if (!imageTilesetEnabled()) return false;
+    return drawTextureFrameIso(
+        tilesetLoadUnknownGroundTileIso(s.ren, hw * 2 + 1, hh * 2 + 1),
+        cx, cy, hw, hh, rgb(118, 118, 124, 224));
+}
+
 void applyTerrainTextureIso(int cx, int cy, int hw, int hh, const Tile& t, int x, int y) {
+    if (imageTilesetEnabled()) {
+        VisualTileParts parts = visualPartsForTile(t);
+        if (drawTextureFrameIso(
+                tilesetLoadGroundTileIso(s.ren, parts.ground, hw * 2 + 1, hh * 2 + 1),
+                cx, cy, hw, hh, applyVisionAndLight(timeTint(rgb(255, 255, 255)), x, y))) {
+            return;
+        }
+    }
+
     switch (t.terrain) {
         case T_TALL_GRASS:
         case T_REEDS:
@@ -259,6 +352,9 @@ void applyTerrainTextureIso(int cx, int cy, int hw, int hh, const Tile& t, int x
 void updateViewMetrics(bool keepCursor) {
     SDL_GetWindowSize(s.win, &s.winW, &s.winH);
     SDL_Rect mr = mapRect();
+    int originalViewX = view.viewX;
+    int originalViewY = view.viewY;
+    if (!s.isometric || displayMode != DM_EMOJI) s.isoCameraActive = false;
 
     if (s.isometric) {
         int hw = isoHalfW();
@@ -310,17 +406,32 @@ void updateViewMetrics(bool keepCursor) {
             if (view.cursorY >= view.viewY + fullH) view.viewY = view.cursorY - fullH + 1 + insetTiles;
         }
     }
+    if (s.isometric && displayMode == DM_EMOJI
+        && (!s.isoCameraActive || view.viewX != originalViewX || view.viewY != originalViewY)) {
+        syncIsoCameraToView();
+    }
     int minX, maxX, minY, maxY;
     cameraBounds(minX, maxX, minY, maxY);
-    view.viewX = std::max(minX, std::min(view.viewX, maxX));
-    view.viewY = std::max(minY, std::min(view.viewY, maxY));
+    if (s.isometric && displayMode == DM_EMOJI) {
+        setIsoCamera(std::max((float)minX, std::min(isoCameraViewX(), (float)maxX)),
+                     std::max((float)minY, std::min(isoCameraViewY(), (float)maxY)));
+    } else {
+        view.viewX = std::max(minX, std::min(view.viewX, maxX));
+        view.viewY = std::max(minY, std::min(view.viewY, maxY));
+    }
 }
 
 void clampView() {
     int minX, maxX, minY, maxY;
     cameraBounds(minX, maxX, minY, maxY);
-    view.viewX = std::max(minX, std::min(view.viewX, maxX));
-    view.viewY = std::max(minY, std::min(view.viewY, maxY));
+    if (s.isometric && displayMode == DM_EMOJI) {
+        if (!s.isoCameraActive) syncIsoCameraToView();
+        setIsoCamera(std::max((float)minX, std::min(isoCameraViewX(), (float)maxX)),
+                     std::max((float)minY, std::min(isoCameraViewY(), (float)maxY)));
+    } else {
+        view.viewX = std::max(minX, std::min(view.viewX, maxX));
+        view.viewY = std::max(minY, std::min(view.viewY, maxY));
+    }
 }
 
 void centerViewOnTile(int mx, int my) {
@@ -343,6 +454,7 @@ void centerViewOnTile(int mx, int my) {
         isoScreenToOffsetFloat(safe.x + safe.w / 2, safe.y + safe.h / 2, sx, sy);
         view.viewX = mx - (int)std::lround(sx);
         view.viewY = my - (int)std::lround(sy);
+        if (displayMode == DM_EMOJI) syncIsoCameraToView();
     } else {
         view.viewX = mx - topDownSafeColumns() / 2;
         view.viewY = my - topDownSafeRows() / 2;
@@ -350,7 +462,7 @@ void centerViewOnTile(int mx, int my) {
     clampView();
 }
 
-bool screenToMiniMapTile(int px, int py, int& mx, int& my, bool clampToMiniMap = false) {
+bool screenToMiniMapTile(int px, int py, int& mx, int& my, bool clampToMiniMap) {
     if (displayMode == DM_ASCII && !isAsciiMobileGui()) {
         SDL_GetWindowSize(s.win, &s.winW, &s.winH);
         TerminalFrame frame = makeBlankTerminalFrame();
@@ -422,9 +534,29 @@ void chooseZoomAnchor(int requestedX, int requestedY, int& anchorX, int& anchorY
     mapTileAtViewportCenter(mx, my, anchorX, anchorY);
 }
 
+int zoomDefaultTilePx() {
+    return nearestZoomTile(activeZoomTiles(), displayMode == DM_EMOJI ? 44 : 36);
+}
+
+int zoomMaxTilePx() {
+    return activeZoomTiles().back();
+}
+
+void resetZoomForDisplayMode() {
+    s.tile = zoomDefaultTilePx();
+    updateViewMetrics(true);
+}
+
+static int zoomTileAfterSteps(int currentTile, int steps) {
+    const auto& tiles = activeZoomTiles();
+    int index = nearestZoomIndex(tiles, currentTile);
+    index = std::max(0, std::min((int)tiles.size() - 1, index + steps));
+    return tiles[(size_t)index];
+}
+
 void setZoom(int newTile, int anchorX, int anchorY) {
     int oldTile = s.tile;
-    newTile = std::max(14, std::min(44, newTile));
+    newTile = nearestZoomTile(activeZoomTiles(), newTile);
     if (newTile == oldTile) return;
 
     int oldMx = view.cursorX, oldMy = view.cursorY;
@@ -440,11 +572,16 @@ void setZoom(int newTile, int anchorX, int anchorY) {
     if (screenToMapOffset(fixedX, fixedY, newSx, newSy)) {
         view.viewX = view.cursorX - newSx;
         view.viewY = view.cursorY - newSy;
+        if (s.isometric && displayMode == DM_EMOJI) syncIsoCameraToView();
         clampView();
     } else {
         centerViewOnTile(view.cursorX, view.cursorY);
     }
     // Text textures may be re-used scaled; no need to rebuild font cache.
+}
+
+void zoomBySteps(int steps, int anchorX, int anchorY) {
+    setZoom(zoomTileAfterSteps(s.tile, steps), anchorX, anchorY);
 }
 
 void startMiddlePan(int px, int py) {
@@ -455,6 +592,8 @@ void startMiddlePan(int px, int py) {
     s.panStartMouseY = py;
     s.panStartViewX = view.viewX;
     s.panStartViewY = view.viewY;
+    s.panStartIsoViewX = isoCameraViewX();
+    s.panStartIsoViewY = isoCameraViewY();
 }
 
 void updateMiddlePan(int px, int py) {
@@ -467,6 +606,12 @@ void updateMiddlePan(int px, int py) {
         terminalMapCellMetrics(mapCellW, mapCellH);
         view.viewX = s.panStartViewX - (int)std::lround(dx / (float)std::max(1, mapCellW));
         view.viewY = s.panStartViewY - (int)std::lround(dy / (float)std::max(1, mapCellH));
+    } else if (s.isometric && displayMode == DM_EMOJI) {
+        int hw = std::max(1, isoHalfW());
+        int hh = std::max(1, isoHalfH());
+        float viewDx = -0.5f * (dx / (float)hw + dy / (float)hh);
+        float viewDy =  0.5f * (dx / (float)hw - dy / (float)hh);
+        setIsoCamera(s.panStartIsoViewX + viewDx, s.panStartIsoViewY + viewDy);
     } else if (s.isometric) {
         int hw = std::max(1, isoHalfW());
         int hh = std::max(1, isoHalfH());

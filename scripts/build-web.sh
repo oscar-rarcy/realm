@@ -135,6 +135,7 @@ fi
 
 mkdir -p "$BUILD_DIR" "$DIST_DIR" "$ASSET_DIR" "$FONT_DIR"
 find "$DIST_DIR" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+rm -rf "$ASSET_DIR/tiles"
 
 copy_first_font() {
   local dest="$1"
@@ -174,6 +175,11 @@ if [[ -f assets/app-icon.svg ]]; then
   cp assets/app-icon.svg "$ASSET_DIR/app-icon.svg"
 fi
 
+if [[ -d assets/tiles ]]; then
+  mkdir -p "$ASSET_DIR"
+  cp -R assets/tiles "$ASSET_DIR/tiles"
+fi
+
 COMMON_SOURCES=(
   src/platform/main_web.cpp
   src/core/*.cpp
@@ -184,20 +190,12 @@ COMMON_SOURCES=(
   src/map/*.cpp
   src/platform/app_config.cpp
   src/platform/game_init.cpp
+  src/platform/user_settings.cpp
   src/platform/view_state.cpp
-  src/render/visual_model.cpp
+  src/render/display_model.cpp
+  src/render/entity_visual_defs.cpp
   src/render/render_model.cpp
-  src/render/sdl/camera.cpp
-  src/render/sdl/display_glyphs.cpp
-  src/render/sdl/gfx_renderer.cpp
-  src/render/sdl/hud_renderer.cpp
-  src/render/sdl/issue_capture.cpp
-  src/render/sdl/map_renderer.cpp
-  src/render/sdl/mobile_hud.cpp
-  src/render/sdl/projection.cpp
-  src/render/sdl/sdl_context.cpp
-  src/render/sdl/splash_screen.cpp
-  src/render/sdl/terminal_frame_renderer.cpp
+  src/render/sdl/*.cpp
 )
 
 em++ "${COMMON_SOURCES[@]}" \
@@ -208,11 +206,12 @@ em++ "${COMMON_SOURCES[@]}" \
   -Isrc \
   -sUSE_SDL=2 \
   -sUSE_SDL_TTF=2 \
+  -sUSE_LIBPNG=1 \
   -sALLOW_MEMORY_GROWTH=1 \
   -sSTACK_SIZE=8388608 \
   -sEXIT_RUNTIME=0 \
   -sASSERTIONS=1 \
-  -sEXPORTED_FUNCTIONS='["_main","_realm_web_tick","_realm_web_entity_count","_realm_web_selected_id","_realm_web_selected_count","_realm_web_view_x","_realm_web_view_y","_realm_web_view_w","_realm_web_view_h","_realm_web_cursor_x","_realm_web_cursor_y","_realm_web_first_owned_unit_x","_realm_web_first_owned_unit_y","_realm_web_screen_x_for_tile","_realm_web_screen_y_for_tile","_realm_web_screen","_realm_web_ascii_only","_realm_web_display_mode"]' \
+  -sEXPORTED_FUNCTIONS='["_main","_realm_web_tick","_realm_web_entity_count","_realm_web_selected_id","_realm_web_selected_count","_realm_web_view_x","_realm_web_view_y","_realm_web_view_w","_realm_web_view_h","_realm_web_cursor_x","_realm_web_cursor_y","_realm_web_first_owned_unit_x","_realm_web_first_owned_unit_y","_realm_web_screen_x_for_tile","_realm_web_screen_y_for_tile","_realm_web_screen","_realm_web_ascii_only","_realm_web_display_mode","_realm_web_context_menu_open","_realm_web_context_menu_option_count"]' \
   -sEXPORTED_RUNTIME_METHODS='["ccall","cwrap"]' \
   --preload-file "$ASSET_DIR@/assets" \
   --preload-file "$FONT_DIR/DejaVuSansMono.ttf@/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf" \

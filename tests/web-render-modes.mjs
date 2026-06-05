@@ -181,6 +181,9 @@ for (const result of results) {
   if (/No tileset symbol font found/i.test(text)) {
     failures.push(`${result.name}: tileset symbol font fallback was used`);
   }
+  if (!expectedAsciiOnly && result.display === 'tileset' && /\[Realm missing tile\]/.test(text)) {
+    failures.push(`${result.name}: missing tileset asset fallback was logged\n${text}`);
+  }
   if (!expectedAsciiOnly && result.display === 'tileset' && !/Tileset symbol font: \/assets\/fonts\/RealmSymbols\.ttf/i.test(text)) {
     failures.push(`${result.name}: bundled symbol font was not loaded`);
   }

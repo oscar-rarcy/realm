@@ -22,6 +22,8 @@ static const BuildRule BUILD_RULES[] = {
     {'i', E_MILL},
     {'g', E_GATE},
     {'d', E_DOCK},
+    {'j', E_WOODEN_BRIDGE},
+    {'v', E_STONE_BRIDGE},
 };
 
 static const int BUILD_RULE_COUNT = (int)(sizeof(BUILD_RULES) / sizeof(BUILD_RULES[0]));
@@ -32,6 +34,51 @@ static void emitActionMarker(EventSink& events, int player, MapPos tile, char gl
 
 static void emitStatus(EventSink& events, int player, const std::string& message, GameEventType type = GameEventType::StatusMessage) {
     events.emit({ type, player, -1, { -1, -1 }, message, 0 });
+}
+
+static bool bridgeLandBankAt(const Game& game, int x, int y) {
+    return inBounds(x, y) && terrainDef(game.map[y][x].terrain).passableLand;
+}
+
+static bool bridgeWaterAt(const Game& game, int x, int y) {
+    return inBounds(x, y) && terrainDef(game.map[y][x].terrain).passableWater;
+}
+
+static bool bridgePlacementAxis(const Game& game, EntityType type, MapPos tile, int& outDx, int& outDy) {
+    auto supports = [&](int dx, int dy) {
+        bool nearA = bridgeLandBankAt(game, tile.x - dx, tile.y - dy);
+        bool nearB = bridgeLandBankAt(game, tile.x + dx, tile.y + dy);
+        if (type == E_WOODEN_BRIDGE) return nearA && nearB;
+        if (type != E_STONE_BRIDGE) return false;
+        if (nearA && nearB) return true;
+        return (nearA && bridgeWaterAt(game, tile.x + dx, tile.y + dy)
+                    && bridgeLandBankAt(game, tile.x + 2 * dx, tile.y + 2 * dy))
+            || (nearB && bridgeWaterAt(game, tile.x - dx, tile.y - dy)
+                    && bridgeLandBankAt(game, tile.x - 2 * dx, tile.y - 2 * dy));
+    };
+    if (supports(1, 0)) { outDx = 1; outDy = 0; return true; }
+    if (supports(0, 1)) { outDx = 0; outDy = 1; return true; }
+    return false;
+}
+
+static std::vector<MapPos> bridgeBuildAccessTiles(const Game& game, MapPos tile) {
+    std::vector<MapPos> out;
+    static const int dirs[4][2] = {{1,0},{-1,0},{0,1},{0,-1}};
+    for (const auto& dir : dirs) {
+        MapPos bank{ tile.x + dir[0], tile.y + dir[1] };
+        if (bridgeLandBankAt(game, bank.x, bank.y)) out.push_back(bank);
+    }
+    return out;
+}
+
+static bool builderCanReachAny(const Game& game, const WorldIndex& world, const Entity& builder,
+                               const std::vector<MapPos>& targets) {
+    for (MapPos target : targets) {
+        if (builder.x == target.x && builder.y == target.y) return true;
+        std::vector<std::pair<int, int>> path = findPath(game, world, builder.x, builder.y, target.x, target.y, 300, isNaval(builder.type));
+        if (!path.empty()) return true;
+    }
+    return false;
 }
 
 const BuildRule* buildRules(int& count) {
@@ -55,11 +102,27 @@ CanStartBuildResult canStartBuild(const Game& game, const WorldIndex& world, int
     if (p.gold < STATS[buildingType].costGold || p.wood < STATS[buildingType].costWood)
         return { false, "Not enough resources!" };
     if (!canPlace(game, world, buildingType, tile.x, tile.y, player, builder.id)) return { false, "Can't build there!" };
+    if (isBridge(buildingType)) {
+        std::vector<MapPos> access = bridgeBuildAccessTiles(game, tile);
+        if (access.empty() || !builderCanReachAny(game, world, builder, access))
+            return { false, "Bridge must be built from a reachable land bank." };
+    }
 
     return { true, nullptr };
 }
 
 static void pathBuilderToFootprint(const Game& game, Entity& builder, EntityType buildingType, MapPos tile) {
+    if (isBridge(buildingType)) {
+        std::vector<MapPos> access = bridgeBuildAccessTiles(game, tile);
+        int bestAX = builder.x, bestAY = builder.y, bestAD = 99999;
+        for (MapPos bank : access) {
+            int d = mdist(builder.x, builder.y, bank.x, bank.y);
+            if (d < bestAD) { bestAD = d; bestAX = bank.x; bestAY = bank.y; }
+        }
+        builder.path = findPath(game, builder.x, builder.y, bestAX, bestAY, 300, isNaval(builder.type));
+        builder.pathIdx = 0;
+        return;
+    }
     int bldW = STATS[buildingType].sizeW, bldH = STATS[buildingType].sizeH;
     int bestAX = tile.x - 1, bestAY = tile.y, bestAD = 99999;
     for (int dy = -1; dy <= bldH; dy++) for (int dx = -1; dx <= bldW; dx++) {
@@ -88,6 +151,13 @@ ServiceResult startBuildService(Game& game, WorldIndex& world, EventSink& events
     p.gold -= STATS[buildingType].costGold;
     p.wood -= STATS[buildingType].costWood;
     int bid = spawnEntity(game, buildingType, player, tile.x, tile.y, false);
+    if (isBridge(buildingType)) {
+        int dx = 1, dy = 0;
+        bridgePlacementAxis(game, buildingType, tile, dx, dy);
+        WorldIndex bridgeWorld = buildWorldIndex(game);
+        Entity* bridge = findEntity(game, bridgeWorld, bid);
+        if (bridge) { bridge->facingDx = dx; bridge->facingDy = dy; }
+    }
     emitActionMarker(events, player, tile, '#');
     events.emit({ GameEventType::BuildingPlaced, player, bid, tile, "", 0 });
     world = buildWorldIndex(game);

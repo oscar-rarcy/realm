@@ -2,6 +2,7 @@
 
 #include "core/game_types.h"
 
+#include <string>
 #include <vector>
 
 struct Game;
@@ -10,6 +11,9 @@ struct TileRenderInfo {
     int x = 0;
     int y = 0;
     Terrain terrain = T_GRASS;
+    VisualTileParts visualParts;
+    bool gateOpen = false;
+    bool gateLocked = false;
     bool visible = false;
     bool explored = false;
 };
@@ -28,6 +32,13 @@ struct EntityRenderInfo {
     int targetY = -1;
     int facingDx = 0;
     int facingDy = 0;
+    int visualMoveFromX = 0;
+    int visualMoveFromY = 0;
+    int visualMoveToX = 0;
+    int visualMoveToY = 0;
+    int visualMoveStartedTick = 0;
+    int visualMoveDurationTicks = 0;
+    int visualMoveSeq = 0;
     int alertTicks = 0;
     bool underConstruction = false;
     bool attackMove = false;
@@ -51,6 +62,48 @@ struct ActionMarkerRenderInfo {
     char glyph = 0;
 };
 
+struct ProjectileRenderInfo {
+    int visualId = 0;
+    ProjectileType type = PT_ARROW;
+    float x = 0.0f;
+    float y = 0.0f;
+    float tx = 0.0f;
+    float ty = 0.0f;
+    float visualSpawnX = 0.0f;
+    float visualSpawnY = 0.0f;
+    float visualMoveFromX = 0.0f;
+    float visualMoveFromY = 0.0f;
+    float visualMoveToX = 0.0f;
+    float visualMoveToY = 0.0f;
+    int visualMoveStartedTick = 0;
+    int visualMoveDurationTicks = 0;
+    int visualMoveSeq = 0;
+    int tileX = 0;
+    int tileY = 0;
+    char glyph = 0;
+    int color = 0;
+    int life = 0;
+    bool alive = false;
+    bool visible = false;
+};
+
+struct EffectRenderInfo {
+    std::string assetId;
+    int x = 0;
+    int y = 0;
+    int ticks = 0;
+    bool worldSpace = true;
+};
+
+struct UiOverlayRenderInfo {
+    std::string assetId;
+    int x = 0;
+    int y = 0;
+    int ticks = 0;
+    char glyph = 0;
+    bool screenSpace = false;
+};
+
 struct RenderModel {
     int viewX = 0;
     int viewY = 0;
@@ -60,6 +113,9 @@ struct RenderModel {
     EntityType buildPreviewType = E_NONE;
     std::vector<TileRenderInfo> tiles;
     std::vector<EntityRenderInfo> entities;
+    std::vector<ProjectileRenderInfo> projectiles;
+    std::vector<EffectRenderInfo> effects;
+    std::vector<UiOverlayRenderInfo> uiOverlays;
     std::vector<ActionMarkerRenderInfo> actionMarkers;
 };
 

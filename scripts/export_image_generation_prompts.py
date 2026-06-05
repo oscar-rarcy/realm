@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import itertools
 import math
 import re
 import shutil
@@ -12,16 +11,21 @@ from pathlib import Path
 from typing import Any
 
 from export_tile_specs import (
-    AMMUNITION_SPECS,
     ENTITY_RANGES,
+    EFFECT_ASSET_NAMES,
     GAME_TYPES_HEADER,
     PLAYER_SIGIL,
+    PROJECTILE_SPECS,
     ROOT,
+    USER_INTERFACE_ASSET_NAMES,
     ammunition_refs_for_entity,
     category_for_entity,
     clean_cell,
     entity_profile,
     enum_values,
+    generation_aspect_for_entity,
+    generation_aspect_for_group,
+    generation_aspect_variant_rules_for_entity,
     is_military_unit,
     is_operated_unit,
     lower_slug,
@@ -30,8 +34,12 @@ from export_tile_specs import (
     recommended_player_colour,
     peasant_actions,
     read_text,
-    research_visual_lines_for_entity,
+    research_tier_variants_for_entity,
     split_list,
+    source_canvas_for_entity,
+    source_canvas_for_group,
+    team_color_slots_for_entity,
+    team_color_variant_rules_for_entity,
 )
 
 
@@ -62,6 +70,35 @@ TERRAIN_GROUP_DIR = {
     "decal": "decals",
 }
 
+GROUND_SIDE_MATERIAL_GUIDANCE = {
+    "grass": "faded olive, yellow-green, and darker earthy green side material, like worn grass over a compacted soil slab; not bright gold and not grey stone.",
+    "meadow": "soft meadow green side material with muted earth-green and tan undertones; small flower colours stay on the top face, not on the side faces.",
+    "dirt": "compacted ochre-brown and dark soil side material, with dry dusty chips or darker damp chips matching the state.",
+    "mud": "dark wet brown peat and clay side material, with subtle glossy damp highlights; not green grass sides and not clean stone.",
+    "sand": "warm tan, ochre, and shaded sandy side material, like compressed sand with darker worn underside chips.",
+    "dunes": "warm sand-coloured side material with wind-worn tan ridges continuing softly into the bevel; avoid stone-grey sides.",
+    "snow": "mostly snow-white and blue-grey side material, with dirty earth only in chipped or thawed spots; patchy states should let snow and exposed ground meet naturally at the bevel.",
+    "tundra": "mixed cold grey-brown earth, dull moss, and snow/frost side material; the side should show the same patchy thaw/refreeze mix as the top state.",
+    "ice": "blue-white translucent-looking ice side material with darker blue cracks and wet shadows; do not use stone or grass side colours.",
+    "water": "deep blue water-volume side material with cyan highlights and dark wet shadow, painted to feel translucent while remaining an opaque ground tile image.",
+    "shallows": "pale turquoise and wet sandy side material, with visible shallow-bed tones continuing into the bevel.",
+    "marsh": "dark green-brown wet peat side material with muddy olive vegetation tones; not clean grass and not grey stone.",
+    "gravel": "cool grey and brown pebble side material, with small stones continuing into the bevel and darker chips underneath.",
+    "ash": "charcoal, soot-black, and cool dark grey powdery side material, with any ember flecks kept subtle and mostly on the top face.",
+    "lava": "dark volcanic rock side material with restrained orange-red glow only in fissures or cracks; the side should not become a bright neon outline.",
+    "hills": "earthy green-brown hillside side material with grass-covered top fading into compacted soil and shaded ridge chips.",
+    "rocky": "cool grey-brown stone side material, with larger rock planes and cracks continuing into the bevel.",
+    "castle_floor": "cut stone and paving side material, with individual paver edges, grey-beige worn chips, and moss only in cracks.",
+}
+
+
+def ground_side_material_guidance(slug: str) -> str:
+    return GROUND_SIDE_MATERIAL_GUIDANCE.get(
+        slug,
+        "muted side material matching the ground top material and current state, with darker worn chips and no unrelated reference colours.",
+    )
+
+
 def ground_specs() -> list[tuple[str, str, str, list[dict[str, str]]]]:
     return [
     ("grass", "grass ground", "top-down square tileable grass floor, readable as normal temperate movement ground", seasonal_items("temperate grassland tile", "winter: patchy snow or frost over grass, not a full snow biome tile")),
@@ -73,14 +110,6 @@ def ground_specs() -> list[tuple[str, str, str, list[dict[str, str]]]]:
         state_item("winter_frozen", "bare earth in winter, frozen with frost and patchy snow"),
         *rain_frames("rain", "bare earth"),
         *rain_frames("storm", "bare earth"),
-    ]),
-    ("road", "road ground", "top-down square packed road or cobble movement route floor", [
-        state_item("spring_clear", "stone or packed road in clear spring weather"),
-        state_item("summer_dry", "stone or packed road in dry summer weather"),
-        state_item("autumn_leaf_litter", "stone or packed road with autumn leaf litter at the edges"),
-        state_item("winter_snow_edges", "stone or packed road with snow gathered on edges but route still readable"),
-        *rain_frames("rain", "stone or packed road"),
-        *rain_frames("storm", "stone or packed road"),
     ]),
     ("mud", "mud ground", "top-down square wet mud floor with ruts and puddled surface", [
         state_item("clear_wet", "mud terrain in clear weather, wet dark surface and puddles"),
@@ -229,24 +258,26 @@ def feature_specs() -> list[tuple[str, str, str, list[dict[str, str]], bool]]:
 
 def decal_specs() -> list[tuple[str, str, str, list[dict[str, str]]]]:
     return [
-    ("flowers", "flowers decal", "transparent low wildflower overlay that sits flat on grass or meadow", seasonal_items("wildflower ground decal", "winter: dormant flower stems with patchy snow")),
-    ("tall_grass", "tall grass decal", "transparent low/medium grass clump overlay; visual variation, not an independent blocker", seasonal_items("tall grass clumps", "winter: flattened frosted tall grass with patchy snow")),
-    ("grass_tufts", "grass tufts decal", "transparent low grass tuft overlay for natural ground variation", seasonal_items("small grass tufts", "winter: small frosted grass tufts poking through snow")),
-    ("small_stones", "small stones decal", "transparent low scattered-stone overlay for rocky, dirt, and path variation", [state_item("base_clear", "small flat scattered stones"), state_item("frost", "small stones with frost"), state_item("snow_dusted", "small stones with light snow dusting")]),
-    ("puddles", "puddles decal", "transparent flat puddle overlay for rain, marsh, mud, and road edges", [state_item("rain_puddle_small", "small rain puddle"), state_item("rain_puddle_large", "larger rain puddle"), state_item("storm_puddle_choppy", "storm puddle with choppy surface"), state_item("frozen_puddle", "frozen puddle with thin ice")]),
-    ("dirt_scuffs", "dirt scuffs decal", "transparent sparse dirt scuffs for low wear and settlement edges", [state_item("sparse", "sparse dirt scuffs"), state_item("medium", "medium dirt scuffs"), state_item("heavy", "heavy dirt scuffs")]),
-    ("packed_path_marks", "packed path marks decal", "transparent packed dirt path fragments for medium wear", [state_item("short_fragment", "short packed path fragment"), state_item("straight_fragment", "straight packed path fragment"), state_item("corner_fragment", "corner or bend packed path fragment"), state_item("intersection_fragment", "small packed path intersection fragment")]),
-    ("cobble_patches", "cobble patches decal", "transparent cobble or road creep patches for high wear", [state_item("small_patch", "small cobble patch"), state_item("edge_patch", "cobble edge patch"), state_item("dense_patch", "dense cobble patch"), state_item("broken_patch", "broken uneven cobble patch")]),
-    ("wheel_ruts", "wheel ruts decal", "transparent wheel rut overlay for roads, yards, farms, and transport paths", [state_item("light_ruts", "light wheel ruts"), state_item("deep_ruts", "deep wheel ruts"), state_item("muddy_ruts", "muddy wheel ruts"), state_item("snow_ruts", "wheel ruts through snow")]),
-    ("yard_clutter", "yard clutter decal", "transparent settlement clutter overlay that does not block movement", [state_item("small_clutter", "small yard clutter scraps"), state_item("tools_clutter", "tools and small worksite clutter"), state_item("mixed_clutter", "mixed settlement clutter"), state_item("snow_dusted_clutter", "snow-dusted yard clutter")]),
-    ("crates_barrels", "crates and barrels decal", "transparent crates and barrels overlay for market, dock, town, and storage yards", [state_item("crates", "small crates cluster"), state_item("barrels", "small barrels cluster"), state_item("mixed", "mixed crates and barrels"), state_item("snow_dusted", "snow-dusted crates and barrels")]),
-    ("log_piles", "log piles decal", "transparent log-pile overlay for lumber camps and forest work areas", [state_item("small_pile", "small log pile"), state_item("stacked_pile", "stacked log pile"), state_item("split_logs", "split logs and chips"), state_item("snow_dusted", "snow-dusted log pile")]),
-    ("farm_tracks", "farm tracks decal", "transparent farm track and furrow overlay", [state_item("furrows", "simple farm furrows"), state_item("cart_tracks", "farm cart tracks"), state_item("harvest_tracks", "harvested-field tracks"), state_item("snow_dead_tracks", "snowy or winter-dead farm tracks")]),
-    ("muddy_footprints", "muddy footprints decal", "transparent muddy footprint overlay for wet settlement and path wear", [state_item("sparse", "sparse muddy footprints"), state_item("cluster", "cluster of muddy footprints"), state_item("trail", "short footprint trail"), state_item("smudged", "smudged muddy footprints")]),
-    ("snow_trampled_path_marks", "snow-trampled path marks decal", "transparent trampled-snow path overlay", [state_item("light_trample", "light trampled snow path marks"), state_item("packed_trample", "packed trampled snow path marks"), state_item("dirty_trample", "dirty trampled snow with exposed ground"), state_item("wheel_trample", "trampled snow with wheel marks")]),
-    ("ore_bins", "ore bins decal", "transparent ore-bin and rock-pile overlay for mining camps", [state_item("small_ore_bin", "small ore bin"), state_item("ore_pile", "ore pile and bin"), state_item("mixed_rocks", "mixed rocks and ore scraps"), state_item("snow_dusted", "snow-dusted ore bins")]),
-    ("sacks", "sacks decal", "transparent sacks and grain bags overlay for mills, farms, and markets", [state_item("small_sacks", "small sacks cluster"), state_item("grain_bags", "grain bags"), state_item("mixed_sacks", "mixed sacks and small crates"), state_item("snow_dusted", "snow-dusted sacks")]),
-    ("dock_barrels", "dock barrels decal", "transparent dockside barrels, rope, and cargo overlay", [state_item("barrels_rope", "barrels and rope"), state_item("fish_crates", "fish crates and wet dock clutter"), state_item("cargo_stack", "small dock cargo stack"), state_item("snow_dusted", "snow-dusted dock cargo")]),
+("road", "road decal", "transparent packed-road or cobble overlay that sits on top of dirt-like ground", [
+    state_item("spring_clear", "stone or packed road in clear spring weather"),
+    state_item("summer_dry", "stone or packed road in dry summer weather"),
+    state_item("autumn_leaf_litter", "stone or packed road with autumn leaf litter at the edges"),
+    state_item("winter_snow_edges", "stone or packed road with snow gathered on edges but route still readable"),
+    *rain_frames("rain", "stone or packed road"),
+    *rain_frames("storm", "stone or packed road"),
+]),
+("flowers", "flowers decal", "transparent low wildflower overlay that sits flat on grass or meadow", seasonal_items("wildflower ground decal", "winter: dormant flower stems with patchy snow")),
+("tall_grass", "tall grass decal", "transparent low/medium grass clump overlay; visual variation, not an independent blocker", seasonal_items("tall grass clumps", "winter: flattened frosted tall grass with patchy snow")),
+("scuffs", "scuffs decal", "transparent sparse dirt scuffs for low wear and settlement edges", [state_item("sparse", "sparse dirt scuffs"), state_item("medium", "medium dirt scuffs"), state_item("heavy", "heavy dirt scuffs")]),
+("packed_path", "packed path decal", "transparent packed dirt path fragments for medium wear", [state_item("short_fragment", "short packed path fragment"), state_item("straight_fragment", "straight packed path fragment"), state_item("corner_fragment", "corner or bend packed path fragment"), state_item("intersection_fragment", "small packed path intersection fragment")]),
+("cobble_patch", "cobble patch decal", "transparent cobble or road creep patches for high wear", [state_item("small_patch", "small cobble patch"), state_item("edge_patch", "cobble edge patch"), state_item("dense_patch", "dense cobble patch"), state_item("broken_patch", "broken uneven cobble patch")]),
+("wheel_ruts", "wheel ruts decal", "transparent wheel rut overlay for roads, yards, farms, and transport paths", [state_item("light_ruts", "light wheel ruts"), state_item("deep_ruts", "deep wheel ruts"), state_item("muddy_ruts", "muddy wheel ruts"), state_item("snow_ruts", "wheel ruts through snow")]),
+("yard_clutter", "yard clutter decal", "transparent settlement clutter overlay that does not block movement", [state_item("small_clutter", "small yard clutter scraps"), state_item("tools_clutter", "tools and small worksite clutter"), state_item("mixed_clutter", "mixed settlement clutter"), state_item("snow_dusted_clutter", "snow-dusted yard clutter")]),
+("crates_barrels", "crates and barrels decal", "transparent crates and barrels overlay for market, dock, town, and storage yards", [state_item("crates", "small crates cluster"), state_item("barrels", "small barrels cluster"), state_item("mixed", "mixed crates and barrels"), state_item("snow_dusted", "snow-dusted crates and barrels")]),
+("log_piles", "log piles decal", "transparent log-pile overlay for lumber camps and forest work areas", [state_item("small_pile", "small log pile"), state_item("stacked_pile", "stacked log pile"), state_item("split_logs", "split logs and chips"), state_item("snow_dusted", "snow-dusted log pile")]),
+("farm_tracks", "farm tracks decal", "transparent farm track and furrow overlay", [state_item("furrows", "simple farm furrows"), state_item("cart_tracks", "farm cart tracks"), state_item("harvest_tracks", "harvested-field tracks"), state_item("snow_dead_tracks", "snowy or winter-dead farm tracks")]),
+("muddy_footprints", "muddy footprints decal", "transparent muddy footprint overlay for wet settlement and path wear", [state_item("sparse", "sparse muddy footprints"), state_item("cluster", "cluster of muddy footprints"), state_item("trail", "short footprint trail"), state_item("smudged", "smudged muddy footprints")]),
+("snow_trampled_path", "snow trampled path decal", "transparent trampled-snow path overlay", [state_item("light_trample", "light trampled snow path marks"), state_item("packed_trample", "packed trampled snow path marks"), state_item("dirty_trample", "dirty trampled snow with exposed ground"), state_item("wheel_trample", "trampled snow with wheel marks")]),
 ]
 
 
@@ -384,25 +415,7 @@ def append_unique_actions(actions: list[dict[str, str]], extras: list[dict[str, 
 
 
 def research_tier_variants(enum_name: str) -> list[dict[str, Any]]:
-    lines = research_visual_lines_for_entity(enum_name)
-    if not lines:
-        return []
-    variants: list[dict[str, Any]] = []
-    for combo in itertools.product(*[line["tiers"] for line in lines]):
-        variant_id = "__".join(tier["id"] for tier in combo)
-        variant_name = " + ".join(tier["name"] for tier in combo)
-        descriptions = [tier["description"] for tier in combo]
-        researched = [tier["research"] for tier in combo if tier.get("research")]
-        variants.append(
-            {
-                "id": variant_id,
-                "name": variant_name,
-                "description": "; ".join(descriptions),
-                "research": researched,
-                "is_default": not researched,
-            }
-        )
-    return variants
+    return research_tier_variants_for_entity(enum_name)
 
 
 def apply_research_variants(enum_name: str, actions: list[dict[str, str]]) -> list[dict[str, str]]:
@@ -425,6 +438,54 @@ def guided_action_description(enum_name: str, action_id: str, description: str) 
     action = action_id.lower()
     if "no airborne ammunition" in description:
         return description
+    if enum_name == "E_WOODEN_BRIDGE":
+        if action == "span_single_east_west":
+            return "complete wooden plank bridge spanning one water tile between west and east land banks"
+        if action == "span_single_north_south":
+            return "complete wooden plank bridge spanning one water tile between north and south land banks"
+        if action == "broken":
+            return "broken wooden bridge with collapsed planks, no longer safely crossable"
+    if enum_name == "E_STONE_BRIDGE":
+        if action == "span_single_east_west":
+            return "complete stone bridge spanning one water tile between west and east land banks"
+        if action == "span_single_north_south":
+            return "complete stone bridge spanning one water tile between north and south land banks"
+        if action == "span_half_east_west":
+            return "one stone half-span built from a west or east land bank, ending cleanly halfway over a two-tile water gap"
+        if action == "span_half_north_south":
+            return "one stone half-span built from a north or south land bank, ending cleanly halfway over a two-tile water gap"
+        if action == "span_joined_east_west":
+            return "joined two-piece stone bridge crossing a two-tile water gap between west and east land banks"
+        if action == "span_joined_north_south":
+            return "joined two-piece stone bridge crossing a two-tile water gap between north and south land banks"
+        if action == "broken":
+            return "broken stone bridge with cracked or missing span pieces, no longer safely crossable"
+    if enum_name == "E_KNIGHT":
+        shield_reins = (
+            "shield is strapped to the rider's anatomical left forearm, relaxed on the far side beside or behind "
+            "the horse neck/shoulder area, about one third to one half visible; the rider's anatomical left hand "
+            "still holds or gathers the reins, with reins passing naturally near the shield-side hand"
+        )
+        if action == "idle":
+            return (
+                "idle mounted stance: rider's anatomical right hand carries the spear/lance upright or near-upright; "
+                f"{shield_reins}; shield is not front-presented; reins are relaxed rather than tense"
+            )
+        if action == "trot":
+            return (
+                "controlled trot: rider's anatomical right hand carries the spear/lance while the horse moves; "
+                f"{shield_reins}; horse can be guided by legs, knees, seat, spurs, training, and relaxed reins"
+            )
+        if "charge" in action or "strike" in action:
+            return (
+                "charge/strike action with the spear/lance allowed to angle for the attack; "
+                f"{shield_reins}; keep the shield strapped, not gripped as a whole-hand object"
+            )
+        if "hit" in action or "alert" in action:
+            return (
+                "hit/alert mounted pose with the spear/lance still in the rider's anatomical right hand; "
+                f"{shield_reins}; shield arm remains relaxed rather than actively presenting the shield"
+            )
     if enum_name == "E_ARCHER":
         if action == "aim":
             return "aim with ammunition held in the weapon; ammunition is not airborne"
@@ -502,6 +563,20 @@ def entity_actions(enum_name: str, category: str, stats: dict[str, Any], audit: 
         action_id = lower_slug(state.replace("/", " "))
         out.append({"id": action_id, "description": guided_action_description(enum_name, action_id, state)})
     if category == "buildings":
+        if enum_name == "E_WOODEN_BRIDGE":
+            append_unique_actions(out, [
+                state_item("span_single_east_west", "complete wooden bridge spanning one water tile between west and east land banks"),
+                state_item("span_single_north_south", "complete wooden bridge spanning one water tile between north and south land banks"),
+            ])
+        if enum_name == "E_STONE_BRIDGE":
+            append_unique_actions(out, [
+                state_item("span_single_east_west", "complete stone bridge spanning one water tile between west and east land banks"),
+                state_item("span_single_north_south", "complete stone bridge spanning one water tile between north and south land banks"),
+                state_item("span_half_east_west", "one stone half-span built from a west or east land bank, ending cleanly halfway over a two-tile water gap"),
+                state_item("span_half_north_south", "one stone half-span built from a north or south land bank, ending cleanly halfway over a two-tile water gap"),
+                state_item("span_joined_east_west", "joined two-piece stone bridge crossing a two-tile water gap between west and east land banks"),
+                state_item("span_joined_north_south", "joined two-piece stone bridge crossing a two-tile water gap between north and south land banks"),
+            ])
         append_unique_actions(out, [
             state_item("construction_0_foundation", "0-33 percent construction: foundation footprint and early site materials"),
             state_item("construction_1_frame", "34-66 percent construction: visible frame and scaffolding"),
@@ -781,7 +856,33 @@ def common_sheet_contract(
     team_color_required: bool,
     player_colour: dict[str, str] | None = None,
     negative_arrow_phrase: str = "arrows",
+    generation_aspect: dict[str, str] | None = None,
+    aspect_variant_rules: list[dict[str, str]] | None = None,
+    source_canvas: dict[str, Any] | None = None,
 ) -> list[str]:
+    aspect = generation_aspect or generation_aspect_for_group(group)
+    aspect_lines = [
+        "## Aspect Ratio",
+        "",
+        f"- Image generation preset: {aspect['preset']} ({aspect['ratio']}).",
+        "- Use this aspect ratio for the whole contact sheet; crop accepted slots into production sprites after review.",
+    ]
+    for rule in aspect_variant_rules or []:
+        aspect_lines.append(
+            f"- `{rule['variant']}` override: use {rule['preset']} ({rule['ratio']}); {rule['description']}."
+        )
+    aspect_lines.append("")
+    resolution_lines = []
+    if source_canvas:
+        width = source_canvas["width_px"]
+        height = source_canvas["height_px"]
+        resolution_lines = [
+            "## Output Resolution",
+            "",
+            f"- Final accepted standalone source canvas: {width} by {height} px.",
+            f"- Use this resolution from the generated JSON spec for every accepted standalone {item_noun}; contact-sheet slots may be larger, but each slot must be cleanly crop/downscale-safe to {width} by {height} px.",
+            "",
+        ]
     team_rule_lines = []
     if team_color_required:
         team_rule_lines = [
@@ -789,20 +890,26 @@ def common_sheet_contract(
         ]
     if group == "grounds":
         return [
+            *aspect_lines,
+            *resolution_lines,
             "## Image Output Contract",
             "",
             "- Output kind: reference contact sheet for planning and review.",
-            "- Per-cell target: one complete tile sample matching the listed state, filling its grid cell edge-to-edge.",
+            "- Per-cell target: one complete square 3D terrain slab matching the listed state, filling its grid cell.",
             "- Background: use opaque tile art inside each cell. Do not use transparency for ground cells unless the state explicitly needs water edge alpha in a later production pass.",
             "- Gutters: keep clear separation between cells so each tile sample can be cropped independently.",
-            "- Consistency: keep the same material identity, palette, lighting direction, detail scale, and outline weight across every slot in the file.",
-            "- Tile edges: make each cell seamless on all four edges; do not add interior padding, drop shadows, borders, vignettes, or fade-outs.",
+            "- Consistency: keep the same material identity, palette, lighting direction, detail scale, and slab geometry across every slot in the file.",
+            "- Ground tile shape: match the approved Realm grass reference geometry: one thick square terrain slab seen from above, with a continuous top material surface, subtle bevel, chipped/worn side faces, worn corners, and a dark contact shadow outside the slab.",
+            "- Do not draw a separate outline, rim, trim, decorative surround, or UI-style edging around the material. The edge must read as the physical side of the terrain slab itself.",
+            "- Keep side faces muted and material-coloured according to the ground-specific side material guidance, not bright gold, yellow, glowing, clean, or high-contrast. Do not draw an inner rectangle or inset line between the top surface and the side faces.",
             *team_rule_lines,
             f"- Negative prompt: no text, labels, numbers, {negative_arrow_phrase}, UI chrome, watermarks, signatures, photo texture, heavy blur, diamond-shaped tiles, or extra unlisted states.",
             "",
         ]
-    background = "Use a transparent sheet background. If the image tool cannot produce alpha, use one flat #ff00ff magenta background and clear gutters between cells."
+    background = sheet_prompt_background_sentence(group)
     return [
+        *aspect_lines,
+        *resolution_lines,
         "## Image Output Contract",
         "",
         "- Output kind: reference contact sheet for planning and review.",
@@ -819,7 +926,9 @@ def common_sheet_contract(
 
 def sheet_prompt_background_sentence(group: str) -> str:
     if group == "grounds":
-        return "Use opaque edge-to-edge tile art in each cell, with clear gutters between cells and no transparent border."
+        return "Use opaque full-square slab art in each cell, with the same physical 3D terrain-tile sides, muted chipped worn corners, and dark contact shadow as the approved Realm grass reference; keep clear gutters between cells."
+    if group in {"units", "animals", "projectiles"}:
+        return "Use a flat pure #ff00ff magenta sheet background and clear gutters between cells."
     return "Use transparent background, or a single flat #ff00ff magenta background if transparency is not available."
 
 
@@ -827,33 +936,53 @@ def production_follow_up(group: str, item_noun: str) -> list[str]:
     if group == "grounds":
         details = [
             "Final production ground art should be exported as one standalone square tile per accepted state.",
-            "Each tile should be seamless edge-to-edge and still read clearly after the game projects it into an isometric diamond.",
+            "Each tile should keep the physical 3D slab shape from the approved grass reference: continuous top material, subtle bevel, chipped/worn side faces, worn corners, and dark contact shadow.",
+            "Each tile should use its ground-specific side material guidance for slab-side colour, chips, translucency cues, frost, mud, stone, paving, or glow.",
+            "Reject any output where the generator turns the slab edge into a decorative surround, outline, rim, trim, or UI-like edging.",
+            "Reject bright gold/yellow slab sides or an inner rectangle/inset line around the top material.",
             "Avoid distinctive repeated landmarks near tile edges unless the state is intentionally road, water, lava, or path-like.",
         ]
     elif group == "decals":
         details = [
             "Final production decal art should be exported as one standalone square image per accepted state.",
-            "Use transparent background or a flat #ff00ff magenta key background, with only the low overlay art visible.",
+            "Use transparent background or a flat #ff00ff magenta key background, with only the low simplified map-mark art visible.",
             "Keep decal opacity and silhouette subtle enough that it reads as ground wear or clutter, not a blocking object.",
+            "Do not add paper borders, sticker outlines, freestanding shadows, holders, bases, or cream die-cut edges.",
         ]
     elif group == "features":
         details = [
             "Final production feature art should be exported as one standalone square image per accepted state.",
-            "Use transparent background or a flat #ff00ff magenta key background, with one anchored sprite and its contact shadow fully inside the square.",
+            "Use transparent background or a flat #ff00ff magenta key background, with one map-integrated feature and any contact blending fully inside the square.",
             "Keep the tile anchor visually stable across depletion, weather, damage, and seasonal variants.",
+            "Let lower/contact edges fade softly to alpha or toward #ff00ff magenta when the feature should blend into the map.",
         ]
-    elif group == "effects-ui":
+    elif group == "projectiles":
         details = [
-            "Final production effect/UI art should be exported as one standalone square image per accepted item.",
+            "Final production projectile art should be exported as one standalone square image per accepted projectile state.",
+            "Use a flat pure #ff00ff magenta background, with the full paper-cutout projectile inside the square.",
+            "Keep the projectile compact, centred, and readable over light and dark terrain.",
+            "Do not include launcher, firing unit, target, terrain, impact burst, motion arrow, base, holder, or decorative frame.",
+        ]
+    elif group in {"effects", "user_interface"}:
+        details = [
+            "Final production overlay art should be exported as one standalone square image per accepted item.",
             "Use transparent background or a flat #ff00ff magenta key background, with the effect centred and readable over both light and dark terrain.",
             "Keep rings and command markers centred on the tile anchor; keep screen UI markers compact and readable at small scale.",
         ]
     else:
-        details = [
-            "Final production sprite art should be exported as one standalone square image per accepted state, direction, and frame.",
-            "Use transparent background or a flat #ff00ff magenta key background, with the full sprite and shadow inside the square.",
-            "Keep feet, hull base, wheels, siege base, or building footprint anchored consistently across variants.",
-        ]
+        if group in {"units", "animals"}:
+            details = [
+                "Final production sprite art should be exported as one standalone square image per accepted state, direction, and frame.",
+                "Use a flat pure #ff00ff magenta background, with the full paper-cutout sprite inside the square.",
+                "Keep feet, hull base, wheels, siege base, tack, weapons, and equipment anchored consistently across variants.",
+                "Do not add a base, holder, terrain, board, decorative frame, or cast shadow; an extremely subtle contact shadow is acceptable only if it is needed for readability.",
+            ]
+        else:
+            details = [
+                "Final production sprite art should be exported as one standalone square image per accepted state, direction, and frame.",
+                "Use transparent background or a flat #ff00ff magenta key background, with the full sprite and shadow inside the square.",
+                "Keep feet, hull base, wheels, siege base, or building footprint anchored consistently across variants.",
+            ]
     return [
         "## Production Follow-Up",
         "",
@@ -900,20 +1029,235 @@ def player_colour_contract(
     return lines
 
 
-def ammunition_contract(enum_name: str) -> list[str]:
+def team_colour_rules_contract(enum_name: str) -> list[str]:
+    variant_rules = team_color_variant_rules_for_entity(enum_name)
+    if not variant_rules:
+        return []
+    lines = [
+        "## Team Colour Rules",
+        "",
+        "Plate Helm and Iron Weapons are independent visual axes. Apply the tier-specific slots below instead of treating the Knight as a linear upgrade chain.",
+    ]
+    for variant in variant_rules:
+        lines.append(f"- `{variant['id']}` ({variant['name']}): {', '.join(variant['team_color_slots'])}.")
+        for rule in variant["rules"]:
+            lines.append(f"  - {rule}")
+    lines.append("")
+    return lines
+
+
+def projectile_contract(enum_name: str) -> list[str]:
     refs = ammunition_refs_for_entity(enum_name)
     if not refs:
         return []
     lines = [
-        "## Ammunition References",
+        "## Projectile References",
         "",
-        "- Unit/building sheets may show ammunition only while it is still loaded, nocked, held, or otherwise not yet released.",
-        "- Released, airborne, or impact ammunition must be generated from the ammunition files below, not baked into the unit/building frame.",
+        "- Unit/building sheets may show a projectile only while it is still loaded, nocked, held, or otherwise not yet released.",
+        "- Released, airborne, or impact projectiles must be generated from the projectile files below, not baked into the unit/building frame.",
     ]
     for slug in refs:
-        lines.append(f"- `{slug}`: `art/tiles/image-spec/ammunition/{slug}.md`")
+        lines.append(f"- `{slug}`: `art/tiles/image-spec/projectiles/{slug}.md`")
     lines.append("")
     return lines
+
+
+def unit_reference_role_contract(category: str) -> list[str]:
+    if category != "units":
+        return []
+    return [
+        "## Curated Reference Role",
+        "",
+        "- If user-supplied reference images from `art/reference/units/` are provided, use them only for gear, equipment, weapon tier, armour tier, shield placement, horse tack, and broad silhouette cues.",
+        "- Do not copy the reference image's exact pixels, finish, lighting, proportions, pose, background, or style.",
+        "- Redraw the result as stylized Realm small-RTS sprite art that follows this prompt's visual design, direction, team-colour slots, state grid, and output contract.",
+        "- Siege units and ships do not yet have curated unit references; generate those from the prompt until references are supplied.",
+        "",
+    ]
+
+
+def actor_has_human(enum_name: str, category: str) -> bool:
+    return category == "units"
+
+
+def actor_has_animal(enum_name: str, category: str) -> bool:
+    return category == "animals" or enum_name == "E_KNIGHT"
+
+
+def paper_cutout_style_contract(enum_name: str, category: str) -> list[str]:
+    if category not in {"units", "animals"}:
+        return []
+    lines = [
+        "## Tiny Sprite Style Contract",
+        "",
+        "- Convert the provided or generated subject into an ultra-simplified tiny sprite for a medieval-themed board game.",
+        "- Preserve the same pose, facing direction, silhouette, species or character identity, clothing, armour, equipment, weapons, shields, harness, tack, accessories, gear placement, and major colour identity.",
+        "- Only change the visual style; do not add, remove, swap, or redesign equipment or body forms.",
+        "",
+        "### Core Style",
+        "",
+        "- Highly consistent paper-cutout sprite style, like a simplified medieval manuscript or marginalia illustration turned into a paper standee.",
+        "- Ultra-simplified shapes with a very thick, clean, continuous black outer outline around the whole subject.",
+        "- Chunky black internal lines only where essential; no thin delicate linework, sketchiness, crosshatching, tiny texture marks, painterly micro-detail, realistic rendering, soft shading, or modern glossy cartoon polish.",
+        "- Cream/off-white die-cut paper border following the silhouette, with black subject outline still clearly visible inside that border.",
+        "- Flat muted medieval/storybook painted colour areas, preserving the subject's major colour identity; no gradients or glossy effects.",
+        "- Simplify aggressively for tiny-size readability: keep silhouette, major colour blocks, essential equipment shapes, minimum facial features, and minimum tack, weapon, or shield lines needed for recognition.",
+        "",
+    ]
+    if actor_has_human(enum_name, category):
+        lines.extend(
+            [
+                "### Human Face Rules",
+                "",
+                "- Eyes are two bold tiny black dots.",
+                "- Nose is one short bold black stroke or dot-like mark.",
+                "- Mouth is one tiny short black line, or omitted if not needed.",
+                "- Keep facial marks simple, thick, and readable at tiny scale; no detailed lips, eyelids, teeth, or realistic facial modelling.",
+                "- Expression should be simple, readable, and slightly medieval-naive.",
+                "",
+            ]
+        )
+    if actor_has_animal(enum_name, category):
+        lines.extend(
+            [
+                "### Animal Face Rules",
+                "",
+                "- Preserve the animal character from the reference or visual brief.",
+                "- Eyes should be simple, black, bold, and may be slightly larger or more shaped than human eyes when needed for character.",
+                "- Animal faces should feel slightly uncanny in a medieval manuscript way, using simplified muzzle, snout, or beak shapes.",
+                "- Keep faces readable and a little odd, not cute-modern; do not over-detail fur, hair, feathers, or musculature.",
+                "",
+            ]
+        )
+    lines.extend(
+        [
+            "### Body, Clothing, And Equipment",
+            "",
+            "- Preserve important armour, clothing, shields, weapons, saddles, reins, harness, tack, and accessories faithfully.",
+            "- Represent equipment as simplified flat shapes with thick black outlines.",
+            "- Keep only the main seams, straps, borders, and forms needed for recognition; avoid tiny buckles, stitching, ornament, and surface texture.",
+            "- Shields, helmets, weapons, and horse tack must remain especially recognizable.",
+            "",
+            "### Output Background",
+            "",
+            "- Isolated paper-cutout sprite only, centred on a flat pure magenta background: #FF00FF.",
+            "- No base, holder, board, terrain, scene, extra props, decorative frame, realism, 3D render, or cast shadow.",
+            "- An extremely subtle contact shadow is allowed only if necessary for tiny-sprite readability.",
+            "",
+        ]
+    )
+    return lines
+
+
+def building_simplified_style_contract(category: str) -> list[str]:
+    if category != "buildings":
+        return []
+    return [
+        "## Simplified Building Style Contract",
+        "",
+        "- Use a highly simplified medieval storybook building style that belongs to the map, not a movable paper standee.",
+        "- Do not add a cream paper border, die-cut edge, sticker outline, holder, base, or freestanding paper-cutout treatment.",
+        "- Use bold readable silhouettes, flat muted painted colour areas, and chunky simplified linework only where it clarifies rooflines, doors, windows, banners, damage, construction, or production state.",
+        "- Keep the structure grounded into its footprint with subtle contact darkening, dirt, cobble, or yard cues where appropriate.",
+        "- Avoid realistic rendering, tiny architectural ornament, thin hatching, glossy digital polish, and noisy texture.",
+        "- Team-colour areas remain maskable accents such as banners, awnings, flags, shield signs, or roof trim; do not flood the building body with team colour.",
+        "",
+    ]
+
+
+def entity_summary_style_phrase(category: str) -> str:
+    if category in {"units", "animals"}:
+        return "Use clean readable tiny paper-cutout sprite proportions"
+    if category == "buildings":
+        return "Use clean readable simplified medieval painted-building proportions"
+    return "Use clean readable small-RTS proportions"
+
+
+def asset_style_contract(group: str) -> list[str]:
+    if group == "projectiles":
+        return [
+            "## Tiny Moving Cutout Style Contract",
+            "",
+            "- Use a simplified paper-cutout treatment because projectiles are moving tactical objects.",
+            "- Preserve the projectile identity, facing/flight direction, major colour identity, and recognisable payload shape.",
+            "- Use a thick black outer outline and only essential chunky black internal lines.",
+            "- Add a small cream/off-white paper edge where it helps the projectile read as a cutout, but keep the sprite compact and not bulky.",
+            "- Use flat muted medieval/storybook colour fills; no gradients, glossy effects, realistic rendering, thin hatching, tiny texture marks, labels, motion arrows, launcher, target, terrain, or impact burst.",
+            "- Isolate the projectile on a flat pure #ff00ff magenta background for accepted standalone frames.",
+            "",
+        ]
+    if group == "decals":
+        return [
+            "## Simplified Ground-Decal Style Contract",
+            "",
+            "- Use a simplified hand-painted map-mark style, not a paper cutout.",
+            "- Do not add a cream paper border, die-cut edge, sticker outline, freestanding shadow, holder, or base.",
+            "- Keep shapes simple, readable, and low against the ground, with soft or broken edges that can layer over different terrain.",
+            "- Use muted painted colour areas and minimal broad linework only where needed for readability.",
+            "- Decals should feel like markings, plants, stones, puddles, scuffs, or wear on the map surface, not independent objects.",
+            "- If transparency is not available, let fading or soft transparent edges fade toward #ff00ff magenta at the boundary.",
+            "",
+        ]
+    if group == "features":
+        return [
+            "## Map-Integrated Feature Style Contract",
+            "",
+            "- Use a hand-drawn watercolor map-feature style that feels grown out of or placed into the map, not a movable paper cutout.",
+            "- Do not add a cream paper border, sticker outline, holder, base, or freestanding paper edge.",
+            "- Use softened painted edges, broad readable shapes, muted natural colours, and selective chunky linework only where it clarifies silhouette or resource state.",
+            "- The lower/contact area should blend into the map with transparent softness; if alpha is not available, fade softly toward #ff00ff magenta where the sprite should become transparent.",
+            "- Keep the anchor stable across depletion, damage, season, and weather states.",
+            "- Concealing features should keep front/occluder areas readable without turning into opaque walls.",
+            "",
+        ]
+    if group == "grounds":
+        return [
+            "## Map-Ground Style Contract",
+            "",
+            "- Use a hand-drawn watercolor map-surface style that feels like part of the board itself, not a paper cutout.",
+            "- Do not add a cream paper border, sticker outline, freestanding object edge, holder, or base.",
+            "- Keep the existing Realm raised square terrain-slab geometry: continuous top material, subtle bevel, chipped/worn side faces, worn corners, and dark contact shadow.",
+            "- Paint the terrain material with broad readable watercolor shapes and muted natural colour variation; avoid noisy texture, tiny details, photorealism, glossy digital finish, or decorative UI edging.",
+            "- Default ground tiles should fill the whole square. Edge, transition, shoreline, snow, melt, or overlay-like states may use transparency where the material fades out; if alpha is not available, fade softly toward #ff00ff magenta at transparent edges.",
+            "",
+        ]
+    if group == "effects":
+        return [
+            "## Simplified Tactical-Effect Style Contract",
+            "",
+            "- Use a simplified hand-painted tactical-effect style, not a paper cutout unless the effect is literally a moving projectile handled by the projectile prompts.",
+            "- Keep effects compact, readable, and isolated from terrain, units, buildings, and UI chrome.",
+            "- Use bold simple shapes and muted storybook colour, with transparency or #ff00ff magenta key outside the visible effect.",
+            "- Do not add decorative frames, labels, numbers, realistic particle simulation, heavy blur, or noisy micro-detail.",
+            "",
+        ]
+    if group == "user_interface":
+        return [
+            "## Simplified UI Marker Style Contract",
+            "",
+            "- Use a simplified readable marker/icon style that matches the medieval board-game art without pretending to be a physical paper cutout.",
+            "- Keep icons compact, high-contrast, and readable at small size over both bright and dark backgrounds.",
+            "- Use clean silhouettes, broad shapes, and restrained linework; no labels, numbers, decorative frames, glossy effects, or texture noise.",
+            "- Use transparency or #ff00ff magenta key outside the marker.",
+            "",
+        ]
+    return []
+
+
+def asset_summary_style_phrase(group: str) -> str:
+    if group == "projectiles":
+        return "Use clean readable tiny paper-cutout projectile styling"
+    if group == "decals":
+        return "Use clean readable simplified hand-painted ground-decal styling"
+    if group == "features":
+        return "Use clean readable map-integrated watercolor feature styling"
+    if group == "grounds":
+        return "Use clean readable watercolor map-ground styling"
+    if group == "effects":
+        return "Use clean readable simplified tactical-effect styling"
+    if group == "user_interface":
+        return "Use clean readable simplified UI marker styling"
+    return "Use clean readable small-RTS art"
 
 
 def entity_direction_contract(category: str, directions: list[str]) -> list[str]:
@@ -940,6 +1284,16 @@ def entity_direction_contract(category: str, directions: list[str]) -> list[str]
 
 
 def entity_quality_notes(enum_name: str, category: str, stats: dict[str, Any]) -> list[str]:
+    if enum_name in {"E_WOODEN_BRIDGE", "E_STONE_BRIDGE"}:
+        return [
+            "## Entity-Specific Art Notes",
+            "",
+            "- Draw the bridge as a transparent building sprite that sits over water; do not bake a full water tile into the asset.",
+            "- East-west states span left to right across the cell; north-south states span top to bottom across the cell.",
+            "- Half-span states must clearly end at the middle seam so two opposing stone halves can read as joined when placed together.",
+            "- Use red team-colour accents only on tiny pennants, painted end markers, or keystone marks; keep wood, stone, water shadows, and construction materials out of team colour.",
+            "",
+        ]
     if category == "buildings":
         return [
             "## Entity-Specific Art Notes",
@@ -974,6 +1328,19 @@ def entity_quality_notes(enum_name: str, category: str, stats: dict[str, Any]) -
             notes.append("- The operator counts as part of the unit identity; do not add extra crew beyond that one operator.")
         if enum_name in {"E_CATAPULT", "E_TREBUCHET", "E_RAM"}:
             notes.append("- Siege units should keep wheels, frame, sling/ram head, and destroyed wreck silhouettes readable from both source directions.")
+        if enum_name == "E_KNIGHT":
+            notes.extend(
+                [
+                    "- Mounted handling: the rider's anatomical right hand carries the spear/lance, the anatomical left forearm carries the strapped shield, and the anatomical left hand can still hold or gather the reins.",
+                    "- Use anatomical left/right and far-side language for the shield; avoid hardcoding canvas-left or canvas-right unless a direction-specific production prompt truly needs it.",
+                    "- Front/right-facing idle sprites should show the shield relaxed on the rider's far side beside or behind the horse neck/shoulder area, about one third to one half visible, not fully front-facing and not reduced to a thin edge.",
+                    "- Idle spear/lance poses must be upright or near-upright, not angled across the body like an attack pose. Attack and charge states may change the spear/lance angle.",
+                    "- No Plate Helm variants keep the saddle brown leather. Plate Helm variants make the saddle/saddle cloth blue #00AFFF. In every Knight variant, keep the girth/belly strap under the horse dark brown leather and never blue.",
+                    "- Bridle/headstall/face straps and reins are team colour in every Knight variant.",
+                    "- Plate Helm controls rider armour, horse armour/barding, and saddle/saddle cloth colour only. Iron Weapons controls the heavy mounted cavalry lance, shield upgrade, and small lance pennant only.",
+                    "- Dead and decayed states keep durable gear according to the same tier: shield, helmet, weapon hardware, horse armour/barding only when Plate Helm is active, and a small lance pennant only when Iron Weapons is active.",
+                ]
+            )
         notes.append("")
         return notes
     return []
@@ -1006,9 +1373,12 @@ def entity_markdown(enum_name: str, category: str, stats: dict[str, Any], audit:
     sheets = sheet_chunks(actions)
     directions = ["front", "back"] if category != "buildings" else ["south"]
     team_color_required = category in {"units", "buildings"}
-    team_slots = split_list(profile.get("team_color_slots", "")) if team_color_required else []
+    team_slots = team_color_slots_for_entity(enum_name, profile, team_color_required)
     player_colour = recommended_player_colour(enum_name, stats, audit) if team_color_required else None
-    ammunition_sentence = " Use ammunition reference files for released projectiles." if ammunition_refs_for_entity(enum_name) else ""
+    generation_aspect = generation_aspect_for_entity(enum_name, category)
+    aspect_variant_rules = generation_aspect_variant_rules_for_entity(enum_name, category)
+    source_canvas = source_canvas_for_entity(enum_name, category)
+    projectile_sentence = " Use projectile reference files for released projectiles." if ammunition_refs_for_entity(enum_name) else ""
     footprint = stats["footprint"]
 
     direction_sentence = (
@@ -1042,10 +1412,22 @@ def entity_markdown(enum_name: str, category: str, stats: dict[str, Any], audit:
         md_list(team_slots).rstrip(),
         "",
         *player_colour_contract(category, stats, player_colour, team_slots),
-        *ammunition_contract(enum_name),
+        *team_colour_rules_contract(enum_name),
+        *projectile_contract(enum_name),
         *research_visual_contract(enum_name),
+        *unit_reference_role_contract(category),
+        *paper_cutout_style_contract(enum_name, category),
+        *building_simplified_style_contract(category),
         *entity_direction_contract(category, directions),
-        *common_sheet_contract(category, "sprite frame", team_color_required, player_colour),
+        *common_sheet_contract(
+            category,
+            "sprite frame",
+            team_color_required,
+            player_colour,
+            generation_aspect=generation_aspect,
+            aspect_variant_rules=aspect_variant_rules,
+            source_canvas=source_canvas,
+        ),
         *entity_quality_notes(enum_name, category, stats),
         "## States To Generate",
         "",
@@ -1094,6 +1476,17 @@ def entity_markdown(enum_name: str, category: str, stats: dict[str, Any], audit:
         team_colour_prompt = (
             f"Team colour is required and the recommended preview player colour is {player_colour_text(player_colour)}. "
         )
+    source_canvas_prompt = ""
+    if source_canvas:
+        source_canvas_prompt = (
+            f"Final accepted standalone frames use the generated spec resolution: {source_canvas['width_px']} by {source_canvas['height_px']} px. "
+        )
+    background_prompt = sheet_prompt_background_sentence(category)
+    reference_prompt = ""
+    if category == "units":
+        reference_prompt = "If unit reference images are supplied, use them only for equipment and silhouette cues, then redraw into stylized Realm sprite art; do not copy their source style or pixels."
+    elif category == "animals":
+        reference_prompt = "If animal reference images are supplied, use them only for species identity, pose, facing direction, silhouette, and major colour cues, then redraw into stylized Realm sprite art; do not copy their source style or pixels."
     state_create_prompt = create_each_sentence("frame", len(actions), "state", "states")
     state_split_prompt = split_guidance_sentence(len(actions), "states")
     lines.extend(
@@ -1106,10 +1499,11 @@ def entity_markdown(enum_name: str, category: str, stats: dict[str, Any], audit:
                 f"Generate sprites for my Realm {stats['name']}. The footprint is {footprint['w']} by "
                 f"{footprint['h']} tile(s). {team_colour_prompt}"
                 f"{direction_prompt} {state_create_prompt}{state_split_prompt} Order states left to right "
-                "and top to bottom within each sheet. Keep the character or building "
-                "consistent across every slot. Use transparent background, or a single flat #ff00ff magenta background "
-                "if transparency is not available. Use clean readable small-RTS proportions, stable anchor, clear gutters, "
-                f"no text labels, no numbers, no watermark, and no cropped artwork.{ammunition_sentence}"
+                "and top to bottom within each sheet. Keep the subject "
+                f"consistent across every slot. {source_canvas_prompt}{background_prompt} {entity_summary_style_phrase(category)}, stable anchor, clear gutters, "
+                f"no text labels, no numbers, no watermark, and no cropped artwork. "
+                f"{reference_prompt}"
+                f"{projectile_sentence}"
             ),
             "",
             "Slot order:",
@@ -1204,6 +1598,7 @@ def target_asset_markdown(
     sheets = sheet_chunks(items)
     default_state = items[0]["id"] if items else "base"
     title_name = display_name.title().replace(" Ui ", " UI ").replace(" Ui", " UI")
+    source_canvas = source_canvas_for_group(group)
     lines = [
         f"# {title_name} Image Generation Prompt",
         "",
@@ -1219,7 +1614,8 @@ def target_asset_markdown(
         "- Directions: tile",
         f"- Default state: `{default_state}`",
         "",
-        *common_sheet_contract(group, item_noun, False, negative_arrow_phrase=negative_arrow_phrase),
+        *asset_style_contract(group),
+        *common_sheet_contract(group, item_noun, False, negative_arrow_phrase=negative_arrow_phrase, source_canvas=source_canvas),
         "## States Or Variants To Generate",
         "",
         f"Generate **one {item_noun} for each listed state or variant**. There are {len(items)} item(s). Each image may contain at most **16 items** in a **4 by 4** grid.",
@@ -1254,7 +1650,7 @@ def target_asset_markdown(
                 f"The default state is {default_state}. "
                 f"{split_guidance_sentence(len(items), 'items')} "
                 "Order items left to right and top to bottom within each sheet. "
-                "Use clean readable small-RTS art, stable scale, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork. "
+                f"{asset_summary_style_phrase(group)}, stable scale, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork. "
                 f"{sheet_prompt_background_sentence(group)}"
             ),
             "",
@@ -1267,20 +1663,27 @@ def target_asset_markdown(
 
 
 def ground_markdown(slug: str, display_name: str, visual_design: str, items: list[dict[str, str]]) -> str:
+    side_material = ground_side_material_guidance(slug)
+    prompt_side_material = side_material.rstrip(".")
     return target_asset_markdown(
         "grounds",
         slug,
         display_name,
         visual_design,
-        "top-down square source tile, projected into an isometric diamond by the game",
-        "top-down square source tiles that tile cleanly at the edges and remain readable after isometric projection",
+        "top-down square source tile",
+        f"top-down square 3D terrain slabs that fill the whole square and match the approved Realm grass reference geometry: continuous top material, subtle bevel, worn corners, and dark contact shadow; side material guidance for {slug}: {prompt_side_material}",
         "tile",
         items,
         [
-            "Ground art must be a top-down square source tile. Do not generate isometric diamond source art.",
-            "Each cell should be an edge-to-edge seamless tile sample, with no transparent border, drop shadow, grid line, or vignette.",
+            "Ground art must be a top-down square tile. Do not generate perspective or angled scene art.",
+            "Each cell should be one physical square terrain slab: continuous top surface, subtle bevel, chipped/worn side faces, worn corners, and dark contact shadow outside the slab.",
+            f"Slab side material for `{slug}`: {side_material}",
+            "The slab edge is not decorative. Do not add an outline, rim, trim, decorative surround, or UI-style edging around the terrain material.",
+            "Side faces should be muted and material-coloured according to the ground-specific side material guidance, not bright gold or yellow. Do not draw an inner rectangle or inset line around the top surface.",
+            "If using a reference tile, preserve the reference's 3D slab geometry exactly and change only the terrain material or state on the slab unless the prompt explicitly asks for a new slab shape.",
             "Keep detail broad enough for repeated tiling; avoid unique rocks, flowers, footprints, or landmarks unless that feature is the actual material state.",
             "Do not include upright objects, buildings, units, labels, or baked shadows from separate feature sprites.",
+            "Hard failure: no missing 3D slab sides, no bright gold/yellow edging, no inner rectangle, no decorative surround or UI-like outline, and no invisible seamless texture tile.",
         ],
     )
 
@@ -1364,44 +1767,55 @@ def effects_ui_items() -> list[dict[str, str]]:
     ]
 
 
-def ammunition_markdown(spec: dict[str, Any]) -> str:
+def projectile_markdown(spec: dict[str, Any]) -> str:
     return target_asset_markdown(
-        "ammunition",
+        "projectiles",
         spec["slug"],
         spec["name"],
         spec["description"],
         "transparent upright_world projectile sprite or tiny animation",
-        "transparent ammunition sprites after release, separate from unit/building sheets",
-        "ammunition sprite",
+        "transparent projectile sprites after release, separate from unit/building sheets",
+        "projectile sprite",
         spec["states"],
         [
-            "Ammunition art is used only after release. Do not include the firing unit, launcher, building, target, impact burst, water splash, terrain, UI labels, or motion arrows.",
+            "Projectile art is used only after release. Do not include the firing unit, launcher, building, target, impact burst, water splash, terrain, UI labels, or motion arrows.",
             "Keep the sprite compact, centred, readable over light and dark terrain, and suitable for animation between tiles.",
-            "If the ammunition has multiple states, keep the same projectile identity while changing only the animated part such as flame flicker or volley spacing.",
+            "If the projectile has multiple states, keep the same projectile identity while changing only the animated part such as flame flicker or volley spacing.",
         ],
         negative_arrow_phrase="direction arrows",
     )
 
 
-def effects_ui_markdown() -> str:
+def overlay_asset_markdown(group: str, slug: str, description: str) -> str:
+    projection = "transparent upright_world or tile_overlay sprite"
+    generation = "transparent overlay sprites with no terrain, unit, building, or UI chrome baked into the asset"
+    if group == "user_interface":
+        projection = "transparent screen-space UI marker or icon"
+        generation = "transparent screen-space UI sprites that remain readable at small scale"
     return target_asset_markdown(
-        "effects-ui",
-        "effects-ui",
-        "effects UI sprites",
-        "clean readable small-RTS effects that remain legible over terrain and units",
-        "mixed transparent overlays; each item declares tile_overlay, upright_world, or screen_ui",
-        "transparent overlay sprites; do not include terrain, units, buildings, text labels, numbers, watermarks, or cropped artwork",
+        group,
+        slug,
+        slug.replace("_", " "),
+        description,
+        projection,
+        generation,
         "sprite",
-        effects_ui_items(),
+        [state_item("base", description)],
         [
-            "Effects and UI items are separate transparent overlays, not terrain, unit, animal, or building sprites.",
-            "tile_overlay items sit on the map, upright_world items face the camera, and screen_ui items are drawn in interface space.",
-            "Use enough contrast and alpha separation that effects remain readable over grass, snow, water, lava, buildings, and units.",
-            "Selection, range, preview, and command-marker items should align to the tile centre and avoid filled backgrounds.",
+            "This asset should stay isolated from terrain, unit, building, and projectile source art.",
+            "Keep the silhouette compact and readable against both bright and dark backgrounds.",
         ],
     )
 
 
+def effect_specs() -> list[tuple[str, str]]:
+    descriptions = {item["id"]: item["description"] for item in effects_ui_items()}
+    return [(slug, descriptions[slug]) for slug in EFFECT_ASSET_NAMES]
+
+
+def user_interface_specs() -> list[tuple[str, str]]:
+    descriptions = {item["id"]: item["description"] for item in effects_ui_items()}
+    return [(slug, descriptions[slug]) for slug in USER_INTERFACE_ASSET_NAMES]
 def write(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8")
@@ -1422,7 +1836,7 @@ def export_prompts(out_dir: Path, clean: bool) -> dict[str, list[tuple[str, str]
 
     index: dict[str, list[tuple[str, str]]] = {
         "grounds": [], "features": [], "decals": [],
-        "units": [], "animals": [], "buildings": [], "ammunition": [], "effects-ui": [],
+        "units": [], "animals": [], "buildings": [], "projectiles": [], "effects": [], "user_interface": [],
     }
 
     for slug, display_name, visual_design, items in ground_specs():
@@ -1450,14 +1864,22 @@ def export_prompts(out_dir: Path, clean: bool) -> dict[str, list[tuple[str, str]
         write(out_dir / rel, text)
         index[category].append((record["name"], rel.as_posix()))
 
-    for spec in AMMUNITION_SPECS:
-        rel = Path("ammunition") / f"{spec['slug']}.md"
-        write(out_dir / rel, ammunition_markdown(spec))
-        index["ammunition"].append((spec["name"], rel.as_posix()))
+    for spec in PROJECTILE_SPECS:
+        rel = Path("projectiles") / f"{spec['slug']}.md"
+        write(out_dir / rel, projectile_markdown(spec))
+        index["projectiles"].append((spec["name"], rel.as_posix()))
+
+    for slug, description in effect_specs():
+        rel = Path("effects") / f"{slug}.md"
+        write(out_dir / rel, overlay_asset_markdown("effects", slug, description))
+        index["effects"].append((slug.replace("_", " ").title(), rel.as_posix()))
+
+    for slug, description in user_interface_specs():
+        rel = Path("user_interface") / f"{slug}.md"
+        write(out_dir / rel, overlay_asset_markdown("user_interface", slug, description))
+        index["user_interface"].append((slug.replace("_", " ").title(), rel.as_posix()))
 
     write(out_dir / "environment-state-design.md", environment_state_design_markdown())
-    write(out_dir / "effects-ui" / "effects-ui.md", effects_ui_markdown())
-    index["effects-ui"].append(("Effects UI", "effects-ui/effects-ui.md"))
     write(out_dir / "index.md", index_markdown(index))
     return index
 
@@ -1470,15 +1892,21 @@ def index_markdown(index: dict[str, list[tuple[str, str]]]) -> str:
         "",
         "## Generation Contract",
         "",
-        "- Generate groups in this order: grounds, features, decals, units, animals, buildings, ammunition, effects-ui.",
+        "- Generate groups in this order: grounds, features, decals, units, animals, buildings, projectiles, effects, user_interface.",
         "- Generate one image sheet for each `Sheet` section in each prompt.",
         "- When a unit or animal prompt lists multiple directions, generate the full sheet set once per direction.",
         "- Treat these generated sheets as review contact sheets first; once a slot is accepted, generate or crop a standalone square production image for that slot.",
         "- For standalone production images, use transparent background where possible, or a single flat #ff00ff magenta key background for later cleanup.",
         "- Keep emoji, symbol, ASCII, and procedural fallbacks readable until replacement art exists.",
         "- Peasant idle is the only sprite lane assumed to already exist; every other prompt should be treated as needed art.",
-        "- Ground prompts are top-down square tile art. Feature prompts are transparent anchored sprites. Decal prompts are transparent ground overlays. Ammunition and effects/UI prompts are transparent overlays.",
-        "- Unit and building sheets may show ammunition only before release; released projectiles belong in the ammunition prompts.",
+        "- Ground prompts are top-down square tile art. Feature prompts are transparent anchored sprites. Decal prompts are transparent ground overlays. Projectile, effect, and user-interface prompts are transparent overlays.",
+        "- User-supplied unit references under `art/reference/units/` are equipment and silhouette references only; generated unit sheets must be stylized Realm art, not copies of the reference image style or pixels.",
+        "- Unit and animal actor prompts use the generated JSON source-canvas resolution for accepted standalone frames. Current actor sprites are 48 by 48 px.",
+        "- Unit and animal actor prompts use the tiny medieval paper-cutout style. Human face rules appear only for unit prompts; animal face rules appear for animal prompts and Knight.",
+        "- Projectile prompts use the same moving paper-cutout treatment because projectiles move through the world.",
+        "- Building and decal prompts use simplified painted map-art, not paper cutouts.",
+        "- Ground and feature prompts use map-integrated hand-drawn watercolor styling. Feature and transition-like edges may fade to transparency, or toward #ff00ff magenta when alpha is unavailable.",
+        "- Unit and building sheets may show a projectile only before release; released projectiles belong in the projectile prompts.",
         "- Unit and animal `front` is a three-quarter screen-right RTS angle; `back` is the matching rear-right angle. Do not generate mirrored left-facing source art.",
         "- Do not add text labels, numbers, watermarks, cropped artwork, or baked UI chrome to generated image sheets.",
         "",

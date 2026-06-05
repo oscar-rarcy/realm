@@ -66,7 +66,7 @@ std::vector<ValidationIssue> validateGameStateIssues(const Game& game) {
     for (const auto& e : game.entities) {
         MapPos entityTile{ e.x, e.y };
         if (e.id <= 0 || e.id >= game.nextId) error("entity id outside valid range", e.id, entityTile);
-        if (e.type < E_NONE || e.type > E_BOAR) error("entity type outside valid range", e.id, entityTile);
+        if (e.type < E_NONE || e.type >= E_TYPE_COUNT) error("entity type outside valid range", e.id, entityTile);
         if (e.owner < 0 || e.owner > OWNER_NATURE) error("entity owner outside valid range", e.id, entityTile);
         if (!inBounds(e.x, e.y)) error("entity position out of bounds", e.id, entityTile);
         if (e.state < S_IDLE || e.state > S_GARRISONED) error("entity state outside valid range", e.id, entityTile);
@@ -85,7 +85,7 @@ std::vector<ValidationIssue> validateGameStateIssues(const Game& game) {
         if (e.type == E_WOLF && (e.carcassFoodRemaining != 0 || e.carcassFoodMax != 0))
             error("wolf carcass food must stay zero", e.id, entityTile);
         if (e.facingDx < -1 || e.facingDx > 1 || e.facingDy < -1 || e.facingDy > 1) error("entity facing delta outside valid range", e.id, entityTile);
-        if (e.producing < E_NONE || e.producing > E_BOAR) error("producing type outside valid range", e.id, entityTile);
+        if (e.producing < E_NONE || e.producing >= E_TYPE_COUNT) error("producing type outside valid range", e.id, entityTile);
         if (e.trainProgress < 0 || e.trainTime < 0 || e.researchProgress < 0 || e.researchTime < 0)
             error("progress counters below zero", e.id, entityTile);
         if (e.producing == E_NONE && (e.trainProgress != 0 || e.trainTime != 0))
@@ -96,7 +96,7 @@ std::vector<ValidationIssue> validateGameStateIssues(const Game& game) {
         for (auto pt : e.path)
             if (!inBounds(pt.first, pt.second)) recoverable("entity path point out of bounds", e.id, { pt.first, pt.second });
         for (int q : e.queue)
-            if (q < E_NONE || q > E_BOAR) error("queue type outside valid range", e.id, entityTile);
+            if (q < E_NONE || q >= E_TYPE_COUNT) error("queue type outside valid range", e.id, entityTile);
         for (int gid : e.garrison)
             if (gid <= 0 || gid >= game.nextId || !findEntityIn(game, gid)) recoverable("garrison id outside valid range", e.id, entityTile);
     }

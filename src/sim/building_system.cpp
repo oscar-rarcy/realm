@@ -40,7 +40,7 @@ void tickTowers(Game& game, EventSink& events) {
                 int dmg = damageVs(game, E_ARCHER, en->type, 12, en->owner);
                 en->hp -= dmg;
                 en->alertTicks = 12;
-                spawnProjectile(game, sx, sy, en->x, en->y, '-', CP_PROJ_TOWER);
+                spawnProjectile(game, sx, sy, en->x, en->y, '-', CP_PROJ_TOWER, PT_TOWER_BOLT);
                 if (en->hp <= 0) killEntity(game, events, *en);
                 fired++;
             }
@@ -77,7 +77,7 @@ void tickTowers(Game& game, EventSink& events) {
                 en->hp -= dmg; e.atkCd = isTower ? STATS[E_TOWER].atkSpeed : 9;
                 en->alertTicks = 12;
                 // Bolt-style projectile so tower fire reads as arrows instead of stars.
-                spawnProjectile(game, sx, sy, en->x, en->y, '-', CP_PROJ_TOWER);
+                spawnProjectile(game, sx, sy, en->x, en->y, '-', CP_PROJ_TOWER, PT_TOWER_BOLT);
                 if (en->hp <= 0) killEntity(game, events, *en);
             } else e.atkCd--;
         } else if (e.atkCd > 0) e.atkCd--;

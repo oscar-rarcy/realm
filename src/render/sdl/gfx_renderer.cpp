@@ -6,9 +6,12 @@
 #include "core/world_index.h"
 #include "view_state.h"
 
+static constexpr Uint32 RIGHT_HOLD_MENU_MS = 420;
+
 bool gfxInit() {
     SDL_SetHint(SDL_HINT_MOUSE_TOUCH_EVENTS, "1");
     SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) != 0) {
         std::cerr << "SDL_Init failed: " << SDL_GetError() << "\n"; return false;
     }
@@ -161,6 +164,10 @@ void gfxSetAsciiOnly(bool asciiOnly) {
     }
 }
 
+void gfxSetAsciiSquareMapCells(bool enabled) {
+    s.asciiSquareMapCells = enabled;
+}
+
 int gfxShowSplash() {
     int numAIs = 1;
     int biomeIdx = 7;
@@ -191,6 +198,9 @@ bool gfxConsumeLoadGameRequest() {
 
 void gfxOnNewGame() {
     centerViewOnTile(view.cursorX, view.cursorY);
+    commandContextMenuClose();
+    s.rightDown = false;
+    s.rightHoldMenuOpened = false;
 }
 
 Entity* primaryOwnedSelection(const WorldIndex& world) {
@@ -239,7 +249,7 @@ bool parseMobileEntityButtonId(const std::string& id, const char* prefix, Entity
 }
 
 void mobileStopSelection(const WorldIndex&) {
-    dispatchStopCommandForLocalSelection(g, gameEvents());
+    stopCurrentSelection(g, gameEvents(), 0);
 }
 
 void mobileCancelCommand() {
@@ -421,9 +431,13 @@ void mobileTapMap(int px, int py) {
             emitUiStatusEvent(-1, "Cannot build there.");
             return;
         }
-        Command command;
-        command.payload = BuildCommand{ currentSelection(g), s.mobileBuildType, {mx, my} };
-        dispatchCommandForLocalGame(g, gameEvents(), command);
+        CommandPreviewRequest request;
+        request.issuer = 0;
+        request.selection = currentSelection(g);
+        request.target = {mx, my};
+        request.mode = CommandPreviewMode::BuildPlace;
+        request.buildType = s.mobileBuildType;
+        dispatchCommandForLocalGame(g, gameEvents(), resolveRecommendedCommand(g, world, request));
         s.mobileBuildType = E_NONE;
         g.mode = M_NORMAL;
         emitUiStatusEvent(-1, "Building placed.");
@@ -436,8 +450,12 @@ void mobileTapMap(int px, int py) {
     WorldIndex world = buildWorldIndex(g);
     Entity* selection = primaryOwnedSelection(world);
     if (selection && (isUnit(selection->type) || !g.local.selectedIds.empty())) {
-        Command command = resolveContextCommand(g, world, 0, currentSelection(g), {mx, my});
-        dispatchCommandForLocalGame(g, gameEvents(), command);
+        CommandPreviewRequest request;
+        request.issuer = 0;
+        request.selection = currentSelection(g);
+        request.target = {mx, my};
+        request.mode = CommandPreviewMode::Context;
+        dispatchCommandForLocalGame(g, gameEvents(), resolveRecommendedCommand(g, world, request));
     } else {
         Command command;
         command.payload = SelectCommand{ {mx, my} };
@@ -500,6 +518,96 @@ void mobilePointerUp(int px, int py) {
     else mobileTapMap(px, py);
 }
 
+void updateRightHoldContextMenu() {
+    if (s.rightDownOnMiniMap) return;
+    if (s.rightDragPathActive || s.rightDragPath.size() > 1) return;
+    if (!s.rightDown || s.rightHoldMenuOpened || !inBounds(s.rightDownMapX, s.rightDownMapY)) return;
+    if (SDL_GetTicks() - s.rightDownTicks < RIGHT_HOLD_MENU_MS) return;
+
+    WorldIndex world = buildWorldIndex(g);
+    CommandPreviewRequest request;
+    request.issuer = 0;
+    request.selection = currentSelection(g);
+    request.target = {s.rightDownMapX, s.rightDownMapY};
+    request.mode = s.rightDownShift ? CommandPreviewMode::Waypoint : CommandPreviewMode::Context;
+    commandContextMenuOpen(g, world, request, s.rightDownX, s.rightDownY);
+    s.rightHoldMenuOpened = commandContextMenuIsOpen();
+}
+
+void clearRightDragPath() {
+    s.rightDragPath.clear();
+    s.rightDragPathActive = false;
+}
+
+bool selectionContainsEntity(const Selection& selection, int id) {
+    if (id < 0) return false;
+    if (selection.primaryId == id) return true;
+    return std::find(selection.ids.begin(), selection.ids.end(), id) != selection.ids.end();
+}
+
+bool canStartRightDragPathAt(int mx, int my) {
+    if (!inBounds(mx, my)) return false;
+    WorldIndex world = buildWorldIndex(g);
+    Entity* entity = entityAt(g, world, mx, my);
+    if (!entity || !entity->alive || entity->owner != 0 || !isUnit(entity->type)) return false;
+    return selectionContainsEntity(currentSelection(g), entity->id);
+}
+
+void appendRightDragPathTile(int mx, int my) {
+    if (!inBounds(mx, my)) return;
+    if (s.rightDragPath.empty()) {
+        s.rightDragPath.push_back({mx, my});
+        return;
+    }
+    int x0 = s.rightDragPath.back().first;
+    int y0 = s.rightDragPath.back().second;
+    if (x0 == mx && y0 == my) return;
+
+    int dx = mx - x0;
+    int dy = my - y0;
+    int steps = std::max(std::abs(dx), std::abs(dy));
+    for (int i = 1; i <= steps; ++i) {
+        int x = x0 + (int)std::lround(dx * (i / (float)steps));
+        int y = y0 + (int)std::lround(dy * (i / (float)steps));
+        if (!inBounds(x, y)) continue;
+        if (!s.rightDragPath.empty() && s.rightDragPath.back().first == x && s.rightDragPath.back().second == y) continue;
+        s.rightDragPath.push_back({x, y});
+    }
+    s.rightDragPathActive = s.rightDragPath.size() > 1;
+}
+
+void dispatchRightDragPath() {
+    if (s.rightDragPath.size() < 2) return;
+    Selection selection = currentSelection(g);
+    if (selection.primaryId < 0 && selection.ids.empty()) return;
+
+    size_t firstIndex = 1;
+    Command move;
+    move.issuer = 0;
+    move.payload = MoveCommand{ selection, { s.rightDragPath[firstIndex].first, s.rightDragPath[firstIndex].second } };
+    CommandResult result = dispatchCommandForLocalGame(g, gameEvents(), move);
+    if (result.status == CommandStatus::Rejected) return;
+
+    for (size_t i = firstIndex + 1; i < s.rightDragPath.size(); ++i) {
+        Command waypoint;
+        waypoint.issuer = 0;
+        waypoint.payload = WaypointCommand{ selection, { s.rightDragPath[i].first, s.rightDragPath[i].second } };
+        dispatchCommandForLocalGame(g, gameEvents(), waypoint);
+    }
+}
+
+void dispatchMiniMapMoveCommand(int px, int py, bool shift) {
+    int mx = 0, my = 0;
+    if (!screenToMiniMapTile(px, py, mx, my, true)) return;
+    view.cursorX = mx;
+    view.cursorY = my;
+    Command command;
+    command.issuer = 0;
+    if (shift) command.payload = WaypointCommand{ currentSelection(g), {mx, my} };
+    else command.payload = MoveCommand{ currentSelection(g), {mx, my} };
+    dispatchCommandForLocalGame(g, gameEvents(), command);
+}
+
 void gfxPollInput(bool& quitRequested) {
     quitRequested = false;
     SDL_Event e;
@@ -540,8 +648,9 @@ void gfxPollInput(bool& quitRequested) {
         }
         if (e.type == SDL_MOUSEWHEEL) {
             int mx, my; SDL_GetMouseState(&mx, &my);
-            if (e.wheel.y > 0) setZoom(s.tile + 3, mx, my);
-            if (e.wheel.y < 0) setZoom(s.tile - 3, mx, my);
+            int steps = e.wheel.y;
+            if (e.wheel.direction == SDL_MOUSEWHEEL_FLIPPED) steps = -steps;
+            zoomBySteps(steps, mx, my);
         }
         if (e.type == SDL_MOUSEMOTION) {
             s.mouseX = e.motion.x;
@@ -558,13 +667,59 @@ void gfxPollInput(bool& quitRequested) {
             if (screenToMap(e.motion.x, e.motion.y, mx, my)) {
                 view.cursorX = mx; view.cursorY = my;
                 if (s.leftDown) { s.lastMouseMapX = mx; s.lastMouseMapY = my; }
+                if (s.rightDown && !s.rightDownOnMiniMap && !s.rightDragPath.empty()) appendRightDragPathTile(mx, my);
             }
         }
         if (e.type == SDL_MOUSEBUTTONDOWN) {
             int mx,my;
             s.mouseX = e.button.x;
             s.mouseY = e.button.y;
-            if (e.button.button == SDL_BUTTON_MIDDLE) {
+            if (commandContextMenuIsOpen()) {
+                if (e.button.button == SDL_BUTTON_LEFT) {
+                    Command command;
+                    if (commandContextMenuTakeCommand(e.button.x, e.button.y, command)) {
+                        dispatchCommandForLocalGame(g, gameEvents(), command);
+                    } else {
+                        commandContextMenuClose();
+                    }
+                    s.leftDown = false;
+                    s.middleDown = false;
+                    s.rightDown = false;
+                    clearRightDragPath();
+                    view.dragging = false;
+                    continue;
+                }
+                if (e.button.button == SDL_BUTTON_RIGHT) {
+                    commandContextMenuClose();
+                    s.rightDown = false;
+                    s.rightHoldMenuOpened = false;
+                    clearRightDragPath();
+                    continue;
+                }
+            }
+            if (e.button.button == SDL_BUTTON_LEFT && s.rightDown && !s.rightDownOnMiniMap
+                    && screenToMap(e.button.x, e.button.y, mx, my)) {
+                if (!s.rightDragPath.empty()) appendRightDragPathTile(mx, my);
+                WorldIndex world = buildWorldIndex(g);
+                CommandPreviewRequest request;
+                request.issuer = 0;
+                request.selection = currentSelection(g);
+                request.target = {mx, my};
+                request.mode = s.rightDownShift ? CommandPreviewMode::Waypoint : CommandPreviewMode::Context;
+                commandContextMenuOpen(g, world, request, e.button.x, e.button.y);
+                s.rightHoldMenuOpened = commandContextMenuIsOpen();
+                s.leftDown = false;
+                s.middleDown = false;
+                view.dragging = false;
+                continue;
+            }
+            if (e.button.button == SDL_BUTTON_MIDDLE &&
+                       moveViewFromMiniMap(e.button.x, e.button.y)) {
+                s.miniMapDown = true;
+                s.leftDown = false;
+                s.middleDown = false;
+                view.dragging = false;
+            } else if (e.button.button == SDL_BUTTON_MIDDLE) {
                 startMiddlePan(e.button.x, e.button.y);
             } else if (e.button.button == SDL_BUTTON_LEFT && handleKeyHitAt(e.button.x, e.button.y)) {
                 s.leftDown = false;
@@ -577,14 +732,38 @@ void gfxPollInput(bool& quitRequested) {
                 s.leftDown = false;
                 s.middleDown = false;
                 view.dragging = false;
+            } else if (e.button.button == SDL_BUTTON_RIGHT &&
+                       screenToMiniMapTile(e.button.x, e.button.y, mx, my)) {
+                view.cursorX = mx;
+                view.cursorY = my;
+                s.rightDown = true;
+                s.rightDownOnMiniMap = true;
+                s.rightHoldMenuOpened = false;
+                clearRightDragPath();
+                s.rightDownTicks = SDL_GetTicks();
+                s.rightDownX = e.button.x;
+                s.rightDownY = e.button.y;
+                s.rightDownMapX = mx;
+                s.rightDownMapY = my;
+                s.rightDownShift = (SDL_GetModState() & KMOD_SHIFT) != 0;
             } else if (screenToMap(e.button.x, e.button.y, mx, my)) {
                 view.cursorX = mx; view.cursorY = my;
                 if (g.mode == M_TRAIN_SELECT) g.mode = M_NORMAL;
                 if (g.mode == M_BUILD_PLACE) {
                     if (e.button.button == SDL_BUTTON_LEFT) {
-                        Command command;
-                        command.payload = BuildCommand{ currentSelection(g), g.local.buildPending, {mx, my} };
-                        dispatchCommandForLocalGame(g, gameEvents(), command);
+                        WorldIndex world = buildWorldIndex(g);
+                        CommandPreviewRequest request;
+                        request.issuer = 0;
+                        request.selection = currentSelection(g);
+                        request.target = {mx, my};
+                        request.mode = CommandPreviewMode::BuildPlace;
+                        request.buildType = g.local.buildPending;
+                        CommandOptions options = resolveCommandOptions(g, world, request);
+                        const CommandOption* option = recommendedCommandOption(options);
+                        if (option) dispatchCommandForLocalGame(g, gameEvents(), option->command);
+                        else if (!options.options.empty() && !options.options.front().disabledReason.empty()) {
+                            emitUiStatusEvent(-1, options.options.front().disabledReason);
+                        }
                     } else if (e.button.button == SDL_BUTTON_RIGHT) {
                         emitUiStatusEvent(-1, "Build cancelled.");
                     } else {
@@ -611,12 +790,16 @@ void gfxPollInput(bool& quitRequested) {
                         view.dragging = true;
                     }
                 } else if (e.button.button == SDL_BUTTON_RIGHT) {
-                    WorldIndex world = buildWorldIndex(g);
-                    bool shift = (SDL_GetModState() & KMOD_SHIFT) != 0;
-                    Command command = shift
-                        ? Command{ 0, WaypointCommand{ currentSelection(g), {mx, my} } }
-                        : resolveContextCommand(g, world, 0, currentSelection(g), {mx, my});
-                    dispatchCommandForLocalGame(g, gameEvents(), command);
+                    s.rightDown = true;
+                    s.rightHoldMenuOpened = false;
+                    clearRightDragPath();
+                    if (canStartRightDragPathAt(mx, my)) appendRightDragPathTile(mx, my);
+                    s.rightDownTicks = SDL_GetTicks();
+                    s.rightDownX = e.button.x;
+                    s.rightDownY = e.button.y;
+                    s.rightDownMapX = mx;
+                    s.rightDownMapY = my;
+                    s.rightDownShift = (SDL_GetModState() & KMOD_SHIFT) != 0;
                 }
             }
         }
@@ -624,10 +807,11 @@ void gfxPollInput(bool& quitRequested) {
             int mx,my;
             s.mouseX = e.button.x;
             s.mouseY = e.button.y;
-            if (e.button.button == SDL_BUTTON_LEFT && s.miniMapDown) {
+            if ((e.button.button == SDL_BUTTON_LEFT || e.button.button == SDL_BUTTON_MIDDLE) && s.miniMapDown) {
                 moveViewFromMiniMap(e.button.x, e.button.y, true);
                 s.miniMapDown = false;
                 s.leftDown = false;
+                s.middleDown = false;
                 view.dragging = false;
                 continue;
             }
@@ -636,6 +820,32 @@ void gfxPollInput(bool& quitRequested) {
                 moveCursorToViewCenter();
                 s.middleDown = false;
                 continue;
+            }
+            if (e.button.button == SDL_BUTTON_RIGHT) {
+                if (s.rightDown) {
+                    if (s.rightDownOnMiniMap) {
+                        dispatchMiniMapMoveCommand(e.button.x, e.button.y, s.rightDownShift);
+                    } else if (s.rightDragPathActive && s.rightDragPath.size() > 1) {
+                        int releaseMx = 0, releaseMy = 0;
+                        if (screenToMap(e.button.x, e.button.y, releaseMx, releaseMy)) {
+                            appendRightDragPathTile(releaseMx, releaseMy);
+                        }
+                        dispatchRightDragPath();
+                    } else if (!s.rightHoldMenuOpened && inBounds(s.rightDownMapX, s.rightDownMapY)) {
+                        WorldIndex world = buildWorldIndex(g);
+                        CommandPreviewRequest request;
+                        request.issuer = 0;
+                        request.selection = currentSelection(g);
+                        request.target = {s.rightDownMapX, s.rightDownMapY};
+                        request.mode = s.rightDownShift ? CommandPreviewMode::Waypoint : CommandPreviewMode::Context;
+                        dispatchCommandForLocalGame(g, gameEvents(), resolveRecommendedCommand(g, world, request));
+                    }
+                    s.rightDown = false;
+                    s.rightDownOnMiniMap = false;
+                    s.rightHoldMenuOpened = false;
+                    clearRightDragPath();
+                    continue;
+                }
             }
             if (e.button.button == SDL_BUTTON_LEFT) {
                 bool hasMap = screenToMap(e.button.x, e.button.y, mx, my);
@@ -698,12 +908,13 @@ void gfxPollInput(bool& quitRequested) {
                 continue;
             }
             if (devCaptureEnabled() && k == SDLK_y) { captureIssueBundle(); continue; }
-            if (k == SDLK_EQUALS || k == SDLK_PLUS || k == SDLK_KP_PLUS) { setZoom(s.tile+3); continue; }
-            if (k == SDLK_MINUS || k == SDLK_KP_MINUS) { setZoom(s.tile-3); continue; }
+            if (k == SDLK_EQUALS || k == SDLK_PLUS || k == SDLK_KP_PLUS) { zoomBySteps(1); continue; }
+            if (k == SDLK_MINUS || k == SDLK_KP_MINUS) { zoomBySteps(-1); continue; }
             int ch = keyToInput(k);
             if (ch) handleInput(ch);
         }
     }
+    updateRightHoldContextMenu();
 }
 
 void drawFrame(bool present) {
@@ -728,6 +939,7 @@ void drawFrame(bool present) {
     drawMap(world);
     drawPanel(world);
     if (!isMobileGui()) drawBottom(world);
+    drawCommandContextMenu();
     drawHelpOverlay();
     if (present) SDL_RenderPresent(s.ren);
 }
@@ -739,6 +951,10 @@ void gfxRender() {
 
 void gfxDelay(int ms) {
     SDL_Delay((Uint32)std::max(0, ms));
+}
+
+void gfxResetZoomForDisplayMode() {
+    resetZoomForDisplayMode();
 }
 
 void gfxSetProjection(bool isometric) {

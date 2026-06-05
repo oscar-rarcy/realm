@@ -22,6 +22,8 @@ Start with `README.md`. It is the human-facing overview and should stay beginner
 - `docs/tileset/realm_visual_asset_architecture.md`: tileset architecture.
 - `.agents/skills/realm-tileset-from-images/SKILL.md`: tileset generation workflow.
 - `scripts/export_image_generation_prompts.py`: canonical generator for `art/tiles/image-spec` markdown prompts from current game/entity/terrain data.
+- `art/reference/`: user-supplied reference material; do not edit it unless the user asks for that exact path.
+- `art/generated-reference/`: skill-generated reference images made from specs and visual context; these are not runtime assets.
 
 ## Common Commands
 

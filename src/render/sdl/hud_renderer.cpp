@@ -162,46 +162,40 @@ std::vector<std::pair<std::string, int>> terminalBuildTokens() {
     return buildTokens(true);
 }
 
-std::pair<std::string, int> helpTokenFor(const char* id) {
-    int count = 0;
-    const CommandHelpBinding* bindings = gameplayHelpBindings(count);
-    for (int i = 0; i < count; i++) {
-        if (std::string(bindings[i].id) != id || bindings[i].keyCount <= 0) continue;
-        return { std::string(bindings[i].keys) + ":" + bindings[i].label, bindings[i].keyCodes[0] };
-    }
-    return { "", 0 };
-}
-
-std::string helpLabelFor(const char* id) {
-    return helpTokenFor(id).first;
-}
-
-std::string joinLabels(std::initializer_list<std::string> parts) {
-    std::string line;
-    for (const std::string& part : parts) {
-        if (part.empty()) continue;
-        if (!line.empty()) line += "  ";
-        line += part;
-    }
-    return line;
-}
-
-std::vector<std::pair<std::string, int>> defaultBottomLine1Tokens() {
-    return {
-        helpTokenFor("select"),
-        helpTokenFor("command"),
-        helpTokenFor("build"),
-        helpTokenFor("train"),
+std::vector<std::pair<std::string, int>> defaultBottomTokens() {
+    auto tokenFor = [](const char* id) -> std::pair<std::string, int> {
+        int count = 0;
+        const CommandHelpBinding* bindings = gameplayHelpBindings(count);
+        for (int i = 0; i < count; i++) {
+            if (std::string(bindings[i].id) != id || bindings[i].keyCount <= 0) continue;
+            return { std::string(bindings[i].keys) + ":" + bindings[i].label, bindings[i].keyCodes[0] };
+        }
+        return { "", 0 };
     };
+    std::vector<std::pair<std::string, int>> tokens = {
+        tokenFor("build"),
+        tokenFor("train"),
+        tokenFor("save"),
+        tokenFor("load"),
+        tokenFor("diagnostics"),
+        tokenFor("resign"),
+    };
+#if defined(REALM_WEB)
+    return tokens;
+#else
+    tokens.push_back(tokenFor("hold"));
+    return tokens;
+#endif
 }
 
-std::vector<std::pair<std::string, int>> defaultBottomLine2Tokens() {
-    return {
-        helpTokenFor("save"),
-        helpTokenFor("load"),
-        helpTokenFor("diagnostics"),
-        helpTokenFor("resign"),
-    };
+static std::string joinTokenLabels(const std::vector<std::pair<std::string, int>>& tokens) {
+    std::string out;
+    for (const auto& token : tokens) {
+        if (token.first.empty()) continue;
+        if (!out.empty()) out += "  ";
+        out += token.first;
+    }
+    return out;
 }
 
 bool devCaptureEnabled() {
@@ -337,7 +331,7 @@ void drawPanel(const WorldIndex& world) {
         drawTextFit(x, y, ": berries  p peasant", rgb(210,210,200), textW); y += 20;
         drawTextFit(x, y, "m militia  k cavalry", rgb(210,210,200), textW); y += 20;
         drawTextFit(x, y, "> deer  < wolf  @ boar", rgb(210,210,200), textW); y += 20;
-        drawTextFit(x, y, "Blue you; warm enemies", rgb(170,180,188), textW); y += 20;
+        drawTextFit(x, y, "Your colour; CPUs spaced", rgb(170,180,188), textW); y += 20;
         drawTextFit(x, y, "! combat; x/+/# orders", rgb(170,180,188), textW); y += 20;
     }
 }
@@ -345,21 +339,36 @@ void drawPanel(const WorldIndex& world) {
 void drawBottom(const WorldIndex& world) {
     SDL_Rect bot{0,s.winH-s.bottomH,s.winW,s.bottomH};
     setDraw(rgb(12,32,58)); SDL_RenderFillRect(s.ren,&bot);
-    std::string controls1 = joinLabels({
-        "Arrows:Move",
-        helpLabelFor("select"),
-        helpLabelFor("command"),
-        helpLabelFor("build"),
-        helpLabelFor("train"),
-    });
-    std::string controls2 = joinLabels({
-        helpLabelFor("save"),
-        helpLabelFor("load"),
-        helpLabelFor("diagnostics"),
-        "Alt+Enter:Full",
-        "+/-:Zoom",
-        helpLabelFor("resign"),
-    });
+    auto tokenFor = [](const char* id) -> std::pair<std::string, int> {
+        int count = 0;
+        const CommandHelpBinding* bindings = gameplayHelpBindings(count);
+        for (int i = 0; i < count; i++) {
+            if (std::string(bindings[i].id) != id || bindings[i].keyCount <= 0) continue;
+            return { std::string(bindings[i].keys) + ":" + bindings[i].label, bindings[i].keyCodes[0] };
+        }
+        return { "", 0 };
+    };
+    const std::vector<std::pair<std::string, int>> controls1Tokens = {
+        tokenFor("select"),
+        tokenFor("command"),
+        tokenFor("build"),
+        tokenFor("train"),
+    };
+    std::vector<std::pair<std::string, int>> controls2Tokens = {
+        tokenFor("save"),
+        tokenFor("load"),
+        tokenFor("diagnostics"),
+        tokenFor("resign"),
+    };
+#if !defined(REALM_WEB)
+    controls2Tokens.push_back(tokenFor("hold"));
+#endif
+    std::string controls1 = "Arrows:Move";
+    const std::string actionControls = joinTokenLabels(controls1Tokens);
+    if (!actionControls.empty()) controls1 += "  " + actionControls;
+    std::string controls2 = joinTokenLabels(controls2Tokens);
+    if (!controls2.empty()) controls2 += "  ";
+    controls2 += "Alt+Enter:Full  +/-:Zoom";
     if (g.mode == M_PAUSED) { controls1 = "PAUSED - Press P to resume"; controls2.clear(); }
     else if (g.mode == M_GAME_OVER) {
 #if defined(REALM_WEB)
@@ -369,7 +378,7 @@ void drawBottom(const WorldIndex& world) {
 #endif
         controls2.clear();
     }
-    else if (g.mode == M_BUILD_SELECT) { controls1 = "BUILD: H House, B Barracks, S Stable, T Tower, F Farm, W Wall, K Castle"; controls2 = "G Gate  A Armory  C Church  M Market  L Lumber  N Mine  I Mill  D Dock  Esc"; }
+    else if (g.mode == M_BUILD_SELECT) { controls1 = "BUILD: H House, B Barracks, S Stable, T Tower, F Farm, W Wall, K Castle"; controls2 = "G Gate  A Armory  C Church  M Market  L Lumber  N Mine  I Mill  D Dock  J WoodBridge  V StoneBridge  Esc"; }
     else if (g.mode == M_BUILD_PLACE) { controls1 = std::string("PLACE ") + (g.local.buildPending != E_NONE ? STATS[g.local.buildPending].name : "building"); controls2 = "Arrows/mouse to position  Enter/click build  Esc/right-click cancel"; }
     else if (g.mode == M_PATROL_SET) { controls1 = "PATROL"; controls2 = "Click target or move cursor + Enter  Esc cancels"; }
     else if (g.mode == M_TRAIN_SELECT) { controls1 = trainPromptFor(renderFindEntity(g, world, g.local.selectedId)); controls2.clear(); }
@@ -404,7 +413,7 @@ void drawBottom(const WorldIndex& world) {
 #endif
                             rgb(230,235,230), topLineW);
     } else {
-        drawKeyTokensInText(10, s.winH-s.bottomH+6, controls1, defaultBottomLine1Tokens(),
+        drawKeyTokensInText(10, s.winH-s.bottomH+6, controls1, controls1Tokens,
                             rgb(230,235,230), topLineW);
     }
     if (ui.statusTimer > 0) {
@@ -414,7 +423,7 @@ void drawBottom(const WorldIndex& world) {
             drawKeyTokensInText(10, s.winH-s.bottomH+26, controls2, desktopBuildTokensLine2(),
                                 rgb(200,213,220), maxW);
         } else {
-            drawKeyTokensInText(10, s.winH-s.bottomH+26, controls2, defaultBottomLine2Tokens(),
+            drawKeyTokensInText(10, s.winH-s.bottomH+26, controls2, controls2Tokens,
                                 rgb(200,213,220), maxW);
         }
     }

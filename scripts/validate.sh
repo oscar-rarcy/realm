@@ -65,19 +65,45 @@ pick_make_cmd() {
   exit 127
 }
 
+pick_python_cmd() {
+  if command -v python >/dev/null 2>&1; then
+    printf '%s\n' "python"
+    return 0
+  fi
+  if command -v python3 >/dev/null 2>&1; then
+    printf '%s\n' "python3"
+    return 0
+  fi
+  if command -v py >/dev/null 2>&1; then
+    printf '%s\n' "py"
+    return 0
+  fi
+  echo "Could not find 'python', 'python3', or 'py' in PATH." >&2
+  exit 127
+}
+
 MAKE_CMD="$(pick_make_cmd)"
+PYTHON_CMD="$(pick_python_cmd)"
 GUI_TARGET="gfx"
+GUI_BINARY="./bin/realm-gfx"
 if [[ "${OS:-}" == "Windows_NT" ]]; then
   GUI_TARGET="bin/realm.exe"
+  GUI_BINARY="./bin/realm.exe"
 fi
 
 echo "Running architecture check..."
-python scripts/check_architecture.py
+"$PYTHON_CMD" scripts/check_architecture.py
 
 echo "Running clean native validation with $MAKE_CMD..."
 "$MAKE_CMD" clean
 "$MAKE_CMD" test
 "$MAKE_CMD" "$GUI_TARGET"
+echo "Checking tileset asset registry..."
+if [[ -d "$ROOT_DIR/assets/tiles" ]] && [[ -n "$(find "$ROOT_DIR/assets/tiles" -name manifest.json -print -quit)" ]]; then
+  "$GUI_BINARY" --dump-missing-tileset-assets
+else
+  echo "Skipping tileset asset registry: assets/tiles is absent or has no manifests."
+fi
 
 case "$WEB_MODE" in
   1|true|TRUE|yes|YES)

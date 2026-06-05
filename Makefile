@@ -34,7 +34,7 @@ SIM_SRCS := $(wildcard $(SRC_DIR)/sim/*.cpp) $(wildcard $(SRC_DIR)/sim/migration
 COMMAND_SRCS := $(wildcard $(SRC_DIR)/commands/*.cpp)
 AI_SRCS := $(wildcard $(SRC_DIR)/ai/*.cpp)
 MAP_SRCS := $(wildcard $(SRC_DIR)/map/*.cpp)
-PLATFORM_COMMON_SRCS := $(SRC_DIR)/platform/app_config.cpp $(SRC_DIR)/platform/game_init.cpp $(SRC_DIR)/platform/view_state.cpp
+PLATFORM_COMMON_SRCS := $(SRC_DIR)/platform/app_config.cpp $(SRC_DIR)/platform/game_init.cpp $(SRC_DIR)/platform/user_settings.cpp $(SRC_DIR)/platform/view_state.cpp
 GAME_SRCS := $(CORE_SRCS) $(SIM_SRCS) $(COMMAND_SRCS) $(AI_SRCS) $(MAP_SRCS) $(PLATFORM_COMMON_SRCS)
 
 RENDER_MODEL_SRCS := $(SRC_DIR)/render/display_model.cpp $(SRC_DIR)/render/entity_visual_defs.cpp $(SRC_DIR)/render/render_model.cpp
@@ -227,8 +227,8 @@ ifeq ($(NATIVE_WINDOWS),1)
 		rm -f "$$clean_err"; \
 	else \
 		status=$$?; \
-		if [ -d "$(BUILD_DIR)" ] && ! find "$(BUILD_DIR)" -mindepth 1 ! \( -name web-server.log -o -name web-server.err \) -print -quit | grep -q .; then \
-			echo "warning: preserving locked $(BUILD_DIR)/web-server logs during Windows clean"; \
+		if [ -d "$(BUILD_DIR)" ] && ! find "$(BUILD_DIR)" -mindepth 1 ! \( -name 'web-server*.log' -o -name 'web-server*.err' -o -name 'web-fallback-server*.log' -o -name 'web-fallback-server*.err' \) -print -quit | grep -q .; then \
+			echo "warning: preserving locked $(BUILD_DIR) web server logs during Windows clean"; \
 			rm -f "$$clean_err"; \
 		else \
 			cat "$$clean_err"; \

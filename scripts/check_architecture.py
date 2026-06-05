@@ -1010,6 +1010,7 @@ APPROVED_GLOBAL_WORLD_INDEX_BUILDERS = {
     # Input/render boundaries may still adapt global app state into explicit
     # WorldIndex snapshots. Domain code must use caller-provided Game state.
     "src/commands/input_controller.cpp",
+    "src/platform/main_web.cpp",
     "src/render/ascii/ncurses_renderer.cpp",
     "src/render/sdl/gfx_renderer.cpp",
     "src/render/sdl/tileset_lab.cpp",

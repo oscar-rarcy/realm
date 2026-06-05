@@ -7,6 +7,7 @@ namespace {
 
 constexpr int LAB_X = MAP_W / 2;
 constexpr int LAB_Y = MAP_H / 2;
+constexpr int LAB_TERRAIN_BULLSEYE = (int)T_CASTLE_GATE + 1;
 
 struct LabState {
     int previewMode = 2; // 0 tile, 1 entity, 2 combined
@@ -91,7 +92,7 @@ struct LabControlLayout {
 std::vector<EntityType> labEntityTypes() {
     std::vector<EntityType> out;
     out.push_back(E_NONE);
-    for (int t = E_PEASANT; t <= E_BOAR; ++t) out.push_back((EntityType)t);
+    for (int t = E_PEASANT; t < E_TYPE_COUNT; ++t) out.push_back((EntityType)t);
     return out;
 }
 
@@ -164,6 +165,7 @@ std::filesystem::path labManualShotPath(const LabState& lab) {
 }
 
 const char* terrainNameSafe(int terrain) {
+    if (terrain == LAB_TERRAIN_BULLSEYE) return "Lab bullseye";
     return terrainName((Terrain)std::max(0, std::min(terrain, (int)T_CASTLE_GATE)));
 }
 
@@ -215,6 +217,7 @@ std::vector<LabDropdownOption> labDropdownOptions(int kind, const LabState& lab)
             break;
         case LAB_DD_TERRAIN:
             for (int t = 0; t <= (int)T_CASTLE_GATE; ++t) out.push_back({terrainNameSafe(t), t});
+            out.push_back({terrainNameSafe(LAB_TERRAIN_BULLSEYE), LAB_TERRAIN_BULLSEYE});
             break;
         case LAB_DD_BIOME:
             for (int b = 0; b <= (int)B_OCEAN; ++b) out.push_back({biomeNameSafe(b), b});
@@ -333,7 +336,7 @@ void labApplyWorld(const LabState& lab) {
         for (int x = LAB_X - 4; x <= LAB_X + 4; ++x) {
             if (!inBounds(x, y)) continue;
             Tile& t = g.map[y][x];
-            t.terrain = (Terrain)lab.terrain;
+            t.terrain = lab.terrain == LAB_TERRAIN_BULLSEYE ? T_GRASS : (Terrain)lab.terrain;
             t.biome = (Biome)lab.biome;
             t.resources = (x == LAB_X && y == LAB_Y) ? lab.resources : 0;
             t.preWinterTerrain = t.terrain;
@@ -366,8 +369,8 @@ void labApplyWorld(const LabState& lab) {
         labLightOverride.enabled = true;
         labLightOverride.x = LAB_X - 1;
         labLightOverride.y = LAB_Y;
-        labLightOverride.strength = 0.52f;
-        labLightOverride.radius = 4.0f;
+        labLightOverride.strength = 0.65f;
+        labLightOverride.radius = 2.20f;
     }
 
     if (lab.previewMode != 0 && lab.entityType != E_NONE) {
@@ -386,6 +389,10 @@ void labApplyWorld(const LabState& lab) {
         labConfigureEntityForAction(e, labActionId(lab));
         g.entities.push_back(e);
     }
+}
+
+bool labBullseyeTerrain(const LabState& lab) {
+    return lab.terrain == LAB_TERRAIN_BULLSEYE;
 }
 
 void drawHueWheel(int cx, int cy, int radius, int hue) {
@@ -691,8 +698,24 @@ void drawLabPreview(const LabState& lab, SDL_Rect area, TilesetAssetFrame& asset
     if (lab.previewMode != 1) {
         Color bg = applyVisionAndLight(terrainBg(tile, LAB_X, LAB_Y), LAB_X, LAB_Y);
         fillDiamond(cx, cy, hw, hh, bg);
-        applyTerrainTextureIso(cx, cy, hw, hh, tile, LAB_X, LAB_Y);
-        drawDiamondOutline(cx, cy, hw, hh, rgb(245,235,150,210));
+        if (labBullseyeTerrain(lab)) {
+            fillDiamond(cx, cy, hw, hh, rgb(236, 230, 198, 255));
+            fillDiamond(cx, cy, std::max(1, (int)std::lround(hw * 0.78f)),
+                        std::max(1, (int)std::lround(hh * 0.78f)), rgb(176, 36, 35, 255));
+            fillDiamond(cx, cy, std::max(1, (int)std::lround(hw * 0.55f)),
+                        std::max(1, (int)std::lround(hh * 0.55f)), rgb(236, 230, 198, 255));
+            fillDiamond(cx, cy, std::max(1, (int)std::lround(hw * 0.32f)),
+                        std::max(1, (int)std::lround(hh * 0.32f)), rgb(176, 36, 35, 255));
+            fillDiamond(cx, cy, std::max(3, (int)std::lround(hw * 0.08f)),
+                        std::max(2, (int)std::lround(hh * 0.08f)), rgb(32, 36, 42, 255));
+            SDL_SetRenderDrawBlendMode(s.ren, SDL_BLENDMODE_BLEND);
+            setDraw(rgb(32, 36, 42, 210));
+            SDL_RenderDrawLine(s.ren, cx - hw, cy, cx + hw, cy);
+            SDL_RenderDrawLine(s.ren, cx, cy - hh, cx, cy + hh);
+        } else {
+            applyTerrainTextureIso(cx, cy, hw, hh, tile, LAB_X, LAB_Y);
+        }
+        drawDiamondOutline(cx, cy, hw, hh, labBullseyeTerrain(lab) ? rgb(32,36,42,230) : rgb(245,235,150,210));
     } else {
         SDL_Rect empty{cx - 72, cy - 72, 144, 144};
         setDraw(rgb(20,24,30,210));
@@ -705,11 +728,12 @@ void drawLabPreview(const LabState& lab, SDL_Rect area, TilesetAssetFrame& asset
     Entity* ent = renderEntityAt(g, world, LAB_X, LAB_Y);
     if (lab.previewMode != 0 && ent) {
         int spriteSize = 128;
-        SDL_Rect dst{cx - spriteSize / 2, cy - spriteSize / 2 - 18, spriteSize, spriteSize};
+        SDL_Rect dst{cx - spriteSize / 2, cy - spriteSize / 2, spriteSize, spriteSize};
         SDL_Color team = hueColor(lab.hue);
         Color mod = applyVisionToGlyph(rgb(255,255,255), LAB_X, LAB_Y);
-        if (!drawEntityImageTile(g, world, *ent, dst, mod, labActionId(lab), directionId(lab.direction),
-                                 lab.frame, team, &assetFrame)) {
+        if (!drawEntityImageAtAnchor(g, world, *ent, cx, cy, spriteSize, spriteSize, mod,
+                                     labActionId(lab), directionId(lab.direction),
+                                     lab.frame, team, &assetFrame, nullptr)) {
             bool usesSymbolFont = false;
             drawCentered(tilesetEntityVisual(g, world, *ent, usesSymbolFont), dst, rgb(255,255,255),
                          usesSymbolFont, usesSymbolFont);
@@ -818,7 +842,7 @@ void drawLabFrame(const LabState& lab, bool present) {
 
 void clampLabState(LabState& lab) {
     lab.previewMode = (lab.previewMode + 3) % 3;
-    lab.terrain = (lab.terrain + (int)T_CASTLE_GATE + 1) % ((int)T_CASTLE_GATE + 1);
+    lab.terrain = (lab.terrain + LAB_TERRAIN_BULLSEYE + 1) % (LAB_TERRAIN_BULLSEYE + 1);
     lab.biome = (lab.biome + (int)B_OCEAN + 1) % ((int)B_OCEAN + 1);
     lab.season = (lab.season + 4) % 4;
     lab.seasonPercent = std::max(0, std::min(99, lab.seasonPercent));
@@ -920,9 +944,141 @@ int runLabSmoke() {
     lab.lightMode = 3;
     ok = saveLabShot(lab, outDir / "06-night-candle.bmp") && ok;
 
+    lab.previewMode = 2;
+    lab.terrain = LAB_TERRAIN_BULLSEYE;
+    lab.entityType = E_PEASANT;
+    lab.actionIndex = 0;
+    lab.direction = 0;
+    lab.frame = 0;
+    lab.timeStep = 3;
+    lab.lightMode = 0;
+    lab.weather = W_CLEAR;
+    ok = saveLabShot(lab, outDir / "07-bullseye-peasant-anchor.bmp") && ok;
+
     std::cerr << "realm: lab smoke " << (ok ? "complete" : "failed")
               << " dir=" << outDir.string() << "\n";
     return ok ? 0 : 1;
+}
+
+void drawGrassMapLabFrame(float cameraX, float cameraY, int tilePx, bool present) {
+    SDL_GetWindowSize(s.win, &s.winW, &s.winH);
+    setDraw(rgb(3,5,8));
+    SDL_RenderClear(s.ren);
+    SDL_SetRenderDrawBlendMode(s.ren, SDL_BLENDMODE_BLEND);
+
+    int hw = std::max(8, tilePx);
+    int hh = std::max(5, tilePx / 2);
+    int centerX = s.winW / 2;
+    int centerY = s.winH / 2;
+    int radius = std::max(12, (s.winW + s.winH) / std::max(1, tilePx) + 6);
+    int baseX = (int)std::floor(cameraX);
+    int baseY = (int)std::floor(cameraY);
+    TilesetAssetFrame frame = tilesetLoadGroundTileIso(s.ren, G_GRASS, hw * 2 + 1, hh * 2 + 1);
+
+    for (int sum = -radius * 2; sum <= radius * 2; ++sum) {
+        for (int dx = -radius; dx <= radius; ++dx) {
+            int dy = sum - dx;
+            if (dy < -radius || dy > radius) continue;
+            int tx = baseX + dx;
+            int ty = baseY + dy;
+            int sx = centerX + (int)std::lround(((float)tx - cameraX - ((float)ty - cameraY)) * hw);
+            int sy = centerY + (int)std::lround(((float)tx - cameraX + ((float)ty - cameraY)) * hh);
+            if (sx + hw < -4 || sx - hw > s.winW + 4 || sy + hh < -4 || sy - hh > s.winH + 4) continue;
+            if (frame.texture && !frame.placeholder) {
+                SDL_Rect dst{sx - hw, sy - hh, hw * 2 + 1, hh * 2 + 1};
+                SDL_SetTextureColorMod(frame.texture, 255, 255, 255);
+                SDL_SetTextureAlphaMod(frame.texture, 255);
+                SDL_RenderCopy(s.ren, frame.texture, nullptr, &dst);
+            } else {
+                fillDiamond(sx, sy, hw, hh, rgb(92, 126, 45));
+                drawDiamondOutline(sx, sy, hw, hh, rgb(30, 38, 24, 180));
+            }
+        }
+    }
+
+    SDL_Rect label{14, 12, 420, 54};
+    setDraw(rgb(3, 5, 8, 205));
+    SDL_RenderFillRect(s.ren, &label);
+    setDraw(rgb(130, 150, 165, 170));
+    SDL_RenderDrawRect(s.ren, &label);
+    drawText(26, 22, "Grass map preview", rgb(255,235,145));
+    drawText(26, 44, "Wheel zoom / drag pan / S screenshot / Esc quit", rgb(190,205,214));
+
+    if (present) SDL_RenderPresent(s.ren);
+}
+
+bool saveGrassMapLabShot(float cameraX, float cameraY, int tilePx) {
+    namespace fs = std::filesystem;
+    fs::path outDir = fs::path("build") / "lab-screenshots";
+    fs::create_directories(outDir);
+    drawGrassMapLabFrame(cameraX, cameraY, tilePx, false);
+    return saveRendererPixels((outDir / "grass-map-preview.bmp").string());
+}
+
+int runGrassMapLab() {
+    std::cerr << "realm: grass map lab started\n";
+    gfxSetWindowSizeForTest(1280, 820);
+    float cameraX = 0.0f;
+    float cameraY = 0.0f;
+    int tilePx = 34;
+    if (const char* raw = std::getenv("REALM_TILESET_MAP_ZOOM")) {
+        char* end = nullptr;
+        long parsed = std::strtol(raw, &end, 10);
+        if (end && *end == '\0') tilePx = std::max(12, std::min(96, (int)parsed));
+    }
+    if (std::getenv("REALM_LAB_GRASS_MAP_SMOKE")) {
+        bool ok = saveGrassMapLabShot(cameraX, cameraY, tilePx);
+        std::cerr << "realm: grass map lab smoke " << (ok ? "complete" : "failed") << "\n";
+        return ok ? 0 : 1;
+    }
+    bool dragging = false;
+    int lastX = 0;
+    int lastY = 0;
+    bool quit = false;
+    while (!quit) {
+        SDL_Event e;
+        while (SDL_PollEvent(&e)) {
+            if (e.type == SDL_QUIT) quit = true;
+            else if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
+                s.winW = e.window.data1;
+                s.winH = e.window.data2;
+            } else if (e.type == SDL_MOUSEWHEEL) {
+                int steps = e.wheel.direction == SDL_MOUSEWHEEL_FLIPPED ? -e.wheel.y : e.wheel.y;
+                tilePx = std::max(12, std::min(96, tilePx + steps * 3));
+            } else if (e.type == SDL_MOUSEBUTTONDOWN && (e.button.button == SDL_BUTTON_LEFT || e.button.button == SDL_BUTTON_MIDDLE)) {
+                dragging = true;
+                lastX = e.button.x;
+                lastY = e.button.y;
+            } else if (e.type == SDL_MOUSEBUTTONUP && (e.button.button == SDL_BUTTON_LEFT || e.button.button == SDL_BUTTON_MIDDLE)) {
+                dragging = false;
+            } else if (e.type == SDL_MOUSEMOTION && dragging) {
+                int dx = e.motion.x - lastX;
+                int dy = e.motion.y - lastY;
+                int hw = std::max(8, tilePx);
+                int hh = std::max(5, tilePx / 2);
+                cameraX -= dx / (2.0f * hw) + dy / (2.0f * hh);
+                cameraY += dx / (2.0f * hw) - dy / (2.0f * hh);
+                lastX = e.motion.x;
+                lastY = e.motion.y;
+            } else if (e.type == SDL_KEYDOWN) {
+                SDL_Keycode k = e.key.keysym.sym;
+                if (k == SDLK_ESCAPE) quit = true;
+                else if (k == SDLK_EQUALS || k == SDLK_PLUS || k == SDLK_KP_PLUS) tilePx = std::min(96, tilePx + 3);
+                else if (k == SDLK_MINUS || k == SDLK_KP_MINUS) tilePx = std::max(12, tilePx - 3);
+                else if (k == SDLK_LEFT) cameraX -= 1.0f;
+                else if (k == SDLK_RIGHT) cameraX += 1.0f;
+                else if (k == SDLK_UP) cameraY -= 1.0f;
+                else if (k == SDLK_DOWN) cameraY += 1.0f;
+                else if (k == SDLK_s) {
+                    bool ok = saveGrassMapLabShot(cameraX, cameraY, tilePx);
+                    std::cerr << "realm: grass map lab screenshot " << (ok ? "ok" : "failed") << "\n";
+                }
+            }
+        }
+        drawGrassMapLabFrame(cameraX, cameraY, tilePx, true);
+        SDL_Delay(16);
+    }
+    return 0;
 }
 
 } // namespace
@@ -937,6 +1093,7 @@ int gfxRunTilesetLab() {
     view.viewY = LAB_Y - 8;
     gfxSetZoomForTest(34);
 
+    if (std::getenv("REALM_LAB_GRASS_MAP")) return runGrassMapLab();
     if (std::getenv("REALM_LAB_SMOKE")) return runLabSmoke();
 
     LabState lab;
