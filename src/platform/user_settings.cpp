@@ -127,7 +127,10 @@ bool saveUserSettings(const UserSettings& settings) {
         try {
             var hue = $0;
             var square = $1 ? true : false;
-            var settings = { version: 1, playerColorHue: hue, asciiSquareMapCells: square };
+            var settings = {};
+            settings.version = 1;
+            settings.playerColorHue = hue;
+            settings.asciiSquareMapCells = square;
             if (window.localStorage) {
                 window.localStorage.setItem('realm.settings.v1', JSON.stringify(settings));
             }

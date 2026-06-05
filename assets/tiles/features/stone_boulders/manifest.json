@@ -1,12 +1,10 @@
 {
-  "schema": "realm.feature_tileset.placeholder.v1",
+  "schema": "realm.feature_tileset.v1",
   "feature": "stone_boulders",
-  "placeholder": true,
-  "temporary": true,
   "states": {
     "default": {
       "base": "default/base.png"
     }
   },
-  "notes": "Temporary runtime placeholder feature art; replace with authored tileset layers."
+  "notes": "Generated feature tileset from image-gen contact sheets."
 }

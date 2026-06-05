@@ -1,0 +1,81 @@
+{
+  "schema": "realm.entity_tileset.v1",
+  "entity": "wooden_bridge",
+  "sprite_size": 32,
+  "directions": [
+    "south"
+  ],
+  "actions": {
+    "span_single_east_west": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "span single east west",
+      "directions": {
+        "south": [
+          {
+            "base": "span_single_east_west/south/frame_00_base.png",
+            "team_mask": "span_single_east_west/south/frame_00_teammask.png"
+          }
+        ]
+      }
+    },
+    "span_single_north_south": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "span single north south",
+      "directions": {
+        "south": [
+          {
+            "base": "span_single_north_south/south/frame_00_base.png",
+            "team_mask": "span_single_north_south/south/frame_00_teammask.png"
+          }
+        ]
+      }
+    },
+    "construction": {
+      "frame_ms": 250,
+      "loop": true,
+      "hold_last": false,
+      "description": "construction",
+      "directions": {
+        "south": [
+          {
+            "base": "construction/south/frame_00_base.png",
+            "team_mask": "construction/south/frame_00_teammask.png"
+          }
+        ]
+      }
+    },
+    "damaged": {
+      "frame_ms": 250,
+      "loop": false,
+      "hold_last": true,
+      "description": "damaged",
+      "directions": {
+        "south": [
+          {
+            "base": "damaged/south/frame_00_base.png",
+            "team_mask": "damaged/south/frame_00_teammask.png"
+          }
+        ]
+      }
+    },
+    "broken": {
+      "frame_ms": 250,
+      "loop": false,
+      "hold_last": true,
+      "description": "broken",
+      "directions": {
+        "south": [
+          {
+            "base": "broken/south/frame_00_base.png",
+            "team_mask": "broken/south/frame_00_teammask.png"
+          }
+        ]
+      }
+    }
+  },
+  "notes": "Generated from accepted wooden bridge contact sheet under art/tiles/candidates/buildings/wooden_bridge/sheets."
+}

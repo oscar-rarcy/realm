@@ -1,13 +1,11 @@
 {
-  "schema": "realm.feature_tileset.placeholder.v1",
+  "schema": "realm.feature_tileset.v1",
   "feature": "reeds",
-  "placeholder": true,
-  "temporary": true,
   "states": {
     "default": {
       "back": "default/back.png",
       "front_occluder": "default/front_occluder.png"
     }
   },
-  "notes": "Temporary runtime placeholder feature art; replace with authored tileset layers."
+  "notes": "Generated feature tileset from image-gen contact sheets."
 }

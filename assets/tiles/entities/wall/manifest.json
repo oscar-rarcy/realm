@@ -1,9 +1,7 @@
 {
   "schema": "realm.entity_tileset.v1",
   "entity": "wall",
-  "sprite_size": 48,
-  "placeholder": true,
-  "temporary": true,
+  "sprite_size": 32,
   "directions": [
     "south"
   ],
@@ -16,9 +14,8 @@
       "directions": {
         "south": [
           {
-            "base": "placeholder/south/frame_00_base.png",
-            "team_mask": "placeholder/south/frame_00_teammask.png",
-            "placeholder": true
+            "base": "straight/south/frame_00_base.png",
+            "team_mask": "straight/south/frame_00_teammask.png"
           }
         ]
       }
@@ -31,9 +28,8 @@
       "directions": {
         "south": [
           {
-            "base": "placeholder/south/frame_00_base.png",
-            "team_mask": "placeholder/south/frame_00_teammask.png",
-            "placeholder": true
+            "base": "corner/south/frame_00_base.png",
+            "team_mask": "corner/south/frame_00_teammask.png"
           }
         ]
       }
@@ -46,9 +42,8 @@
       "directions": {
         "south": [
           {
-            "base": "placeholder/south/frame_00_base.png",
-            "team_mask": "placeholder/south/frame_00_teammask.png",
-            "placeholder": true
+            "base": "t_junction/south/frame_00_base.png",
+            "team_mask": "t_junction/south/frame_00_teammask.png"
           }
         ]
       }
@@ -61,9 +56,8 @@
       "directions": {
         "south": [
           {
-            "base": "placeholder/south/frame_00_base.png",
-            "team_mask": "placeholder/south/frame_00_teammask.png",
-            "placeholder": true
+            "base": "cross/south/frame_00_base.png",
+            "team_mask": "cross/south/frame_00_teammask.png"
           }
         ]
       }
@@ -76,9 +70,8 @@
       "directions": {
         "south": [
           {
-            "base": "placeholder/south/frame_00_base.png",
-            "team_mask": "placeholder/south/frame_00_teammask.png",
-            "placeholder": true
+            "base": "end_cap/south/frame_00_base.png",
+            "team_mask": "end_cap/south/frame_00_teammask.png"
           }
         ]
       }
@@ -91,13 +84,12 @@
       "directions": {
         "south": [
           {
-            "base": "placeholder/south/frame_00_base.png",
-            "team_mask": "placeholder/south/frame_00_teammask.png",
-            "placeholder": true
+            "base": "construction/south/frame_00_base.png",
+            "team_mask": "construction/south/frame_00_teammask.png"
           }
         ]
       }
     }
   },
-  "notes": "Temporary runtime placeholder entity tileset; replace with authored action frames."
+  "notes": "Generated from accepted wall contact sheet under art/tiles/candidates/buildings/wall/sheets."
 }

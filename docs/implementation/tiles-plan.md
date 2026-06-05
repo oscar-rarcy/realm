@@ -1,7 +1,7 @@
 # Realm Tile / Asset JSON v2 Plan
 
-**Document status:** implementation-ready migration plan aligned to the current C++ runtime  
-**Audience:** coding agent / implementation agent  
+**Document status:** implementation-ready migration plan aligned to the current C++ runtime
+**Audience:** coding agent / implementation agent
 **Primary goal:** migrate the asset JSON and renderer toward a layered tile model without losing compatibility with the current monolithic `Tile`, legacy `Terrain`, existing saves, or current runtime asset lookups.
 
 ---

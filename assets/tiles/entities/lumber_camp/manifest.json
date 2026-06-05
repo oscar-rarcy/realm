@@ -1,9 +1,7 @@
 {
   "schema": "realm.entity_tileset.v1",
   "entity": "lumber_camp",
-  "sprite_size": 48,
-  "placeholder": true,
-  "temporary": true,
+  "sprite_size": 32,
   "directions": [
     "south"
   ],
@@ -16,9 +14,8 @@
       "directions": {
         "south": [
           {
-            "base": "placeholder/south/frame_00_base.png",
-            "team_mask": "placeholder/south/frame_00_teammask.png",
-            "placeholder": true
+            "base": "complete/south/frame_00_base.png",
+            "team_mask": "complete/south/frame_00_teammask.png"
           }
         ]
       }
@@ -31,9 +28,8 @@
       "directions": {
         "south": [
           {
-            "base": "placeholder/south/frame_00_base.png",
-            "team_mask": "placeholder/south/frame_00_teammask.png",
-            "placeholder": true
+            "base": "active_deposit/south/frame_00_base.png",
+            "team_mask": "active_deposit/south/frame_00_teammask.png"
           }
         ]
       }
@@ -46,9 +42,8 @@
       "directions": {
         "south": [
           {
-            "base": "placeholder/south/frame_00_base.png",
-            "team_mask": "placeholder/south/frame_00_teammask.png",
-            "placeholder": true
+            "base": "construction/south/frame_00_base.png",
+            "team_mask": "construction/south/frame_00_teammask.png"
           }
         ]
       }
@@ -61,13 +56,12 @@
       "directions": {
         "south": [
           {
-            "base": "placeholder/south/frame_00_base.png",
-            "team_mask": "placeholder/south/frame_00_teammask.png",
-            "placeholder": true
+            "base": "ruin_footprint/south/frame_00_base.png",
+            "team_mask": "ruin_footprint/south/frame_00_teammask.png"
           }
         ]
       }
     }
   },
-  "notes": "Temporary runtime placeholder entity tileset; replace with authored action frames."
+  "notes": "Generated from accepted lumber camp contact sheet under art/tiles/candidates/buildings/lumber_camp/sheets."
 }

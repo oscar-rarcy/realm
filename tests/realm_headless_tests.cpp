@@ -2925,6 +2925,14 @@ static void testEntityAnimationSpecs() {
     e.targetY = -1;
     assert(std::string(entityAnimationActionId(animationGame, animationWorld, e)) == "idle");
     assert(entityActionAnimationSpecFor(animationGame, animationWorld, e)->holdLast);
+    e.x = 10;
+    e.y = 10;
+    e.facingDx = 1;
+    e.facingDy = 0;
+    e.path = {{9, 10}};
+    e.pathIdx = 0;
+    assert(std::string(entityAnimationActionId(animationGame, animationWorld, e)) == "idle");
+    assert(std::string(entityAnimationDirectionBucket(e)) == "front");
     assert(entityActionAnimationSpecCount(E_MILITIA) == 1);
     const EntityActionAnimationSpec* militiaDeath = findEntityActionAnimationSpec(E_MILITIA, "death");
     assert(militiaDeath);
@@ -2935,10 +2943,10 @@ static void testEntityAnimationSpecs() {
     assert(std::string(militiaDeath->frames[1].description).find("weapons") != std::string::npos);
     assert(entityTypeForAnimationSlug("militia") == E_MILITIA);
     assert(entityTypeForAnimationSlug("boar") == E_BOAR);
-    e.x = 10;
-    e.y = 10;
     e.facingDx = 1;
     e.facingDy = 0;
+    e.path.clear();
+    e.pathIdx = 0;
     assert(std::string(entityAnimationDirectionBucket(e)) == "front");
     assert(!entityAnimationMirrorHorizontal(e));
     e.facingDx = 0;
@@ -2960,6 +2968,11 @@ static void testEntityAnimationSpecs() {
     assert(std::string(entityAnimationActionId(animationGame, animationWorld, e)) == "walk");
     assert(std::string(entityAnimationDirectionBucket(e)) == "front");
     assert(!entityAnimationMirrorHorizontal(e));
+
+    e.state = S_GATHERING;
+    e.path = {{11, 10}};
+    e.pathIdx = 0;
+    assert(std::string(entityAnimationActionId(animationGame, animationWorld, e)) == "walk");
 
     e.state = S_RETURNING;
     e.path.clear();

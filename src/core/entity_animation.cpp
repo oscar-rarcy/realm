@@ -215,6 +215,11 @@ const char* peasantBuildAction(const Game& game, const WorldIndex& world, const 
     return "build";
 }
 
+bool entityHasActivePathMotion(const Entity& e) {
+    return e.state == S_MOVING || e.state == S_RETURNING
+        || (e.state != S_IDLE && e.pathIdx < (int)e.path.size());
+}
+
 void jsonString(std::ostream& out, const char* value) {
     out << '"';
     if (value) {
@@ -315,9 +320,9 @@ const EntityActionAnimationSpec* findEntityActionAnimationSpec(EntityType type, 
 const char* entityAnimationActionId(const Game& game, const WorldIndex& world, const Entity& e) {
     if (!e.alive || e.state == S_DEAD) return "death";
     if (e.type == E_PEASANT) {
-        if (e.cargo.amount > 0 && (e.state == S_RETURNING || e.state == S_MOVING || e.pathIdx < (int)e.path.size()))
+        if (e.cargo.amount > 0 && entityHasActivePathMotion(e))
             return peasantCarryAction(game, e);
-        if (e.state == S_MOVING || e.state == S_RETURNING || e.pathIdx < (int)e.path.size()) return "walk";
+        if (entityHasActivePathMotion(e)) return "walk";
         if (e.state == S_GATHERING) return peasantGatherAction(game, e);
         if (e.state == S_BUILDING) return peasantBuildAction(game, world, e);
         if (e.state == S_ATTACKING) return "club_attack";
@@ -338,7 +343,7 @@ int signum(int value) {
 }
 
 std::pair<int, int> entityAnimationFacingDelta(const Entity& e) {
-    if (e.pathIdx < (int)e.path.size()) {
+    if (entityHasActivePathMotion(e) && e.pathIdx < (int)e.path.size()) {
         return {signum(e.path[e.pathIdx].first - e.x), signum(e.path[e.pathIdx].second - e.y)};
     }
     if (inBounds(e.targetX, e.targetY) && (e.targetX != e.x || e.targetY != e.y)) {

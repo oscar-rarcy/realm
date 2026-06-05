@@ -2,8 +2,6 @@
   "schema": "realm.entity_tileset.v1",
   "entity": "trebuchet",
   "sprite_size": 48,
-  "placeholder": true,
-  "temporary": true,
   "directions": [
     "front",
     "back"
@@ -17,26 +15,22 @@
       "directions": {
         "front": [
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "traction_trebuchet__idle/front/frame_00_base.png",
+            "team_mask": "traction_trebuchet__idle/front/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "traction_trebuchet__idle/front/frame_01_base.png",
+            "team_mask": "traction_trebuchet__idle/front/frame_01_teammask.png"
           }
         ],
         "back": [
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "traction_trebuchet__idle/back/frame_00_base.png",
+            "team_mask": "traction_trebuchet__idle/back/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "traction_trebuchet__idle/back/frame_01_base.png",
+            "team_mask": "traction_trebuchet__idle/back/frame_01_teammask.png"
           }
         ]
       }
@@ -49,26 +43,22 @@
       "directions": {
         "front": [
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "traction_trebuchet__roll/front/frame_00_base.png",
+            "team_mask": "traction_trebuchet__roll/front/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "traction_trebuchet__roll/front/frame_01_base.png",
+            "team_mask": "traction_trebuchet__roll/front/frame_01_teammask.png"
           }
         ],
         "back": [
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "traction_trebuchet__roll/back/frame_00_base.png",
+            "team_mask": "traction_trebuchet__roll/back/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "traction_trebuchet__roll/back/frame_01_base.png",
+            "team_mask": "traction_trebuchet__roll/back/frame_01_teammask.png"
           }
         ]
       }
@@ -81,26 +71,22 @@
       "directions": {
         "front": [
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "traction_trebuchet__load/front/frame_00_base.png",
+            "team_mask": "traction_trebuchet__load/front/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "traction_trebuchet__load/front/frame_01_base.png",
+            "team_mask": "traction_trebuchet__load/front/frame_01_teammask.png"
           }
         ],
         "back": [
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "traction_trebuchet__load/back/frame_00_base.png",
+            "team_mask": "traction_trebuchet__load/back/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "traction_trebuchet__load/back/frame_01_base.png",
+            "team_mask": "traction_trebuchet__load/back/frame_01_teammask.png"
           }
         ]
       }
@@ -113,26 +99,22 @@
       "directions": {
         "front": [
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "traction_trebuchet__fire/front/frame_00_base.png",
+            "team_mask": "traction_trebuchet__fire/front/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "traction_trebuchet__fire/front/frame_01_base.png",
+            "team_mask": "traction_trebuchet__fire/front/frame_01_teammask.png"
           }
         ],
         "back": [
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "traction_trebuchet__fire/back/frame_00_base.png",
+            "team_mask": "traction_trebuchet__fire/back/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "traction_trebuchet__fire/back/frame_01_base.png",
+            "team_mask": "traction_trebuchet__fire/back/frame_01_teammask.png"
           }
         ]
       }
@@ -145,26 +127,22 @@
       "directions": {
         "front": [
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "traction_trebuchet__recoil/front/frame_00_base.png",
+            "team_mask": "traction_trebuchet__recoil/front/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "traction_trebuchet__recoil/front/frame_01_base.png",
+            "team_mask": "traction_trebuchet__recoil/front/frame_01_teammask.png"
           }
         ],
         "back": [
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "traction_trebuchet__recoil/back/frame_00_base.png",
+            "team_mask": "traction_trebuchet__recoil/back/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "traction_trebuchet__recoil/back/frame_01_base.png",
+            "team_mask": "traction_trebuchet__recoil/back/frame_01_teammask.png"
           }
         ]
       }
@@ -177,26 +155,22 @@
       "directions": {
         "front": [
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "traction_trebuchet__damaged_alert/front/frame_00_base.png",
+            "team_mask": "traction_trebuchet__damaged_alert/front/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "traction_trebuchet__damaged_alert/front/frame_01_base.png",
+            "team_mask": "traction_trebuchet__damaged_alert/front/frame_01_teammask.png"
           }
         ],
         "back": [
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "traction_trebuchet__damaged_alert/back/frame_00_base.png",
+            "team_mask": "traction_trebuchet__damaged_alert/back/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "traction_trebuchet__damaged_alert/back/frame_01_base.png",
+            "team_mask": "traction_trebuchet__damaged_alert/back/frame_01_teammask.png"
           }
         ]
       }
@@ -209,26 +183,22 @@
       "directions": {
         "front": [
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "traction_trebuchet__destroyed_wreck/front/frame_00_base.png",
+            "team_mask": "traction_trebuchet__destroyed_wreck/front/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "traction_trebuchet__destroyed_wreck/front/frame_01_base.png",
+            "team_mask": "traction_trebuchet__destroyed_wreck/front/frame_01_teammask.png"
           }
         ],
         "back": [
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "traction_trebuchet__destroyed_wreck/back/frame_00_base.png",
+            "team_mask": "traction_trebuchet__destroyed_wreck/back/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "traction_trebuchet__destroyed_wreck/back/frame_01_base.png",
+            "team_mask": "traction_trebuchet__destroyed_wreck/back/frame_01_teammask.png"
           }
         ]
       }
@@ -241,26 +211,22 @@
       "directions": {
         "front": [
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "traction_trebuchet__decayed_wreckage/front/frame_00_base.png",
+            "team_mask": "traction_trebuchet__decayed_wreckage/front/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "traction_trebuchet__decayed_wreckage/front/frame_01_base.png",
+            "team_mask": "traction_trebuchet__decayed_wreckage/front/frame_01_teammask.png"
           }
         ],
         "back": [
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "traction_trebuchet__decayed_wreckage/back/frame_00_base.png",
+            "team_mask": "traction_trebuchet__decayed_wreckage/back/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "traction_trebuchet__decayed_wreckage/back/frame_01_base.png",
+            "team_mask": "traction_trebuchet__decayed_wreckage/back/frame_01_teammask.png"
           }
         ]
       }
@@ -273,26 +239,22 @@
       "directions": {
         "front": [
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "counterweight_trebuchet__idle/front/frame_00_base.png",
+            "team_mask": "counterweight_trebuchet__idle/front/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "counterweight_trebuchet__idle/front/frame_01_base.png",
+            "team_mask": "counterweight_trebuchet__idle/front/frame_01_teammask.png"
           }
         ],
         "back": [
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "counterweight_trebuchet__idle/back/frame_00_base.png",
+            "team_mask": "counterweight_trebuchet__idle/back/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "counterweight_trebuchet__idle/back/frame_01_base.png",
+            "team_mask": "counterweight_trebuchet__idle/back/frame_01_teammask.png"
           }
         ]
       }
@@ -305,26 +267,22 @@
       "directions": {
         "front": [
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "counterweight_trebuchet__roll/front/frame_00_base.png",
+            "team_mask": "counterweight_trebuchet__roll/front/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "counterweight_trebuchet__roll/front/frame_01_base.png",
+            "team_mask": "counterweight_trebuchet__roll/front/frame_01_teammask.png"
           }
         ],
         "back": [
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "counterweight_trebuchet__roll/back/frame_00_base.png",
+            "team_mask": "counterweight_trebuchet__roll/back/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "counterweight_trebuchet__roll/back/frame_01_base.png",
+            "team_mask": "counterweight_trebuchet__roll/back/frame_01_teammask.png"
           }
         ]
       }
@@ -337,26 +295,22 @@
       "directions": {
         "front": [
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "counterweight_trebuchet__load/front/frame_00_base.png",
+            "team_mask": "counterweight_trebuchet__load/front/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "counterweight_trebuchet__load/front/frame_01_base.png",
+            "team_mask": "counterweight_trebuchet__load/front/frame_01_teammask.png"
           }
         ],
         "back": [
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "counterweight_trebuchet__load/back/frame_00_base.png",
+            "team_mask": "counterweight_trebuchet__load/back/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "counterweight_trebuchet__load/back/frame_01_base.png",
+            "team_mask": "counterweight_trebuchet__load/back/frame_01_teammask.png"
           }
         ]
       }
@@ -369,26 +323,22 @@
       "directions": {
         "front": [
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "counterweight_trebuchet__fire/front/frame_00_base.png",
+            "team_mask": "counterweight_trebuchet__fire/front/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "counterweight_trebuchet__fire/front/frame_01_base.png",
+            "team_mask": "counterweight_trebuchet__fire/front/frame_01_teammask.png"
           }
         ],
         "back": [
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "counterweight_trebuchet__fire/back/frame_00_base.png",
+            "team_mask": "counterweight_trebuchet__fire/back/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "counterweight_trebuchet__fire/back/frame_01_base.png",
+            "team_mask": "counterweight_trebuchet__fire/back/frame_01_teammask.png"
           }
         ]
       }
@@ -401,26 +351,22 @@
       "directions": {
         "front": [
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "counterweight_trebuchet__recoil/front/frame_00_base.png",
+            "team_mask": "counterweight_trebuchet__recoil/front/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "counterweight_trebuchet__recoil/front/frame_01_base.png",
+            "team_mask": "counterweight_trebuchet__recoil/front/frame_01_teammask.png"
           }
         ],
         "back": [
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "counterweight_trebuchet__recoil/back/frame_00_base.png",
+            "team_mask": "counterweight_trebuchet__recoil/back/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "counterweight_trebuchet__recoil/back/frame_01_base.png",
+            "team_mask": "counterweight_trebuchet__recoil/back/frame_01_teammask.png"
           }
         ]
       }
@@ -433,26 +379,22 @@
       "directions": {
         "front": [
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "counterweight_trebuchet__damaged_alert/front/frame_00_base.png",
+            "team_mask": "counterweight_trebuchet__damaged_alert/front/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "counterweight_trebuchet__damaged_alert/front/frame_01_base.png",
+            "team_mask": "counterweight_trebuchet__damaged_alert/front/frame_01_teammask.png"
           }
         ],
         "back": [
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "counterweight_trebuchet__damaged_alert/back/frame_00_base.png",
+            "team_mask": "counterweight_trebuchet__damaged_alert/back/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "counterweight_trebuchet__damaged_alert/back/frame_01_base.png",
+            "team_mask": "counterweight_trebuchet__damaged_alert/back/frame_01_teammask.png"
           }
         ]
       }
@@ -465,26 +407,22 @@
       "directions": {
         "front": [
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "counterweight_trebuchet__destroyed_wreck/front/frame_00_base.png",
+            "team_mask": "counterweight_trebuchet__destroyed_wreck/front/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "counterweight_trebuchet__destroyed_wreck/front/frame_01_base.png",
+            "team_mask": "counterweight_trebuchet__destroyed_wreck/front/frame_01_teammask.png"
           }
         ],
         "back": [
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "counterweight_trebuchet__destroyed_wreck/back/frame_00_base.png",
+            "team_mask": "counterweight_trebuchet__destroyed_wreck/back/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "counterweight_trebuchet__destroyed_wreck/back/frame_01_base.png",
+            "team_mask": "counterweight_trebuchet__destroyed_wreck/back/frame_01_teammask.png"
           }
         ]
       }
@@ -497,62 +435,26 @@
       "directions": {
         "front": [
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "counterweight_trebuchet__decayed_wreckage/front/frame_00_base.png",
+            "team_mask": "counterweight_trebuchet__decayed_wreckage/front/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "counterweight_trebuchet__decayed_wreckage/front/frame_01_base.png",
+            "team_mask": "counterweight_trebuchet__decayed_wreckage/front/frame_01_teammask.png"
           }
         ],
         "back": [
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "counterweight_trebuchet__decayed_wreckage/back/frame_00_base.png",
+            "team_mask": "counterweight_trebuchet__decayed_wreckage/back/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
-          }
-        ]
-      }
-    },
-    "death": {
-      "frame_ms": 30000,
-      "loop": false,
-      "hold_last": true,
-      "description": "Runtime-compatible death placeholder frames.",
-      "directions": {
-        "front": [
-          {
-            "base": "death/front/frame_00_base.png",
-            "team_mask": "death/front/frame_00_teammask.png",
-            "placeholder": true
-          },
-          {
-            "base": "death/front/frame_01_base.png",
-            "team_mask": "death/front/frame_01_teammask.png",
-            "placeholder": true
-          }
-        ],
-        "back": [
-          {
-            "base": "death/back/frame_00_base.png",
-            "team_mask": "death/back/frame_00_teammask.png",
-            "placeholder": true
-          },
-          {
-            "base": "death/back/frame_01_base.png",
-            "team_mask": "death/back/frame_01_teammask.png",
-            "placeholder": true
+            "base": "counterweight_trebuchet__decayed_wreckage/back/frame_01_base.png",
+            "team_mask": "counterweight_trebuchet__decayed_wreckage/back/frame_01_teammask.png"
           }
         ]
       }
     }
   },
-  "notes": "Temporary runtime placeholder entity tileset; replace with authored action frames."
+  "notes": "Generated trebuchet tileset from two 2x8 image-gen contact sheets. Each authored action has front/back 48x48 base and team-mask frames; frame_01 duplicates frame_00 pending hand-authored animation polish."
 }

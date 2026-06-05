@@ -515,7 +515,8 @@ static EntityMotionProfile motionProfileForEntity(const Entity& ent, const Entit
     if (isNaval(ent.type)) return EntityMotionProfile::BoatSlide;
     if (isSiege(ent.type) || ent.type == E_RAM) return EntityMotionProfile::HeavySlide;
     if (anim && anim->family && std::strstr(anim->family, "gait")) return EntityMotionProfile::PaperWalk;
-    if (ent.state == S_MOVING || ent.state == S_RETURNING || ent.pathIdx < (int)ent.path.size()) {
+    if (ent.state == S_MOVING || ent.state == S_RETURNING
+        || (ent.state != S_IDLE && ent.pathIdx < (int)ent.path.size())) {
         return EntityMotionProfile::PaperWalk;
     }
     return EntityMotionProfile::None;

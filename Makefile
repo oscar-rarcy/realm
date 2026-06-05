@@ -227,7 +227,7 @@ ifeq ($(NATIVE_WINDOWS),1)
 		rm -f "$$clean_err"; \
 	else \
 		status=$$?; \
-		if [ -d "$(BUILD_DIR)" ] && ! find "$(BUILD_DIR)" -mindepth 1 ! \( -name web-server.log -o -name web-server.err -o -name web-fallback-server.out.log -o -name web-fallback-server.err.log \) -print -quit | grep -q .; then \
+		if [ -d "$(BUILD_DIR)" ] && ! find "$(BUILD_DIR)" -mindepth 1 ! \( -name 'web-server*.log' -o -name 'web-server*.err' -o -name 'web-fallback-server*.log' -o -name 'web-fallback-server*.err' \) -print -quit | grep -q .; then \
 			echo "warning: preserving locked $(BUILD_DIR) web server logs during Windows clean"; \
 			rm -f "$$clean_err"; \
 		else \

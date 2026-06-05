@@ -58,7 +58,8 @@ const char* terrainGlyph(const Tile& t, int x, int y) {
 }
 
 const char* peasantGlyph(const Entity& e) {
-    if (e.state == S_MOVING || e.state == S_RETURNING || e.pathIdx < (int)e.path.size()) return u8"🚶";
+    if (e.state == S_MOVING || e.state == S_RETURNING
+        || (e.state != S_IDLE && e.pathIdx < (int)e.path.size())) return u8"🚶";
     if (e.state == S_GATHERING && (e.cargo.type == CR_FISH || e.cargo.type == CR_FOOD)) return u8"🧎";
     if (e.state == S_GATHERING || e.state == S_BUILDING || e.state == S_ATTACKING) return u8"🏌";
     return u8"🧍";

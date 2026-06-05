@@ -42,6 +42,34 @@ For feature, decal, building, projectile, effect, and UI prompts, include only t
 
 Use the `imagegen` skill whenever Realm tileset work needs generated or edited bitmap pixels.
 
+### Non-Negotiable Production Rules
+
+For Realm production tileset generation, do not improvise image-generation prompts.
+
+Always start from the current canonical exports:
+
+```powershell
+python scripts\tileset_coverage.py next --limit 12 --out build\tileset-next-batch.json
+```
+
+For every work item or grouped sheet, open the listed generated Markdown prompt under `art/tiles/image-spec/` and generated JSON spec under `art/tiles/image-json/`. Use those exports as the prompt source of truth. If the exported prompt is insufficient, fix the exporter or the canonical docs first, regenerate the exports, and then generate art from the regenerated prompt. Do not silently replace the exported prompt with an ad-hoc prompt.
+
+For every generated batch, create and retain provenance before accepting it:
+
+* prompt file path and hash,
+* JSON spec path and hash,
+* exact generator prompt text actually sent,
+* generated image source path under `C:\Users\Edward\.codex\generated_images\...`,
+* candidate sheet path under `art/tiles/candidates/...`,
+* prebuilt grid manifest path when a sheet is used,
+* visible positive reference image paths and their roles,
+* negative/rejected reference paths excluded from the prompt,
+* split/crop manifest or fixed slot map,
+* alpha and residual-magenta QA result,
+* style-review status.
+
+Do not call `scripts\tileset_coverage.py accept` for newly generated art unless the provenance exists and the style review is accepted. Coverage acceptance means runtime production acceptance, not merely file existence.
+
 For local image edits with the built-in image generator, first make every base/edit target and every positive reference visible with `view_image`. The built-in image edit path works from images already visible in the conversation context.
 
 For edits, label image roles explicitly before prompting:
@@ -49,12 +77,59 @@ For edits, label image roles explicitly before prompting:
 * Base/edit target: authoritative for crop, canvas, slab geometry, side shape, anchor, unchanged pixels, and any sheet layout.
 * Material/style reference: borrow only the named material, palette, brush style, or state.
 * Geometry reference: borrow only slab shape, side faces, corner wear, and contact-shadow structure.
+* Pose/equipment reference: borrow only stance, silhouette, equipment, weapon tier, armour tier, shield placement, horse tack, or operator posture.
+* Negative reference: diagnostic only; do not copy its pixels, style, palette, crop, pose, or layout.
 
 Do not ask Image Gen to "make this like that" without image roles. Do not use rejected candidates as positive references.
 
 Copy accepted outputs from `C:\Users\Edward\.codex\generated_images\...` into `art/tiles/candidates/...` before they become project evidence or runtime assets. Rejected smoke outputs can remain transient unless they are useful diagnostic evidence.
 
 After a candidate is reviewed and accepted, copy the runtime-ready image into `assets/tiles/...` so the actual game can load it. A candidate under `art/tiles/candidates/...` is evidence, not a live game asset.
+
+### Prebuilt Grid Requirement
+
+For sprite/contact sheets, programmatically create the grid before using Image Gen. Do not rely on text-only instructions that ask the model to invent the grid.
+
+The default sheet is a 4 by 4 grid. If an asset needs more than 16 states or variants, split it into multiple 4 by 4 sheets. Use a smaller fixed grid only when the canonical exported prompt or slot map explicitly requires it, and record that exception in provenance.
+
+The grid should be an image-edit base target:
+
+* pure magenta cell backgrounds for actor/projectile sprites that will be alpha-cleaned,
+* white or neutral gutters around magenta cells when that improves slot separation,
+* no labels, numbers, or text inside the generated pixels,
+* exact slot coordinates saved in a JSON manifest,
+* deterministic crop boxes used for promotion.
+
+If the output adds extra rows/columns, merges cells, moves sprites outside cells, adds labels, or changes the sheet geometry enough that the manifest crop boxes are no longer valid, reject it or keep it only as diagnostic evidence.
+
+### Style Seed Cascade
+
+For complex or style-sensitive lanes, generate the visual identity before generating the full sheet.
+
+Default sequence:
+
+1. Choose the closest accepted style ancestor. Examples: peasant before militia, archer before crossbowman, boar/deer/sheep/wolf before related animals, fishing boat before other small boats, catapult/ram before other siege.
+2. Generate or edit one 1024 by 1024 standalone identity image in the exact target style.
+3. Review that identity image as the style seed.
+4. Programmatically place the accepted seed into the first or idle slot of the prepared grid.
+5. Use Image Gen edit mode to fill the remaining states while preserving the seed's outline weight, palette, simplification level, paper border or map-art finish, scale, and anchor.
+6. Promote only after the sheet passes grid, alpha, mask, and style QA.
+
+This organic branching workflow is preferred over generating unrelated assets independently. Always work from the closest successful visual neighbor when one exists.
+
+### Style Contract Gate
+
+Before any production generation, identify the lane's current Realm style contract and the closest accepted style ancestor. If no style contract exists for the lane, write or update the canonical style guidance before generating.
+
+The style contract should answer:
+
+* Is this lane a paper-cutout standee, a map-integrated painted feature, a top-down ground surface, a decal/mark, a projectile cutout, or UI/effect overlay?
+* Which accepted asset is the closest positive style seed?
+* Which reference images are style references, and which are only equipment, pose, or geometry references?
+* Which visual traits are mandatory: outline weight, cream paper edge, palette, simplification level, shadow policy, alpha policy, and team-colour policy?
+* Which traits are explicitly rejected?
+
+If the exported prompt and the style contract disagree, stop and correct the exporter or docs. Do not let ad-hoc prompt text resolve the conflict.
 
 ## Zoom-Stop Sprite Sheets
 
@@ -248,6 +323,22 @@ Treat `build/tileset-next-batch.json` as the work queue. For each item, open the
 python scripts\tileset_coverage.py accept --work-id <work-id> --review <review-note-or-artifact>
 ```
 
+Do not use coverage acceptance as a shortcut around visual review. For newly generated art, acceptance requires:
+
+* canonical exported prompt/spec were used,
+* positive references or style seeds were shown to Image Gen when available,
+* prebuilt grid manifest was used for sheet generation,
+* runtime files are alpha-clean for sprites, overlays, decals, and features,
+* residual opaque magenta is below the lane threshold,
+* team-mask pixels are limited to intended team-colour slots,
+* runtime paths are actually loadable by the current renderer or explicitly documented as future/not-wired,
+* style review passed against the lane's canonical style contract,
+* provenance file records the above evidence.
+
+Programmatic QA should fail actor, feature, decal, projectile, effect, and UI assets that retain substantial opaque magenta after promotion. Full-square ground art is the main exception, and ground QA must instead check that the image satisfies the loader's expected source size and top-down tile contract.
+
+If an asset lane is not currently drawn by the game, do not call it complete merely because files exist. Mark it as future/not-wired in the audit or coverage tooling until a renderer path and screenshot smoke proof exist.
+
 After each batch, rerun the report and request the next batch. Do not claim the full tileset is complete until:
 
 ```powershell
@@ -255,6 +346,8 @@ python scripts\tileset_coverage.py verify --strict
 ```
 
 passes. `missing`, `placeholder`, `stale`, `needs_review`, `unsupported`, and `unreachable` are not complete statuses.
+
+Strict coverage is necessary but not sufficient for production art quality. Before claiming visual completion, also inspect the generated review sheets and runtime samples for style consistency, crop quality, alpha cleanup, mask correctness, and in-game visibility.
 
 ## Asset Lanes
 

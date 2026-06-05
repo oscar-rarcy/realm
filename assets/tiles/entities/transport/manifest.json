@@ -2,8 +2,6 @@
   "schema": "realm.entity_tileset.v1",
   "entity": "transport",
   "sprite_size": 48,
-  "placeholder": true,
-  "temporary": true,
   "directions": [
     "front",
     "back"
@@ -17,26 +15,22 @@
       "directions": {
         "front": [
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "idle/front/frame_00_base.png",
+            "team_mask": "idle/front/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "idle/front/frame_01_base.png",
+            "team_mask": "idle/front/frame_01_teammask.png"
           }
         ],
         "back": [
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "idle/back/frame_00_base.png",
+            "team_mask": "idle/back/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "idle/back/frame_01_base.png",
+            "team_mask": "idle/back/frame_01_teammask.png"
           }
         ]
       }
@@ -49,26 +43,22 @@
       "directions": {
         "front": [
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "sail/front/frame_00_base.png",
+            "team_mask": "sail/front/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "sail/front/frame_01_base.png",
+            "team_mask": "sail/front/frame_01_teammask.png"
           }
         ],
         "back": [
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "sail/back/frame_00_base.png",
+            "team_mask": "sail/back/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "sail/back/frame_01_base.png",
+            "team_mask": "sail/back/frame_01_teammask.png"
           }
         ]
       }
@@ -81,26 +71,22 @@
       "directions": {
         "front": [
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "load_unload/front/frame_00_base.png",
+            "team_mask": "load_unload/front/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "load_unload/front/frame_01_base.png",
+            "team_mask": "load_unload/front/frame_01_teammask.png"
           }
         ],
         "back": [
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "load_unload/back/frame_00_base.png",
+            "team_mask": "load_unload/back/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "load_unload/back/frame_01_base.png",
+            "team_mask": "load_unload/back/frame_01_teammask.png"
           }
         ]
       }
@@ -113,26 +99,22 @@
       "directions": {
         "front": [
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "cargo_full_indicator/front/frame_00_base.png",
+            "team_mask": "cargo_full_indicator/front/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "cargo_full_indicator/front/frame_01_base.png",
+            "team_mask": "cargo_full_indicator/front/frame_01_teammask.png"
           }
         ],
         "back": [
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "cargo_full_indicator/back/frame_00_base.png",
+            "team_mask": "cargo_full_indicator/back/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "cargo_full_indicator/back/frame_01_base.png",
+            "team_mask": "cargo_full_indicator/back/frame_01_teammask.png"
           }
         ]
       }
@@ -145,26 +127,22 @@
       "directions": {
         "front": [
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "destroyed_wreck/front/frame_00_base.png",
+            "team_mask": "destroyed_wreck/front/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "destroyed_wreck/front/frame_01_base.png",
+            "team_mask": "destroyed_wreck/front/frame_01_teammask.png"
           }
         ],
         "back": [
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "destroyed_wreck/back/frame_00_base.png",
+            "team_mask": "destroyed_wreck/back/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "destroyed_wreck/back/frame_01_base.png",
+            "team_mask": "destroyed_wreck/back/frame_01_teammask.png"
           }
         ]
       }
@@ -177,62 +155,26 @@
       "directions": {
         "front": [
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "decayed_wreckage/front/frame_00_base.png",
+            "team_mask": "decayed_wreckage/front/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "decayed_wreckage/front/frame_01_base.png",
+            "team_mask": "decayed_wreckage/front/frame_01_teammask.png"
           }
         ],
         "back": [
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "decayed_wreckage/back/frame_00_base.png",
+            "team_mask": "decayed_wreckage/back/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
-          }
-        ]
-      }
-    },
-    "death": {
-      "frame_ms": 30000,
-      "loop": false,
-      "hold_last": true,
-      "description": "Runtime-compatible death placeholder frames.",
-      "directions": {
-        "front": [
-          {
-            "base": "death/front/frame_00_base.png",
-            "team_mask": "death/front/frame_00_teammask.png",
-            "placeholder": true
-          },
-          {
-            "base": "death/front/frame_01_base.png",
-            "team_mask": "death/front/frame_01_teammask.png",
-            "placeholder": true
-          }
-        ],
-        "back": [
-          {
-            "base": "death/back/frame_00_base.png",
-            "team_mask": "death/back/frame_00_teammask.png",
-            "placeholder": true
-          },
-          {
-            "base": "death/back/frame_01_base.png",
-            "team_mask": "death/back/frame_01_teammask.png",
-            "placeholder": true
+            "base": "decayed_wreckage/back/frame_01_base.png",
+            "team_mask": "decayed_wreckage/back/frame_01_teammask.png"
           }
         ]
       }
     }
   },
-  "notes": "Temporary runtime placeholder entity tileset; replace with authored action frames."
+  "notes": "Generated transport tileset from one 2x6 image-gen front/back contact sheet. Red team-colour slots split into team masks; frame_01 duplicates frame_00 pending hand-authored animation polish."
 }

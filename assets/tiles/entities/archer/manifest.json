@@ -2,8 +2,6 @@
   "schema": "realm.entity_tileset.v1",
   "entity": "archer",
   "sprite_size": 48,
-  "placeholder": true,
-  "temporary": true,
   "directions": [
     "front",
     "back"
@@ -17,26 +15,22 @@
       "directions": {
         "front": [
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "self_bow__idle/front/frame_00_base.png",
+            "team_mask": "self_bow__idle/front/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "self_bow__idle/front/frame_01_base.png",
+            "team_mask": "self_bow__idle/front/frame_01_teammask.png"
           }
         ],
         "back": [
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "self_bow__idle/back/frame_00_base.png",
+            "team_mask": "self_bow__idle/back/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "self_bow__idle/back/frame_01_base.png",
+            "team_mask": "self_bow__idle/back/frame_01_teammask.png"
           }
         ]
       }
@@ -49,26 +43,22 @@
       "directions": {
         "front": [
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "self_bow__walk/front/frame_00_base.png",
+            "team_mask": "self_bow__walk/front/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "self_bow__walk/front/frame_01_base.png",
+            "team_mask": "self_bow__walk/front/frame_01_teammask.png"
           }
         ],
         "back": [
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "self_bow__walk/back/frame_00_base.png",
+            "team_mask": "self_bow__walk/back/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "self_bow__walk/back/frame_01_base.png",
+            "team_mask": "self_bow__walk/back/frame_01_teammask.png"
           }
         ]
       }
@@ -81,26 +71,22 @@
       "directions": {
         "front": [
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "self_bow__aim/front/frame_00_base.png",
+            "team_mask": "self_bow__aim/front/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "self_bow__aim/front/frame_01_base.png",
+            "team_mask": "self_bow__aim/front/frame_01_teammask.png"
           }
         ],
         "back": [
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "self_bow__aim/back/frame_00_base.png",
+            "team_mask": "self_bow__aim/back/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "self_bow__aim/back/frame_01_base.png",
+            "team_mask": "self_bow__aim/back/frame_01_teammask.png"
           }
         ]
       }
@@ -113,26 +99,22 @@
       "directions": {
         "front": [
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "self_bow__release/front/frame_00_base.png",
+            "team_mask": "self_bow__release/front/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "self_bow__release/front/frame_01_base.png",
+            "team_mask": "self_bow__release/front/frame_01_teammask.png"
           }
         ],
         "back": [
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "self_bow__release/back/frame_00_base.png",
+            "team_mask": "self_bow__release/back/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "self_bow__release/back/frame_01_base.png",
+            "team_mask": "self_bow__release/back/frame_01_teammask.png"
           }
         ]
       }
@@ -145,26 +127,22 @@
       "directions": {
         "front": [
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "self_bow__reload/front/frame_00_base.png",
+            "team_mask": "self_bow__reload/front/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "self_bow__reload/front/frame_01_base.png",
+            "team_mask": "self_bow__reload/front/frame_01_teammask.png"
           }
         ],
         "back": [
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "self_bow__reload/back/frame_00_base.png",
+            "team_mask": "self_bow__reload/back/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "self_bow__reload/back/frame_01_base.png",
+            "team_mask": "self_bow__reload/back/frame_01_teammask.png"
           }
         ]
       }
@@ -177,26 +155,22 @@
       "directions": {
         "front": [
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "self_bow__dead/front/frame_00_base.png",
+            "team_mask": "self_bow__dead/front/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "self_bow__dead/front/frame_01_base.png",
+            "team_mask": "self_bow__dead/front/frame_01_teammask.png"
           }
         ],
         "back": [
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "self_bow__dead/back/frame_00_base.png",
+            "team_mask": "self_bow__dead/back/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "self_bow__dead/back/frame_01_base.png",
+            "team_mask": "self_bow__dead/back/frame_01_teammask.png"
           }
         ]
       }
@@ -209,26 +183,22 @@
       "directions": {
         "front": [
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "self_bow__decayed_skeleton_with_bow_and_quiver/front/frame_00_base.png",
+            "team_mask": "self_bow__decayed_skeleton_with_bow_and_quiver/front/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "self_bow__decayed_skeleton_with_bow_and_quiver/front/frame_01_base.png",
+            "team_mask": "self_bow__decayed_skeleton_with_bow_and_quiver/front/frame_01_teammask.png"
           }
         ],
         "back": [
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "self_bow__decayed_skeleton_with_bow_and_quiver/back/frame_00_base.png",
+            "team_mask": "self_bow__decayed_skeleton_with_bow_and_quiver/back/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "self_bow__decayed_skeleton_with_bow_and_quiver/back/frame_01_base.png",
+            "team_mask": "self_bow__decayed_skeleton_with_bow_and_quiver/back/frame_01_teammask.png"
           }
         ]
       }
@@ -241,26 +211,22 @@
       "directions": {
         "front": [
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "crossbow__idle/front/frame_00_base.png",
+            "team_mask": "crossbow__idle/front/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "crossbow__idle/front/frame_01_base.png",
+            "team_mask": "crossbow__idle/front/frame_01_teammask.png"
           }
         ],
         "back": [
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "crossbow__idle/back/frame_00_base.png",
+            "team_mask": "crossbow__idle/back/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "crossbow__idle/back/frame_01_base.png",
+            "team_mask": "crossbow__idle/back/frame_01_teammask.png"
           }
         ]
       }
@@ -273,26 +239,22 @@
       "directions": {
         "front": [
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "crossbow__walk/front/frame_00_base.png",
+            "team_mask": "crossbow__walk/front/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "crossbow__walk/front/frame_01_base.png",
+            "team_mask": "crossbow__walk/front/frame_01_teammask.png"
           }
         ],
         "back": [
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "crossbow__walk/back/frame_00_base.png",
+            "team_mask": "crossbow__walk/back/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "crossbow__walk/back/frame_01_base.png",
+            "team_mask": "crossbow__walk/back/frame_01_teammask.png"
           }
         ]
       }
@@ -305,26 +267,22 @@
       "directions": {
         "front": [
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "crossbow__aim/front/frame_00_base.png",
+            "team_mask": "crossbow__aim/front/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "crossbow__aim/front/frame_01_base.png",
+            "team_mask": "crossbow__aim/front/frame_01_teammask.png"
           }
         ],
         "back": [
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "crossbow__aim/back/frame_00_base.png",
+            "team_mask": "crossbow__aim/back/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "crossbow__aim/back/frame_01_base.png",
+            "team_mask": "crossbow__aim/back/frame_01_teammask.png"
           }
         ]
       }
@@ -337,26 +295,22 @@
       "directions": {
         "front": [
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "crossbow__release/front/frame_00_base.png",
+            "team_mask": "crossbow__release/front/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "crossbow__release/front/frame_01_base.png",
+            "team_mask": "crossbow__release/front/frame_01_teammask.png"
           }
         ],
         "back": [
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "crossbow__release/back/frame_00_base.png",
+            "team_mask": "crossbow__release/back/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "crossbow__release/back/frame_01_base.png",
+            "team_mask": "crossbow__release/back/frame_01_teammask.png"
           }
         ]
       }
@@ -369,26 +323,22 @@
       "directions": {
         "front": [
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "crossbow__reload/front/frame_00_base.png",
+            "team_mask": "crossbow__reload/front/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "crossbow__reload/front/frame_01_base.png",
+            "team_mask": "crossbow__reload/front/frame_01_teammask.png"
           }
         ],
         "back": [
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "crossbow__reload/back/frame_00_base.png",
+            "team_mask": "crossbow__reload/back/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "crossbow__reload/back/frame_01_base.png",
+            "team_mask": "crossbow__reload/back/frame_01_teammask.png"
           }
         ]
       }
@@ -401,26 +351,22 @@
       "directions": {
         "front": [
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "crossbow__dead/front/frame_00_base.png",
+            "team_mask": "crossbow__dead/front/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "crossbow__dead/front/frame_01_base.png",
+            "team_mask": "crossbow__dead/front/frame_01_teammask.png"
           }
         ],
         "back": [
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "crossbow__dead/back/frame_00_base.png",
+            "team_mask": "crossbow__dead/back/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "crossbow__dead/back/frame_01_base.png",
+            "team_mask": "crossbow__dead/back/frame_01_teammask.png"
           }
         ]
       }
@@ -433,62 +379,26 @@
       "directions": {
         "front": [
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "crossbow__decayed_skeleton_with_bow_and_quiver/front/frame_00_base.png",
+            "team_mask": "crossbow__decayed_skeleton_with_bow_and_quiver/front/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/front/frame_00_base.png",
-            "team_mask": "placeholder/front/frame_00_teammask.png",
-            "placeholder": true
+            "base": "crossbow__decayed_skeleton_with_bow_and_quiver/front/frame_01_base.png",
+            "team_mask": "crossbow__decayed_skeleton_with_bow_and_quiver/front/frame_01_teammask.png"
           }
         ],
         "back": [
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
+            "base": "crossbow__decayed_skeleton_with_bow_and_quiver/back/frame_00_base.png",
+            "team_mask": "crossbow__decayed_skeleton_with_bow_and_quiver/back/frame_00_teammask.png"
           },
           {
-            "base": "placeholder/back/frame_00_base.png",
-            "team_mask": "placeholder/back/frame_00_teammask.png",
-            "placeholder": true
-          }
-        ]
-      }
-    },
-    "death": {
-      "frame_ms": 30000,
-      "loop": false,
-      "hold_last": true,
-      "description": "Runtime-compatible death placeholder frames.",
-      "directions": {
-        "front": [
-          {
-            "base": "death/front/frame_00_base.png",
-            "team_mask": "death/front/frame_00_teammask.png",
-            "placeholder": true
-          },
-          {
-            "base": "death/front/frame_01_base.png",
-            "team_mask": "death/front/frame_01_teammask.png",
-            "placeholder": true
-          }
-        ],
-        "back": [
-          {
-            "base": "death/back/frame_00_base.png",
-            "team_mask": "death/back/frame_00_teammask.png",
-            "placeholder": true
-          },
-          {
-            "base": "death/back/frame_01_base.png",
-            "team_mask": "death/back/frame_01_teammask.png",
-            "placeholder": true
+            "base": "crossbow__decayed_skeleton_with_bow_and_quiver/back/frame_01_base.png",
+            "team_mask": "crossbow__decayed_skeleton_with_bow_and_quiver/back/frame_01_teammask.png"
           }
         ]
       }
     }
   },
-  "notes": "Temporary runtime placeholder entity tileset; replace with authored action frames."
+  "notes": "Generated archer tileset from image-gen contact sheets. Basic bow variants and crossbow variants have front/back 48x48 base/team-mask frames; frame_01 duplicates frame_00 pending hand-authored animation polish."
 }

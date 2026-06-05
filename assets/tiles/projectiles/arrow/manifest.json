@@ -1,8 +1,9 @@
 {
-  "schema": "realm.projectile_tileset.placeholder.v1",
+  "schema": "realm.projectile_tileset.v1",
   "projectile": "arrow",
-  "placeholder": true,
-  "temporary": true,
-  "runtime_asset": "assets/tiles/effects-ui/arrow_projectile.png",
-  "notes": "Temporary projectile placeholder manifest; replace with authored projectile/effect art."
+  "image": "../effects-ui/arrow_projectile.png",
+  "states": {
+    "in_flight": "../effects-ui/arrow_projectile.png"
+  },
+  "notes": "Generated projectile sprite from image-gen contact sheet."
 }
