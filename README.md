@@ -4,7 +4,7 @@ Realm is a small real-time strategy game written in C++.
 
 You build a base, control peasants and soldiers, gather resources, and fight AI opponents. It can run in a normal graphical window, in a text terminal, or in a browser.
 
-This README is written for someone who is new to coding. The short version is:
+Quick orientation:
 
 1. If you just want to play, use the web version or a helper script.
 2. If you want to change the game, edit files in `src/` and `include/`.
@@ -109,6 +109,9 @@ REALM_VISUAL_MODE=ascii-only
 ```
 
 That keeps local builds in ASCII mode by default.
+For SDL and web builds this also strips the tileset asset loader from the
+ASCII-only binary/bundle, so Realm's tileset PNG loader is not compiled and the
+game does not load `assets/tiles/`. SDL text rendering still needs font files.
 
 To opt in to the tileset menu on your machine only, copy `.env.local.example` to `.env.local` and set:
 
@@ -171,6 +174,9 @@ bash scripts/build-web.sh --install-emsdk
 ```
 
 The web output is written to `dist/netlify/`.
+The `/ascii` web route is built as a separate ASCII-only app. It still bundles
+the fonts needed to draw the SDL canvas text, but it does not include the
+tileset loader or `assets/tiles` payload.
 
 For the default validation flow:
 
