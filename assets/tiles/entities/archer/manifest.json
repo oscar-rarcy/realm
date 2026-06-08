@@ -1,7 +1,7 @@
 {
   "schema": "realm.entity_tileset.v1",
   "entity": "archer",
-  "sprite_size": 48,
+  "sprite_size": 256,
   "directions": [
     "front",
     "back"
@@ -12,25 +12,151 @@
       "loop": true,
       "hold_last": false,
       "description": "Self Bow: idle; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows",
+      "family": "self_bow__idle",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "self_bow__idle/front/frame_00_base.png",
-            "team_mask": "self_bow__idle/front/frame_00_teammask.png"
+            "team_mask": "self_bow__idle/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/front_contact_sheet.png",
+            "source_slot": 1,
+            "source_crop_box": [
+              5,
+              5,
+              319,
+              319
+            ],
+            "source_bbox": {
+              "x": 6,
+              "y": 6,
+              "w": 302,
+              "h": 302
+            },
+            "final_bbox": {
+              "x": 76,
+              "y": 58,
+              "w": 101,
+              "h": 123
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -2,
+              -27
+            ],
+            "scale": 0.5993377483443708,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "self_bow__idle/front/frame_01_base.png",
-            "team_mask": "self_bow__idle/front/frame_01_teammask.png"
+            "team_mask": "self_bow__idle/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/front_contact_sheet.png",
+            "source_slot": 1,
+            "source_crop_box": [
+              5,
+              5,
+              319,
+              319
+            ],
+            "source_bbox": {
+              "x": 6,
+              "y": 6,
+              "w": 302,
+              "h": 302
+            },
+            "final_bbox": {
+              "x": 76,
+              "y": 58,
+              "w": 101,
+              "h": 123
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -2,
+              -27
+            ],
+            "scale": 0.5993377483443708,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ],
         "back": [
           {
             "base": "self_bow__idle/back/frame_00_base.png",
-            "team_mask": "self_bow__idle/back/frame_00_teammask.png"
+            "team_mask": "self_bow__idle/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/back_contact_sheet.png",
+            "source_slot": 1,
+            "source_crop_box": [
+              5,
+              5,
+              319,
+              319
+            ],
+            "source_bbox": {
+              "x": 6,
+              "y": 4,
+              "w": 302,
+              "h": 306
+            },
+            "final_bbox": {
+              "x": 78,
+              "y": 45,
+              "w": 100,
+              "h": 140
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              -23
+            ],
+            "scale": 0.5993377483443708,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "self_bow__idle/back/frame_01_base.png",
-            "team_mask": "self_bow__idle/back/frame_01_teammask.png"
+            "team_mask": "self_bow__idle/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/back_contact_sheet.png",
+            "source_slot": 1,
+            "source_crop_box": [
+              5,
+              5,
+              319,
+              319
+            ],
+            "source_bbox": {
+              "x": 6,
+              "y": 4,
+              "w": 302,
+              "h": 306
+            },
+            "final_bbox": {
+              "x": 78,
+              "y": 45,
+              "w": 100,
+              "h": 140
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              -23
+            ],
+            "scale": 0.5993377483443708,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ]
       }
@@ -40,25 +166,151 @@
       "loop": true,
       "hold_last": false,
       "description": "Self Bow: walk; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows",
+      "family": "self_bow__walk",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "self_bow__walk/front/frame_00_base.png",
-            "team_mask": "self_bow__walk/front/frame_00_teammask.png"
+            "team_mask": "self_bow__walk/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/front_contact_sheet.png",
+            "source_slot": 2,
+            "source_crop_box": [
+              314,
+              5,
+              628,
+              319
+            ],
+            "source_bbox": {
+              "x": 7,
+              "y": 6,
+              "w": 301,
+              "h": 302
+            },
+            "final_bbox": {
+              "x": 77,
+              "y": 56,
+              "w": 96,
+              "h": 124
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -3,
+              -28
+            ],
+            "scale": 0.6013289036544851,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "self_bow__walk/front/frame_01_base.png",
-            "team_mask": "self_bow__walk/front/frame_01_teammask.png"
+            "team_mask": "self_bow__walk/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/front_contact_sheet.png",
+            "source_slot": 2,
+            "source_crop_box": [
+              314,
+              5,
+              628,
+              319
+            ],
+            "source_bbox": {
+              "x": 7,
+              "y": 6,
+              "w": 301,
+              "h": 302
+            },
+            "final_bbox": {
+              "x": 77,
+              "y": 56,
+              "w": 96,
+              "h": 124
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -3,
+              -28
+            ],
+            "scale": 0.6013289036544851,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ],
         "back": [
           {
             "base": "self_bow__walk/back/frame_00_base.png",
-            "team_mask": "self_bow__walk/back/frame_00_teammask.png"
+            "team_mask": "self_bow__walk/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/back_contact_sheet.png",
+            "source_slot": 2,
+            "source_crop_box": [
+              314,
+              5,
+              628,
+              319
+            ],
+            "source_bbox": {
+              "x": 7,
+              "y": 4,
+              "w": 300,
+              "h": 306
+            },
+            "final_bbox": {
+              "x": 78,
+              "y": 41,
+              "w": 99,
+              "h": 143
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              -24
+            ],
+            "scale": 0.6033333333333334,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "self_bow__walk/back/frame_01_base.png",
-            "team_mask": "self_bow__walk/back/frame_01_teammask.png"
+            "team_mask": "self_bow__walk/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/back_contact_sheet.png",
+            "source_slot": 2,
+            "source_crop_box": [
+              314,
+              5,
+              628,
+              319
+            ],
+            "source_bbox": {
+              "x": 7,
+              "y": 4,
+              "w": 300,
+              "h": 306
+            },
+            "final_bbox": {
+              "x": 78,
+              "y": 41,
+              "w": 99,
+              "h": 143
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              -24
+            ],
+            "scale": 0.6033333333333334,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ]
       }
@@ -68,25 +320,151 @@
       "loop": true,
       "hold_last": false,
       "description": "Self Bow: aim; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows",
+      "family": "self_bow__aim",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "self_bow__aim/front/frame_00_base.png",
-            "team_mask": "self_bow__aim/front/frame_00_teammask.png"
+            "team_mask": "self_bow__aim/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/front_contact_sheet.png",
+            "source_slot": 3,
+            "source_crop_box": [
+              625,
+              5,
+              939,
+              319
+            ],
+            "source_bbox": {
+              "x": 7,
+              "y": 6,
+              "w": 300,
+              "h": 302
+            },
+            "final_bbox": {
+              "x": 70,
+              "y": 48,
+              "w": 119,
+              "h": 132
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              2,
+              -28
+            ],
+            "scale": 0.6033333333333334,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "self_bow__aim/front/frame_01_base.png",
-            "team_mask": "self_bow__aim/front/frame_01_teammask.png"
+            "team_mask": "self_bow__aim/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/front_contact_sheet.png",
+            "source_slot": 3,
+            "source_crop_box": [
+              625,
+              5,
+              939,
+              319
+            ],
+            "source_bbox": {
+              "x": 7,
+              "y": 6,
+              "w": 300,
+              "h": 302
+            },
+            "final_bbox": {
+              "x": 70,
+              "y": 48,
+              "w": 119,
+              "h": 132
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              2,
+              -28
+            ],
+            "scale": 0.6033333333333334,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ],
         "back": [
           {
             "base": "self_bow__aim/back/frame_00_base.png",
-            "team_mask": "self_bow__aim/back/frame_00_teammask.png"
+            "team_mask": "self_bow__aim/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/back_contact_sheet.png",
+            "source_slot": 3,
+            "source_crop_box": [
+              624,
+              4,
+              938,
+              318
+            ],
+            "source_bbox": {
+              "x": 8,
+              "y": 5,
+              "w": 299,
+              "h": 305
+            },
+            "final_bbox": {
+              "x": 69,
+              "y": 33,
+              "w": 114,
+              "h": 154
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -2,
+              -21
+            ],
+            "scale": 0.6053511705685619,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "self_bow__aim/back/frame_01_base.png",
-            "team_mask": "self_bow__aim/back/frame_01_teammask.png"
+            "team_mask": "self_bow__aim/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/back_contact_sheet.png",
+            "source_slot": 3,
+            "source_crop_box": [
+              624,
+              4,
+              938,
+              318
+            ],
+            "source_bbox": {
+              "x": 8,
+              "y": 5,
+              "w": 299,
+              "h": 305
+            },
+            "final_bbox": {
+              "x": 69,
+              "y": 33,
+              "w": 114,
+              "h": 154
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -2,
+              -21
+            ],
+            "scale": 0.6053511705685619,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ]
       }
@@ -96,25 +474,151 @@
       "loop": true,
       "hold_last": false,
       "description": "Self Bow: release; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows",
+      "family": "self_bow__release",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "self_bow__release/front/frame_00_base.png",
-            "team_mask": "self_bow__release/front/frame_00_teammask.png"
+            "team_mask": "self_bow__release/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/front_contact_sheet.png",
+            "source_slot": 4,
+            "source_crop_box": [
+              936,
+              5,
+              1250,
+              319
+            ],
+            "source_bbox": {
+              "x": 6,
+              "y": 6,
+              "w": 301,
+              "h": 302
+            },
+            "final_bbox": {
+              "x": 66,
+              "y": 58,
+              "w": 117,
+              "h": 121
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -4,
+              -29
+            ],
+            "scale": 0.6013289036544851,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "self_bow__release/front/frame_01_base.png",
-            "team_mask": "self_bow__release/front/frame_01_teammask.png"
+            "team_mask": "self_bow__release/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/front_contact_sheet.png",
+            "source_slot": 4,
+            "source_crop_box": [
+              936,
+              5,
+              1250,
+              319
+            ],
+            "source_bbox": {
+              "x": 6,
+              "y": 6,
+              "w": 301,
+              "h": 302
+            },
+            "final_bbox": {
+              "x": 66,
+              "y": 58,
+              "w": 117,
+              "h": 121
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -4,
+              -29
+            ],
+            "scale": 0.6013289036544851,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ],
         "back": [
           {
             "base": "self_bow__release/back/frame_00_base.png",
-            "team_mask": "self_bow__release/back/frame_00_teammask.png"
+            "team_mask": "self_bow__release/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/back_contact_sheet.png",
+            "source_slot": 4,
+            "source_crop_box": [
+              934,
+              4,
+              1248,
+              318
+            ],
+            "source_bbox": {
+              "x": 7,
+              "y": 5,
+              "w": 301,
+              "h": 305
+            },
+            "final_bbox": {
+              "x": 75,
+              "y": 45,
+              "w": 120,
+              "h": 141
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              7,
+              -22
+            ],
+            "scale": 0.6013289036544851,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "self_bow__release/back/frame_01_base.png",
-            "team_mask": "self_bow__release/back/frame_01_teammask.png"
+            "team_mask": "self_bow__release/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/back_contact_sheet.png",
+            "source_slot": 4,
+            "source_crop_box": [
+              934,
+              4,
+              1248,
+              318
+            ],
+            "source_bbox": {
+              "x": 7,
+              "y": 5,
+              "w": 301,
+              "h": 305
+            },
+            "final_bbox": {
+              "x": 75,
+              "y": 45,
+              "w": 120,
+              "h": 141
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              7,
+              -22
+            ],
+            "scale": 0.6013289036544851,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ]
       }
@@ -124,25 +628,151 @@
       "loop": true,
       "hold_last": false,
       "description": "Self Bow: reload; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows",
+      "family": "self_bow__reload",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "self_bow__reload/front/frame_00_base.png",
-            "team_mask": "self_bow__reload/front/frame_00_teammask.png"
+            "team_mask": "self_bow__reload/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/front_contact_sheet.png",
+            "source_slot": 5,
+            "source_crop_box": [
+              5,
+              314,
+              319,
+              628
+            ],
+            "source_bbox": {
+              "x": 6,
+              "y": 7,
+              "w": 302,
+              "h": 301
+            },
+            "final_bbox": {
+              "x": 70,
+              "y": 56,
+              "w": 87,
+              "h": 125
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -14,
+              -27
+            ],
+            "scale": 0.5993377483443708,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "self_bow__reload/front/frame_01_base.png",
-            "team_mask": "self_bow__reload/front/frame_01_teammask.png"
+            "team_mask": "self_bow__reload/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/front_contact_sheet.png",
+            "source_slot": 5,
+            "source_crop_box": [
+              5,
+              314,
+              319,
+              628
+            ],
+            "source_bbox": {
+              "x": 6,
+              "y": 7,
+              "w": 302,
+              "h": 301
+            },
+            "final_bbox": {
+              "x": 70,
+              "y": 56,
+              "w": 87,
+              "h": 125
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -14,
+              -27
+            ],
+            "scale": 0.5993377483443708,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ],
         "back": [
           {
             "base": "self_bow__reload/back/frame_00_base.png",
-            "team_mask": "self_bow__reload/back/frame_00_teammask.png"
+            "team_mask": "self_bow__reload/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/back_contact_sheet.png",
+            "source_slot": 5,
+            "source_crop_box": [
+              4,
+              311,
+              318,
+              625
+            ],
+            "source_bbox": {
+              "x": 7,
+              "y": 0,
+              "w": 300,
+              "h": 313
+            },
+            "final_bbox": {
+              "x": 71,
+              "y": 47,
+              "w": 106,
+              "h": 141
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -4,
+              -20
+            ],
+            "scale": 0.6033333333333334,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "self_bow__reload/back/frame_01_base.png",
-            "team_mask": "self_bow__reload/back/frame_01_teammask.png"
+            "team_mask": "self_bow__reload/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/back_contact_sheet.png",
+            "source_slot": 5,
+            "source_crop_box": [
+              4,
+              311,
+              318,
+              625
+            ],
+            "source_bbox": {
+              "x": 7,
+              "y": 0,
+              "w": 300,
+              "h": 313
+            },
+            "final_bbox": {
+              "x": 71,
+              "y": 47,
+              "w": 106,
+              "h": 141
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -4,
+              -20
+            ],
+            "scale": 0.6033333333333334,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ]
       }
@@ -152,25 +782,151 @@
       "loop": true,
       "hold_last": false,
       "description": "Self Bow: dead; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows",
+      "family": "self_bow__dead",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "self_bow__dead/front/frame_00_base.png",
-            "team_mask": "self_bow__dead/front/frame_00_teammask.png"
+            "team_mask": "self_bow__dead/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/front_contact_sheet.png",
+            "source_slot": 6,
+            "source_crop_box": [
+              314,
+              314,
+              628,
+              628
+            ],
+            "source_bbox": {
+              "x": 7,
+              "y": 7,
+              "w": 301,
+              "h": 301
+            },
+            "final_bbox": {
+              "x": 50,
+              "y": 116,
+              "w": 147,
+              "h": 65
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -4,
+              -27
+            ],
+            "scale": 0.6013289036544851,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "self_bow__dead/front/frame_01_base.png",
-            "team_mask": "self_bow__dead/front/frame_01_teammask.png"
+            "team_mask": "self_bow__dead/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/front_contact_sheet.png",
+            "source_slot": 6,
+            "source_crop_box": [
+              314,
+              314,
+              628,
+              628
+            ],
+            "source_bbox": {
+              "x": 7,
+              "y": 7,
+              "w": 301,
+              "h": 301
+            },
+            "final_bbox": {
+              "x": 50,
+              "y": 116,
+              "w": 147,
+              "h": 65
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -4,
+              -27
+            ],
+            "scale": 0.6013289036544851,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ],
         "back": [
           {
             "base": "self_bow__dead/back/frame_00_base.png",
-            "team_mask": "self_bow__dead/back/frame_00_teammask.png"
+            "team_mask": "self_bow__dead/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/back_contact_sheet.png",
+            "source_slot": 6,
+            "source_crop_box": [
+              314,
+              311,
+              628,
+              625
+            ],
+            "source_bbox": {
+              "x": 7,
+              "y": 1,
+              "w": 300,
+              "h": 312
+            },
+            "final_bbox": {
+              "x": 53,
+              "y": 86,
+              "w": 166,
+              "h": 122
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              8,
+              0
+            ],
+            "scale": 0.6033333333333334,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "self_bow__dead/back/frame_01_base.png",
-            "team_mask": "self_bow__dead/back/frame_01_teammask.png"
+            "team_mask": "self_bow__dead/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/back_contact_sheet.png",
+            "source_slot": 6,
+            "source_crop_box": [
+              314,
+              311,
+              628,
+              625
+            ],
+            "source_bbox": {
+              "x": 7,
+              "y": 1,
+              "w": 300,
+              "h": 312
+            },
+            "final_bbox": {
+              "x": 53,
+              "y": 86,
+              "w": 166,
+              "h": 122
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              8,
+              0
+            ],
+            "scale": 0.6033333333333334,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ]
       }
@@ -180,25 +936,151 @@
       "loop": true,
       "hold_last": false,
       "description": "Self Bow: decayed skeleton with bow and quiver; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows",
+      "family": "self_bow__decayed_skeleton_with_bow_and_quiver",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "self_bow__decayed_skeleton_with_bow_and_quiver/front/frame_00_base.png",
-            "team_mask": "self_bow__decayed_skeleton_with_bow_and_quiver/front/frame_00_teammask.png"
+            "team_mask": "self_bow__decayed_skeleton_with_bow_and_quiver/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/front_contact_sheet.png",
+            "source_slot": 7,
+            "source_crop_box": [
+              625,
+              314,
+              939,
+              628
+            ],
+            "source_bbox": {
+              "x": 7,
+              "y": 7,
+              "w": 300,
+              "h": 301
+            },
+            "final_bbox": {
+              "x": 69,
+              "y": 61,
+              "w": 122,
+              "h": 125
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              2,
+              -22
+            ],
+            "scale": 0.6033333333333334,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "self_bow__decayed_skeleton_with_bow_and_quiver/front/frame_01_base.png",
-            "team_mask": "self_bow__decayed_skeleton_with_bow_and_quiver/front/frame_01_teammask.png"
+            "team_mask": "self_bow__decayed_skeleton_with_bow_and_quiver/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/front_contact_sheet.png",
+            "source_slot": 7,
+            "source_crop_box": [
+              625,
+              314,
+              939,
+              628
+            ],
+            "source_bbox": {
+              "x": 7,
+              "y": 7,
+              "w": 300,
+              "h": 301
+            },
+            "final_bbox": {
+              "x": 69,
+              "y": 61,
+              "w": 122,
+              "h": 125
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              2,
+              -22
+            ],
+            "scale": 0.6033333333333334,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ],
         "back": [
           {
             "base": "self_bow__decayed_skeleton_with_bow_and_quiver/back/frame_00_base.png",
-            "team_mask": "self_bow__decayed_skeleton_with_bow_and_quiver/back/frame_00_teammask.png"
+            "team_mask": "self_bow__decayed_skeleton_with_bow_and_quiver/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/back_contact_sheet.png",
+            "source_slot": 7,
+            "source_crop_box": [
+              624,
+              317,
+              938,
+              631
+            ],
+            "source_bbox": {
+              "x": 8,
+              "y": 7,
+              "w": 299,
+              "h": 300
+            },
+            "final_bbox": {
+              "x": 47,
+              "y": 75,
+              "w": 157,
+              "h": 107
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -2,
+              -26
+            ],
+            "scale": 0.6053511705685619,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "self_bow__decayed_skeleton_with_bow_and_quiver/back/frame_01_base.png",
-            "team_mask": "self_bow__decayed_skeleton_with_bow_and_quiver/back/frame_01_teammask.png"
+            "team_mask": "self_bow__decayed_skeleton_with_bow_and_quiver/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/back_contact_sheet.png",
+            "source_slot": 7,
+            "source_crop_box": [
+              624,
+              317,
+              938,
+              631
+            ],
+            "source_bbox": {
+              "x": 8,
+              "y": 7,
+              "w": 299,
+              "h": 300
+            },
+            "final_bbox": {
+              "x": 47,
+              "y": 75,
+              "w": 157,
+              "h": 107
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -2,
+              -26
+            ],
+            "scale": 0.6053511705685619,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ]
       }
@@ -208,25 +1090,151 @@
       "loop": true,
       "hold_last": false,
       "description": "Crossbows: idle; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts",
+      "family": "crossbow__idle",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "crossbow__idle/front/frame_00_base.png",
-            "team_mask": "crossbow__idle/front/frame_00_teammask.png"
+            "team_mask": "crossbow__idle/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/front_contact_sheet.png",
+            "source_slot": 8,
+            "source_crop_box": [
+              936,
+              314,
+              1250,
+              628
+            ],
+            "source_bbox": {
+              "x": 6,
+              "y": 7,
+              "w": 301,
+              "h": 301
+            },
+            "final_bbox": {
+              "x": 76,
+              "y": 56,
+              "w": 100,
+              "h": 124
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -2,
+              -28
+            ],
+            "scale": 0.6013289036544851,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "crossbow__idle/front/frame_01_base.png",
-            "team_mask": "crossbow__idle/front/frame_01_teammask.png"
+            "team_mask": "crossbow__idle/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/front_contact_sheet.png",
+            "source_slot": 8,
+            "source_crop_box": [
+              936,
+              314,
+              1250,
+              628
+            ],
+            "source_bbox": {
+              "x": 6,
+              "y": 7,
+              "w": 301,
+              "h": 301
+            },
+            "final_bbox": {
+              "x": 76,
+              "y": 56,
+              "w": 100,
+              "h": 124
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -2,
+              -28
+            ],
+            "scale": 0.6013289036544851,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ],
         "back": [
           {
             "base": "crossbow__idle/back/frame_00_base.png",
-            "team_mask": "crossbow__idle/back/frame_00_teammask.png"
+            "team_mask": "crossbow__idle/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/back_contact_sheet.png",
+            "source_slot": 8,
+            "source_crop_box": [
+              934,
+              317,
+              1248,
+              631
+            ],
+            "source_bbox": {
+              "x": 7,
+              "y": 7,
+              "w": 301,
+              "h": 300
+            },
+            "final_bbox": {
+              "x": 54,
+              "y": 29,
+              "w": 165,
+              "h": 157
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              8,
+              -22
+            ],
+            "scale": 0.6013289036544851,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "crossbow__idle/back/frame_01_base.png",
-            "team_mask": "crossbow__idle/back/frame_01_teammask.png"
+            "team_mask": "crossbow__idle/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/back_contact_sheet.png",
+            "source_slot": 8,
+            "source_crop_box": [
+              934,
+              317,
+              1248,
+              631
+            ],
+            "source_bbox": {
+              "x": 7,
+              "y": 7,
+              "w": 301,
+              "h": 300
+            },
+            "final_bbox": {
+              "x": 54,
+              "y": 29,
+              "w": 165,
+              "h": 157
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              8,
+              -22
+            ],
+            "scale": 0.6013289036544851,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ]
       }
@@ -236,25 +1244,151 @@
       "loop": true,
       "hold_last": false,
       "description": "Crossbows: walk; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts",
+      "family": "crossbow__walk",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "crossbow__walk/front/frame_00_base.png",
-            "team_mask": "crossbow__walk/front/frame_00_teammask.png"
+            "team_mask": "crossbow__walk/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/front_contact_sheet.png",
+            "source_slot": 9,
+            "source_crop_box": [
+              5,
+              626,
+              319,
+              940
+            ],
+            "source_bbox": {
+              "x": 6,
+              "y": 6,
+              "w": 302,
+              "h": 301
+            },
+            "final_bbox": {
+              "x": 69,
+              "y": 51,
+              "w": 104,
+              "h": 129
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -7,
+              -28
+            ],
+            "scale": 0.5993377483443708,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "crossbow__walk/front/frame_01_base.png",
-            "team_mask": "crossbow__walk/front/frame_01_teammask.png"
+            "team_mask": "crossbow__walk/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/front_contact_sheet.png",
+            "source_slot": 9,
+            "source_crop_box": [
+              5,
+              626,
+              319,
+              940
+            ],
+            "source_bbox": {
+              "x": 6,
+              "y": 6,
+              "w": 302,
+              "h": 301
+            },
+            "final_bbox": {
+              "x": 69,
+              "y": 51,
+              "w": 104,
+              "h": 129
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -7,
+              -28
+            ],
+            "scale": 0.5993377483443708,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ],
         "back": [
           {
             "base": "crossbow__walk/back/frame_00_base.png",
-            "team_mask": "crossbow__walk/back/frame_00_teammask.png"
+            "team_mask": "crossbow__walk/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/back_contact_sheet.png",
+            "source_slot": 9,
+            "source_crop_box": [
+              5,
+              627,
+              319,
+              941
+            ],
+            "source_bbox": {
+              "x": 6,
+              "y": 8,
+              "w": 302,
+              "h": 298
+            },
+            "final_bbox": {
+              "x": 61,
+              "y": 48,
+              "w": 105,
+              "h": 133
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -14,
+              -27
+            ],
+            "scale": 0.5993377483443708,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "crossbow__walk/back/frame_01_base.png",
-            "team_mask": "crossbow__walk/back/frame_01_teammask.png"
+            "team_mask": "crossbow__walk/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/back_contact_sheet.png",
+            "source_slot": 9,
+            "source_crop_box": [
+              5,
+              627,
+              319,
+              941
+            ],
+            "source_bbox": {
+              "x": 6,
+              "y": 8,
+              "w": 302,
+              "h": 298
+            },
+            "final_bbox": {
+              "x": 61,
+              "y": 48,
+              "w": 105,
+              "h": 133
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -14,
+              -27
+            ],
+            "scale": 0.5993377483443708,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ]
       }
@@ -264,25 +1398,151 @@
       "loop": true,
       "hold_last": false,
       "description": "Crossbows: aim; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts",
+      "family": "crossbow__aim",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "crossbow__aim/front/frame_00_base.png",
-            "team_mask": "crossbow__aim/front/frame_00_teammask.png"
+            "team_mask": "crossbow__aim/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/front_contact_sheet.png",
+            "source_slot": 10,
+            "source_crop_box": [
+              314,
+              626,
+              628,
+              940
+            ],
+            "source_bbox": {
+              "x": 7,
+              "y": 6,
+              "w": 301,
+              "h": 303
+            },
+            "final_bbox": {
+              "x": 76,
+              "y": 54,
+              "w": 105,
+              "h": 124
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              -30
+            ],
+            "scale": 0.6013289036544851,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "crossbow__aim/front/frame_01_base.png",
-            "team_mask": "crossbow__aim/front/frame_01_teammask.png"
+            "team_mask": "crossbow__aim/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/front_contact_sheet.png",
+            "source_slot": 10,
+            "source_crop_box": [
+              314,
+              626,
+              628,
+              940
+            ],
+            "source_bbox": {
+              "x": 7,
+              "y": 6,
+              "w": 301,
+              "h": 303
+            },
+            "final_bbox": {
+              "x": 76,
+              "y": 54,
+              "w": 105,
+              "h": 124
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              -30
+            ],
+            "scale": 0.6013289036544851,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ],
         "back": [
           {
             "base": "crossbow__aim/back/frame_00_base.png",
-            "team_mask": "crossbow__aim/back/frame_00_teammask.png"
+            "team_mask": "crossbow__aim/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/back_contact_sheet.png",
+            "source_slot": 10,
+            "source_crop_box": [
+              314,
+              627,
+              628,
+              941
+            ],
+            "source_bbox": {
+              "x": 7,
+              "y": 8,
+              "w": 300,
+              "h": 298
+            },
+            "final_bbox": {
+              "x": 59,
+              "y": 51,
+              "w": 108,
+              "h": 132
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -15,
+              -25
+            ],
+            "scale": 0.6033333333333334,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "crossbow__aim/back/frame_01_base.png",
-            "team_mask": "crossbow__aim/back/frame_01_teammask.png"
+            "team_mask": "crossbow__aim/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/back_contact_sheet.png",
+            "source_slot": 10,
+            "source_crop_box": [
+              314,
+              627,
+              628,
+              941
+            ],
+            "source_bbox": {
+              "x": 7,
+              "y": 8,
+              "w": 300,
+              "h": 298
+            },
+            "final_bbox": {
+              "x": 59,
+              "y": 51,
+              "w": 108,
+              "h": 132
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -15,
+              -25
+            ],
+            "scale": 0.6033333333333334,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ]
       }
@@ -292,25 +1552,151 @@
       "loop": true,
       "hold_last": false,
       "description": "Crossbows: release; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts",
+      "family": "crossbow__release",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "crossbow__release/front/frame_00_base.png",
-            "team_mask": "crossbow__release/front/frame_00_teammask.png"
+            "team_mask": "crossbow__release/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/front_contact_sheet.png",
+            "source_slot": 11,
+            "source_crop_box": [
+              625,
+              626,
+              939,
+              940
+            ],
+            "source_bbox": {
+              "x": 7,
+              "y": 6,
+              "w": 300,
+              "h": 301
+            },
+            "final_bbox": {
+              "x": 63,
+              "y": 53,
+              "w": 126,
+              "h": 126
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -2,
+              -29
+            ],
+            "scale": 0.6033333333333334,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "crossbow__release/front/frame_01_base.png",
-            "team_mask": "crossbow__release/front/frame_01_teammask.png"
+            "team_mask": "crossbow__release/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/front_contact_sheet.png",
+            "source_slot": 11,
+            "source_crop_box": [
+              625,
+              626,
+              939,
+              940
+            ],
+            "source_bbox": {
+              "x": 7,
+              "y": 6,
+              "w": 300,
+              "h": 301
+            },
+            "final_bbox": {
+              "x": 63,
+              "y": 53,
+              "w": 126,
+              "h": 126
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -2,
+              -29
+            ],
+            "scale": 0.6033333333333334,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ],
         "back": [
           {
             "base": "crossbow__release/back/frame_00_base.png",
-            "team_mask": "crossbow__release/back/frame_00_teammask.png"
+            "team_mask": "crossbow__release/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/back_contact_sheet.png",
+            "source_slot": 11,
+            "source_crop_box": [
+              624,
+              627,
+              938,
+              941
+            ],
+            "source_bbox": {
+              "x": 8,
+              "y": 8,
+              "w": 299,
+              "h": 298
+            },
+            "final_bbox": {
+              "x": 66,
+              "y": 49,
+              "w": 116,
+              "h": 132
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -4,
+              -27
+            ],
+            "scale": 0.6053511705685619,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "crossbow__release/back/frame_01_base.png",
-            "team_mask": "crossbow__release/back/frame_01_teammask.png"
+            "team_mask": "crossbow__release/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/back_contact_sheet.png",
+            "source_slot": 11,
+            "source_crop_box": [
+              624,
+              627,
+              938,
+              941
+            ],
+            "source_bbox": {
+              "x": 8,
+              "y": 8,
+              "w": 299,
+              "h": 298
+            },
+            "final_bbox": {
+              "x": 66,
+              "y": 49,
+              "w": 116,
+              "h": 132
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -4,
+              -27
+            ],
+            "scale": 0.6053511705685619,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ]
       }
@@ -320,25 +1706,151 @@
       "loop": true,
       "hold_last": false,
       "description": "Crossbows: reload; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts",
+      "family": "crossbow__reload",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "crossbow__reload/front/frame_00_base.png",
-            "team_mask": "crossbow__reload/front/frame_00_teammask.png"
+            "team_mask": "crossbow__reload/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/front_contact_sheet.png",
+            "source_slot": 12,
+            "source_crop_box": [
+              936,
+              626,
+              1250,
+              940
+            ],
+            "source_bbox": {
+              "x": 6,
+              "y": 6,
+              "w": 301,
+              "h": 301
+            },
+            "final_bbox": {
+              "x": 75,
+              "y": 49,
+              "w": 96,
+              "h": 129
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -5,
+              -30
+            ],
+            "scale": 0.6013289036544851,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "crossbow__reload/front/frame_01_base.png",
-            "team_mask": "crossbow__reload/front/frame_01_teammask.png"
+            "team_mask": "crossbow__reload/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/front_contact_sheet.png",
+            "source_slot": 12,
+            "source_crop_box": [
+              936,
+              626,
+              1250,
+              940
+            ],
+            "source_bbox": {
+              "x": 6,
+              "y": 6,
+              "w": 301,
+              "h": 301
+            },
+            "final_bbox": {
+              "x": 75,
+              "y": 49,
+              "w": 96,
+              "h": 129
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -5,
+              -30
+            ],
+            "scale": 0.6013289036544851,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ],
         "back": [
           {
             "base": "crossbow__reload/back/frame_00_base.png",
-            "team_mask": "crossbow__reload/back/frame_00_teammask.png"
+            "team_mask": "crossbow__reload/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/back_contact_sheet.png",
+            "source_slot": 12,
+            "source_crop_box": [
+              934,
+              627,
+              1248,
+              941
+            ],
+            "source_bbox": {
+              "x": 7,
+              "y": 8,
+              "w": 301,
+              "h": 298
+            },
+            "final_bbox": {
+              "x": 69,
+              "y": 51,
+              "w": 99,
+              "h": 130
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -10,
+              -27
+            ],
+            "scale": 0.6013289036544851,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "crossbow__reload/back/frame_01_base.png",
-            "team_mask": "crossbow__reload/back/frame_01_teammask.png"
+            "team_mask": "crossbow__reload/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/back_contact_sheet.png",
+            "source_slot": 12,
+            "source_crop_box": [
+              934,
+              627,
+              1248,
+              941
+            ],
+            "source_bbox": {
+              "x": 7,
+              "y": 8,
+              "w": 301,
+              "h": 298
+            },
+            "final_bbox": {
+              "x": 69,
+              "y": 51,
+              "w": 99,
+              "h": 130
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -10,
+              -27
+            ],
+            "scale": 0.6013289036544851,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ]
       }
@@ -348,25 +1860,151 @@
       "loop": true,
       "hold_last": false,
       "description": "Crossbows: dead; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts",
+      "family": "crossbow__dead",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "crossbow__dead/front/frame_00_base.png",
-            "team_mask": "crossbow__dead/front/frame_00_teammask.png"
+            "team_mask": "crossbow__dead/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/front_contact_sheet.png",
+            "source_slot": 13,
+            "source_crop_box": [
+              5,
+              936,
+              319,
+              1250
+            ],
+            "source_bbox": {
+              "x": 6,
+              "y": 7,
+              "w": 302,
+              "h": 300
+            },
+            "final_bbox": {
+              "x": 53,
+              "y": 105,
+              "w": 144,
+              "h": 67
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -3,
+              -36
+            ],
+            "scale": 0.5993377483443708,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "crossbow__dead/front/frame_01_base.png",
-            "team_mask": "crossbow__dead/front/frame_01_teammask.png"
+            "team_mask": "crossbow__dead/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/front_contact_sheet.png",
+            "source_slot": 13,
+            "source_crop_box": [
+              5,
+              936,
+              319,
+              1250
+            ],
+            "source_bbox": {
+              "x": 6,
+              "y": 7,
+              "w": 302,
+              "h": 300
+            },
+            "final_bbox": {
+              "x": 53,
+              "y": 105,
+              "w": 144,
+              "h": 67
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -3,
+              -36
+            ],
+            "scale": 0.5993377483443708,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ],
         "back": [
           {
             "base": "crossbow__dead/back/frame_00_base.png",
-            "team_mask": "crossbow__dead/back/frame_00_teammask.png"
+            "team_mask": "crossbow__dead/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/back_contact_sheet.png",
+            "source_slot": 13,
+            "source_crop_box": [
+              5,
+              937,
+              319,
+              1251
+            ],
+            "source_bbox": {
+              "x": 6,
+              "y": 6,
+              "w": 302,
+              "h": 302
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 28,
+              "w": 161,
+              "h": 144
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -10,
+              -36
+            ],
+            "scale": 0.5993377483443708,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "crossbow__dead/back/frame_01_base.png",
-            "team_mask": "crossbow__dead/back/frame_01_teammask.png"
+            "team_mask": "crossbow__dead/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/back_contact_sheet.png",
+            "source_slot": 13,
+            "source_crop_box": [
+              5,
+              937,
+              319,
+              1251
+            ],
+            "source_bbox": {
+              "x": 6,
+              "y": 6,
+              "w": 302,
+              "h": 302
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 28,
+              "w": 161,
+              "h": 144
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -10,
+              -36
+            ],
+            "scale": 0.5993377483443708,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ]
       }
@@ -376,85 +2014,200 @@
       "loop": true,
       "hold_last": false,
       "description": "Crossbows: decayed skeleton with bow and quiver; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts",
+      "family": "crossbow__decayed_skeleton_with_bow_and_quiver",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "crossbow__decayed_skeleton_with_bow_and_quiver/front/frame_00_base.png",
-            "team_mask": "crossbow__decayed_skeleton_with_bow_and_quiver/front/frame_00_teammask.png"
+            "team_mask": "crossbow__decayed_skeleton_with_bow_and_quiver/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/front_contact_sheet.png",
+            "source_slot": 14,
+            "source_crop_box": [
+              314,
+              936,
+              628,
+              1250
+            ],
+            "source_bbox": {
+              "x": 7,
+              "y": 7,
+              "w": 301,
+              "h": 300
+            },
+            "final_bbox": {
+              "x": 63,
+              "y": 52,
+              "w": 124,
+              "h": 122
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -3,
+              -34
+            ],
+            "scale": 0.6013289036544851,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "crossbow__decayed_skeleton_with_bow_and_quiver/front/frame_01_base.png",
-            "team_mask": "crossbow__decayed_skeleton_with_bow_and_quiver/front/frame_01_teammask.png"
+            "team_mask": "crossbow__decayed_skeleton_with_bow_and_quiver/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/front_contact_sheet.png",
+            "source_slot": 14,
+            "source_crop_box": [
+              314,
+              936,
+              628,
+              1250
+            ],
+            "source_bbox": {
+              "x": 7,
+              "y": 7,
+              "w": 301,
+              "h": 300
+            },
+            "final_bbox": {
+              "x": 63,
+              "y": 52,
+              "w": 124,
+              "h": 122
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -3,
+              -34
+            ],
+            "scale": 0.6013289036544851,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ],
         "back": [
           {
             "base": "crossbow__decayed_skeleton_with_bow_and_quiver/back/frame_00_base.png",
-            "team_mask": "crossbow__decayed_skeleton_with_bow_and_quiver/back/frame_00_teammask.png"
+            "team_mask": "crossbow__decayed_skeleton_with_bow_and_quiver/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/back_contact_sheet.png",
+            "source_slot": 14,
+            "source_crop_box": [
+              314,
+              937,
+              628,
+              1251
+            ],
+            "source_bbox": {
+              "x": 7,
+              "y": 6,
+              "w": 300,
+              "h": 302
+            },
+            "final_bbox": {
+              "x": 43,
+              "y": 27,
+              "w": 176,
+              "h": 151
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              3,
+              -30
+            ],
+            "scale": 0.6033333333333334,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "crossbow__decayed_skeleton_with_bow_and_quiver/back/frame_01_base.png",
-            "team_mask": "crossbow__decayed_skeleton_with_bow_and_quiver/back/frame_01_teammask.png"
-          }
-        ]
-      }
-    },
-    "idle": {
-      "frame_ms": 250,
-      "loop": true,
-      "hold_last": false,
-      "description": "Runtime alias for self_bow__idle",
-      "directions": {
-        "front": [
-          {
-            "base": "idle/front/frame_00_base.png",
-            "team_mask": "idle/front/frame_00_teammask.png"
-          },
-          {
-            "base": "idle/front/frame_01_base.png",
-            "team_mask": "idle/front/frame_01_teammask.png"
-          }
-        ],
-        "back": [
-          {
-            "base": "idle/back/frame_00_base.png",
-            "team_mask": "idle/back/frame_00_teammask.png"
-          },
-          {
-            "base": "idle/back/frame_01_base.png",
-            "team_mask": "idle/back/frame_01_teammask.png"
-          }
-        ]
-      }
-    },
-    "death": {
-      "frame_ms": 250,
-      "loop": false,
-      "hold_last": true,
-      "description": "Runtime alias for self_bow__dead",
-      "directions": {
-        "front": [
-          {
-            "base": "death/front/frame_00_base.png",
-            "team_mask": "death/front/frame_00_teammask.png"
-          },
-          {
-            "base": "death/front/frame_01_base.png",
-            "team_mask": "death/front/frame_01_teammask.png"
-          }
-        ],
-        "back": [
-          {
-            "base": "death/back/frame_00_base.png",
-            "team_mask": "death/back/frame_00_teammask.png"
-          },
-          {
-            "base": "death/back/frame_01_base.png",
-            "team_mask": "death/back/frame_01_teammask.png"
+            "team_mask": "crossbow__decayed_skeleton_with_bow_and_quiver/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/archer/sheets/back_contact_sheet.png",
+            "source_slot": 14,
+            "source_crop_box": [
+              314,
+              937,
+              628,
+              1251
+            ],
+            "source_bbox": {
+              "x": 7,
+              "y": 6,
+              "w": 300,
+              "h": 302
+            },
+            "final_bbox": {
+              "x": 43,
+              "y": 27,
+              "w": 176,
+              "h": 151
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              3,
+              -30
+            ],
+            "scale": 0.6033333333333334,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ]
       }
     }
   },
-  "notes": "Generated archer tileset from image-gen contact sheets. Basic bow variants and crossbow variants have front/back 48x48 base/team-mask frames; frame_01 duplicates frame_00 pending hand-authored animation polish. Runtime idle/death aliases added from closest generated action variants; opaque magenta cleanup applied where needed."
+  "notes": "Generated archer tileset from image-gen contact sheets. Basic bow variants and crossbow variants have front/back 48x48 base/team-mask frames; frame_01 duplicates frame_00 pending hand-authored animation polish. Runtime idle/death aliases added from closest generated action variants; opaque magenta cleanup applied where needed.",
+  "asset_type": "unit",
+  "source_canvas": {
+    "profile": "sprite_overlay_source",
+    "width_px": 256,
+    "height_px": 256,
+    "target_kind": "pre_crop_generation_slot",
+    "min_longest_side_px": 128,
+    "unit": "px",
+    "source": "realm range-based source-quality contract",
+    "range": {
+      "minimum_longest_side_px_after_crop": 128,
+      "pre_crop_target_px": 256,
+      "maximum_px": null
+    },
+    "visual_envelope": {
+      "w": 1,
+      "h": 1
+    },
+    "pre_crop_target_px_per_visual_tile": 256,
+    "runtime_min_longest_side_px_per_visual_tile": 128,
+    "scope": "per generated actor sheet cell or standalone pre-crop source"
+  },
+  "placement": {
+    "projection": "upright_world",
+    "anchor_kind": "feet",
+    "source_size": [
+      256,
+      256
+    ],
+    "anchor": [
+      128,
+      208
+    ],
+    "scale_policy": "entity_tile_zoom_1_55",
+    "footprint": [
+      1,
+      1
+    ],
+    "visual_envelope": [
+      1,
+      1
+    ],
+    "depth": "entity"
+  },
+  "source_workflow": "contact-sheet-resolution-replay"
 }

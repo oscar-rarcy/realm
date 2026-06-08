@@ -11,6 +11,9 @@ struct TileRenderInfo {
     int x = 0;
     int y = 0;
     Terrain terrain = T_GRASS;
+    int resources = 0;
+    Biome biome = B_TEMPERATE;
+    int wear = 0;
     VisualTileParts visualParts;
     bool gateOpen = false;
     bool gateLocked = false;

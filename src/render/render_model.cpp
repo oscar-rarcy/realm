@@ -1,6 +1,7 @@
 #include "render/render_model.h"
 #include "realm.h"
 
+#include <algorithm>
 #include <cmath>
 
 static bool isAnimalEntityType(EntityType type) {
@@ -50,6 +51,9 @@ RenderModel buildRenderModel(const Game& game, const std::vector<ActionMarker>& 
         info.x = x;
         info.y = y;
         info.terrain = tile.terrain;
+        info.resources = tile.resources;
+        info.biome = tile.biome;
+        info.wear = tile.wear;
         if (tile.terrain == T_CASTLE_GATE) {
             tileGateState(game, x, y, info.gateOpen, info.gateLocked);
             info.visualParts = visualPartsForTerrain(tile.terrain, tile.biome, tile.resources, tile.wear,
@@ -67,8 +71,8 @@ RenderModel buildRenderModel(const Game& game, const std::vector<ActionMarker>& 
     for (const Entity& entity : game.entities) {
         if (!entity.alive || entity.state == S_GARRISONED) continue;
         const EntityStats& stats = STATS[entity.type];
-        int footprintW = isBuilding(entity.type) ? stats.sizeW : 1;
-        int footprintH = isBuilding(entity.type) ? stats.sizeH : 1;
+        int footprintW = std::max(1, stats.sizeW);
+        int footprintH = std::max(1, stats.sizeH);
         if (entity.x + footprintW <= x0 || entity.y + footprintH <= y0 || entity.x >= x1 || entity.y >= y1) continue;
         EntityRenderInfo info;
         info.id = entity.id;

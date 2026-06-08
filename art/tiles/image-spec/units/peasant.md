@@ -78,8 +78,10 @@ Generate one Realm sprite reference sheet per direction for **Peasant**.
 
 ## Output Resolution
 
-- Final accepted standalone source canvas: 512 by 512 px.
-- Use this resolution from the generated JSON spec for every accepted standalone sprite frame; contact-sheet slots may be larger, but each slot must be cleanly crop/downscale-safe to 512 by 512 px.
+- Generation slot target before crop: about 256 by 256 px per accepted sprite frame.
+- Contact sheets may be larger than this overall; divide the sheet by its grid to judge the approximate slot size.
+- Slightly larger slots are fine. Do not downscale accepted art into tiny draw-size runtime proxies during promotion.
+- Cropped runtime source floor: longest side at least 128 px after crop.
 
 ## Image Output Contract
 
@@ -100,35 +102,60 @@ Generate one Realm sprite reference sheet per direction for **Peasant**.
 
 ## States To Generate
 
-Generate **one frame for each state**. There are 17 state(s). Each image may contain at most **16 states** in a **4 by 4** grid.
+Generate **one sprite frame for each listed slot**. There are 34 frame slot(s). Each image may contain at most **16 frame slots** in a **4 by 4** grid.
 
-### Sheet 1 of 2
-
-Use a **4 by 4** grid for this sheet.
-
-- row 1, column 1: `idle` - idle
-- row 1, column 2: `walk` - walk
-- row 1, column 3: `chop_wood` - chop_wood
-- row 1, column 4: `mine_gold` - mine_gold
-- row 2, column 1: `gather_berries` - gather_berries
-- row 2, column 2: `hoe_soil` - hoe_soil
-- row 2, column 3: `gather_wheat` - gather_wheat
-- row 2, column 4: `build` - build
-- row 3, column 1: `carry_wood` - carry_wood
-- row 3, column 2: `carry_gold` - carry_gold
-- row 3, column 3: `carry_berries` - carry_berries
-- row 3, column 4: `carry_wheat` - carry_wheat
-- row 4, column 1: `gather_meat` - gather_meat
-- row 4, column 2: `carry_meat` - carry_meat
-- row 4, column 3: `club_attack` - club_attack
-- row 4, column 4: `dead` - dead villager body lying on the ground with clothing and simple tools still intact
-
-### Sheet 2 of 2
+### Sheet 1 of 3
 
 Use a **4 by 4** grid for this sheet.
+Slot target for this sheet: about **256 by 256 px** per cell before crop.
+
+- row 1, column 1: `idle` frame 00 - relaxed idle, arms at sides, both feet planted
+- row 1, column 2: `idle` frame 01 - long-idle hold pose, arms crossed, both feet planted
+- row 1, column 3: `walk` frame 00 - walking gait with the front/near leg forward and the rear/far leg back
+- row 1, column 4: `walk` frame 01 - walking gait with the rear/far leg forward and the front/near leg back
+- row 2, column 1: `chop_wood` frame 00 - axe at the bottom/contact part of the chop, axe head low and forward
+- row 2, column 2: `chop_wood` frame 01 - axe raised high at the top of the swing
+- row 2, column 3: `mine_gold` frame 00 - pickaxe at the bottom/contact part of the mining swing, pick head low and forward
+- row 2, column 4: `mine_gold` frame 01 - pickaxe raised high at the top of the swing
+- row 3, column 1: `gather_berries` frame 00 - one hand reaching out toward berries beside a basket
+- row 3, column 2: `gather_berries` frame 01 - hand back in the basket with berries
+- row 3, column 3: `hoe_soil` frame 00 - arms outstretched with the hoe extended away from the body
+- row 3, column 4: `hoe_soil` frame 01 - arms pulled in after the hoe stroke while still holding the same farming hoe
+- row 4, column 1: `gather_wheat` frame 00 - using a sickle to cut wheat
+- row 4, column 2: `gather_wheat` frame 01 - still holding the sickle while the free hand reaches for wheat
+- row 4, column 3: `build` frame 00 - kneeling builder with hammer raised up
+- row 4, column 4: `build` frame 01 - kneeling builder with hammer down
+
+### Sheet 2 of 3
+
+Use a **4 by 4** grid for this sheet.
+Slot target for this sheet: about **256 by 256 px** per cell before crop.
+
+- row 1, column 1: `carry_wood` frame 00 - carrying bundled logs while walking, front/near leg forward
+- row 1, column 2: `carry_wood` frame 01 - carrying bundled logs while walking, rear/far leg forward
+- row 1, column 3: `carry_gold` frame 00 - carrying stones and gold ore while walking, front/near leg forward
+- row 1, column 4: `carry_gold` frame 01 - carrying stones and gold ore while walking, rear/far leg forward
+- row 2, column 1: `carry_berries` frame 00 - carrying berries while walking, front/near leg forward
+- row 2, column 2: `carry_berries` frame 01 - carrying berries while walking, rear/far leg forward
+- row 2, column 3: `carry_wheat` frame 00 - carrying wheat while walking, front/near leg forward
+- row 2, column 4: `carry_wheat` frame 01 - carrying wheat while walking, rear/far leg forward
+- row 3, column 1: `gather_meat` frame 00 - holding a knife while actively cutting or reaching toward meat
+- row 3, column 2: `gather_meat` frame 01 - still holding the knife while taking meat with the free hand
+- row 3, column 3: `carry_meat` frame 00 - carrying meat while walking, front/near leg forward
+- row 3, column 4: `carry_meat` frame 01 - carrying meat while walking, rear/far leg forward
+- row 4, column 1: `club_attack` frame 00 - club at the top of the attack swing, held overhead but still inside the tile
+- row 4, column 2: `club_attack` frame 01 - club at the bottom/contact part of the attack swing, still fully inside the tile
+- row 4, column 3: `dead` frame 00 - dead villager body lying on the ground with clothing and simple tools still intact
+- row 4, column 4: `dead` frame 01 - dead villager body lying on the ground with clothing and simple tools still intact
+
+### Sheet 3 of 3
+
+Use a **2 by 1** grid for this sheet.
+Slot target for this sheet: about **256 by 256 px** per cell before crop.
 Leave unused cells empty.
 
-- row 1, column 1: `decayed` - human skeleton remains, with small clothing and tool scraps still readable
+- row 1, column 1: `decayed` frame 00 - human skeleton remains, with small clothing and tool scraps still readable
+- row 1, column 2: `decayed` frame 01 - human skeleton remains, with small clothing and tool scraps still readable
 
 ## Production Follow-Up
 
@@ -141,25 +168,43 @@ Leave unused cells empty.
 
 ## Prompt
 
-Generate sprites for my Realm Peasant. The footprint is 1 by 1 tile(s). Team colour is required and the recommended preview player colour is blue (#00AFFF). Valid directions are front, back. Produce one sheet at a time for the requested direction, using the same state grid for each direction. Create one frame for each of the 17 listed states. Since there are more than 16 states, split them across multiple images, each image using a 4 by 4 grid. Order states left to right and top to bottom within each sheet. Keep the subject consistent across every slot. Final accepted standalone frames use the generated spec resolution: 512 by 512 px. Use a flat pure #ff00ff magenta sheet background and clear gutters between cells. Use clean readable tiny paper-cutout sprite proportions, stable anchor, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork. If unit reference images are supplied, use them only for equipment and silhouette cues, then redraw into stylized Realm sprite art; do not copy their source style or pixels.
+Generate sprites for my Realm Peasant. The footprint is 1 by 1 tile(s). Team colour is required and the recommended preview player colour is blue (#00AFFF). Valid directions are front, back. Produce one sheet at a time for the requested direction, using the same state grid for each direction. Create one sprite frame for each of the 34 listed frame slots. Since there are more than 16 frame slots, split them across multiple images, each image using a 4 by 4 grid. Order slots left to right and top to bottom within each sheet. Keep the subject consistent across every slot. Aim for about 256 by 256 px per sheet slot before crop; larger slots are fine if the sheet grid is clean. Keep the accepted runtime crop's longest side at least 128 px. Use a flat pure #ff00ff magenta sheet background and clear gutters between cells. Use clean readable tiny paper-cutout sprite proportions, stable anchor, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork. If unit reference images are supplied, use them only for equipment and silhouette cues, then redraw into stylized Realm sprite art; do not copy their source style or pixels.
 
 Slot order:
-- Sheet 1 of 2: 4 by 4 grid
-  - row 1, column 1: idle
-  - row 1, column 2: walk
-  - row 1, column 3: chop_wood
-  - row 1, column 4: mine_gold
-  - row 2, column 1: gather_berries
-  - row 2, column 2: hoe_soil
-  - row 2, column 3: gather_wheat
-  - row 2, column 4: build
-  - row 3, column 1: carry_wood
-  - row 3, column 2: carry_gold
-  - row 3, column 3: carry_berries
-  - row 3, column 4: carry_wheat
-  - row 4, column 1: gather_meat
-  - row 4, column 2: carry_meat
-  - row 4, column 3: club_attack
-  - row 4, column 4: dead villager body lying on the ground with clothing and simple tools still intact
-- Sheet 2 of 2: 4 by 4 grid
-  - row 1, column 1: human skeleton remains, with small clothing and tool scraps still readable
+- Sheet 1 of 3: 4 by 4 grid
+  - row 1, column 1: `idle` frame 00 - relaxed idle, arms at sides, both feet planted
+  - row 1, column 2: `idle` frame 01 - long-idle hold pose, arms crossed, both feet planted
+  - row 1, column 3: `walk` frame 00 - walking gait with the front/near leg forward and the rear/far leg back
+  - row 1, column 4: `walk` frame 01 - walking gait with the rear/far leg forward and the front/near leg back
+  - row 2, column 1: `chop_wood` frame 00 - axe at the bottom/contact part of the chop, axe head low and forward
+  - row 2, column 2: `chop_wood` frame 01 - axe raised high at the top of the swing
+  - row 2, column 3: `mine_gold` frame 00 - pickaxe at the bottom/contact part of the mining swing, pick head low and forward
+  - row 2, column 4: `mine_gold` frame 01 - pickaxe raised high at the top of the swing
+  - row 3, column 1: `gather_berries` frame 00 - one hand reaching out toward berries beside a basket
+  - row 3, column 2: `gather_berries` frame 01 - hand back in the basket with berries
+  - row 3, column 3: `hoe_soil` frame 00 - arms outstretched with the hoe extended away from the body
+  - row 3, column 4: `hoe_soil` frame 01 - arms pulled in after the hoe stroke while still holding the same farming hoe
+  - row 4, column 1: `gather_wheat` frame 00 - using a sickle to cut wheat
+  - row 4, column 2: `gather_wheat` frame 01 - still holding the sickle while the free hand reaches for wheat
+  - row 4, column 3: `build` frame 00 - kneeling builder with hammer raised up
+  - row 4, column 4: `build` frame 01 - kneeling builder with hammer down
+- Sheet 2 of 3: 4 by 4 grid
+  - row 1, column 1: `carry_wood` frame 00 - carrying bundled logs while walking, front/near leg forward
+  - row 1, column 2: `carry_wood` frame 01 - carrying bundled logs while walking, rear/far leg forward
+  - row 1, column 3: `carry_gold` frame 00 - carrying stones and gold ore while walking, front/near leg forward
+  - row 1, column 4: `carry_gold` frame 01 - carrying stones and gold ore while walking, rear/far leg forward
+  - row 2, column 1: `carry_berries` frame 00 - carrying berries while walking, front/near leg forward
+  - row 2, column 2: `carry_berries` frame 01 - carrying berries while walking, rear/far leg forward
+  - row 2, column 3: `carry_wheat` frame 00 - carrying wheat while walking, front/near leg forward
+  - row 2, column 4: `carry_wheat` frame 01 - carrying wheat while walking, rear/far leg forward
+  - row 3, column 1: `gather_meat` frame 00 - holding a knife while actively cutting or reaching toward meat
+  - row 3, column 2: `gather_meat` frame 01 - still holding the knife while taking meat with the free hand
+  - row 3, column 3: `carry_meat` frame 00 - carrying meat while walking, front/near leg forward
+  - row 3, column 4: `carry_meat` frame 01 - carrying meat while walking, rear/far leg forward
+  - row 4, column 1: `club_attack` frame 00 - club at the top of the attack swing, held overhead but still inside the tile
+  - row 4, column 2: `club_attack` frame 01 - club at the bottom/contact part of the attack swing, still fully inside the tile
+  - row 4, column 3: `dead` frame 00 - dead villager body lying on the ground with clothing and simple tools still intact
+  - row 4, column 4: `dead` frame 01 - dead villager body lying on the ground with clothing and simple tools still intact
+- Sheet 3 of 3: 2 by 1 grid
+  - row 1, column 1: `decayed` frame 00 - human skeleton remains, with small clothing and tool scraps still readable
+  - row 1, column 2: `decayed` frame 01 - human skeleton remains, with small clothing and tool scraps still readable

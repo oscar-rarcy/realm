@@ -85,8 +85,10 @@ Generate one Realm sprite reference sheet per direction for **Catapult**.
 
 ## Output Resolution
 
-- Final accepted standalone source canvas: 512 by 512 px.
-- Use this resolution from the generated JSON spec for every accepted standalone sprite frame; contact-sheet slots may be larger, but each slot must be cleanly crop/downscale-safe to 512 by 512 px.
+- Generation slot target before crop: about 256 by 256 px per accepted sprite frame.
+- Contact sheets may be larger than this overall; divide the sheet by its grid to judge the approximate slot size.
+- Slightly larger slots are fine. Do not downscale accepted art into tiny draw-size runtime proxies during promotion.
+- Cropped runtime source floor: longest side at least 128 px after crop.
 
 ## Image Output Contract
 
@@ -110,20 +112,29 @@ Generate one Realm sprite reference sheet per direction for **Catapult**.
 
 ## States To Generate
 
-Generate **one frame for each state**. There are 8 state(s). Each image may contain at most **16 states** in a **4 by 4** grid.
+Generate **one sprite frame for each listed slot**. There are 16 frame slot(s). Each image may contain at most **16 frame slots** in a **4 by 4** grid.
 
 ### Sheet
 
-Use a **3 by 3** grid for this sheet.
+Use a **4 by 4** grid for this sheet.
+Slot target for this sheet: about **256 by 256 px** per cell before crop.
 
-- row 1, column 1: `idle` - idle catapult with one visible human operator at the controls; no loaded boulder unless the state says load
-- row 1, column 2: `roll` - operator walking beside the handles while the wheeled catapult rolls; no airborne ammunition
-- row 1, column 3: `load` - operator loading the boulder into the sling; ammunition visible because it has not been released
-- row 2, column 1: `fire` - operator has just released the throwing arm; sling empty and no airborne boulder visible
-- row 2, column 2: `recoil` - operator bracing after firing; arm recoiling empty, no airborne boulder visible
-- row 2, column 3: `damaged_alert` - damaged/alert
-- row 3, column 1: `dead` - destroyed wreck, broken but still recognizable
-- row 3, column 2: `decayed` - weathered wreckage, with durable wood, metal, wheels, hull, or siege parts still readable
+- row 1, column 1: `idle` frame 00 - idle catapult with one visible human operator at the controls; no loaded boulder unless the state says load
+- row 1, column 2: `idle` frame 01 - idle catapult with one visible human operator at the controls; no loaded boulder unless the state says load
+- row 1, column 3: `roll` frame 00 - operator walking beside the handles while the wheeled catapult rolls; no airborne ammunition
+- row 1, column 4: `roll` frame 01 - operator walking beside the handles while the wheeled catapult rolls; no airborne ammunition
+- row 2, column 1: `load` frame 00 - operator loading the boulder into the sling; ammunition visible because it has not been released
+- row 2, column 2: `load` frame 01 - operator loading the boulder into the sling; ammunition visible because it has not been released
+- row 2, column 3: `fire` frame 00 - operator has just released the throwing arm; sling empty and no airborne boulder visible
+- row 2, column 4: `fire` frame 01 - operator has just released the throwing arm; sling empty and no airborne boulder visible
+- row 3, column 1: `recoil` frame 00 - operator bracing after firing; arm recoiling empty, no airborne boulder visible
+- row 3, column 2: `recoil` frame 01 - operator bracing after firing; arm recoiling empty, no airborne boulder visible
+- row 3, column 3: `damaged_alert` frame 00 - damaged/alert
+- row 3, column 4: `damaged_alert` frame 01 - damaged/alert
+- row 4, column 1: `dead` frame 00 - destroyed wreck, broken but still recognizable
+- row 4, column 2: `dead` frame 01 - destroyed wreck, broken but still recognizable
+- row 4, column 3: `decayed` frame 00 - weathered wreckage, with durable wood, metal, wheels, hull, or siege parts still readable
+- row 4, column 4: `decayed` frame 01 - weathered wreckage, with durable wood, metal, wheels, hull, or siege parts still readable
 
 ## Production Follow-Up
 
@@ -136,15 +147,23 @@ Use a **3 by 3** grid for this sheet.
 
 ## Prompt
 
-Generate sprites for my Realm Catapult. The footprint is 1 by 1 tile(s). Team colour is required and the recommended preview player colour is blue (#00AFFF). Valid directions are front, back. Produce one sheet at a time for the requested direction, using the same state grid for each direction. Create one frame for each of the 8 listed states. Order states left to right and top to bottom within each sheet. Keep the subject consistent across every slot. Final accepted standalone frames use the generated spec resolution: 512 by 512 px. Use a flat pure #ff00ff magenta sheet background and clear gutters between cells. Use clean readable tiny paper-cutout sprite proportions, stable anchor, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork. If unit reference images are supplied, use them only for equipment and silhouette cues, then redraw into stylized Realm sprite art; do not copy their source style or pixels. Use projectile reference files for released projectiles.
+Generate sprites for my Realm Catapult. The footprint is 1 by 1 tile(s). Team colour is required and the recommended preview player colour is blue (#00AFFF). Valid directions are front, back. Produce one sheet at a time for the requested direction, using the same state grid for each direction. Create one sprite frame for each of the 16 listed frame slots. Order slots left to right and top to bottom within each sheet. Keep the subject consistent across every slot. Aim for about 256 by 256 px per sheet slot before crop; larger slots are fine if the sheet grid is clean. Keep the accepted runtime crop's longest side at least 128 px. Use a flat pure #ff00ff magenta sheet background and clear gutters between cells. Use clean readable tiny paper-cutout sprite proportions, stable anchor, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork. If unit reference images are supplied, use them only for equipment and silhouette cues, then redraw into stylized Realm sprite art; do not copy their source style or pixels. Use projectile reference files for released projectiles.
 
 Slot order:
-- Grid: 3 by 3
-  - row 1, column 1: idle catapult with one visible human operator at the controls; no loaded boulder unless the state says load
-  - row 1, column 2: operator walking beside the handles while the wheeled catapult rolls; no airborne ammunition
-  - row 1, column 3: operator loading the boulder into the sling; ammunition visible because it has not been released
-  - row 2, column 1: operator has just released the throwing arm; sling empty and no airborne boulder visible
-  - row 2, column 2: operator bracing after firing; arm recoiling empty, no airborne boulder visible
-  - row 2, column 3: damaged/alert
-  - row 3, column 1: destroyed wreck, broken but still recognizable
-  - row 3, column 2: weathered wreckage, with durable wood, metal, wheels, hull, or siege parts still readable
+- Grid: 4 by 4
+  - row 1, column 1: `idle` frame 00 - idle catapult with one visible human operator at the controls; no loaded boulder unless the state says load
+  - row 1, column 2: `idle` frame 01 - idle catapult with one visible human operator at the controls; no loaded boulder unless the state says load
+  - row 1, column 3: `roll` frame 00 - operator walking beside the handles while the wheeled catapult rolls; no airborne ammunition
+  - row 1, column 4: `roll` frame 01 - operator walking beside the handles while the wheeled catapult rolls; no airborne ammunition
+  - row 2, column 1: `load` frame 00 - operator loading the boulder into the sling; ammunition visible because it has not been released
+  - row 2, column 2: `load` frame 01 - operator loading the boulder into the sling; ammunition visible because it has not been released
+  - row 2, column 3: `fire` frame 00 - operator has just released the throwing arm; sling empty and no airborne boulder visible
+  - row 2, column 4: `fire` frame 01 - operator has just released the throwing arm; sling empty and no airborne boulder visible
+  - row 3, column 1: `recoil` frame 00 - operator bracing after firing; arm recoiling empty, no airborne boulder visible
+  - row 3, column 2: `recoil` frame 01 - operator bracing after firing; arm recoiling empty, no airborne boulder visible
+  - row 3, column 3: `damaged_alert` frame 00 - damaged/alert
+  - row 3, column 4: `damaged_alert` frame 01 - damaged/alert
+  - row 4, column 1: `dead` frame 00 - destroyed wreck, broken but still recognizable
+  - row 4, column 2: `dead` frame 01 - destroyed wreck, broken but still recognizable
+  - row 4, column 3: `decayed` frame 00 - weathered wreckage, with durable wood, metal, wheels, hull, or siege parts still readable
+  - row 4, column 4: `decayed` frame 01 - weathered wreckage, with durable wood, metal, wheels, hull, or siege parts still readable

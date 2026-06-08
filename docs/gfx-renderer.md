@@ -226,14 +226,26 @@ zoomed-out ground tiles are area-resampled before projection, entity sprites can
 be cached at the actual draw size, and the renderer reuses those textures until
 the tileset cache is cleared.
 
-Runtime PNGs should remain high-resolution source images, so close zoom draws
-down from real source detail. Current generated specs use 1024 by 1024 px for
-grounds and 512 by 512 px for one-tile sprites, decals, projectiles, effects,
-and UI markers. Footprint sprites such as buildings scale from that same rule:
-512 px per footprint tile on the largest footprint axis, so a 3 by 3 building
-source is 1536 by 1536 px. Do not promote ordinary runtime art by shrinking it
-to 48 by 48 px first; that makes close zoom enlarge an already-lossy sprite
-while neighbouring ground tiles still draw from high-resolution sources.
+Runtime PNGs should remain source-quality images, so close zoom draws down from
+real source detail instead of enlarging tiny draw-size crops. The range policy is
+defined in `scripts/tileset_resolution_policy.py`:
+
+- Grounds: 512 px minimum, 1024 px preferred target.
+- Sprite-like generated sources target about 256 px per contact-sheet slot or
+  standalone pre-crop source. This covers units, animals, decals, projectiles,
+  effects, UI markers, and many feature sprites.
+- Buildings target about 256 px per footprint tile on the largest footprint
+  axis before crop, capped at 1536 px. A 2 by 2 House therefore has a 512 px
+  pre-crop target, while a 3 by 3 Town Hall has a 768 px pre-crop target.
+
+Generation size is not meant to force every sheet to one exact canvas. For
+example, a 4 by 4 actor contact sheet can be 1024 px, 1254 px, or another clean
+size if each slot has enough source detail. Runtime promotion may crop
+transparent margins, so cropped sprites are checked with a longest-side floor
+rather than an exact 256 by 256 canvas requirement. Do not promote ordinary
+runtime art by shrinking it to 32, 48, or another tiny draw-size PNG first; that
+makes close zoom enlarge an already-lossy sprite while neighbouring ground tiles
+still draw from source-quality images.
 
 Zoom-stop entity sprites are the exception for tiny AI-redrawn actor art. They
 are optional runtime overrides that live beside the normal frame:

@@ -13,6 +13,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from tileset_resolution_policy import png_dimensions, resolution_gate_failure, source_resolution_policy
+
 
 ROOT = Path(__file__).resolve().parents[1]
 IMAGE_JSON_ROOT = ROOT / "art" / "tiles" / "image-json"
@@ -88,6 +90,58 @@ def repo_path(path: str | Path | None) -> Path | None:
 
 def read_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def source_policy_for_item(item: WorkItem) -> dict[str, Any]:
+    spec_path = repo_path(item.spec_path)
+    if not spec_path or not spec_path.exists():
+        return {}
+    try:
+        spec = read_json(spec_path)
+    except (OSError, json.JSONDecodeError):
+        return {}
+    canvas = spec.get("art", {}).get("source_canvas")
+    if not isinstance(canvas, dict):
+        canvas = spec.get("source_canvas")
+    footprint = None
+    if isinstance(canvas, dict) and isinstance(canvas.get("footprint"), dict):
+        footprint = canvas["footprint"]
+    elif isinstance(spec.get("placement"), dict) and isinstance(spec["placement"].get("footprint"), dict):
+        footprint = spec["placement"]["footprint"]
+    policy = source_resolution_policy(item.group, footprint=footprint)
+    if not policy:
+        return {}
+    policy = dict(policy)
+    if isinstance(canvas, dict):
+        for key in (
+            "width_px",
+            "height_px",
+            "target_kind",
+            "min_width_px",
+            "min_height_px",
+            "min_longest_side_px",
+            "profile",
+            "range",
+        ):
+            if key in canvas:
+                policy[key] = canvas[key]
+    return policy
+
+
+def runtime_resolution_failures(item: WorkItem) -> list[str]:
+    policy = source_policy_for_item(item)
+    if not policy:
+        return []
+    failures: list[str] = []
+    for runtime_path in item.required_paths:
+        path = repo_path(runtime_path)
+        if not path or not path.exists() or path.suffix.lower() != ".png":
+            continue
+        width, height = png_dimensions(path)
+        failure = resolution_gate_failure(width, height, policy)
+        if failure:
+            failures.append(f"{runtime_path}: {failure}")
+    return failures
 
 
 def stable_hash(path: Path | None) -> str | None:
@@ -383,6 +437,11 @@ def classify_items(items: list[WorkItem], ledger: dict[str, dict[str, Any]]) -> 
             continue
         if item.status == "unsupported":
             continue
+        resolution_failures = runtime_resolution_failures(item)
+        if resolution_failures:
+            item.status = "needs_review"
+            item.reasons = resolution_failures
+            continue
         if not record:
             item.status = "needs_review"
             item.reasons = ["runtime files exist but no accepted production ledger record was found"]
@@ -605,6 +664,12 @@ def command_accept(args: argparse.Namespace) -> int:
     item = matches[0]
     if item.status in {"missing", "placeholder", "unsupported"} and not args.force:
         raise SystemExit(f"{item.work_id} is {item.status}; pass --force only after manual review if this is intentional")
+    resolution_failures = runtime_resolution_failures(item)
+    if resolution_failures and not args.force:
+        details = "\n".join(f"- {failure}" for failure in resolution_failures)
+        raise SystemExit(
+            f"{item.work_id} does not meet the runtime source-resolution policy; regenerate or pass --force only after an explicit exception:\n{details}"
+        )
     record = {
         "schema": "realm.tileset_production_ledger.v1",
         "work_id": item.work_id,

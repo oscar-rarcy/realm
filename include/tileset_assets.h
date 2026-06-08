@@ -65,6 +65,8 @@ struct TilesetPlacement {
     int anchorY = 0;
     int footprintWidth = 1;
     int footprintHeight = 1;
+    int visualEnvelopeWidth = 1;
+    int visualEnvelopeHeight = 1;
 };
 
 struct TilesetAssetFrame {
@@ -87,6 +89,8 @@ struct TilesetAssetFrame {
 
 std::string tilesetEntitySlug(EntityType type);
 TilesetAssetFrame tilesetLoadEntityFrame(SDL_Renderer* renderer, const TilesetAssetRequest& request);
+TilesetPlacement tilesetResolveEntityFramePlacement(EntityType type, const std::string& action,
+                                                    const std::string& direction, int frameIndex);
 bool tilesetEntityFrameExists(EntityType type, const std::string& action,
                               const std::string& direction, int frameIndex);
 TilesetAssetFrame tilesetLoadGroundTile(SDL_Renderer* renderer, GroundType ground);
@@ -107,5 +111,7 @@ TilesetAssetFrame tilesetLoadDecalTileScaled(SDL_Renderer* renderer, VisualDecal
 TilesetAssetFrame tilesetLoadProjectileTileScaled(SDL_Renderer* renderer, ProjectileType projectile,
                                                   int width, int height);
 TilesetAssetFrame tilesetLoadEffectUiTileScaled(SDL_Renderer* renderer, const std::string& assetId,
+                                                int width, int height);
+TilesetAssetFrame tilesetLoadScreenUiTileScaled(SDL_Renderer* renderer, const std::string& assetId,
                                                 int width, int height);
 void tilesetAssetsClear();

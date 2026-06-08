@@ -34,6 +34,6 @@ This prompt set treats seasons, weather, night, and depletion as visual states f
 
 ## Animals
 
-- Animals use the runtime `death` action with two frames: freshly dead readable carcass, then the same animal's clean depleted skeleton remains.
-- Do not create separate partly harvested or mostly harvested runtime actions unless the C++ animation contract adds them.
+- Animals use the runtime `death` action with four frames: freshly dead readable carcass, partly harvested carcass, mostly harvested carcass, then the same animal's clean depleted skeleton remains.
+- Do not create separate `dead`, `partly_harvested`, `mostly_harvested`, or `decayed_skeleton` runtime actions; these are frames of the single `death` action.
 - Equipment and durable objects should remain visible on military units and vehicles; animal carcasses should keep species silhouette readable.

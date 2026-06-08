@@ -114,6 +114,31 @@ std::string cursorTileSummary() {
     return trimPanelLine(ss.str());
 }
 
+static int entityFootprintWidth(const Entity& ent) {
+    return std::max(1, STATS[ent.type].sizeW);
+}
+
+static int entityFootprintHeight(const Entity& ent) {
+    return std::max(1, STATS[ent.type].sizeH);
+}
+
+static bool entityFootprintCoversTile(const Entity& ent, int x, int y) {
+    return x >= ent.x && y >= ent.y
+        && x < ent.x + entityFootprintWidth(ent)
+        && y < ent.y + entityFootprintHeight(ent);
+}
+
+static bool entityFootprintHasVisibleTile(const Entity& ent) {
+    for (int dy = 0; dy < entityFootprintHeight(ent); ++dy) {
+        for (int dx = 0; dx < entityFootprintWidth(ent); ++dx) {
+            int mx = ent.x + dx;
+            int my = ent.y + dy;
+            if (inBounds(mx, my) && g.map[my][mx].visible[0]) return true;
+        }
+    }
+    return false;
+}
+
 std::string cursorStackSummary() {
     if (!inBounds(view.cursorX, view.cursorY) || !g.map[view.cursorY][view.cursorX].visible[0]) return "Stack: not visible";
     std::ostringstream ss;
@@ -121,10 +146,7 @@ std::string cursorStackSummary() {
     for (auto& e : g.entities) {
         if (!e.alive || e.state == S_GARRISONED) continue;
         auto& st = STATS[e.type];
-        bool covers = st.isBuilding
-            ? (view.cursorX >= e.x && view.cursorX < e.x + st.sizeW && view.cursorY >= e.y && view.cursorY < e.y + st.sizeH)
-            : (view.cursorX == e.x && view.cursorY == e.y);
-        if (!covers) continue;
+        if (!entityFootprintCoversTile(e, view.cursorX, view.cursorY)) continue;
         if (count++ > 0) ss << ", ";
         if (e.owner == 0) ss << "You ";
         else if (e.owner == OWNER_NATURE) ss << "Neutral ";
@@ -137,11 +159,7 @@ std::string cursorStackSummary() {
         int more = 0;
         for (auto& e : g.entities) {
             if (!e.alive || e.state == S_GARRISONED) continue;
-            auto& st = STATS[e.type];
-            bool covers = st.isBuilding
-                ? (view.cursorX >= e.x && view.cursorX < e.x + st.sizeW && view.cursorY >= e.y && view.cursorY < e.y + st.sizeH)
-                : (view.cursorX == e.x && view.cursorY == e.y);
-            if (covers) more++;
+            if (entityFootprintCoversTile(e, view.cursorX, view.cursorY)) more++;
         }
         if (more > count) ss << " +" << (more - count);
     }
@@ -192,6 +210,19 @@ static Color indicatorCommandColor(int alpha = 230) {
 
 static Color indicatorPathColor(int alpha = 230) {
     return rgb(74, 166, 255, alpha);
+}
+
+static void fillDownTriangle(int cx, int topY, int width, int height, Color c);
+
+static Color indicatorActionMarkerColor(char glyph, int alpha = 230) {
+    switch (glyph) {
+        case '+': return rgb(74, 218, 118, alpha);
+        case 'x': return rgb(74, 166, 255, alpha);
+        case '!': return rgb(238, 70, 56, alpha);
+        case '#': return rgb(244, 178, 62, alpha);
+        case 'r': return rgb(76, 214, 224, alpha);
+        default:  return indicatorYellowColor(alpha);
+    }
 }
 
 static void drawThickLine(int x1, int y1, int x2, int y2, Color c, int thickness) {
@@ -249,45 +280,6 @@ static void drawHoverCornersRect(SDL_Rect r) {
     drawHoverCornerPass(b, len, indicatorYellowColor(210 + (int)std::lround(pulse * 35.0f)), indicatorInnerStroke());
 }
 
-enum class IsoHoverCornerLayer {
-    Back,
-    Front,
-};
-
-static void drawHoverCornersDiamond(int cx, int cy, int hw, int hh, IsoHoverCornerLayer layer) {
-    float pulse = indicatorPulse();
-    int outX = std::max(3, (int)std::lround(hw * (0.12f + pulse * 0.03f)));
-    int outY = std::max(2, (int)std::lround(hh * (0.12f + pulse * 0.03f)));
-    int legX = std::max(7, (int)std::lround(hw * 0.34f));
-    int legY = std::max(4, (int)std::lround(hh * 0.34f));
-    int stroke = indicatorOutlineStroke();
-    int inner = indicatorInnerStroke();
-    Color shadow = indicatorOutlineColor();
-    Color yellow = indicatorYellowColor(210 + (int)std::lround(pulse * 35.0f));
-
-    auto pass = [&](Color color, int thickness) {
-        int topX = cx, topY = cy - hh - outY;
-        int rightX = cx + hw + outX, rightY = cy;
-        int bottomX = cx, bottomY = cy + hh + outY;
-        int leftX = cx - hw - outX, leftY = cy;
-
-        if (layer == IsoHoverCornerLayer::Back) {
-            drawThickLine(topX, topY, topX - legX, topY + legY, color, thickness);
-            drawThickLine(topX, topY, topX + legX, topY + legY, color, thickness);
-        } else {
-            drawThickLine(rightX, rightY, rightX - legX, rightY - legY, color, thickness);
-            drawThickLine(rightX, rightY, rightX - legX, rightY + legY, color, thickness);
-            drawThickLine(bottomX, bottomY, bottomX - legX, bottomY - legY, color, thickness);
-            drawThickLine(bottomX, bottomY, bottomX + legX, bottomY - legY, color, thickness);
-            drawThickLine(leftX, leftY, leftX + legX, leftY - legY, color, thickness);
-            drawThickLine(leftX, leftY, leftX + legX, leftY + legY, color, thickness);
-        }
-    };
-
-    pass(shadow, stroke);
-    pass(yellow, inner);
-}
-
 static SDL_Rect featureSpriteRectIso(int cx, int cy, int hw, int hh) {
     int size = std::max(16, (int)std::lround(hw * 1.12f));
     return SDL_Rect{cx - size / 2, cy + hh - size, size, size};
@@ -311,92 +303,14 @@ static void drawAttackCenterIndicator(int cx, int cy, int hw, int hh) {
     fillDiamond(cx, cy + lineY, std::max(2, inner + 1), std::max(1, inner), command);
 }
 
-static void drawActionCrossIndicator(int cx, int cy, int spanX, int spanY) {
-    float pulse = indicatorPulse();
-    Color shadow = indicatorOutlineColor();
-    Color command = indicatorCommandColor(210 + (int)std::lround(pulse * 35.0f));
-    spanX = std::max(5, spanX);
-    spanY = std::max(4, spanY);
-    drawThickLine(cx - spanX, cy - spanY, cx + spanX, cy + spanY, shadow, indicatorOutlineStroke());
-    drawThickLine(cx - spanX, cy + spanY, cx + spanX, cy - spanY, shadow, indicatorOutlineStroke());
-    drawThickLine(cx - spanX, cy - spanY, cx + spanX, cy + spanY, command, indicatorInnerStroke());
-    drawThickLine(cx - spanX, cy + spanY, cx + spanX, cy - spanY, command, indicatorInnerStroke());
-}
-
-static void drawActionPlusIndicator(int cx, int cy, int spanX, int spanY) {
-    float pulse = indicatorPulse();
-    Color shadow = indicatorOutlineColor();
-    Color command = indicatorCommandColor(210 + (int)std::lround(pulse * 35.0f));
-    spanX = std::max(5, spanX);
-    spanY = std::max(4, spanY);
-    drawThickLine(cx - spanX, cy, cx + spanX, cy, shadow, indicatorOutlineStroke());
-    drawThickLine(cx, cy - spanY, cx, cy + spanY, shadow, indicatorOutlineStroke());
-    drawThickLine(cx - spanX, cy, cx + spanX, cy, command, indicatorInnerStroke());
-    drawThickLine(cx, cy - spanY, cx, cy + spanY, command, indicatorInnerStroke());
-}
-
-static void drawActionBangIndicator(int cx, int cy, int spanY) {
-    float pulse = indicatorPulse();
-    Color shadow = indicatorOutlineColor();
-    Color command = indicatorCommandColor(210 + (int)std::lround(pulse * 35.0f));
-    spanY = std::max(5, spanY);
-    drawThickLine(cx, cy - spanY, cx, cy + spanY / 3, shadow, indicatorOutlineStroke());
-    drawThickLine(cx, cy - spanY, cx, cy + spanY / 3, command, indicatorInnerStroke());
-    fillDiamond(cx, cy + spanY, indicatorOutlineStroke(), indicatorOutlineStroke(), shadow);
-    fillDiamond(cx, cy + spanY, indicatorInnerStroke() + 1, indicatorInnerStroke() + 1, command);
-}
-
-static void drawActionSquareIndicator(int cx, int cy, int half) {
-    float pulse = indicatorPulse();
-    int outline = indicatorOutlineStroke();
-    half = std::max(4, half);
-    SDL_SetRenderDrawBlendMode(s.ren, SDL_BLENDMODE_BLEND);
-    SDL_Rect outer{cx - half - outline, cy - half - outline, (half + outline) * 2, (half + outline) * 2};
-    SDL_Rect inner{cx - half, cy - half, half * 2, half * 2};
-    setDraw(indicatorOutlineColor());
-    SDL_RenderFillRect(s.ren, &outer);
-    setDraw(indicatorCommandColor(210 + (int)std::lround(pulse * 35.0f)));
-    SDL_RenderFillRect(s.ren, &inner);
-}
-
 static void drawActionMarkerIndicator(char glyph, int cx, int cy, int spanX, int spanY) {
-    auto actionMarkerAssetId = [](char markerGlyph) -> const char* {
-        switch (markerGlyph) {
-            case '!': return "attack_marker";
-            case '#': return "build_marker";
-            case '+': return "gather_marker";
-            case 'r': return "rally_marker";
-            default: return "move_marker";
-        }
-    };
-    if (imageTilesetEnabled()) {
-        int size = std::max(12, std::max(spanX, spanY) * 4);
-        SDL_Rect dst{cx - size / 2, cy - size / 2, size, size};
-        TilesetAssetFrame frame = tilesetLoadEffectUiTileScaled(s.ren, actionMarkerAssetId(glyph), dst.w, dst.h);
-        if (frame.texture && !frame.placeholder) {
-            Color mod = indicatorCommandColor(230);
-            SDL_SetTextureColorMod(frame.texture, mod.r, mod.g, mod.b);
-            SDL_SetTextureAlphaMod(frame.texture, mod.a);
-            SDL_RenderCopy(s.ren, frame.texture, nullptr, &dst);
-            SDL_SetTextureColorMod(frame.texture, 255, 255, 255);
-            SDL_SetTextureAlphaMod(frame.texture, 255);
-            return;
-        }
-    }
-    switch (glyph) {
-        case '#':
-            drawActionSquareIndicator(cx, cy, std::max(4, std::min(spanX, spanY)));
-            break;
-        case '!':
-            drawActionBangIndicator(cx, cy, spanY);
-            break;
-        case '+':
-            drawActionPlusIndicator(cx, cy, spanX, spanY);
-            break;
-        default:
-            drawActionCrossIndicator(cx, cy, spanX, spanY);
-            break;
-    }
+    float pulse = indicatorPulse();
+    int outline = std::max(2, indicatorOutlineStroke() - 1);
+    int width = std::max(7, spanX);
+    int height = std::max(6, spanY);
+    Color fill = indicatorActionMarkerColor(glyph, 220 + (int)std::lround(pulse * 25.0f));
+    fillDownTriangle(cx, cy, width + outline * 2, height + outline * 2, indicatorOutlineColor(226));
+    fillDownTriangle(cx, cy + outline, width, height, fill);
 }
 
 static void fillDownTriangle(int cx, int topY, int width, int height, Color c) {
@@ -799,20 +713,57 @@ struct IsoMapLayerCache {
     int viewW = 0;
     int viewH = 0;
     int tile = 0;
-    int tick = -1;
     int mode = 0;
     int isoViewMilliX = 0;
     int isoViewMilliY = 0;
-    unsigned actionMarkerHash = 0;
+    unsigned staticLayerHash = 0;
 };
 
 static IsoMapLayerCache isoMapLayerCache;
 
-static unsigned hashActionMarkersForCache() {
+struct IsoTileDrawItem {
+    int mx = 0;
+    int my = 0;
+    int cx = 0;
+    int cy = 0;
+};
+
+static void cacheHashMix(unsigned& h, unsigned value) {
+    h ^= value;
+    h *= 16777619u;
+}
+
+static unsigned hashIsoStaticLayerForCache(const RenderModel& model) {
     unsigned h = 2166136261u;
-    for (const ActionMarker& marker : ui.actionMarkers) {
-        h ^= (unsigned)(marker.x + 4099 * marker.y + 131 * marker.ticks + (int)marker.glyph);
-        h *= 16777619u;
+    cacheHashMix(h, (unsigned)std::max(0, std::min(255, (int)std::lround(getBrightness(g) * 64.0f))));
+    cacheHashMix(h, (unsigned)getSeason(g));
+    cacheHashMix(h, (unsigned)std::max(0, std::min(255, (int)std::lround(getSeasonProgress(g) * 255.0f))));
+    cacheHashMix(h, (unsigned)g.weather);
+    for (const TileRenderInfo& info : model.tiles) {
+        cacheHashMix(h, (unsigned)(info.x + 257 * info.y));
+        cacheHashMix(h, (unsigned)info.terrain);
+        cacheHashMix(h, info.visible ? 1u : 0u);
+        cacheHashMix(h, info.explored ? 3u : 0u);
+        cacheHashMix(h, (unsigned)info.visualParts.ground);
+        cacheHashMix(h, (unsigned)info.visualParts.feature);
+        cacheHashMix(h, (unsigned)info.visualParts.featureState);
+        cacheHashMix(h, info.gateOpen ? 5u : 0u);
+        cacheHashMix(h, info.gateLocked ? 7u : 0u);
+        for (VisualDecalType decal : info.visualParts.decals) {
+            cacheHashMix(h, (unsigned)decal + 11u);
+        }
+    }
+    for (const EntityRenderInfo& info : model.entities) {
+        if (!info.visible || (isUnit(info.type) && !isBuilding(info.type))) continue;
+        cacheHashMix(h, (unsigned)info.id);
+        cacheHashMix(h, (unsigned)info.type);
+        cacheHashMix(h, (unsigned)(info.x + 257 * info.y));
+        cacheHashMix(h, (unsigned)info.owner);
+        cacheHashMix(h, (unsigned)info.state);
+        cacheHashMix(h, info.underConstruction ? 13u : 0u);
+        cacheHashMix(h, (unsigned)info.buildingState);
+        cacheHashMix(h, (unsigned)info.animalCarcassState);
+        cacheHashMix(h, (unsigned)info.transportState);
     }
     return h;
 }
@@ -821,7 +772,7 @@ static int cameraMilli(float value) {
     return (int)std::lround(value * 1000.0f);
 }
 
-static bool isoMapLayerCacheMatches(SDL_Rect mr) {
+static bool isoMapLayerCacheMatches(SDL_Rect mr, unsigned staticLayerHash) {
     return isoMapLayerCache.texture
         && isoMapLayerCache.valid
         && !isoMapLayerCache.unavailable
@@ -836,11 +787,10 @@ static bool isoMapLayerCacheMatches(SDL_Rect mr) {
         && isoMapLayerCache.viewW == view.viewW
         && isoMapLayerCache.viewH == view.viewH
         && isoMapLayerCache.tile == s.tile
-        && isoMapLayerCache.tick == g.tick
         && isoMapLayerCache.mode == (int)g.mode
         && isoMapLayerCache.isoViewMilliX == cameraMilli(s.isoCameraActive ? s.isoViewX : (float)view.viewX)
         && isoMapLayerCache.isoViewMilliY == cameraMilli(s.isoCameraActive ? s.isoViewY : (float)view.viewY)
-        && isoMapLayerCache.actionMarkerHash == hashActionMarkersForCache();
+        && isoMapLayerCache.staticLayerHash == staticLayerHash;
 }
 
 static bool ensureIsoMapLayerCacheTexture() {
@@ -864,7 +814,7 @@ static bool ensureIsoMapLayerCacheTexture() {
     return true;
 }
 
-static void updateIsoMapLayerCacheKey(SDL_Rect mr) {
+static void updateIsoMapLayerCacheKey(SDL_Rect mr, unsigned staticLayerHash) {
     isoMapLayerCache.valid = true;
     isoMapLayerCache.mapRect = mr;
     isoMapLayerCache.viewX = view.viewX;
@@ -872,11 +822,34 @@ static void updateIsoMapLayerCacheKey(SDL_Rect mr) {
     isoMapLayerCache.viewW = view.viewW;
     isoMapLayerCache.viewH = view.viewH;
     isoMapLayerCache.tile = s.tile;
-    isoMapLayerCache.tick = g.tick;
     isoMapLayerCache.mode = (int)g.mode;
     isoMapLayerCache.isoViewMilliX = cameraMilli(s.isoCameraActive ? s.isoViewX : (float)view.viewX);
     isoMapLayerCache.isoViewMilliY = cameraMilli(s.isoCameraActive ? s.isoViewY : (float)view.viewY);
-    isoMapLayerCache.actionMarkerHash = hashActionMarkersForCache();
+    isoMapLayerCache.staticLayerHash = staticLayerHash;
+}
+
+static std::vector<IsoTileDrawItem> buildIsoTileDrawItems(IsoOffsetBounds b) {
+    RealmProfileScope scope("map.iso_tile_draw_items");
+    std::vector<IsoTileDrawItem> items;
+    int minSum = b.minSx + b.minSy;
+    int maxSum = b.maxSx + b.maxSy;
+    int approxW = std::max(0, b.maxSx - b.minSx + 1);
+    int approxH = std::max(0, b.maxSy - b.minSy + 1);
+    items.reserve((size_t)approxW * (size_t)approxH);
+    for (int sum = minSum; sum <= maxSum; ++sum) {
+        for (int sy = b.minSy; sy <= b.maxSy; ++sy) {
+            int sx = sum - sy;
+            if (sx < b.minSx || sx > b.maxSx) continue;
+            int mx = view.viewX + sx, my = view.viewY + sy;
+            if (!inBounds(mx, my)) continue;
+            IsoTileDrawItem item;
+            item.mx = mx;
+            item.my = my;
+            isoTileCenterFromScreenOffset(sx, sy, item.cx, item.cy);
+            items.push_back(item);
+        }
+    }
+    return items;
 }
 
 void clearIsoMapLayerCache() {
@@ -1126,14 +1099,6 @@ void drawTile(Game& game, const WorldIndex& world, const RenderModel& model, int
 
     bool tileSpriteMovedToOverlay = handledByTilesetSpritePass(v.ent) || (tilesetMovingSpritePassEnabled() && v.projectile);
     if (!v.glyph.empty() && !tileSpriteMovedToOverlay) drawCentered(v.glyph, r, v.fg, v.emoji, v.tint);
-    if (tilesetIndicatorsEnabled() && v.visible && !v.ent && !v.projectile) {
-        const ActionMarkerRenderInfo* marker = actionMarkerAt(model, mx, my);
-        if (marker && marker->ticks > 0 && (g.tick % 6) < 4) {
-            drawActionMarkerIndicator(marker->glyph, r.x + r.w / 2, r.y + r.h / 2,
-                                      std::max(5, (int)std::lround(s.tile * 0.16f)),
-                                      std::max(4, (int)std::lround(s.tile * 0.16f)));
-        }
-    }
     if (!tilesetMovingSpritePassEnabled()) drawFeatureOccluderIfNeeded(game, world, mx, my, r);
 
     // HP sliver for damaged visible entities.
@@ -1485,10 +1450,7 @@ static void drawRightDragPathTopDown() {
     drawRightDragPath(points);
 }
 
-static void drawDragSelectionCornersIso(bool backLayer) {
-    int x0 = 0, y0 = 0, x1 = 0, y1 = 0;
-    if (!dragSelectionBounds(x0, y0, x1, y1)) return;
-
+static void drawFootprintCornersIsoBounds(int x0, int y0, int x1, int y1, bool backLayer) {
     int hw = isoHalfW(), hh = isoHalfH();
     int outX = std::max(3, (int)std::lround(hw * 0.12f));
     int outY = std::max(2, (int)std::lround(hh * 0.12f));
@@ -1530,6 +1492,12 @@ static void drawDragSelectionCornersIso(bool backLayer) {
     pass(yellow, indicatorInnerStroke());
 }
 
+static void drawDragSelectionCornersIso(bool backLayer) {
+    int x0 = 0, y0 = 0, x1 = 0, y1 = 0;
+    if (!dragSelectionBounds(x0, y0, x1, y1)) return;
+    drawFootprintCornersIsoBounds(x0, y0, x1, y1, backLayer);
+}
+
 static void drawDragSelectionCornersTopDown() {
     int x0 = 0, y0 = 0, x1 = 0, y1 = 0;
     if (!dragSelectionBounds(x0, y0, x1, y1)) return;
@@ -1549,20 +1517,54 @@ static bool selectionMaskAt(const std::vector<unsigned char>& mask, int x, int y
     return inBounds(x, y) && mask[selectionMaskIndex(x, y)] != 0;
 }
 
+static void markTileMask(std::vector<unsigned char>& mask, int x, int y) {
+    if (inBounds(x, y)) mask[selectionMaskIndex(x, y)] = 1;
+}
+
+static void markEntityFootprintMask(std::vector<unsigned char>& mask, const Entity& ent) {
+    for (int dy = 0; dy < entityFootprintHeight(ent); ++dy) {
+        for (int dx = 0; dx < entityFootprintWidth(ent); ++dx) {
+            markTileMask(mask, ent.x + dx, ent.y + dy);
+        }
+    }
+}
+
+static bool maskBounds(const std::vector<unsigned char>& mask, int& x0, int& y0, int& x1, int& y1) {
+    x0 = MAP_W;
+    y0 = MAP_H;
+    x1 = -1;
+    y1 = -1;
+    for (int my = 0; my < MAP_H; ++my) {
+        for (int mx = 0; mx < MAP_W; ++mx) {
+            if (!selectionMaskAt(mask, mx, my)) continue;
+            x0 = std::min(x0, mx);
+            y0 = std::min(y0, my);
+            x1 = std::max(x1, mx);
+            y1 = std::max(y1, my);
+        }
+    }
+    return x0 <= x1 && y0 <= y1;
+}
+
 static std::vector<unsigned char> selectedFootprintMask(const WorldIndex& world) {
     std::vector<unsigned char> mask((size_t)MAP_W * (size_t)MAP_H, 0);
     for (int id : selectedOverlayIds()) {
         Entity* ent = renderFindEntity(g, world, id);
-        if (!ent || !ent->alive || !inBounds(ent->x, ent->y) || !g.map[ent->y][ent->x].visible[0]) continue;
-        const EntityStats& st = STATS[ent->type];
-        for (int dy = 0; dy < std::max(1, st.sizeH); ++dy) {
-            for (int dx = 0; dx < std::max(1, st.sizeW); ++dx) {
-                int mx = ent->x + dx;
-                int my = ent->y + dy;
-                if (!inBounds(mx, my)) continue;
-                mask[selectionMaskIndex(mx, my)] = 1;
-            }
-        }
+        if (!ent || !ent->alive || !entityFootprintHasVisibleTile(*ent)) continue;
+        markEntityFootprintMask(mask, *ent);
+    }
+    return mask;
+}
+
+static std::vector<unsigned char> cursorFootprintMask(const WorldIndex& world) {
+    std::vector<unsigned char> mask((size_t)MAP_W * (size_t)MAP_H, 0);
+    if (!cursorOverlay.valid || !inBounds(cursorOverlay.cursorX, cursorOverlay.cursorY)) return mask;
+
+    Entity* ent = renderEntityAt(g, world, cursorOverlay.cursorX, cursorOverlay.cursorY);
+    if (ent && ent->alive && ent->state != S_GARRISONED && entityFootprintHasVisibleTile(*ent)) {
+        markEntityFootprintMask(mask, *ent);
+    } else {
+        markTileMask(mask, cursorOverlay.cursorX, cursorOverlay.cursorY);
     }
     return mask;
 }
@@ -1674,38 +1676,89 @@ static void drawCommandMenuTargetTriangleTopDown() {
     drawSelectionTriangle(markerCx, topY, triW, triH);
 }
 
-static void drawCursorOverlayIsoBack() {
-    if (!cursorOverlay.valid) return;
+static void drawActionMarkerTriangleIso(const ActionMarkerRenderInfo& marker) {
+    if (marker.ticks <= 0) return;
     int cx = 0, cy = 0;
-    isoTileCenterFromScreenOffset(cursorOverlay.cursorX - view.viewX, cursorOverlay.cursorY - view.viewY, cx, cy);
+    isoTileCenterFromScreenOffset(marker.x - view.viewX, marker.y - view.viewY, cx, cy);
+    SDL_Rect mr = mapRect();
+    int triW = std::max(8, (int)std::lround(s.tile * 0.26f));
+    int triH = std::max(6, (int)std::lround(s.tile * 0.20f));
+    int gap = std::max(3, (int)std::lround(s.tile * 0.07f));
+    int topY = cy - isoHalfH() - triH - gap;
+    topY = std::max(mr.y + 4, std::min(topY, mr.y + mr.h - triH - indicatorOutlineStroke() * 2 - 4));
+    int markerCx = std::max(mr.x + triW / 2 + 4, std::min(cx, mr.x + mr.w - triW / 2 - 4));
+    drawActionMarkerIndicator(marker.glyph, markerCx, topY, triW, triH);
+}
+
+static void drawActionMarkersIso(const RenderModel& model) {
+    for (const ActionMarkerRenderInfo& marker : model.actionMarkers) {
+        const TileRenderInfo* tileInfo = tileInfoAt(model, marker.x, marker.y);
+        if (!tileInfo || !tileInfo->visible) continue;
+        drawActionMarkerTriangleIso(marker);
+    }
+}
+
+static void drawActionMarkersTopDown(const RenderModel& model) {
+    SDL_Rect mr = mapRect();
+    int triW = std::max(8, (int)std::lround(s.tile * 0.26f));
+    int triH = std::max(6, (int)std::lround(s.tile * 0.20f));
+    int gap = std::max(3, (int)std::lround(s.tile * 0.07f));
+    for (const ActionMarkerRenderInfo& marker : model.actionMarkers) {
+        if (marker.ticks <= 0) continue;
+        const TileRenderInfo* tileInfo = tileInfoAt(model, marker.x, marker.y);
+        if (!tileInfo || !tileInfo->visible) continue;
+        int sx = marker.x - view.viewX;
+        int sy = marker.y - view.viewY;
+        if (sx < 0 || sy < 0 || sx >= view.viewW || sy >= view.viewH) continue;
+        int cx = mr.x + sx * s.tile + s.tile / 2;
+        int topY = mr.y + sy * s.tile - triH - gap;
+        topY = std::max(mr.y + 4, std::min(topY, mr.y + mr.h - triH - indicatorOutlineStroke() * 2 - 4));
+        int markerCx = std::max(mr.x + triW / 2 + 4, std::min(cx, mr.x + mr.w - triW / 2 - 4));
+        drawActionMarkerIndicator(marker.glyph, markerCx, topY, triW, triH);
+    }
+}
+
+static void drawCursorOverlayIsoBack(const WorldIndex& world) {
+    if (!cursorOverlay.valid) return;
+    std::vector<unsigned char> mask = cursorFootprintMask(world);
+    int x0 = 0, y0 = 0, x1 = 0, y1 = 0;
+    if (!maskBounds(mask, x0, y0, x1, y1)) return;
     int hw = isoHalfW(), hh = isoHalfH();
-    drawHoverCornersDiamond(cx, cy, hw, hh, IsoHoverCornerLayer::Back);
+    drawFootprintCornersIsoBounds(x0, y0, x1, y1, true);
     if (cursorOverlay.recommended == CommandActionKind::Attack) {
+        int cx = 0, cy = 0;
+        isoTileCenterFloat((x0 + x1) * 0.5f, (y0 + y1) * 0.5f, cx, cy);
         drawAttackCenterIndicator(cx, cy, hw, hh);
     }
 }
 
-static void drawCursorOverlayIsoFront() {
+static void drawCursorOverlayIsoFront(const WorldIndex& world) {
     if (!cursorOverlay.valid) return;
-    int cx = 0, cy = 0;
-    isoTileCenterFromScreenOffset(cursorOverlay.cursorX - view.viewX, cursorOverlay.cursorY - view.viewY, cx, cy);
-    int hw = isoHalfW(), hh = isoHalfH();
+    std::vector<unsigned char> mask = cursorFootprintMask(world);
+    int x0 = 0, y0 = 0, x1 = 0, y1 = 0;
+    if (!maskBounds(mask, x0, y0, x1, y1)) return;
     float age = std::min(1.0f, (SDL_GetTicks() - cursorOverlay.hoverChangedTicks) / 120.0f);
-    drawHoverCornersDiamond(cx, cy, hw, hh, IsoHoverCornerLayer::Front);
+    drawFootprintCornersIsoBounds(x0, y0, x1, y1, false);
     if (age < 1.0f) {
+        int cx = 0, cy = 0;
+        isoTileCenterFloat((x0 + x1) * 0.5f, (y0 + y1) * 0.5f, cx, cy);
+        int hw = isoHalfW(), hh = isoHalfH();
         int expandX = std::max(1, (int)std::lround(hw * (1.0f - age) * 0.18f));
         int expandY = std::max(1, (int)std::lround(hh * (1.0f - age) * 0.18f));
         drawDiamondOutline(cx, cy, hw + expandX, hh + expandY, rgb(255, 235, 95, (int)std::lround((1.0f - age) * 115.0f)));
     }
 }
 
-static void drawCursorOverlayTopDown() {
+static void drawCursorOverlayTopDown(const WorldIndex& world) {
     if (!cursorOverlay.valid) return;
+    std::vector<unsigned char> mask = cursorFootprintMask(world);
+    int x0 = 0, y0 = 0, x1 = 0, y1 = 0;
+    if (!maskBounds(mask, x0, y0, x1, y1)) return;
     SDL_Rect mr = mapRect();
-    int sx = cursorOverlay.cursorX - view.viewX;
-    int sy = cursorOverlay.cursorY - view.viewY;
-    if (sx < 0 || sy < 0 || sx >= view.viewW || sy >= view.viewH) return;
-    SDL_Rect r{mr.x + sx * s.tile, mr.y + sy * s.tile, s.tile, s.tile};
+    SDL_Rect r{mr.x + (x0 - view.viewX) * s.tile,
+               mr.y + (y0 - view.viewY) * s.tile,
+               (x1 - x0 + 1) * s.tile,
+               (y1 - y0 + 1) * s.tile};
     drawHoverCornersRect(r);
 }
 
@@ -1715,28 +1768,30 @@ static void drawTilesetOverlayIsoBack(const Game& game, const WorldIndex& world)
     updateCursorOverlayState(game, world);
     drawRightDragPathIso();
     if (s.leftDown) drawDragSelectionCornersIso(true);
-    else drawCursorOverlayIsoBack();
+    else drawCursorOverlayIsoBack(world);
     drawSelectionOverlayIso(world, true);
 }
 
-static void drawTilesetOverlayIsoFront(const Game& game, const WorldIndex& world) {
+static void drawTilesetOverlayIsoFront(const Game& game, const WorldIndex& world, const RenderModel& model) {
     if (!tilesetIndicatorsEnabled()) return;
     RealmProfileScope scope("map.overlay_iso_front");
     updateCursorOverlayState(game, world);
     if (s.leftDown) drawDragSelectionCornersIso(false);
-    else drawCursorOverlayIsoFront();
+    else drawCursorOverlayIsoFront(world);
     drawSelectionOverlayIso(world, false);
+    drawActionMarkersIso(model);
     drawCommandMenuTargetTriangleIso();
 }
 
-static void drawTilesetOverlayTopDown(const Game& game, const WorldIndex& world) {
+static void drawTilesetOverlayTopDown(const Game& game, const WorldIndex& world, const RenderModel& model) {
     if (!tilesetIndicatorsEnabled()) return;
     RealmProfileScope scope("map.overlay_top_down");
     updateCursorOverlayState(game, world);
     drawRightDragPathTopDown();
     if (s.leftDown) drawDragSelectionCornersTopDown();
-    else drawCursorOverlayTopDown();
+    else drawCursorOverlayTopDown(world);
     drawSelectionOverlayTopDown(world);
+    drawActionMarkersTopDown(model);
     drawCommandMenuTargetTriangleTopDown();
 }
 
@@ -1778,9 +1833,8 @@ void drawMobileBuildPreviewIso(const WorldIndex& world) {
     }
 }
 
-void drawIsoTileBase(Game& game, const WorldIndex& world, const RenderModel& model, int mx, int my) {
-    int sx = mx - view.viewX, sy = my - view.viewY;
-    int cx, cy; isoTileCenterFromScreenOffset(sx, sy, cx, cy);
+static void drawIsoTileBaseAt(Game& game, const WorldIndex& world, const RenderModel& model,
+                              int mx, int my, int cx, int cy) {
     int hw = isoHalfW(), hh = isoHalfH();
     const Tile& tile = game.map[my][mx];
     TileVisual v = makeTileVisual(game, world, model, mx, my);
@@ -1792,9 +1846,14 @@ void drawIsoTileBase(Game& game, const WorldIndex& world, const RenderModel& mod
     }
 }
 
-void drawIsoTileForeground(Game& game, const WorldIndex& world, const RenderModel& model, int mx, int my) {
+void drawIsoTileBase(Game& game, const WorldIndex& world, const RenderModel& model, int mx, int my) {
     int sx = mx - view.viewX, sy = my - view.viewY;
     int cx, cy; isoTileCenterFromScreenOffset(sx, sy, cx, cy);
+    drawIsoTileBaseAt(game, world, model, mx, my, cx, cy);
+}
+
+static void drawIsoTileForegroundAt(Game& game, const WorldIndex& world, const RenderModel& model,
+                                    int mx, int my, int cx, int cy) {
     int hw = isoHalfW(), hh = isoHalfH();
     TileVisual v = makeTileVisual(game, world, model, mx, my);
 
@@ -1833,27 +1892,6 @@ void drawIsoTileForeground(Game& game, const WorldIndex& world, const RenderMode
         SDL_Rect featureRect = featureSpriteRectIso(cx, cy, hw, hh);
         drawFeatureOccluderIfNeeded(game, world, mx, my, featureRect);
     }
-    if (tilesetIndicatorsEnabled() && v.visible && !v.ent && !v.projectile) {
-        const ActionMarkerRenderInfo* marker = actionMarkerAt(model, mx, my);
-        if (marker && marker->ticks > 0 && (g.tick % 6) < 4) {
-            drawActionMarkerIndicator(marker->glyph, cx, cy,
-                                      std::max(5, (int)std::lround(hw * 0.24f)),
-                                      std::max(4, (int)std::lround(hh * 0.36f)));
-        }
-    }
-
-    if (!tileSpriteMovedToOverlay && entityDrawsHere && v.visible && v.ent && v.ent->alive && v.ent->hp < v.ent->maxHp) {
-        int barCx = cx;
-        int barCy = cy;
-        isoEntityFootprintCenter(*v.ent, cx, cy, barCx, barCy);
-        int barW = entityFootprintHpBarWidth(*v.ent);
-        SDL_Rect hb{barCx - barW/2, isoEntityFootprintAnchorY(*v.ent, barCy) - 5, barW, 3};
-        setDraw(rgb(80,20,20,190)); SDL_RenderFillRect(s.ren, &hb);
-        hb.w = std::max(1, barW * v.ent->hp / std::max(1, v.ent->maxHp));
-        setDraw(v.ent->hp*3 > v.ent->maxHp*2 ? rgb(65,230,90) : v.ent->hp*3 > v.ent->maxHp ? rgb(230,210,70) : rgb(230,60,55));
-        SDL_RenderFillRect(s.ren, &hb);
-    }
-
     if (v.selected && !tilesetIndicatorsEnabled()) {
         drawDiamondOutline(cx, cy, hw-1, hh-1, rgb(255,255,255,210));
         if (hw > 4 && hh > 3) drawDiamondOutline(cx, cy, hw-4, hh-3, rgb(255,255,255,110));
@@ -1861,6 +1899,30 @@ void drawIsoTileForeground(Game& game, const WorldIndex& world, const RenderMode
     if (v.cursor && !tilesetIndicatorsEnabled()) {
         drawDiamondOutline(cx, cy, hw, hh, rgb(40,20,0,240));
         if (hw > 3 && hh > 2) drawDiamondOutline(cx, cy, hw-3, hh-2, rgb(255,245,150,210));
+    }
+}
+
+void drawIsoTileForeground(Game& game, const WorldIndex& world, const RenderModel& model, int mx, int my) {
+    int sx = mx - view.viewX, sy = my - view.viewY;
+    int cx, cy; isoTileCenterFromScreenOffset(sx, sy, cx, cy);
+    drawIsoTileForegroundAt(game, world, model, mx, my, cx, cy);
+}
+
+static void drawIsoDynamicIndicators(const WorldIndex& world, const RenderModel& model, IsoOffsetBounds b) {
+    RealmProfileScope scope("map.dynamic_indicators_iso");
+    for (const EntityRenderInfo& info : model.entities) {
+        if (!info.visible || info.hp >= info.maxHp) continue;
+        Entity* ent = renderFindEntity(g, world, info.id);
+        if (!ent || !ent->alive || handledByTilesetSpritePass(ent)) continue;
+        int sx = ent->x - view.viewX;
+        int sy = ent->y - view.viewY;
+        if (sx < b.minSx || sx > b.maxSx || sy < b.minSy || sy > b.maxSy) continue;
+        int cx = 0, cy = 0;
+        isoTileCenterFromScreenOffset(sx, sy, cx, cy);
+        int barCx = cx;
+        int barCy = cy;
+        isoEntityFootprintCenter(*ent, cx, cy, barCx, barCy);
+        drawEntityHpBarAt(*ent, barCx, isoEntityFootprintAnchorY(*ent, barCy) - 5, entityFootprintHpBarWidth(*ent));
     }
 }
 
@@ -1876,11 +1938,11 @@ void drawMapIso(const WorldIndex& world) {
     }
 
     IsoOffsetBounds b = isoVisibleOffsetBounds();
-    int minSum = b.minSx + b.minSy;
-    int maxSum = b.maxSx + b.maxSy;
     bool drewCachedLayer = false;
-    if (ensureIsoMapLayerCacheTexture()) {
-        if (!isoMapLayerCacheMatches(mr)) {
+    const bool allowIsoMapLayerCache = tilesetIndicatorsEnabled();
+    unsigned staticLayerHash = hashIsoStaticLayerForCache(model);
+    if (allowIsoMapLayerCache && ensureIsoMapLayerCacheTexture()) {
+        if (!isoMapLayerCacheMatches(mr, staticLayerHash)) {
             RealmProfileScope rebuildScope("map.iso_layer_cache_rebuild");
             SDL_Texture* previousTarget = SDL_GetRenderTarget(s.ren);
             SDL_Rect previousClip{};
@@ -1893,35 +1955,24 @@ void drawMapIso(const WorldIndex& world) {
             setDraw(rgb(0, 0, 0, 0));
             SDL_RenderClear(s.ren);
             SDL_RenderSetClipRect(s.ren, &mr);
+            std::vector<IsoTileDrawItem> tileDrawItems = buildIsoTileDrawItems(b);
             {
                 RealmProfileScope scope("map.iso_base_tiles");
-                for (int sum = minSum; sum <= maxSum; ++sum) {
-                    for (int sy = b.minSy; sy <= b.maxSy; ++sy) {
-                        int sx = sum - sy;
-                        if (sx < b.minSx || sx > b.maxSx) continue;
-                        int mx = view.viewX + sx, my = view.viewY + sy;
-                        if (!inBounds(mx, my)) continue;
-                        drawIsoTileBase(g, world, model, mx, my);
-                    }
+                for (const IsoTileDrawItem& item : tileDrawItems) {
+                    drawIsoTileBaseAt(g, world, model, item.mx, item.my, item.cx, item.cy);
                 }
             }
             {
                 RealmProfileScope scope("map.iso_foreground_tiles");
-                for (int sum = minSum; sum <= maxSum; ++sum) {
-                    for (int sy = b.minSy; sy <= b.maxSy; ++sy) {
-                        int sx = sum - sy;
-                        if (sx < b.minSx || sx > b.maxSx) continue;
-                        int mx = view.viewX + sx, my = view.viewY + sy;
-                        if (!inBounds(mx, my)) continue;
-                        drawIsoTileForeground(g, world, model, mx, my);
-                    }
+                for (const IsoTileDrawItem& item : tileDrawItems) {
+                    drawIsoTileForegroundAt(g, world, model, item.mx, item.my, item.cx, item.cy);
                 }
             }
 
             SDL_SetRenderTarget(s.ren, previousTarget);
             if (clipEnabled) SDL_RenderSetClipRect(s.ren, &previousClip);
             else SDL_RenderSetClipRect(s.ren, nullptr);
-            updateIsoMapLayerCacheKey(mr);
+            updateIsoMapLayerCacheKey(mr, staticLayerHash);
         }
         {
             RealmProfileScope scope("map.iso_layer_cache_copy");
@@ -1931,32 +1982,22 @@ void drawMapIso(const WorldIndex& world) {
     }
 
     if (!drewCachedLayer) {
+        std::vector<IsoTileDrawItem> tileDrawItems = buildIsoTileDrawItems(b);
         {
             RealmProfileScope scope("map.iso_base_tiles");
-            for (int sum = minSum; sum <= maxSum; ++sum) {
-                for (int sy = b.minSy; sy <= b.maxSy; ++sy) {
-                    int sx = sum - sy;
-                    if (sx < b.minSx || sx > b.maxSx) continue;
-                    int mx = view.viewX + sx, my = view.viewY + sy;
-                    if (!inBounds(mx, my)) continue;
-                    drawIsoTileBase(g, world, model, mx, my);
-                }
+            for (const IsoTileDrawItem& item : tileDrawItems) {
+                drawIsoTileBaseAt(g, world, model, item.mx, item.my, item.cx, item.cy);
             }
         }
         {
             RealmProfileScope scope("map.iso_foreground_tiles");
-            for (int sum = minSum; sum <= maxSum; ++sum) {
-                for (int sy = b.minSy; sy <= b.maxSy; ++sy) {
-                    int sx = sum - sy;
-                    if (sx < b.minSx || sx > b.maxSx) continue;
-                    int mx = view.viewX + sx, my = view.viewY + sy;
-                    if (!inBounds(mx, my)) continue;
-                    drawIsoTileForeground(g, world, model, mx, my);
-                }
+            for (const IsoTileDrawItem& item : tileDrawItems) {
+                drawIsoTileForegroundAt(g, world, model, item.mx, item.my, item.cx, item.cy);
             }
         }
     }
 
+    drawIsoDynamicIndicators(world, model, b);
     if (s.leftDown && !tilesetIndicatorsEnabled()) {
         int x0 = std::max(0, std::min(s.dragStartX, view.cursorX));
         int x1 = std::min(MAP_W - 1, std::max(s.dragStartX, view.cursorX));
@@ -1973,7 +2014,7 @@ void drawMapIso(const WorldIndex& world) {
     drawMobileBuildPreviewIso(world);
     drawTilesetOverlayIsoBack(g, world);
     drawMovingSpritesIso(g, world, model);
-    drawTilesetOverlayIsoFront(g, world);
+    drawTilesetOverlayIsoFront(g, world, model);
     SDL_RenderSetClipRect(s.ren, nullptr);
 }
 
@@ -2016,6 +2057,6 @@ void drawMap(const WorldIndex& world) {
     }
     drawMobileBuildPreviewTopDown(world);
     drawMovingSpritesTopDown(g, world, model);
-    drawTilesetOverlayTopDown(g, world);
+    drawTilesetOverlayTopDown(g, world, model);
     SDL_RenderSetClipRect(s.ren, nullptr);
 }

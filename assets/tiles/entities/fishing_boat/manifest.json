@@ -1,7 +1,7 @@
 {
   "schema": "realm.entity_tileset.v1",
   "entity": "fishing_boat",
-  "sprite_size": 48,
+  "sprite_size": 256,
   "directions": [
     "front",
     "back"
@@ -12,25 +12,151 @@
       "loop": true,
       "hold_last": false,
       "description": "idle",
+      "family": "idle",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "idle/front/frame_00_base.png",
-            "team_mask": "idle/front/frame_00_teammask.png"
+            "team_mask": "idle/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/fishing_boat/sheets/front_contact_sheet.png",
+            "source_slot": 1,
+            "source_bbox": {
+              "x": 0,
+              "y": 14,
+              "w": 317,
+              "h": 291
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 44,
+              "w": 181,
+              "h": 164
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.5709779179810726,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              51,
+              198,
+              368,
+              515
+            ]
           },
           {
             "base": "idle/front/frame_01_base.png",
-            "team_mask": "idle/front/frame_01_teammask.png"
+            "team_mask": "idle/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/fishing_boat/sheets/front_contact_sheet.png",
+            "source_slot": 1,
+            "source_bbox": {
+              "x": 0,
+              "y": 14,
+              "w": 317,
+              "h": 291
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 44,
+              "w": 181,
+              "h": 164
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.5709779179810726,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              51,
+              198,
+              368,
+              515
+            ]
           }
         ],
         "back": [
           {
             "base": "idle/back/frame_00_base.png",
-            "team_mask": "idle/back/frame_00_teammask.png"
+            "team_mask": "idle/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/fishing_boat/sheets/back_contact_sheet.png",
+            "source_slot": 1,
+            "source_bbox": {
+              "x": 3,
+              "y": 33,
+              "w": 308,
+              "h": 249
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 62,
+              "w": 181,
+              "h": 146
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.5876623376623377,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              54,
+              260,
+              368,
+              574
+            ]
           },
           {
             "base": "idle/back/frame_01_base.png",
-            "team_mask": "idle/back/frame_01_teammask.png"
+            "team_mask": "idle/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/fishing_boat/sheets/back_contact_sheet.png",
+            "source_slot": 1,
+            "source_bbox": {
+              "x": 3,
+              "y": 33,
+              "w": 308,
+              "h": 249
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 62,
+              "w": 181,
+              "h": 146
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.5876623376623377,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              54,
+              260,
+              368,
+              574
+            ]
           }
         ]
       }
@@ -40,25 +166,151 @@
       "loop": true,
       "hold_last": false,
       "description": "row/sail",
+      "family": "row_sail",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "row_sail/front/frame_00_base.png",
-            "team_mask": "row_sail/front/frame_00_teammask.png"
+            "team_mask": "row_sail/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/fishing_boat/sheets/front_contact_sheet.png",
+            "source_slot": 2,
+            "source_bbox": {
+              "x": 37,
+              "y": 0,
+              "w": 297,
+              "h": 372
+            },
+            "final_bbox": {
+              "x": 39,
+              "y": 21,
+              "w": 178,
+              "h": 224
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.6021505376344086,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              432,
+              137,
+              804,
+              509
+            ]
           },
           {
             "base": "row_sail/front/frame_01_base.png",
-            "team_mask": "row_sail/front/frame_01_teammask.png"
+            "team_mask": "row_sail/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/fishing_boat/sheets/front_contact_sheet.png",
+            "source_slot": 2,
+            "source_bbox": {
+              "x": 37,
+              "y": 0,
+              "w": 297,
+              "h": 372
+            },
+            "final_bbox": {
+              "x": 39,
+              "y": 21,
+              "w": 178,
+              "h": 224
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.6021505376344086,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              432,
+              137,
+              804,
+              509
+            ]
           }
         ],
         "back": [
           {
             "base": "row_sail/back/frame_00_base.png",
-            "team_mask": "row_sail/back/frame_00_teammask.png"
+            "team_mask": "row_sail/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/fishing_boat/sheets/back_contact_sheet.png",
+            "source_slot": 2,
+            "source_bbox": {
+              "x": 43,
+              "y": 0,
+              "w": 313,
+              "h": 400
+            },
+            "final_bbox": {
+              "x": 41,
+              "y": 21,
+              "w": 175,
+              "h": 224
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.56,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              424,
+              143,
+              824,
+              543
+            ]
           },
           {
             "base": "row_sail/back/frame_01_base.png",
-            "team_mask": "row_sail/back/frame_01_teammask.png"
+            "team_mask": "row_sail/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/fishing_boat/sheets/back_contact_sheet.png",
+            "source_slot": 2,
+            "source_bbox": {
+              "x": 43,
+              "y": 0,
+              "w": 313,
+              "h": 400
+            },
+            "final_bbox": {
+              "x": 41,
+              "y": 21,
+              "w": 175,
+              "h": 224
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.56,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              424,
+              143,
+              824,
+              543
+            ]
           }
         ]
       }
@@ -68,25 +320,151 @@
       "loop": true,
       "hold_last": false,
       "description": "fish/net cast",
+      "family": "fish_net_cast",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "fish_net_cast/front/frame_00_base.png",
-            "team_mask": "fish_net_cast/front/frame_00_teammask.png"
+            "team_mask": "fish_net_cast/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/fishing_boat/sheets/front_contact_sheet.png",
+            "source_slot": 3,
+            "source_bbox": {
+              "x": 0,
+              "y": 53,
+              "w": 366,
+              "h": 260
+            },
+            "final_bbox": {
+              "x": 39,
+              "y": 79,
+              "w": 180,
+              "h": 129
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              1,
+              0
+            ],
+            "scale": 0.49453551912568305,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              864,
+              202,
+              1230,
+              568
+            ]
           },
           {
             "base": "fish_net_cast/front/frame_01_base.png",
-            "team_mask": "fish_net_cast/front/frame_01_teammask.png"
+            "team_mask": "fish_net_cast/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/fishing_boat/sheets/front_contact_sheet.png",
+            "source_slot": 3,
+            "source_bbox": {
+              "x": 0,
+              "y": 53,
+              "w": 366,
+              "h": 260
+            },
+            "final_bbox": {
+              "x": 39,
+              "y": 79,
+              "w": 180,
+              "h": 129
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              1,
+              0
+            ],
+            "scale": 0.49453551912568305,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              864,
+              202,
+              1230,
+              568
+            ]
           }
         ],
         "back": [
           {
             "base": "fish_net_cast/back/frame_00_base.png",
-            "team_mask": "fish_net_cast/back/frame_00_teammask.png"
+            "team_mask": "fish_net_cast/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/fishing_boat/sheets/back_contact_sheet.png",
+            "source_slot": 3,
+            "source_bbox": {
+              "x": 0,
+              "y": 33,
+              "w": 384,
+              "h": 318
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 58,
+              "w": 181,
+              "h": 150
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.4713541666666667,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              856,
+              194,
+              1240,
+              578
+            ]
           },
           {
             "base": "fish_net_cast/back/frame_01_base.png",
-            "team_mask": "fish_net_cast/back/frame_01_teammask.png"
+            "team_mask": "fish_net_cast/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/fishing_boat/sheets/back_contact_sheet.png",
+            "source_slot": 3,
+            "source_bbox": {
+              "x": 0,
+              "y": 33,
+              "w": 384,
+              "h": 318
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 58,
+              "w": 181,
+              "h": 150
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.4713541666666667,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              856,
+              194,
+              1240,
+              578
+            ]
           }
         ]
       }
@@ -96,25 +474,151 @@
       "loop": true,
       "hold_last": false,
       "description": "carrying fish",
+      "family": "carrying_fish",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "carrying_fish/front/frame_00_base.png",
-            "team_mask": "carrying_fish/front/frame_00_teammask.png"
+            "team_mask": "carrying_fish/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/fishing_boat/sheets/front_contact_sheet.png",
+            "source_slot": 4,
+            "source_bbox": {
+              "x": 0,
+              "y": 17,
+              "w": 333,
+              "h": 300
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 47,
+              "w": 181,
+              "h": 161
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.5435435435435435,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              44,
+              806,
+              377,
+              1139
+            ]
           },
           {
             "base": "carrying_fish/front/frame_01_base.png",
-            "team_mask": "carrying_fish/front/frame_01_teammask.png"
+            "team_mask": "carrying_fish/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/fishing_boat/sheets/front_contact_sheet.png",
+            "source_slot": 4,
+            "source_bbox": {
+              "x": 0,
+              "y": 17,
+              "w": 333,
+              "h": 300
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 47,
+              "w": 181,
+              "h": 161
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.5435435435435435,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              44,
+              806,
+              377,
+              1139
+            ]
           }
         ],
         "back": [
           {
             "base": "carrying_fish/back/frame_00_base.png",
-            "team_mask": "carrying_fish/back/frame_00_teammask.png"
+            "team_mask": "carrying_fish/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/fishing_boat/sheets/back_contact_sheet.png",
+            "source_slot": 4,
+            "source_bbox": {
+              "x": 0,
+              "y": 23,
+              "w": 318,
+              "h": 271
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 54,
+              "w": 181,
+              "h": 154
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.5691823899371069,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              41,
+              832,
+              359,
+              1150
+            ]
           },
           {
             "base": "carrying_fish/back/frame_01_base.png",
-            "team_mask": "carrying_fish/back/frame_01_teammask.png"
+            "team_mask": "carrying_fish/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/fishing_boat/sheets/back_contact_sheet.png",
+            "source_slot": 4,
+            "source_bbox": {
+              "x": 0,
+              "y": 23,
+              "w": 318,
+              "h": 271
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 54,
+              "w": 181,
+              "h": 154
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.5691823899371069,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              41,
+              832,
+              359,
+              1150
+            ]
           }
         ]
       }
@@ -124,25 +628,151 @@
       "loop": true,
       "hold_last": false,
       "description": "destroyed wreck",
+      "family": "destroyed_wreck",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "destroyed_wreck/front/frame_00_base.png",
-            "team_mask": "destroyed_wreck/front/frame_00_teammask.png"
+            "team_mask": "destroyed_wreck/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/fishing_boat/sheets/front_contact_sheet.png",
+            "source_slot": 5,
+            "source_bbox": {
+              "x": 0,
+              "y": 50,
+              "w": 347,
+              "h": 248
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 79,
+              "w": 181,
+              "h": 129
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.521613832853026,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              448,
+              848,
+              795,
+              1195
+            ]
           },
           {
             "base": "destroyed_wreck/front/frame_01_base.png",
-            "team_mask": "destroyed_wreck/front/frame_01_teammask.png"
+            "team_mask": "destroyed_wreck/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/fishing_boat/sheets/front_contact_sheet.png",
+            "source_slot": 5,
+            "source_bbox": {
+              "x": 0,
+              "y": 50,
+              "w": 347,
+              "h": 248
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 79,
+              "w": 181,
+              "h": 129
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.521613832853026,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              448,
+              848,
+              795,
+              1195
+            ]
           }
         ],
         "back": [
           {
             "base": "destroyed_wreck/back/frame_00_base.png",
-            "team_mask": "destroyed_wreck/back/frame_00_teammask.png"
+            "team_mask": "destroyed_wreck/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/fishing_boat/sheets/back_contact_sheet.png",
+            "source_slot": 5,
+            "source_bbox": {
+              "x": 0,
+              "y": 23,
+              "w": 361,
+              "h": 315
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 50,
+              "w": 181,
+              "h": 158
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.5013850415512465,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              441,
+              806,
+              802,
+              1167
+            ]
           },
           {
             "base": "destroyed_wreck/back/frame_01_base.png",
-            "team_mask": "destroyed_wreck/back/frame_01_teammask.png"
+            "team_mask": "destroyed_wreck/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/fishing_boat/sheets/back_contact_sheet.png",
+            "source_slot": 5,
+            "source_bbox": {
+              "x": 0,
+              "y": 23,
+              "w": 361,
+              "h": 315
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 50,
+              "w": 181,
+              "h": 158
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.5013850415512465,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              441,
+              806,
+              802,
+              1167
+            ]
           }
         ]
       }
@@ -152,29 +782,200 @@
       "loop": true,
       "hold_last": false,
       "description": "decayed wreckage",
+      "family": "decayed_wreckage",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "decayed_wreckage/front/frame_00_base.png",
-            "team_mask": "decayed_wreckage/front/frame_00_teammask.png"
+            "team_mask": "decayed_wreckage/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/fishing_boat/sheets/front_contact_sheet.png",
+            "source_slot": 6,
+            "source_bbox": {
+              "x": 0,
+              "y": 55,
+              "w": 342,
+              "h": 234
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 84,
+              "w": 181,
+              "h": 124
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.5292397660818714,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              864,
+              858,
+              1206,
+              1200
+            ]
           },
           {
             "base": "decayed_wreckage/front/frame_01_base.png",
-            "team_mask": "decayed_wreckage/front/frame_01_teammask.png"
+            "team_mask": "decayed_wreckage/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/fishing_boat/sheets/front_contact_sheet.png",
+            "source_slot": 6,
+            "source_bbox": {
+              "x": 0,
+              "y": 55,
+              "w": 342,
+              "h": 234
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 84,
+              "w": 181,
+              "h": 124
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.5292397660818714,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              864,
+              858,
+              1206,
+              1200
+            ]
           }
         ],
         "back": [
           {
             "base": "decayed_wreckage/back/frame_00_base.png",
-            "team_mask": "decayed_wreckage/back/frame_00_teammask.png"
+            "team_mask": "decayed_wreckage/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/fishing_boat/sheets/back_contact_sheet.png",
+            "source_slot": 6,
+            "source_bbox": {
+              "x": 0,
+              "y": 18,
+              "w": 350,
+              "h": 314
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 46,
+              "w": 181,
+              "h": 162
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.5171428571428571,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              871,
+              820,
+              1221,
+              1170
+            ]
           },
           {
             "base": "decayed_wreckage/back/frame_01_base.png",
-            "team_mask": "decayed_wreckage/back/frame_01_teammask.png"
+            "team_mask": "decayed_wreckage/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/fishing_boat/sheets/back_contact_sheet.png",
+            "source_slot": 6,
+            "source_bbox": {
+              "x": 0,
+              "y": 18,
+              "w": 350,
+              "h": 314
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 46,
+              "w": 181,
+              "h": 162
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.5171428571428571,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              871,
+              820,
+              1221,
+              1170
+            ]
           }
         ]
       }
     }
   },
-  "notes": "Generated fishing boat tileset from image-gen contact sheets. Placeholder flags removed after runtime frames were promoted; frame_01 duplicates frame_00 pending hand-authored animation polish."
+  "notes": "Generated fishing boat tileset from image-gen contact sheets. Placeholder flags removed after runtime frames were promoted; frame_01 duplicates frame_00 pending hand-authored animation polish.",
+  "asset_type": "unit",
+  "source_canvas": {
+    "profile": "sprite_overlay_source",
+    "width_px": 256,
+    "height_px": 256,
+    "target_kind": "pre_crop_generation_slot",
+    "min_longest_side_px": 128,
+    "unit": "px",
+    "source": "realm range-based source-quality contract",
+    "range": {
+      "minimum_longest_side_px_after_crop": 128,
+      "pre_crop_target_px": 256,
+      "maximum_px": null
+    },
+    "visual_envelope": {
+      "w": 1,
+      "h": 1
+    },
+    "pre_crop_target_px_per_visual_tile": 256,
+    "runtime_min_longest_side_px_per_visual_tile": 128,
+    "scope": "per generated actor sheet cell or standalone pre-crop source"
+  },
+  "placement": {
+    "projection": "upright_world",
+    "anchor_kind": "feet",
+    "source_size": [
+      256,
+      256
+    ],
+    "anchor": [
+      128,
+      208
+    ],
+    "scale_policy": "entity_tile_zoom_1_55",
+    "footprint": [
+      1,
+      1
+    ],
+    "visual_envelope": [
+      1,
+      1
+    ],
+    "depth": "entity"
+  },
+  "source_workflow": "contact-sheet-resolution-replay"
 }

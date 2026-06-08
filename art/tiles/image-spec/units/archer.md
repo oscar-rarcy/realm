@@ -92,8 +92,10 @@ Generate the complete state set for each equipment tier below.
 
 ## Output Resolution
 
-- Final accepted standalone source canvas: 512 by 512 px.
-- Use this resolution from the generated JSON spec for every accepted standalone sprite frame; contact-sheet slots may be larger, but each slot must be cleanly crop/downscale-safe to 512 by 512 px.
+- Generation slot target before crop: about 256 by 256 px per accepted sprite frame.
+- Contact sheets may be larger than this overall; divide the sheet by its grid to judge the approximate slot size.
+- Slightly larger slots are fine. Do not downscale accepted art into tiny draw-size runtime proxies during promotion.
+- Cropped runtime source floor: longest side at least 128 px after crop.
 
 ## Image Output Contract
 
@@ -114,26 +116,48 @@ Generate the complete state set for each equipment tier below.
 
 ## States To Generate
 
-Generate **one frame for each state**. There are 14 state(s). Each image may contain at most **16 states** in a **4 by 4** grid.
+Generate **one sprite frame for each listed slot**. There are 28 frame slot(s). Each image may contain at most **16 frame slots** in a **4 by 4** grid.
 
-### Sheet
+### Sheet 1 of 2
 
 Use a **4 by 4** grid for this sheet.
+Slot target for this sheet: about **256 by 256 px** per cell before crop.
 
-- row 1, column 1: `self_bow__idle` - Self Bow: idle; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
-- row 1, column 2: `self_bow__walk` - Self Bow: walk; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
-- row 1, column 3: `self_bow__aim` - Self Bow: aim with ammunition held in the weapon; ammunition is not airborne; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
-- row 1, column 4: `self_bow__release` - Self Bow: release follow-through after the shot; weapon discharged, no airborne ammunition visible; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
-- row 2, column 1: `self_bow__reload` - Self Bow: reload by taking ammunition from the quiver or bolt case; no airborne ammunition visible; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
-- row 2, column 2: `self_bow__dead` - Self Bow: dead human body lying on the ground with clothing, armour, weapons, and equipment still intact; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
-- row 2, column 3: `self_bow__decayed` - Self Bow: human skeleton remains, with armour, weapons, and equipment still intact and readable; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
-- row 2, column 4: `crossbow__idle` - Crossbows: idle; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
-- row 3, column 1: `crossbow__walk` - Crossbows: walk; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
-- row 3, column 2: `crossbow__aim` - Crossbows: aim with ammunition held in the weapon; ammunition is not airborne; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
-- row 3, column 3: `crossbow__release` - Crossbows: release follow-through after the shot; weapon discharged, no airborne ammunition visible; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
-- row 3, column 4: `crossbow__reload` - Crossbows: reload by taking ammunition from the quiver or bolt case; no airborne ammunition visible; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
-- row 4, column 1: `crossbow__dead` - Crossbows: dead human body lying on the ground with clothing, armour, weapons, and equipment still intact; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
-- row 4, column 2: `crossbow__decayed` - Crossbows: human skeleton remains, with armour, weapons, and equipment still intact and readable; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
+- row 1, column 1: `self_bow__idle` frame 00 - Self Bow: idle; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
+- row 1, column 2: `self_bow__idle` frame 01 - Self Bow: idle; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
+- row 1, column 3: `self_bow__walk` frame 00 - Self Bow: walk; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
+- row 1, column 4: `self_bow__walk` frame 01 - Self Bow: walk; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
+- row 2, column 1: `self_bow__aim` frame 00 - Self Bow: aim with ammunition held in the weapon; ammunition is not airborne; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
+- row 2, column 2: `self_bow__aim` frame 01 - Self Bow: aim with ammunition held in the weapon; ammunition is not airborne; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
+- row 2, column 3: `self_bow__release` frame 00 - Self Bow: release follow-through after the shot; weapon discharged, no airborne ammunition visible; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
+- row 2, column 4: `self_bow__release` frame 01 - Self Bow: release follow-through after the shot; weapon discharged, no airborne ammunition visible; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
+- row 3, column 1: `self_bow__reload` frame 00 - Self Bow: reload by taking ammunition from the quiver or bolt case; no airborne ammunition visible; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
+- row 3, column 2: `self_bow__reload` frame 01 - Self Bow: reload by taking ammunition from the quiver or bolt case; no airborne ammunition visible; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
+- row 3, column 3: `self_bow__dead` frame 00 - Self Bow: dead human body lying on the ground with clothing, armour, weapons, and equipment still intact; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
+- row 3, column 4: `self_bow__dead` frame 01 - Self Bow: dead human body lying on the ground with clothing, armour, weapons, and equipment still intact; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
+- row 4, column 1: `self_bow__decayed` frame 00 - Self Bow: human skeleton remains, with armour, weapons, and equipment still intact and readable; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
+- row 4, column 2: `self_bow__decayed` frame 01 - Self Bow: human skeleton remains, with armour, weapons, and equipment still intact and readable; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
+- row 4, column 3: `crossbow__idle` frame 00 - Crossbows: idle; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
+- row 4, column 4: `crossbow__idle` frame 01 - Crossbows: idle; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
+
+### Sheet 2 of 2
+
+Use a **4 by 3** grid for this sheet.
+Slot target for this sheet: about **256 by 256 px** per cell before crop.
+Leave unused cells empty.
+
+- row 1, column 1: `crossbow__walk` frame 00 - Crossbows: walk; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
+- row 1, column 2: `crossbow__walk` frame 01 - Crossbows: walk; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
+- row 1, column 3: `crossbow__aim` frame 00 - Crossbows: aim with ammunition held in the weapon; ammunition is not airborne; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
+- row 1, column 4: `crossbow__aim` frame 01 - Crossbows: aim with ammunition held in the weapon; ammunition is not airborne; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
+- row 2, column 1: `crossbow__release` frame 00 - Crossbows: release follow-through after the shot; weapon discharged, no airborne ammunition visible; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
+- row 2, column 2: `crossbow__release` frame 01 - Crossbows: release follow-through after the shot; weapon discharged, no airborne ammunition visible; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
+- row 2, column 3: `crossbow__reload` frame 00 - Crossbows: reload by taking ammunition from the quiver or bolt case; no airborne ammunition visible; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
+- row 2, column 4: `crossbow__reload` frame 01 - Crossbows: reload by taking ammunition from the quiver or bolt case; no airborne ammunition visible; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
+- row 3, column 1: `crossbow__dead` frame 00 - Crossbows: dead human body lying on the ground with clothing, armour, weapons, and equipment still intact; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
+- row 3, column 2: `crossbow__dead` frame 01 - Crossbows: dead human body lying on the ground with clothing, armour, weapons, and equipment still intact; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
+- row 3, column 3: `crossbow__decayed` frame 00 - Crossbows: human skeleton remains, with armour, weapons, and equipment still intact and readable; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
+- row 3, column 4: `crossbow__decayed` frame 01 - Crossbows: human skeleton remains, with armour, weapons, and equipment still intact and readable; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
 
 ## Production Follow-Up
 
@@ -146,21 +170,36 @@ Use a **4 by 4** grid for this sheet.
 
 ## Prompt
 
-Generate sprites for my Realm Archer. The footprint is 1 by 1 tile(s). Team colour is required and the recommended preview player colour is blue (#00AFFF). Valid directions are front, back. Produce one sheet at a time for the requested direction, using the same state grid for each direction. Create one frame for each of the 14 listed states. Order states left to right and top to bottom within each sheet. Keep the subject consistent across every slot. Final accepted standalone frames use the generated spec resolution: 512 by 512 px. Use a flat pure #ff00ff magenta sheet background and clear gutters between cells. Use clean readable tiny paper-cutout sprite proportions, stable anchor, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork. If unit reference images are supplied, use them only for equipment and silhouette cues, then redraw into stylized Realm sprite art; do not copy their source style or pixels. Use projectile reference files for released projectiles.
+Generate sprites for my Realm Archer. The footprint is 1 by 1 tile(s). Team colour is required and the recommended preview player colour is blue (#00AFFF). Valid directions are front, back. Produce one sheet at a time for the requested direction, using the same state grid for each direction. Create one sprite frame for each of the 28 listed frame slots. Since there are more than 16 frame slots, split them across multiple images, each image using a 4 by 4 grid. Order slots left to right and top to bottom within each sheet. Keep the subject consistent across every slot. Aim for about 256 by 256 px per sheet slot before crop; larger slots are fine if the sheet grid is clean. Keep the accepted runtime crop's longest side at least 128 px. Use a flat pure #ff00ff magenta sheet background and clear gutters between cells. Use clean readable tiny paper-cutout sprite proportions, stable anchor, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork. If unit reference images are supplied, use them only for equipment and silhouette cues, then redraw into stylized Realm sprite art; do not copy their source style or pixels. Use projectile reference files for released projectiles.
 
 Slot order:
-- Grid: 4 by 4
-  - row 1, column 1: Self Bow: idle; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
-  - row 1, column 2: Self Bow: walk; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
-  - row 1, column 3: Self Bow: aim with ammunition held in the weapon; ammunition is not airborne; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
-  - row 1, column 4: Self Bow: release follow-through after the shot; weapon discharged, no airborne ammunition visible; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
-  - row 2, column 1: Self Bow: reload by taking ammunition from the quiver or bolt case; no airborne ammunition visible; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
-  - row 2, column 2: Self Bow: dead human body lying on the ground with clothing, armour, weapons, and equipment still intact; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
-  - row 2, column 3: Self Bow: human skeleton remains, with armour, weapons, and equipment still intact and readable; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
-  - row 2, column 4: Crossbows: idle; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
-  - row 3, column 1: Crossbows: walk; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
-  - row 3, column 2: Crossbows: aim with ammunition held in the weapon; ammunition is not airborne; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
-  - row 3, column 3: Crossbows: release follow-through after the shot; weapon discharged, no airborne ammunition visible; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
-  - row 3, column 4: Crossbows: reload by taking ammunition from the quiver or bolt case; no airborne ammunition visible; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
-  - row 4, column 1: Crossbows: dead human body lying on the ground with clothing, armour, weapons, and equipment still intact; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
-  - row 4, column 2: Crossbows: human skeleton remains, with armour, weapons, and equipment still intact and readable; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
+- Sheet 1 of 2: 4 by 4 grid
+  - row 1, column 1: `self_bow__idle` frame 00 - Self Bow: idle; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
+  - row 1, column 2: `self_bow__idle` frame 01 - Self Bow: idle; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
+  - row 1, column 3: `self_bow__walk` frame 00 - Self Bow: walk; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
+  - row 1, column 4: `self_bow__walk` frame 01 - Self Bow: walk; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
+  - row 2, column 1: `self_bow__aim` frame 00 - Self Bow: aim with ammunition held in the weapon; ammunition is not airborne; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
+  - row 2, column 2: `self_bow__aim` frame 01 - Self Bow: aim with ammunition held in the weapon; ammunition is not airborne; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
+  - row 2, column 3: `self_bow__release` frame 00 - Self Bow: release follow-through after the shot; weapon discharged, no airborne ammunition visible; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
+  - row 2, column 4: `self_bow__release` frame 01 - Self Bow: release follow-through after the shot; weapon discharged, no airborne ammunition visible; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
+  - row 3, column 1: `self_bow__reload` frame 00 - Self Bow: reload by taking ammunition from the quiver or bolt case; no airborne ammunition visible; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
+  - row 3, column 2: `self_bow__reload` frame 01 - Self Bow: reload by taking ammunition from the quiver or bolt case; no airborne ammunition visible; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
+  - row 3, column 3: `self_bow__dead` frame 00 - Self Bow: dead human body lying on the ground with clothing, armour, weapons, and equipment still intact; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
+  - row 3, column 4: `self_bow__dead` frame 01 - Self Bow: dead human body lying on the ground with clothing, armour, weapons, and equipment still intact; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
+  - row 4, column 1: `self_bow__decayed` frame 00 - Self Bow: human skeleton remains, with armour, weapons, and equipment still intact and readable; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
+  - row 4, column 2: `self_bow__decayed` frame 01 - Self Bow: human skeleton remains, with armour, weapons, and equipment still intact and readable; starting archer equipment with a simple wooden self bow, bowstring, cloth quiver, and standard arrows
+  - row 4, column 3: `crossbow__idle` frame 00 - Crossbows: idle; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
+  - row 4, column 4: `crossbow__idle` frame 01 - Crossbows: idle; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
+- Sheet 2 of 2: 4 by 3 grid
+  - row 1, column 1: `crossbow__walk` frame 00 - Crossbows: walk; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
+  - row 1, column 2: `crossbow__walk` frame 01 - Crossbows: walk; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
+  - row 1, column 3: `crossbow__aim` frame 00 - Crossbows: aim with ammunition held in the weapon; ammunition is not airborne; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
+  - row 1, column 4: `crossbow__aim` frame 01 - Crossbows: aim with ammunition held in the weapon; ammunition is not airborne; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
+  - row 2, column 1: `crossbow__release` frame 00 - Crossbows: release follow-through after the shot; weapon discharged, no airborne ammunition visible; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
+  - row 2, column 2: `crossbow__release` frame 01 - Crossbows: release follow-through after the shot; weapon discharged, no airborne ammunition visible; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
+  - row 2, column 3: `crossbow__reload` frame 00 - Crossbows: reload by taking ammunition from the quiver or bolt case; no airborne ammunition visible; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
+  - row 2, column 4: `crossbow__reload` frame 01 - Crossbows: reload by taking ammunition from the quiver or bolt case; no airborne ammunition visible; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
+  - row 3, column 1: `crossbow__dead` frame 00 - Crossbows: dead human body lying on the ground with clothing, armour, weapons, and equipment still intact; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
+  - row 3, column 2: `crossbow__dead` frame 01 - Crossbows: dead human body lying on the ground with clothing, armour, weapons, and equipment still intact; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
+  - row 3, column 3: `crossbow__decayed` frame 00 - Crossbows: human skeleton remains, with armour, weapons, and equipment still intact and readable; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts
+  - row 3, column 4: `crossbow__decayed` frame 01 - Crossbows: human skeleton remains, with armour, weapons, and equipment still intact and readable; upgraded archer equipment with a compact wooden crossbow, metal bow arms, bolt quiver, and short crossbow bolts

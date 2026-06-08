@@ -6,20 +6,40 @@
 #include "core/world_index.h"
 #include "view_state.h"
 
-void drawMiniMap(const WorldIndex& world, int x, int y, int w, int h) {
-    setDraw(rgb(10,12,18)); SDL_Rect bg{x,y,w,h}; SDL_RenderFillRect(s.ren,&bg);
-    for (int yy=0; yy<h; ++yy) {
-        int my = yy * MAP_H / std::max(1,h);
-        for (int xx=0; xx<w; ++xx) {
-            int mx = xx * MAP_W / std::max(1,w);
-            const Tile& t = g.map[my][mx];
-            Color c = t.explored[0] ? terrainBg(t,mx,my) : rgb(5,5,8);
-            Entity* e = t.visible[0] ? renderEntityAt(g, world, mx, my) : nullptr;
-            if (e && e->alive && e->owner != OWNER_NATURE) c = ownerBg(e->owner);
-            setDraw(c); SDL_RenderDrawPoint(s.ren, x+xx, y+yy);
+namespace {
+
+Color miniMapTileColor(const WorldIndex& world, int mx, int my) {
+    const Tile& t = g.map[my][mx];
+    Color c = t.explored[0] ? terrainBg(t,mx,my) : rgb(5,5,8);
+    Entity* e = t.visible[0] ? renderEntityAt(g, world, mx, my) : nullptr;
+    if (e && e->alive && e->owner != OWNER_NATURE) c = ownerBg(e->owner);
+    return c;
+}
+
+void drawMiniMapCells(const WorldIndex& world, SDL_Rect area) {
+    if (!miniMapUsesIsometricProjection()) {
+        for (int yy=0; yy<area.h; ++yy) {
+            int my = yy * MAP_H / std::max(1,area.h);
+            for (int xx=0; xx<area.w; ++xx) {
+                int mx = xx * MAP_W / std::max(1,area.w);
+                setDraw(miniMapTileColor(world, mx, my));
+                SDL_RenderDrawPoint(s.ren, area.x+xx, area.y+yy);
+            }
+        }
+        return;
+    }
+
+    for (int my = 0; my < MAP_H; ++my) {
+        for (int mx = 0; mx < MAP_W; ++mx) {
+            int px = 0, py = 0;
+            miniMapWorldToScreen(mx, my, area, px, py);
+            setDraw(miniMapTileColor(world, mx, my));
+            SDL_RenderDrawPoint(s.ren, px, py);
         }
     }
-    SDL_SetRenderDrawBlendMode(s.ren, SDL_BLENDMODE_BLEND);
+}
+
+void drawMiniMapViewport(SDL_Rect area, Color outline) {
     int vx0 = view.viewX, vy0 = view.viewY;
     int vx1 = view.viewX + view.viewW, vy1 = view.viewY + view.viewH;
     if (s.isometric) {
@@ -29,24 +49,48 @@ void drawMiniMap(const WorldIndex& world, int x, int y, int w, int h) {
         vy0 = view.viewY + b.minSy;
         vy1 = view.viewY + b.maxSy + 1;
     }
-    if (vx1 > vx0 && vy1 > vy0) {
+    if (vx1 <= vx0 || vy1 <= vy0) return;
+
+    SDL_RenderSetClipRect(s.ren, &area);
+    setDraw(outline);
+    if (miniMapUsesIsometricProjection()) {
+        int x00 = 0, y00 = 0, x10 = 0, y10 = 0, x11 = 0, y11 = 0, x01 = 0, y01 = 0;
+        miniMapWorldToScreen(vx0, vy0, area, x00, y00);
+        miniMapWorldToScreen(vx1 - 1, vy0, area, x10, y10);
+        miniMapWorldToScreen(vx1 - 1, vy1 - 1, area, x11, y11);
+        miniMapWorldToScreen(vx0, vy1 - 1, area, x01, y01);
+        SDL_RenderDrawLine(s.ren, x00, y00, x10, y10);
+        SDL_RenderDrawLine(s.ren, x10, y10, x11, y11);
+        SDL_RenderDrawLine(s.ren, x11, y11, x01, y01);
+        SDL_RenderDrawLine(s.ren, x01, y01, x00, y00);
+    } else {
         auto miniCoord = [](int origin, int value, int size, int mapSize) {
             return origin + (int)std::floor((double)value * (double)size / (double)mapSize);
         };
-        int x0 = miniCoord(x, vx0, w, MAP_W);
-        int y0 = miniCoord(y, vy0, h, MAP_H);
-        int x1 = miniCoord(x, vx1, w, MAP_W);
-        int y1 = miniCoord(y, vy1, h, MAP_H);
-        if (vx0 < 0) x0 = x - 1;
-        if (vy0 < 0) y0 = y - 1;
-        if (vx1 > MAP_W) x1 = x + w + 1;
-        if (vy1 > MAP_H) y1 = y + h + 1;
+        int x0 = miniCoord(area.x, vx0, area.w, MAP_W);
+        int y0 = miniCoord(area.y, vy0, area.h, MAP_H);
+        int x1 = miniCoord(area.x, vx1, area.w, MAP_W);
+        int y1 = miniCoord(area.y, vy1, area.h, MAP_H);
+        if (vx0 < 0) x0 = area.x - 1;
+        if (vy0 < 0) y0 = area.y - 1;
+        if (vx1 > MAP_W) x1 = area.x + area.w + 1;
+        if (vy1 > MAP_H) y1 = area.y + area.h + 1;
         SDL_Rect view{x0, y0, std::max(2, x1 - x0), std::max(2, y1 - y0)};
-        SDL_Rect clip{x, y, w, h};
-        SDL_RenderSetClipRect(s.ren, &clip);
-        setDraw(rgb(255,255,255,210)); SDL_RenderDrawRect(s.ren, &view);
-        SDL_RenderSetClipRect(s.ren, nullptr);
+        SDL_RenderDrawRect(s.ren, &view);
     }
+    SDL_RenderSetClipRect(s.ren, nullptr);
+}
+
+} // namespace
+
+void drawMiniMap(const WorldIndex& world, int x, int y, int w, int h) {
+    setDraw(rgb(10,12,18)); SDL_Rect bg{x,y,w,h}; SDL_RenderFillRect(s.ren,&bg);
+    SDL_Rect area = miniMapContentRect(bg);
+    SDL_RenderSetClipRect(s.ren, &area);
+    drawMiniMapCells(world, area);
+    SDL_RenderSetClipRect(s.ren, nullptr);
+    SDL_SetRenderDrawBlendMode(s.ren, SDL_BLENDMODE_BLEND);
+    drawMiniMapViewport(area, rgb(255,255,255,210));
 }
 
 void drawTopBar() {

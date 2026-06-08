@@ -1,7 +1,7 @@
 {
   "schema": "realm.entity_tileset.v1",
   "entity": "stable",
-  "sprite_size": 32,
+  "sprite_size": 768,
   "directions": [
     "south"
   ],
@@ -11,11 +11,44 @@
       "loop": true,
       "hold_last": false,
       "description": "complete",
+      "family": "complete",
+      "fit_profile": "standing",
       "directions": {
         "south": [
           {
             "base": "complete/south/frame_00_base.png",
-            "team_mask": "complete/south/frame_00_teammask.png"
+            "team_mask": "complete/south/frame_00_teammask.png",
+            "source": "art/tiles/candidates/buildings/stable/sheets/south_contact_sheet.png",
+            "source_slot": 1,
+            "source_crop_box": [
+              2,
+              26,
+              316,
+              340
+            ],
+            "source_bbox": {
+              "x": 2,
+              "y": 24,
+              "w": 310,
+              "h": 266
+            },
+            "final_bbox": {
+              "x": 112,
+              "y": 157,
+              "w": 544,
+              "h": 467
+            },
+            "anchor": [
+              384,
+              624
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 1.7548387096774194,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ]
       }
@@ -25,11 +58,44 @@
       "loop": true,
       "hold_last": false,
       "description": "training",
+      "family": "training",
+      "fit_profile": "standing",
       "directions": {
         "south": [
           {
             "base": "training/south/frame_00_base.png",
-            "team_mask": "training/south/frame_00_teammask.png"
+            "team_mask": "training/south/frame_00_teammask.png",
+            "source": "art/tiles/candidates/buildings/stable/sheets/south_contact_sheet.png",
+            "source_slot": 2,
+            "source_crop_box": [
+              320,
+              26,
+              634,
+              340
+            ],
+            "source_bbox": {
+              "x": 2,
+              "y": 24,
+              "w": 312,
+              "h": 266
+            },
+            "final_bbox": {
+              "x": 112,
+              "y": 160,
+              "w": 544,
+              "h": 464
+            },
+            "anchor": [
+              384,
+              624
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 1.7435897435897436,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ]
       }
@@ -39,85 +105,141 @@
       "loop": true,
       "hold_last": false,
       "description": "construction",
+      "family": "construction",
+      "fit_profile": "standing",
       "directions": {
         "south": [
           {
             "base": "construction/south/frame_00_base.png",
-            "team_mask": "construction/south/frame_00_teammask.png"
+            "team_mask": "construction/south/frame_00_teammask.png",
+            "source": "art/tiles/candidates/buildings/stable/sheets/south_contact_sheet.png",
+            "source_slot": 3,
+            "source_crop_box": [
+              626,
+              27,
+              940,
+              341
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 29,
+              "w": 314,
+              "h": 256
+            },
+            "final_bbox": {
+              "x": 112,
+              "y": 180,
+              "w": 544,
+              "h": 444
+            },
+            "anchor": [
+              384,
+              624
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 1.732484076433121,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ]
       }
     },
     "ruin_footprint": {
       "frame_ms": 250,
-      "loop": false,
-      "hold_last": true,
+      "loop": true,
+      "hold_last": false,
       "description": "ruin footprint",
+      "family": "ruin_footprint",
+      "fit_profile": "standing",
       "directions": {
         "south": [
           {
             "base": "ruin_footprint/south/frame_00_base.png",
-            "team_mask": "ruin_footprint/south/frame_00_teammask.png"
-          }
-        ]
-      }
-    },
-    "idle": {
-      "frame_ms": 250,
-      "loop": true,
-      "hold_last": false,
-      "description": "Runtime alias for complete",
-      "directions": {
-        "front": [
-          {
-            "base": "idle/front/frame_00_base.png",
-            "team_mask": "idle/front/frame_00_teammask.png"
-          },
-          {
-            "base": "idle/front/frame_01_base.png",
-            "team_mask": "idle/front/frame_01_teammask.png"
-          }
-        ],
-        "back": [
-          {
-            "base": "idle/back/frame_00_base.png",
-            "team_mask": "idle/back/frame_00_teammask.png"
-          },
-          {
-            "base": "idle/back/frame_01_base.png",
-            "team_mask": "idle/back/frame_01_teammask.png"
-          }
-        ]
-      }
-    },
-    "death": {
-      "frame_ms": 250,
-      "loop": false,
-      "hold_last": true,
-      "description": "Runtime alias for ruin_footprint",
-      "directions": {
-        "front": [
-          {
-            "base": "death/front/frame_00_base.png",
-            "team_mask": "death/front/frame_00_teammask.png"
-          },
-          {
-            "base": "death/front/frame_01_base.png",
-            "team_mask": "death/front/frame_01_teammask.png"
-          }
-        ],
-        "back": [
-          {
-            "base": "death/back/frame_00_base.png",
-            "team_mask": "death/back/frame_00_teammask.png"
-          },
-          {
-            "base": "death/back/frame_01_base.png",
-            "team_mask": "death/back/frame_01_teammask.png"
+            "team_mask": "ruin_footprint/south/frame_00_teammask.png",
+            "source": "art/tiles/candidates/buildings/stable/sheets/south_contact_sheet.png",
+            "source_slot": 4,
+            "source_crop_box": [
+              937,
+              90,
+              1251,
+              404
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 30,
+              "w": 313,
+              "h": 284
+            },
+            "final_bbox": {
+              "x": 112,
+              "y": 130,
+              "w": 544,
+              "h": 494
+            },
+            "anchor": [
+              384,
+              624
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 1.7380191693290734,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ]
       }
     }
   },
-  "notes": "Generated from accepted stable contact sheet under art/tiles/candidates/buildings/stable/sheets. Runtime idle/death aliases added from closest generated action variants; opaque magenta cleanup applied where needed."
+  "notes": "Generated from accepted stable contact sheet under art/tiles/candidates/buildings/stable/sheets. Runtime idle/death aliases added from closest generated action variants; opaque magenta cleanup applied where needed.",
+  "asset_type": "building",
+  "source_canvas": {
+    "profile": "building_footprint_sprite_source",
+    "width_px": 768,
+    "height_px": 768,
+    "target_kind": "pre_crop_generation_slot",
+    "min_longest_side_px": 384,
+    "unit": "px",
+    "source": "realm range-based source-quality contract",
+    "range": {
+      "minimum_longest_side_px_after_crop": 384,
+      "pre_crop_target_px": 768,
+      "maximum_px": null
+    },
+    "pre_crop_target_px_per_footprint_tile": 256,
+    "runtime_min_longest_side_px_per_footprint_tile": 128,
+    "pre_crop_target_px_cap": 1536,
+    "footprint": {
+      "w": 3,
+      "h": 2
+    },
+    "scope": "per generated building sheet cell or standalone pre-crop source; 256px per footprint tile is the target capped at 1536px"
+  },
+  "placement": {
+    "projection": "footprint_world",
+    "anchor_kind": "footprint_origin",
+    "source_size": [
+      768,
+      768
+    ],
+    "anchor": [
+      384,
+      624
+    ],
+    "scale_policy": "entity_tile_zoom_1_55",
+    "footprint": [
+      3,
+      2
+    ],
+    "visual_envelope": [
+      3,
+      3
+    ],
+    "depth": "entity"
+  },
+  "source_workflow": "contact-sheet-resolution-replay"
 }

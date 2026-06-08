@@ -77,8 +77,10 @@ Generate one Realm sprite reference sheet per direction for **Transport**.
 
 ## Output Resolution
 
-- Final accepted standalone source canvas: 512 by 512 px.
-- Use this resolution from the generated JSON spec for every accepted standalone sprite frame; contact-sheet slots may be larger, but each slot must be cleanly crop/downscale-safe to 512 by 512 px.
+- Generation slot target before crop: about 256 by 256 px per accepted sprite frame.
+- Contact sheets may be larger than this overall; divide the sheet by its grid to judge the approximate slot size.
+- Slightly larger slots are fine. Do not downscale accepted art into tiny draw-size runtime proxies during promotion.
+- Cropped runtime source floor: longest side at least 128 px after crop.
 
 ## Image Output Contract
 
@@ -100,21 +102,38 @@ Generate one Realm sprite reference sheet per direction for **Transport**.
 
 ## States To Generate
 
-Generate **one frame for each state**. There are 9 state(s). Each image may contain at most **16 states** in a **4 by 4** grid.
+Generate **one sprite frame for each listed slot**. There are 18 frame slot(s). Each image may contain at most **16 frame slots** in a **4 by 4** grid.
 
-### Sheet
+### Sheet 1 of 2
 
-Use a **3 by 3** grid for this sheet.
+Use a **4 by 4** grid for this sheet.
+Slot target for this sheet: about **256 by 256 px** per cell before crop.
 
-- row 1, column 1: `idle` - idle
-- row 1, column 2: `sail` - sail
-- row 1, column 3: `load_unload` - load/unload
-- row 2, column 1: `cargo_full_indicator` - cargo full indicator
-- row 2, column 2: `empty` - transport with no visible cargo load
-- row 2, column 3: `loaded_partial` - transport partially loaded using covered cargo, weight, flags, or silhouette cues
-- row 3, column 1: `loaded_full` - transport fully loaded using covered cargo, weight, flags, or silhouette cues
-- row 3, column 2: `dead` - destroyed wreck, broken but still recognizable
-- row 3, column 3: `decayed` - weathered wreckage, with durable wood, metal, wheels, hull, or siege parts still readable
+- row 1, column 1: `idle` frame 00 - idle
+- row 1, column 2: `idle` frame 01 - idle
+- row 1, column 3: `sail` frame 00 - sail
+- row 1, column 4: `sail` frame 01 - sail
+- row 2, column 1: `load_unload` frame 00 - load/unload
+- row 2, column 2: `load_unload` frame 01 - load/unload
+- row 2, column 3: `cargo_full_indicator` frame 00 - cargo full indicator
+- row 2, column 4: `cargo_full_indicator` frame 01 - cargo full indicator
+- row 3, column 1: `empty` frame 00 - transport with no visible cargo load
+- row 3, column 2: `empty` frame 01 - transport with no visible cargo load
+- row 3, column 3: `loaded_partial` frame 00 - transport partially loaded using covered cargo, weight, flags, or silhouette cues
+- row 3, column 4: `loaded_partial` frame 01 - transport partially loaded using covered cargo, weight, flags, or silhouette cues
+- row 4, column 1: `loaded_full` frame 00 - transport fully loaded using covered cargo, weight, flags, or silhouette cues
+- row 4, column 2: `loaded_full` frame 01 - transport fully loaded using covered cargo, weight, flags, or silhouette cues
+- row 4, column 3: `dead` frame 00 - destroyed wreck, broken but still recognizable
+- row 4, column 4: `dead` frame 01 - destroyed wreck, broken but still recognizable
+
+### Sheet 2 of 2
+
+Use a **2 by 1** grid for this sheet.
+Slot target for this sheet: about **256 by 256 px** per cell before crop.
+Leave unused cells empty.
+
+- row 1, column 1: `decayed` frame 00 - weathered wreckage, with durable wood, metal, wheels, hull, or siege parts still readable
+- row 1, column 2: `decayed` frame 01 - weathered wreckage, with durable wood, metal, wheels, hull, or siege parts still readable
 
 ## Production Follow-Up
 
@@ -127,16 +146,26 @@ Use a **3 by 3** grid for this sheet.
 
 ## Prompt
 
-Generate sprites for my Realm Transport. The footprint is 1 by 1 tile(s). Team colour is required and the recommended preview player colour is red (#FF0000). Valid directions are front, back. Produce one sheet at a time for the requested direction, using the same state grid for each direction. Create one frame for each of the 9 listed states. Order states left to right and top to bottom within each sheet. Keep the subject consistent across every slot. Final accepted standalone frames use the generated spec resolution: 512 by 512 px. Use a flat pure #ff00ff magenta sheet background and clear gutters between cells. Use clean readable tiny paper-cutout sprite proportions, stable anchor, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork. If unit reference images are supplied, use them only for equipment and silhouette cues, then redraw into stylized Realm sprite art; do not copy their source style or pixels.
+Generate sprites for my Realm Transport. The footprint is 1 by 1 tile(s). Team colour is required and the recommended preview player colour is red (#FF0000). Valid directions are front, back. Produce one sheet at a time for the requested direction, using the same state grid for each direction. Create one sprite frame for each of the 18 listed frame slots. Since there are more than 16 frame slots, split them across multiple images, each image using a 4 by 4 grid. Order slots left to right and top to bottom within each sheet. Keep the subject consistent across every slot. Aim for about 256 by 256 px per sheet slot before crop; larger slots are fine if the sheet grid is clean. Keep the accepted runtime crop's longest side at least 128 px. Use a flat pure #ff00ff magenta sheet background and clear gutters between cells. Use clean readable tiny paper-cutout sprite proportions, stable anchor, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork. If unit reference images are supplied, use them only for equipment and silhouette cues, then redraw into stylized Realm sprite art; do not copy their source style or pixels.
 
 Slot order:
-- Grid: 3 by 3
-  - row 1, column 1: idle
-  - row 1, column 2: sail
-  - row 1, column 3: load/unload
-  - row 2, column 1: cargo full indicator
-  - row 2, column 2: transport with no visible cargo load
-  - row 2, column 3: transport partially loaded using covered cargo, weight, flags, or silhouette cues
-  - row 3, column 1: transport fully loaded using covered cargo, weight, flags, or silhouette cues
-  - row 3, column 2: destroyed wreck, broken but still recognizable
-  - row 3, column 3: weathered wreckage, with durable wood, metal, wheels, hull, or siege parts still readable
+- Sheet 1 of 2: 4 by 4 grid
+  - row 1, column 1: `idle` frame 00 - idle
+  - row 1, column 2: `idle` frame 01 - idle
+  - row 1, column 3: `sail` frame 00 - sail
+  - row 1, column 4: `sail` frame 01 - sail
+  - row 2, column 1: `load_unload` frame 00 - load/unload
+  - row 2, column 2: `load_unload` frame 01 - load/unload
+  - row 2, column 3: `cargo_full_indicator` frame 00 - cargo full indicator
+  - row 2, column 4: `cargo_full_indicator` frame 01 - cargo full indicator
+  - row 3, column 1: `empty` frame 00 - transport with no visible cargo load
+  - row 3, column 2: `empty` frame 01 - transport with no visible cargo load
+  - row 3, column 3: `loaded_partial` frame 00 - transport partially loaded using covered cargo, weight, flags, or silhouette cues
+  - row 3, column 4: `loaded_partial` frame 01 - transport partially loaded using covered cargo, weight, flags, or silhouette cues
+  - row 4, column 1: `loaded_full` frame 00 - transport fully loaded using covered cargo, weight, flags, or silhouette cues
+  - row 4, column 2: `loaded_full` frame 01 - transport fully loaded using covered cargo, weight, flags, or silhouette cues
+  - row 4, column 3: `dead` frame 00 - destroyed wreck, broken but still recognizable
+  - row 4, column 4: `dead` frame 01 - destroyed wreck, broken but still recognizable
+- Sheet 2 of 2: 2 by 1 grid
+  - row 1, column 1: `decayed` frame 00 - weathered wreckage, with durable wood, metal, wheels, hull, or siege parts still readable
+  - row 1, column 2: `decayed` frame 01 - weathered wreckage, with durable wood, metal, wheels, hull, or siege parts still readable

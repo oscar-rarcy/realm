@@ -12,6 +12,8 @@ import shutil
 from pathlib import Path
 from typing import Any
 
+from tileset_resolution_policy import source_canvas_scope, source_resolution_policy
+
 
 ROOT = Path(__file__).resolve().parents[1]
 GAME_TYPES_HEADER = ROOT / "src" / "core" / "game_types.h"
@@ -458,6 +460,11 @@ GENERATION_ASPECTS = {
         "ratio": "1:1",
         "description": "default square image-generation aspect ratio",
     },
+    "tall_1_3": {
+        "preset": "Portrait",
+        "ratio": "1:3",
+        "description": "very tall sprite slot for upright pikes, lances, banners, and other vertical overhangs",
+    },
     "portrait_4_3": {
         "preset": "Portrait",
         "ratio": "4:3",
@@ -468,15 +475,29 @@ GENERATION_ASPECTS = {
         "ratio": "16:9",
         "description": "wide sheet with extra horizontal room for long spears, pikes, and lances",
     },
+    "wide_3_1": {
+        "preset": "Story",
+        "ratio": "3:1",
+        "description": "very wide sprite slot for forward-thrust pikes, lances, and lying long weapons",
+    },
 }
 DEFAULT_GENERATION_ASPECT_ID = "square_1_1"
 ENTITY_GENERATION_ASPECT_OVERRIDES = {
-    "E_KNIGHT": "portrait_4_3",
-    "E_SPEARMAN": "story_16_9",
+    "E_KNIGHT": "story_16_9",
+    "E_SPEARMAN": "portrait_4_3",
 }
 KNIGHT_LANCE_VARIANT_ASPECTS = {
     "iron_weapons__open_helmet": "story_16_9",
     "iron_weapons__plate_helm": "story_16_9",
+}
+DEFAULT_VISUAL_ENVELOPE = {"w": 1, "h": 1}
+ENTITY_VISUAL_ENVELOPE_OVERRIDES = {
+    "E_SPEARMAN": {"w": 1, "h": 2},
+    "E_KNIGHT": {"w": 2, "h": 1},
+}
+ENTITY_VISUAL_ENVELOPE_NOTES = {
+    "E_SPEARMAN": "logical 1x1 unit; individual spear/pike actions override the visual envelope when the weapon is upright or thrust forward",
+    "E_KNIGHT": "logical 1x1 unit; Iron Weapons lance actions override the visual envelope when the lance is upright or couched forward",
 }
 BLUE_CONTEXT_KEYWORDS = {
     "blue", "water", "naval", "ship", "warship", "boat", "dock", "fishing", "fish",
@@ -783,6 +804,20 @@ def generation_aspect_for_entity(enum_name: str, category: str) -> dict[str, str
     return generation_aspect(ENTITY_GENERATION_ASPECT_OVERRIDES.get(enum_name, DEFAULT_GENERATION_ASPECT_ID))
 
 
+def generation_aspect_for_visual_envelope(envelope: dict[str, int]) -> dict[str, str]:
+    width = max(1, int(envelope.get("w", 1) or 1))
+    height = max(1, int(envelope.get("h", 1) or 1))
+    if width >= 3 and width > height:
+        return generation_aspect("wide_3_1")
+    if height >= 3 and height > width:
+        return generation_aspect("tall_1_3")
+    if width > height:
+        return generation_aspect("story_16_9")
+    if height > width:
+        return generation_aspect("portrait_4_3")
+    return generation_aspect(DEFAULT_GENERATION_ASPECT_ID)
+
+
 def generation_aspect_for_research_variant(enum_name: str, variant_id: str) -> dict[str, str] | None:
     if enum_name == "E_KNIGHT" and variant_id in KNIGHT_LANCE_VARIANT_ASPECTS:
         return generation_aspect(KNIGHT_LANCE_VARIANT_ASPECTS[variant_id])
@@ -808,54 +843,115 @@ def generation_aspect_variant_rules_for_entity(enum_name: str, category: str) ->
     return rules
 
 
-HIGH_RES_GROUND_SOURCE_PX = 1024
-HIGH_RES_ASSET_SOURCE_PX = 512
+def visual_envelope_for_entity(enum_name: str, category: str) -> dict[str, int]:
+    if category != "units":
+        return dict(DEFAULT_VISUAL_ENVELOPE)
+    return dict(ENTITY_VISUAL_ENVELOPE_OVERRIDES.get(enum_name, DEFAULT_VISUAL_ENVELOPE))
 
 
-def high_res_source_canvas(group: str, *, footprint: dict[str, int] | None = None) -> dict[str, Any]:
-    if group == "grounds":
-        return {
-            "width_px": HIGH_RES_GROUND_SOURCE_PX,
-            "height_px": HIGH_RES_GROUND_SOURCE_PX,
-            "unit": "px",
-            "scope": "per standalone high-resolution ground source tile",
-            "source": "realm high-resolution source-quality contract",
-        }
+def visual_envelope_notes_for_entity(enum_name: str, category: str) -> str:
+    if category != "units":
+        return ""
+    return ENTITY_VISUAL_ENVELOPE_NOTES.get(enum_name, "")
 
-    footprint = footprint or {"w": 1, "h": 1}
-    footprint_w = max(1, int(footprint.get("w", 1)))
-    footprint_h = max(1, int(footprint.get("h", 1)))
-    footprint_max = max(footprint_w, footprint_h)
-    source_px = HIGH_RES_ASSET_SOURCE_PX * footprint_max
-    scope = "per accepted standalone high-resolution runtime source image"
-    if group == "buildings":
-        scope = (
-            f"per accepted standalone high-resolution building footprint sprite; "
-            f"{HIGH_RES_ASSET_SOURCE_PX}px per footprint tile on the largest footprint axis"
-        )
-    elif group in {"units", "animals"}:
-        scope = "per accepted standalone high-resolution actor sprite frame"
-    elif group in {"features", "decals"}:
-        scope = "per accepted standalone high-resolution tile-anchored source image"
-    elif group in {"projectiles", "effects", "user_interface"}:
-        scope = "per accepted standalone high-resolution overlay, projectile, effect, or UI source image"
 
-    canvas: dict[str, Any] = {
-        "width_px": source_px,
-        "height_px": source_px,
-        "unit": "px",
-        "scope": scope,
-        "source": "realm high-resolution source-quality contract",
-    }
-    if footprint_w > 1 or footprint_h > 1:
-        canvas["footprint"] = {"w": footprint_w, "h": footprint_h}
-        canvas["source_px_per_footprint_tile"] = HIGH_RES_ASSET_SOURCE_PX
+def visual_envelope_for_action(enum_name: str, category: str, action_id: str) -> dict[str, int] | None:
+    if category != "units":
+        return None
+    action = action_id.lower()
+    if enum_name == "E_SPEARMAN":
+        is_pike = action.startswith("pike__")
+        is_thrust_or_brace = "spear_thrust" in action or "brace_hold_position" in action
+        is_lying = "__dead" in action or "__decayed" in action or "decayed_skeleton" in action
+        if is_pike and (is_thrust_or_brace or is_lying):
+            return {"w": 3, "h": 1}
+        if is_pike:
+            return {"w": 1, "h": 3}
+        if is_thrust_or_brace or is_lying:
+            return {"w": 2, "h": 1}
+        return {"w": 1, "h": 2}
+    if enum_name == "E_KNIGHT":
+        is_iron_lance = action.startswith("iron_weapons__")
+        is_charge = "charge_strike" in action
+        is_lying = "__dead" in action or "__decayed" in action or "decayed_skeleton" in action
+        if is_iron_lance and (is_charge or is_lying):
+            return {"w": 3, "h": 1}
+        if is_iron_lance:
+            return {"w": 2, "h": 2}
+        return {"w": 2, "h": 1}
+    return None
+
+
+def visual_envelope_note_for_action(enum_name: str, action_id: str, envelope: dict[str, int]) -> str:
+    action = action_id.lower()
+    if enum_name == "E_SPEARMAN":
+        if envelope == {"w": 3, "h": 1}:
+            return "long spear or pike is thrust forward or lying horizontally; keep the full weapon inside the slot"
+        if envelope == {"w": 1, "h": 3}:
+            return "upgraded pike is carried upright or near-upright; keep the full shaft and head inside the tall slot"
+        if envelope == {"w": 2, "h": 1}:
+            return "short spear projects forward or lies on the ground; keep the full weapon inside the wide slot"
+    if enum_name == "E_KNIGHT":
+        if envelope == {"w": 3, "h": 1}:
+            return "Iron Weapons lance is couched forward or lying with the mount; keep the full lance inside the wide slot"
+        if envelope == {"w": 2, "h": 2}:
+            return "Iron Weapons lance is upright or near-upright above a mounted knight; keep horse, rider, and lance inside the slot"
+        if "charge_strike" in action:
+            return "basic spear can angle forward but should not exceed the mounted cavalry silhouette"
+    return ""
+
+
+def apply_action_visual_envelopes(
+    enum_name: str,
+    category: str,
+    footprint: dict[str, int],
+    actions: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    if category != "units":
+        return actions
+    enriched: list[dict[str, Any]] = []
+    for action in actions:
+        item = dict(action)
+        action_id = str(item.get("id", ""))
+        envelope = visual_envelope_for_action(enum_name, category, action_id)
+        if envelope:
+            item["visual_envelope"] = envelope
+            item["visual_envelope_note"] = visual_envelope_note_for_action(enum_name, action_id, envelope)
+            item["generation_aspect"] = generation_aspect_for_visual_envelope(envelope)
+            item["source_canvas"] = source_canvas_for_entity(enum_name, category, footprint, envelope)
+            canvas = item["source_canvas"]
+            item["placement"] = {
+                "source_size": [canvas["width_px"], canvas["height_px"]],
+                "anchor": [canvas["width_px"] // 2, int(round(canvas["height_px"] * (39.0 / 48.0)))],
+                "footprint": [int(footprint.get("w", 1) or 1), int(footprint.get("h", 1) or 1)],
+                "visual_envelope": [envelope["w"], envelope["h"]],
+            }
+        enriched.append(item)
+    return enriched
+
+
+def high_res_source_canvas(
+    group: str,
+    *,
+    footprint: dict[str, int] | None = None,
+    visual_envelope: dict[str, int] | None = None,
+) -> dict[str, Any]:
+    canvas = source_resolution_policy(group, footprint=footprint, visual_envelope=visual_envelope)
+    if not canvas:
+        return {}
+    canvas = dict(canvas)
+    canvas["scope"] = source_canvas_scope(group)
     return canvas
 
 
-def source_canvas_for_entity(enum_name: str, category: str, footprint: dict[str, int] | None = None) -> dict[str, Any]:
+def source_canvas_for_entity(
+    enum_name: str,
+    category: str,
+    footprint: dict[str, int] | None = None,
+    visual_envelope: dict[str, int] | None = None,
+) -> dict[str, Any]:
     if category in {"units", "animals", "buildings"}:
-        return high_res_source_canvas(category, footprint=footprint)
+        return high_res_source_canvas(category, footprint=footprint, visual_envelope=visual_envelope)
     return {}
 
 
@@ -1178,11 +1274,13 @@ def default_entity_actions(category: str, required_states: str) -> list[dict[str
         actions.append(
             {
                 "id": "death",
-                "description": "runtime animal death sequence: frame 00 is the freshly dead readable carcass; frame 01 is the same animal's clean depleted skeleton remains",
+                "description": "runtime animal death sequence: frame 00 is the freshly dead readable carcass; frame 01 is partly harvested; frame 02 is mostly harvested; frame 03 is clean depleted skeleton remains",
                 "source": "src/core/entity_animation.cpp",
-                "frames_recommended": 2,
+                "frames_recommended": 4,
                 "phases": [
                     "freshly dead animal body lying on the ground, species silhouette still readable",
+                    "partly harvested animal carcass lying on the ground, species silhouette still readable",
+                    "mostly harvested animal carcass lying on the ground, species silhouette still readable",
                     "clean depleted skeleton remains of the same animal, species silhouette still readable",
                 ],
             }
@@ -1209,11 +1307,13 @@ def entity_spec(
     )
     actions = apply_entity_action_guidance(enum_name, actions)
     actions = apply_research_variants_to_actions(enum_name, actions)
+    actions = apply_action_visual_envelopes(enum_name, category, stats["footprint"], actions)
     team_color_required = category in PLAYER_TEAM_COLOR_CATEGORIES
     team_color_slots = team_color_slots_for_entity(enum_name, profile, team_color_required)
     player_colour = recommended_player_colour(enum_name, stats, audit) if team_color_required else None
     military_sigil = PLAYER_SIGIL if is_military_unit(category, stats) else None
     generation_aspect_spec = generation_aspect_for_entity(enum_name, category)
+    visual_envelope = visual_envelope_for_entity(enum_name, category)
     render = {
         "layer": "building" if category == "buildings" else "actor",
         "projection_mode": "upright_world",
@@ -1225,6 +1325,7 @@ def entity_spec(
     }
     placement = {
         "footprint": stats["footprint"],
+        "visual_envelope": visual_envelope,
     }
     if category == "buildings":
         placement["origin"] = "south_west"
@@ -1320,7 +1421,9 @@ def entity_spec(
             "source_role": profile.get("role", ""),
             "generation_aspect": generation_aspect_spec,
             "generation_aspect_variant_rules": generation_aspect_variant_rules_for_entity(enum_name, category),
-            "source_canvas": source_canvas_for_entity(enum_name, category, stats["footprint"]),
+            "visual_envelope": visual_envelope,
+            "visual_envelope_note": visual_envelope_notes_for_entity(enum_name, category),
+            "source_canvas": source_canvas_for_entity(enum_name, category, stats["footprint"], visual_envelope),
         },
         "states": states,
         "actions": actions,
@@ -1703,6 +1806,8 @@ def export_specs(out_dir: Path, clean: bool) -> dict[str, Any]:
         )
 
     for enum_name in ground_order:
+        if enum_name == "G_ROAD":
+            continue
         slug = ground_names.get(enum_name, lower_slug(enum_name.removeprefix("G_")))
         spec = ground_spec_v2(enum_name, slug)
         rel = Path("grounds") / f"{slug}.json"

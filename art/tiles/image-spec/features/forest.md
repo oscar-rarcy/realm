@@ -28,8 +28,10 @@ Generate Realm image sheets for **forest feature**.
 
 ## Output Resolution
 
-- Final accepted standalone source canvas: 512 by 512 px.
-- Use this resolution from the generated JSON spec for every accepted standalone sprite; contact-sheet slots may be larger, but each slot must be cleanly crop/downscale-safe to 512 by 512 px.
+- Generation slot target before crop: about 256 by 256 px per accepted sprite.
+- Contact sheets may be larger than this overall; divide the sheet by its grid to judge the approximate slot size.
+- Slightly larger slots are fine. Do not downscale accepted art into tiny draw-size runtime proxies during promotion.
+- Cropped runtime source floor: longest side at least 128 px after crop.
 
 ## Image Output Contract
 

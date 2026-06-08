@@ -76,8 +76,10 @@ Generate one Realm sprite reference sheet per direction for **Fishing Boat**.
 
 ## Output Resolution
 
-- Final accepted standalone source canvas: 512 by 512 px.
-- Use this resolution from the generated JSON spec for every accepted standalone sprite frame; contact-sheet slots may be larger, but each slot must be cleanly crop/downscale-safe to 512 by 512 px.
+- Generation slot target before crop: about 256 by 256 px per accepted sprite frame.
+- Contact sheets may be larger than this overall; divide the sheet by its grid to judge the approximate slot size.
+- Slightly larger slots are fine. Do not downscale accepted art into tiny draw-size runtime proxies during promotion.
+- Cropped runtime source floor: longest side at least 128 px after crop.
 
 ## Image Output Contract
 
@@ -99,18 +101,25 @@ Generate one Realm sprite reference sheet per direction for **Fishing Boat**.
 
 ## States To Generate
 
-Generate **one frame for each state**. There are 6 state(s). Each image may contain at most **16 states** in a **4 by 4** grid.
+Generate **one sprite frame for each listed slot**. There are 12 frame slot(s). Each image may contain at most **16 frame slots** in a **4 by 4** grid.
 
 ### Sheet
 
-Use a **3 by 2** grid for this sheet.
+Use a **4 by 3** grid for this sheet.
+Slot target for this sheet: about **256 by 256 px** per cell before crop.
 
-- row 1, column 1: `idle` - idle
-- row 1, column 2: `row_sail` - row/sail
-- row 1, column 3: `fish_net_cast` - fish/net cast
-- row 2, column 1: `carrying_fish` - carrying fish
-- row 2, column 2: `dead` - destroyed wreck, broken but still recognizable
-- row 2, column 3: `decayed` - weathered wreckage, with durable wood, metal, wheels, hull, or siege parts still readable
+- row 1, column 1: `idle` frame 00 - idle
+- row 1, column 2: `idle` frame 01 - idle
+- row 1, column 3: `row_sail` frame 00 - row/sail
+- row 1, column 4: `row_sail` frame 01 - row/sail
+- row 2, column 1: `fish_net_cast` frame 00 - fish/net cast
+- row 2, column 2: `fish_net_cast` frame 01 - fish/net cast
+- row 2, column 3: `carrying_fish` frame 00 - carrying fish
+- row 2, column 4: `carrying_fish` frame 01 - carrying fish
+- row 3, column 1: `dead` frame 00 - destroyed wreck, broken but still recognizable
+- row 3, column 2: `dead` frame 01 - destroyed wreck, broken but still recognizable
+- row 3, column 3: `decayed` frame 00 - weathered wreckage, with durable wood, metal, wheels, hull, or siege parts still readable
+- row 3, column 4: `decayed` frame 01 - weathered wreckage, with durable wood, metal, wheels, hull, or siege parts still readable
 
 ## Production Follow-Up
 
@@ -123,13 +132,19 @@ Use a **3 by 2** grid for this sheet.
 
 ## Prompt
 
-Generate sprites for my Realm Fishing Boat. The footprint is 1 by 1 tile(s). Team colour is required and the recommended preview player colour is red (#FF0000). Valid directions are front, back. Produce one sheet at a time for the requested direction, using the same state grid for each direction. Create one frame for each of the 6 listed states. Order states left to right and top to bottom within each sheet. Keep the subject consistent across every slot. Final accepted standalone frames use the generated spec resolution: 512 by 512 px. Use a flat pure #ff00ff magenta sheet background and clear gutters between cells. Use clean readable tiny paper-cutout sprite proportions, stable anchor, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork. If unit reference images are supplied, use them only for equipment and silhouette cues, then redraw into stylized Realm sprite art; do not copy their source style or pixels.
+Generate sprites for my Realm Fishing Boat. The footprint is 1 by 1 tile(s). Team colour is required and the recommended preview player colour is red (#FF0000). Valid directions are front, back. Produce one sheet at a time for the requested direction, using the same state grid for each direction. Create one sprite frame for each of the 12 listed frame slots. Order slots left to right and top to bottom within each sheet. Keep the subject consistent across every slot. Aim for about 256 by 256 px per sheet slot before crop; larger slots are fine if the sheet grid is clean. Keep the accepted runtime crop's longest side at least 128 px. Use a flat pure #ff00ff magenta sheet background and clear gutters between cells. Use clean readable tiny paper-cutout sprite proportions, stable anchor, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork. If unit reference images are supplied, use them only for equipment and silhouette cues, then redraw into stylized Realm sprite art; do not copy their source style or pixels.
 
 Slot order:
-- Grid: 3 by 2
-  - row 1, column 1: idle
-  - row 1, column 2: row/sail
-  - row 1, column 3: fish/net cast
-  - row 2, column 1: carrying fish
-  - row 2, column 2: destroyed wreck, broken but still recognizable
-  - row 2, column 3: weathered wreckage, with durable wood, metal, wheels, hull, or siege parts still readable
+- Grid: 4 by 3
+  - row 1, column 1: `idle` frame 00 - idle
+  - row 1, column 2: `idle` frame 01 - idle
+  - row 1, column 3: `row_sail` frame 00 - row/sail
+  - row 1, column 4: `row_sail` frame 01 - row/sail
+  - row 2, column 1: `fish_net_cast` frame 00 - fish/net cast
+  - row 2, column 2: `fish_net_cast` frame 01 - fish/net cast
+  - row 2, column 3: `carrying_fish` frame 00 - carrying fish
+  - row 2, column 4: `carrying_fish` frame 01 - carrying fish
+  - row 3, column 1: `dead` frame 00 - destroyed wreck, broken but still recognizable
+  - row 3, column 2: `dead` frame 01 - destroyed wreck, broken but still recognizable
+  - row 3, column 3: `decayed` frame 00 - weathered wreckage, with durable wood, metal, wheels, hull, or siege parts still readable
+  - row 3, column 4: `decayed` frame 01 - weathered wreckage, with durable wood, metal, wheels, hull, or siege parts still readable

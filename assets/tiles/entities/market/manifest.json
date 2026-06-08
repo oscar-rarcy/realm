@@ -1,7 +1,7 @@
 {
   "schema": "realm.entity_tileset.v1",
   "entity": "market",
-  "sprite_size": 32,
+  "sprite_size": 512,
   "directions": [
     "south"
   ],
@@ -11,11 +11,44 @@
       "loop": true,
       "hold_last": false,
       "description": "complete",
+      "family": "complete",
+      "fit_profile": "standing",
       "directions": {
         "south": [
           {
             "base": "complete/south/frame_00_base.png",
-            "team_mask": "complete/south/frame_00_teammask.png"
+            "team_mask": "complete/south/frame_00_teammask.png",
+            "source": "art/tiles/candidates/buildings/market/sheets/south_contact_sheet.png",
+            "source_slot": 1,
+            "source_crop_box": [
+              4,
+              46,
+              318,
+              360
+            ],
+            "source_bbox": {
+              "x": 5,
+              "y": 16,
+              "w": 304,
+              "h": 286
+            },
+            "final_bbox": {
+              "x": 75,
+              "y": 75,
+              "w": 362,
+              "h": 341
+            },
+            "anchor": [
+              256,
+              416
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 1.1907894736842106,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ]
       }
@@ -25,11 +58,44 @@
       "loop": true,
       "hold_last": false,
       "description": "income sparkle",
+      "family": "income_sparkle",
+      "fit_profile": "standing",
       "directions": {
         "south": [
           {
             "base": "income_sparkle/south/frame_00_base.png",
-            "team_mask": "income_sparkle/south/frame_00_teammask.png"
+            "team_mask": "income_sparkle/south/frame_00_teammask.png",
+            "source": "art/tiles/candidates/buildings/market/sheets/south_contact_sheet.png",
+            "source_slot": 2,
+            "source_crop_box": [
+              320,
+              48,
+              634,
+              362
+            ],
+            "source_bbox": {
+              "x": 2,
+              "y": 15,
+              "w": 312,
+              "h": 292
+            },
+            "final_bbox": {
+              "x": 75,
+              "y": 77,
+              "w": 362,
+              "h": 338
+            },
+            "anchor": [
+              256,
+              416
+            ],
+            "anchor_offset": [
+              0,
+              -1
+            ],
+            "scale": 1.1602564102564104,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ]
       }
@@ -39,85 +105,141 @@
       "loop": true,
       "hold_last": false,
       "description": "construction",
+      "family": "construction",
+      "fit_profile": "standing",
       "directions": {
         "south": [
           {
             "base": "construction/south/frame_00_base.png",
-            "team_mask": "construction/south/frame_00_teammask.png"
+            "team_mask": "construction/south/frame_00_teammask.png",
+            "source": "art/tiles/candidates/buildings/market/sheets/south_contact_sheet.png",
+            "source_slot": 3,
+            "source_crop_box": [
+              629,
+              52,
+              943,
+              366
+            ],
+            "source_bbox": {
+              "x": 1,
+              "y": 19,
+              "w": 313,
+              "h": 277
+            },
+            "final_bbox": {
+              "x": 78,
+              "y": 96,
+              "w": 359,
+              "h": 320
+            },
+            "anchor": [
+              256,
+              416
+            ],
+            "anchor_offset": [
+              2,
+              0
+            ],
+            "scale": 1.156549520766773,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ]
       }
     },
     "ruin_footprint": {
       "frame_ms": 250,
-      "loop": false,
-      "hold_last": true,
+      "loop": true,
+      "hold_last": false,
       "description": "ruin footprint",
+      "family": "ruin_footprint",
+      "fit_profile": "standing",
       "directions": {
         "south": [
           {
             "base": "ruin_footprint/south/frame_00_base.png",
-            "team_mask": "ruin_footprint/south/frame_00_teammask.png"
-          }
-        ]
-      }
-    },
-    "idle": {
-      "frame_ms": 250,
-      "loop": true,
-      "hold_last": false,
-      "description": "Runtime alias for complete",
-      "directions": {
-        "front": [
-          {
-            "base": "idle/front/frame_00_base.png",
-            "team_mask": "idle/front/frame_00_teammask.png"
-          },
-          {
-            "base": "idle/front/frame_01_base.png",
-            "team_mask": "idle/front/frame_01_teammask.png"
-          }
-        ],
-        "back": [
-          {
-            "base": "idle/back/frame_00_base.png",
-            "team_mask": "idle/back/frame_00_teammask.png"
-          },
-          {
-            "base": "idle/back/frame_01_base.png",
-            "team_mask": "idle/back/frame_01_teammask.png"
-          }
-        ]
-      }
-    },
-    "death": {
-      "frame_ms": 250,
-      "loop": false,
-      "hold_last": true,
-      "description": "Runtime alias for ruin_footprint",
-      "directions": {
-        "front": [
-          {
-            "base": "death/front/frame_00_base.png",
-            "team_mask": "death/front/frame_00_teammask.png"
-          },
-          {
-            "base": "death/front/frame_01_base.png",
-            "team_mask": "death/front/frame_01_teammask.png"
-          }
-        ],
-        "back": [
-          {
-            "base": "death/back/frame_00_base.png",
-            "team_mask": "death/back/frame_00_teammask.png"
-          },
-          {
-            "base": "death/back/frame_01_base.png",
-            "team_mask": "death/back/frame_01_teammask.png"
+            "team_mask": "ruin_footprint/south/frame_00_teammask.png",
+            "source": "art/tiles/candidates/buildings/market/sheets/south_contact_sheet.png",
+            "source_slot": 4,
+            "source_crop_box": [
+              931,
+              56,
+              1245,
+              370
+            ],
+            "source_bbox": {
+              "x": 2,
+              "y": 24,
+              "w": 309,
+              "h": 265
+            },
+            "final_bbox": {
+              "x": 75,
+              "y": 106,
+              "w": 362,
+              "h": 310
+            },
+            "anchor": [
+              256,
+              416
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 1.1715210355987056,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ]
       }
     }
   },
-  "notes": "Generated from accepted market contact sheet under art/tiles/candidates/buildings/market/sheets. Runtime idle/death aliases added from closest generated action variants; opaque magenta cleanup applied where needed."
+  "notes": "Generated from accepted market contact sheet under art/tiles/candidates/buildings/market/sheets. Runtime idle/death aliases added from closest generated action variants; opaque magenta cleanup applied where needed.",
+  "asset_type": "building",
+  "source_canvas": {
+    "profile": "building_footprint_sprite_source",
+    "width_px": 512,
+    "height_px": 512,
+    "target_kind": "pre_crop_generation_slot",
+    "min_longest_side_px": 256,
+    "unit": "px",
+    "source": "realm range-based source-quality contract",
+    "range": {
+      "minimum_longest_side_px_after_crop": 256,
+      "pre_crop_target_px": 512,
+      "maximum_px": null
+    },
+    "pre_crop_target_px_per_footprint_tile": 256,
+    "runtime_min_longest_side_px_per_footprint_tile": 128,
+    "pre_crop_target_px_cap": 1536,
+    "footprint": {
+      "w": 2,
+      "h": 2
+    },
+    "scope": "per generated building sheet cell or standalone pre-crop source; 256px per footprint tile is the target capped at 1536px"
+  },
+  "placement": {
+    "projection": "footprint_world",
+    "anchor_kind": "footprint_origin",
+    "source_size": [
+      512,
+      512
+    ],
+    "anchor": [
+      256,
+      416
+    ],
+    "scale_policy": "entity_tile_zoom_1_55",
+    "footprint": [
+      2,
+      2
+    ],
+    "visual_envelope": [
+      2,
+      2
+    ],
+    "depth": "entity"
+  },
+  "source_workflow": "contact-sheet-resolution-replay"
 }

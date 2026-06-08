@@ -1,4 +1,5 @@
 #include "render/sdl/sdl_splash.h"
+#include "render/sdl/sdl_hud.h"
 #include "render/sdl/sdl_profiler.h"
 #include "realm.h"
 #include "commands/command.h"
@@ -8,6 +9,138 @@
 #include "view_state.h"
 
 static constexpr Uint32 RIGHT_HOLD_MENU_MS = 420;
+
+namespace {
+
+struct ChromeLayerCache {
+    SDL_Texture* texture = nullptr;
+    bool valid = false;
+    bool unavailable = false;
+    int winW = 0;
+    int winH = 0;
+    int mode = 0;
+    int selectedId = -1;
+    int selectedHash = 0;
+    int buildPending = 0;
+    int gold = 0;
+    int wood = 0;
+    int food = 0;
+    int supply = 0;
+    int supplyMax = 0;
+    bool statusVisible = false;
+    std::string seasonName;
+    std::string timeName;
+    std::string weatherNameText;
+    std::string statusMsg;
+};
+
+ChromeLayerCache chromeLayerCache;
+
+int selectedIdsHashForChrome() {
+    int h = 17;
+    for (int id : g.local.selectedIds) h = h * 31 + id;
+    return h;
+}
+
+void clearChromeLayerCache() {
+    if (chromeLayerCache.texture) SDL_DestroyTexture(chromeLayerCache.texture);
+    chromeLayerCache = ChromeLayerCache{};
+}
+
+bool ensureChromeLayerCacheTexture() {
+    if (chromeLayerCache.unavailable) return false;
+    if (chromeLayerCache.texture && chromeLayerCache.winW == s.winW && chromeLayerCache.winH == s.winH) {
+        return true;
+    }
+    clearChromeLayerCache();
+    chromeLayerCache.texture = SDL_CreateTexture(s.ren, SDL_PIXELFORMAT_RGBA32,
+                                                 SDL_TEXTUREACCESS_TARGET, s.winW, s.winH);
+    if (!chromeLayerCache.texture) {
+        chromeLayerCache.unavailable = true;
+        std::cerr << "realm: chrome layer cache disabled: " << SDL_GetError() << "\n";
+        return false;
+    }
+    SDL_SetTextureBlendMode(chromeLayerCache.texture, SDL_BLENDMODE_BLEND);
+    chromeLayerCache.winW = s.winW;
+    chromeLayerCache.winH = s.winH;
+    return true;
+}
+
+bool chromeLayerCacheMatches() {
+    return chromeLayerCache.texture
+        && chromeLayerCache.valid
+        && !chromeLayerCache.unavailable
+        && chromeLayerCache.winW == s.winW
+        && chromeLayerCache.winH == s.winH
+        && chromeLayerCache.mode == (int)g.mode
+        && chromeLayerCache.selectedId == g.local.selectedId
+        && chromeLayerCache.selectedHash == selectedIdsHashForChrome()
+        && chromeLayerCache.buildPending == (int)g.local.buildPending
+        && chromeLayerCache.gold == g.players[0].gold
+        && chromeLayerCache.wood == g.players[0].wood
+        && chromeLayerCache.food == g.players[0].food
+        && chromeLayerCache.supply == g.players[0].supply
+        && chromeLayerCache.supplyMax == g.players[0].supplyMax
+        && chromeLayerCache.statusVisible == (ui.statusTimer > 0)
+        && chromeLayerCache.seasonName == seasonNameSafe()
+        && chromeLayerCache.timeName == timeNameSafe()
+        && chromeLayerCache.weatherNameText == weatherName()
+        && chromeLayerCache.statusMsg == ui.statusMsg;
+}
+
+void updateChromeLayerCacheKey() {
+    chromeLayerCache.valid = true;
+    chromeLayerCache.mode = (int)g.mode;
+    chromeLayerCache.selectedId = g.local.selectedId;
+    chromeLayerCache.selectedHash = selectedIdsHashForChrome();
+    chromeLayerCache.buildPending = (int)g.local.buildPending;
+    chromeLayerCache.gold = g.players[0].gold;
+    chromeLayerCache.wood = g.players[0].wood;
+    chromeLayerCache.food = g.players[0].food;
+    chromeLayerCache.supply = g.players[0].supply;
+    chromeLayerCache.supplyMax = g.players[0].supplyMax;
+    chromeLayerCache.statusVisible = ui.statusTimer > 0;
+    chromeLayerCache.seasonName = seasonNameSafe();
+    chromeLayerCache.timeName = timeNameSafe();
+    chromeLayerCache.weatherNameText = weatherName();
+    chromeLayerCache.statusMsg = ui.statusMsg;
+}
+
+bool drawCachedChromeLayer(const WorldIndex& world) {
+    if (isMobileGui() || !ensureChromeLayerCacheTexture()) return false;
+    if (!chromeLayerCacheMatches()) {
+        RealmProfileScope rebuildScope("frame.chrome_cache_rebuild");
+        SDL_Texture* previousTarget = SDL_GetRenderTarget(s.ren);
+        SDL_Rect previousClip{};
+        SDL_bool clipEnabled = SDL_RenderIsClipEnabled(s.ren);
+        if (clipEnabled) SDL_RenderGetClipRect(s.ren, &previousClip);
+
+        SDL_SetRenderTarget(s.ren, chromeLayerCache.texture);
+        SDL_RenderSetClipRect(s.ren, nullptr);
+        SDL_SetRenderDrawBlendMode(s.ren, SDL_BLENDMODE_BLEND);
+        setDraw(rgb(0, 0, 0, 0));
+        SDL_RenderClear(s.ren);
+        drawTopBar();
+        drawPanel(world);
+        drawBottom(world);
+
+        SDL_SetRenderTarget(s.ren, previousTarget);
+        if (clipEnabled) SDL_RenderSetClipRect(s.ren, &previousClip);
+        else SDL_RenderSetClipRect(s.ren, nullptr);
+        updateChromeLayerCacheKey();
+    }
+
+    RealmProfileScope copyScope("frame.chrome_cache_copy");
+    SDL_Rect top{0, 0, s.winW, s.topH};
+    SDL_Rect panel{std::max(0, s.winW - s.panelW), 0, std::min(s.panelW, s.winW), s.winH};
+    SDL_Rect bottom{0, std::max(0, s.winH - s.bottomH), s.winW, std::min(s.bottomH, s.winH)};
+    SDL_RenderCopy(s.ren, chromeLayerCache.texture, &top, &top);
+    SDL_RenderCopy(s.ren, chromeLayerCache.texture, &panel, &panel);
+    SDL_RenderCopy(s.ren, chromeLayerCache.texture, &bottom, &bottom);
+    return true;
+}
+
+} // namespace
 
 bool gfxInit() {
     SDL_SetHint(SDL_HINT_MOUSE_TOUCH_EVENTS, "1");
@@ -20,11 +153,21 @@ bool gfxInit() {
         std::cerr << "TTF_Init failed: " << TTF_GetError() << "\n"; return false;
     }
 
+    Uint32 windowFlags = SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE;
+#if !defined(REALM_WEB)
+    windowFlags |= SDL_WINDOW_ALLOW_HIGHDPI;
+#endif
     s.win = SDL_CreateWindow("Realm",
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, s.winW, s.winH,
-        SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+        windowFlags);
     if (!s.win) { std::cerr << "SDL_CreateWindow failed: " << SDL_GetError() << "\n"; return false; }
     const bool profiling = std::getenv("REALM_PROFILE_TILESET") != nullptr;
+#if defined(_WIN32) && !defined(REALM_WEB)
+    const bool rendererOverridden = std::getenv("SDL_RENDER_DRIVER") || SDL_GetHint(SDL_HINT_RENDER_DRIVER);
+    if (!rendererOverridden) {
+        SDL_SetHint(SDL_HINT_RENDER_DRIVER, "direct3d11");
+    }
+#endif
     Uint32 rendererFlags = SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE;
     if (!profiling) rendererFlags |= SDL_RENDERER_PRESENTVSYNC;
     s.ren = SDL_CreateRenderer(s.win, -1, rendererFlags);
@@ -98,7 +241,9 @@ void gfxShutdown() {
 #if !defined(REALM_WEB)
     tilesetAssetsClear();
 #endif
+    clearTilesetHudCaches();
     clearIsoMapLayerCache();
+    clearChromeLayerCache();
     clearTextCache();
     if (s.mono) TTF_CloseFont(s.mono);
     if (s.monoSmall) TTF_CloseFont(s.monoSmall);
@@ -634,7 +779,7 @@ void gfxPollInput(bool& quitRequested) {
         if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
             s.winW = e.window.data1; s.winH = e.window.data2; updateViewMetrics(true);
         }
-        if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_FOCUS_LOST && isMobileGui()) {
+        if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_FOCUS_LOST && !s.viewportOnly && isMobileGui()) {
 #if defined(REALM_WEB)
             continue;
 #else
@@ -644,7 +789,7 @@ void gfxPollInput(bool& quitRequested) {
             }
 #endif
         }
-        if (isMobileGui() && (e.type == SDL_FINGERDOWN || e.type == SDL_FINGERMOTION || e.type == SDL_FINGERUP)) {
+        if (!s.viewportOnly && isMobileGui() && (e.type == SDL_FINGERDOWN || e.type == SDL_FINGERMOTION || e.type == SDL_FINGERUP)) {
             int px = (int)std::lround(e.tfinger.x * s.winW);
             int py = (int)std::lround(e.tfinger.y * s.winH);
             s.suppressNextMouse = true;
@@ -653,7 +798,7 @@ void gfxPollInput(bool& quitRequested) {
             else mobilePointerUp(px, py);
             continue;
         }
-        if (isMobileGui() && (e.type == SDL_MOUSEBUTTONDOWN || e.type == SDL_MOUSEMOTION || e.type == SDL_MOUSEBUTTONUP)) {
+        if (!s.viewportOnly && isMobileGui() && (e.type == SDL_MOUSEBUTTONDOWN || e.type == SDL_MOUSEMOTION || e.type == SDL_MOUSEBUTTONUP)) {
             if (s.suppressNextMouse) {
                 if (e.type == SDL_MOUSEBUTTONUP) s.suppressNextMouse = false;
                 continue;
@@ -666,6 +811,7 @@ void gfxPollInput(bool& quitRequested) {
         }
         if (e.type == SDL_MOUSEWHEEL) {
             int mx, my; SDL_GetMouseState(&mx, &my);
+            if (tilesetHudConsumesPointer(mx, my)) continue;
             int steps = e.wheel.y;
             if (e.wheel.direction == SDL_MOUSEWHEEL_FLIPPED) steps = -steps;
             zoomBySteps(steps, mx, my);
@@ -736,6 +882,11 @@ void gfxPollInput(bool& quitRequested) {
             if (e.button.button == SDL_BUTTON_MIDDLE &&
                        moveViewFromMiniMap(e.button.x, e.button.y)) {
                 s.miniMapDown = true;
+                s.leftDown = false;
+                s.middleDown = false;
+                view.dragging = false;
+            } else if (e.button.button == SDL_BUTTON_MIDDLE &&
+                       tilesetHudConsumesPointer(e.button.x, e.button.y)) {
                 s.leftDown = false;
                 s.middleDown = false;
                 view.dragging = false;
@@ -987,21 +1138,26 @@ void drawFrame(bool present) {
         RealmProfileScope scope("frame.clear");
         setDraw(rgb(3,5,8)); SDL_RenderClear(s.ren);
     }
-    if (!isMobileGui()) {
-        RealmProfileScope scope("frame.top_bar");
-        drawTopBar();
-    }
     {
         RealmProfileScope scope("frame.map");
         drawMap(world);
     }
-    {
-        RealmProfileScope scope("frame.panel");
-        drawPanel(world);
-    }
-    if (!isMobileGui()) {
-        RealmProfileScope scope("frame.bottom_bar");
-        drawBottom(world);
+    if (tilesetHudEnabled()) {
+        RealmProfileScope scope("frame.tileset_hud");
+        drawTilesetHud(world);
+    } else if (!drawCachedChromeLayer(world)) {
+        if (!isMobileGui()) {
+            RealmProfileScope scope("frame.top_bar");
+            drawTopBar();
+        }
+        {
+            RealmProfileScope scope("frame.panel");
+            drawPanel(world);
+        }
+        if (!isMobileGui()) {
+            RealmProfileScope scope("frame.bottom_bar");
+            drawBottom(world);
+        }
     }
     {
         RealmProfileScope scope("frame.menus_overlays");
@@ -1023,6 +1179,14 @@ void gfxRender() {
     drawFrame(true);
 }
 
+void gfxRenderNoPresentForTest() {
+    {
+        RealmProfileScope scope("frame.events_to_ui");
+        flushGameEventsToUi(ui, 0);
+    }
+    drawFrame(false);
+}
+
 void gfxDelay(int ms) {
     SDL_Delay((Uint32)std::max(0, ms));
 }
@@ -1033,6 +1197,9 @@ void gfxResetZoomForDisplayMode() {
 
 void gfxSetViewportOnly(bool viewportOnly) {
     s.viewportOnly = viewportOnly;
+    if (s.viewportOnly && displayMode == DM_ASCII) {
+        s.isometric = false;
+    }
     if (viewportOnly) {
         s.leftDown = false;
         s.middleDown = false;
@@ -1047,7 +1214,7 @@ void gfxSetEdgeScrollEnabled(bool enabled) {
 }
 
 void gfxSetProjection(bool isometric) {
-    s.isometric = (displayMode == DM_EMOJI) ? true : isometric;
+    s.isometric = (displayMode == DM_EMOJI) ? true : (isometric && !s.viewportOnly);
     updateViewMetrics(true);
 }
 

@@ -329,10 +329,11 @@ std::string tilesetEntityVisual(const Game& game, const WorldIndex& world, const
 }
 
 bool imageTilesetEnabled() {
-#if defined(REALM_WEB)
-    return false;
+    if (displayMode == DM_EMOJI) return true;
+#if !defined(REALM_WEB)
+    return labForcesImageTileset || envFlagEnabled("REALM_IMAGE_TILESET", false);
 #else
-    return displayMode == DM_EMOJI || labForcesImageTileset || envFlagEnabled("REALM_IMAGE_TILESET", false);
+    return false;
 #endif
 }
 
@@ -357,6 +358,17 @@ int animationFrameFor(const EntityActionAnimationSpec* anim, int explicitFrame =
 [[maybe_unused]] static int animationFrameForEntity(const Entity& e, const EntityActionAnimationSpec* anim, int explicitFrame = -1) {
     if (explicitFrame >= 0) return animationFrameFor(anim, explicitFrame);
     if (anim && e.state == S_DEAD && std::strcmp(anim->action, "death") == 0 && anim->frameCount > 1) {
+        if ((e.type == E_DEER || e.type == E_SHEEP || e.type == E_BOAR || e.type == E_WOLF) && anim->frameCount >= 4) {
+            int frame = 0;
+            switch (animalCarcassVisualState(e)) {
+                case ACVS_ALIVE:
+                case ACVS_DEAD_UNHARVESTED: frame = 0; break;
+                case ACVS_PARTLY_HARVESTED: frame = 1; break;
+                case ACVS_MOSTLY_HARVESTED: frame = 2; break;
+                case ACVS_DEPLETED_SKELETON: frame = 3; break;
+            }
+            return std::min(frame, anim->frameCount - 1);
+        }
         return e.deathTicks >= DEATH_DECAY_TICKS ? 1 : 0;
     }
     return animationFrameFor(anim);
@@ -373,12 +385,6 @@ static bool drawEntityImageResolved(const Game& game, const WorldIndex& world, c
                                     int anchorScreenX,
                                     int anchorScreenY,
                                     SDL_Rect* outDrawRect) {
-#if defined(REALM_WEB)
-    (void)game; (void)world; (void)e; (void)dst; (void)modulation; (void)forcedAction; (void)forcedDirection;
-    (void)explicitFrame; (void)teamColor; (void)outFrame; (void)angleDegrees; (void)anchorScreenX;
-    (void)anchorScreenY; (void)outDrawRect;
-    return false;
-#else
     if (!imageTilesetEnabled()) return false;
     const char* action = forcedAction;
     const EntityActionAnimationSpec* anim = nullptr;
@@ -394,13 +400,21 @@ static bool drawEntityImageResolved(const Game& game, const WorldIndex& world, c
         return false;
     }
     if (teamColor.a == 0) teamColor = toSdlColor(ownerBg(e.owner == OWNER_NATURE ? 0 : e.owner));
+    TilesetPlacement resolvedPlacement = tilesetResolveEntityFramePlacement(
+        e.type, action ? action : "idle", direction ? direction : "front", frameIndex);
+    int targetWidth = dst.w;
+    int targetHeight = dst.h;
+    if (resolvedPlacement.valid) {
+        targetWidth = std::max(1, dst.w * std::max(1, resolvedPlacement.visualEnvelopeWidth));
+        targetHeight = std::max(1, dst.h * std::max(1, resolvedPlacement.visualEnvelopeHeight));
+    }
     TilesetAssetRequest request{e.type, action ? action : "idle", direction ? direction : "front",
-                                frameIndex, teamColor, dst.w, dst.h};
+                                frameIndex, teamColor, targetWidth, targetHeight};
     TilesetAssetFrame frame = tilesetLoadEntityFrame(s.ren, request);
     if (outFrame) *outFrame = frame;
     if (!frame.texture) return false;
     bool mirrorHorizontal = !forcedDirection && entityAnimationMirrorHorizontal(e);
-    SDL_Rect drawRect = dst;
+    SDL_Rect drawRect{dst.x, dst.y, targetWidth, targetHeight};
     if (frame.hasAnchor && anchorScreenX >= 0 && anchorScreenY >= 0) {
         const TilesetPlacement& placement = frame.placement.valid ? frame.placement : TilesetPlacement{};
         int sourceW = std::max(1, placement.valid ? placement.sourceWidth : frame.anchorSourceWidth);
@@ -422,7 +436,6 @@ static bool drawEntityImageResolved(const Game& game, const WorldIndex& world, c
     SDL_SetTextureColorMod(frame.texture, 255, 255, 255);
     SDL_SetTextureAlphaMod(frame.texture, 255);
     return true;
-#endif
 }
 
 bool drawEntityImageTile(const Game& game, const WorldIndex& world, const Entity& e, SDL_Rect dst, Color modulation,

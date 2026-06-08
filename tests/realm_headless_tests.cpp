@@ -469,6 +469,24 @@ static void testGroundShaderDeterministicVariation() {
     winter.weather = W_SNOW;
     GroundShaderResult winterGrass = shadeGroundTile(grass, grassParts, 12, 18, winter);
     assert(!sameGroundShaderColor(first.baseFill, winterGrass.baseFill));
+
+    std::set<std::string> seasonMods;
+    for (Season season : {SPRING, SUMMER, AUTUMN, WINTER}) {
+        GroundShaderContext seasonal = context;
+        seasonal.season = season;
+        seasonal.seasonProgress = 0.75f;
+        seasonal.weather = W_CLEAR;
+        GroundShaderResult shade = shadeGroundTile(grass, grassParts, 12, 18, seasonal);
+        std::ostringstream key;
+        key << (int)shade.textureMod.r << ':'
+            << (int)shade.textureMod.g << ':'
+            << (int)shade.textureMod.b << ':'
+            << (int)shade.overlayTint.r << ':'
+            << (int)shade.overlayTint.g << ':'
+            << (int)shade.overlayTint.b;
+        seasonMods.insert(key.str());
+    }
+    assert(seasonMods.size() == 4);
 }
 
 static void testWeatherSightAndForestMovementPenalties() {
@@ -2969,8 +2987,8 @@ static void testWorldIndexParity() {
                 bool building = isBuilding(entity.type);
                 if (building && entity.type == E_GATE && entity.gateOpen) continue;
                 const EntityStats& stats = STATS[entity.type];
-                int w = building ? stats.sizeW : 1;
-                int h = building ? stats.sizeH : 1;
+                int w = std::max(1, stats.sizeW);
+                int h = std::max(1, stats.sizeH);
                 if (x < entity.x || y < entity.y || x >= entity.x + w || y >= entity.y + h) continue;
                 if (building) buildingOccupied = true;
                 else unitOccupied = true;
@@ -3248,6 +3266,51 @@ static void testWinterPartialWaterFreeze() {
     }
     assert(ice > 0);
     assert(openWater > 0);
+}
+
+static void testSeasonCycleCanBeFastForwardedHeadless() {
+    initGameWithSeed(1, 3659u, 0);
+    const float halfTick = 0.5f / (float)SEASON_LENGTH;
+    std::vector<Season> observed;
+
+    auto forceNextSeasonTick = [&](Season previous, float phaseBeforeBoundary) {
+        g.prevSeason = previous;
+        g.seasonPhase = phaseBeforeBoundary;
+        tickSimulationOnce(g, gameEvents(), false);
+        observed.push_back(getSeason(g));
+    };
+
+    forceNextSeasonTick(SPRING, (float)SUMMER - halfTick);
+    forceNextSeasonTick(SUMMER, (float)AUTUMN - halfTick);
+
+    for (int y = 0; y < MAP_H; y++) {
+        for (int x = 0; x < MAP_W; x++) {
+            g.map[y][x].terrain = T_GRASS;
+            g.map[y][x].preWinterTerrain = T_GRASS;
+            g.map[y][x].resources = 0;
+        }
+    }
+    g.map[5][5].terrain = T_WATER;
+    g.map[5][5].preWinterTerrain = T_WATER;
+    forceNextSeasonTick(AUTUMN, (float)WINTER - halfTick);
+    assert(g.map[4][4].terrain == T_SNOW);
+    assert(g.map[4][4].preWinterTerrain == T_GRASS);
+
+    g.map[4][4].terrain = T_SNOW;
+    g.map[4][4].preWinterTerrain = T_GRASS;
+    g.tick = 4;
+    forceNextSeasonTick(WINTER, 4.0f - halfTick);
+    assert(getSeason(g) == SPRING);
+    g.seasonPhase = 0.99f;
+    g.tick = 5;
+    tickThaw(g);
+    assert(g.map[4][4].terrain == T_GRASS);
+
+    assert(observed.size() == 4);
+    assert(observed[0] == SUMMER);
+    assert(observed[1] == AUTUMN);
+    assert(observed[2] == WINTER);
+    assert(observed[3] == SPRING);
 }
 
 static void testMapgenReachabilityAcrossSeeds() {
@@ -3791,6 +3854,7 @@ int main() {
     testBerryGatherAndDepletion();
     testMillFoodStockpile();
     testWinterPartialWaterFreeze();
+    testSeasonCycleCanBeFastForwardedHeadless();
     testMapGenerationConfigBiomes();
     testLocalMapGenerationIsDeterministic();
     testMapgenRoadsCarryWear();

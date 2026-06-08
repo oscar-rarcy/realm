@@ -16,6 +16,7 @@ bool gfxConsumeLoadGameRequest();
 void gfxOnNewGame();
 void gfxPollInput(bool& quitRequested);
 void gfxRender();
+void gfxRenderNoPresentForTest();
 void gfxDelay(int ms);
 void gfxResetZoomForDisplayMode();
 void gfxSetAsciiSquareMapCells(bool enabled);

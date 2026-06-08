@@ -98,7 +98,9 @@ constexpr AnimationFrameSpec HUMAN_DEATH_FRAMES[] = {
 
 constexpr AnimationFrameSpec ANIMAL_DEATH_FRAMES[] = {
     {"dead", "Dead animal body lying on the ground, species silhouette still readable.", 30000},
-    {"decayed", "Animal skeleton remains in the same ground area, species silhouette still readable.", 0},
+    {"partly_harvested", "Partly harvested animal carcass lying in the same ground area, species silhouette still readable.", 0},
+    {"mostly_harvested", "Mostly harvested animal carcass lying in the same ground area, species silhouette still readable.", 0},
+    {"skeleton", "Animal skeleton remains in the same ground area, species silhouette still readable.", 0},
 };
 
 constexpr AnimationFrameSpec WRECK_DEATH_FRAMES[] = {
@@ -112,9 +114,9 @@ constexpr EntityActionAnimationSpec HUMAN_DEATH_ACTION =
      HUMAN_DEATH_FRAMES, 2};
 
 constexpr EntityActionAnimationSpec ANIMAL_DEATH_ACTION =
-    {E_NONE, "death", "Animal dies, then decays into skeleton remains.",
+    {E_NONE, "death", "Animal carcass progresses from freshly dead through harvested states into skeleton remains.",
      "one_shot", ActionTargetRelation::SelfTile, 0, false, true, 30000, "lying", "", "",
-     ANIMAL_DEATH_FRAMES, 2};
+     ANIMAL_DEATH_FRAMES, 4};
 
 constexpr EntityActionAnimationSpec WRECK_DEATH_ACTION =
     {E_NONE, "death", "Vehicle or siege unit is destroyed, then decays into persistent wreckage.",

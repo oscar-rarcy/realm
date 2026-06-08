@@ -1,7 +1,7 @@
 {
   "schema": "realm.entity_tileset.v1",
   "entity": "stone_bridge",
-  "sprite_size": 32,
+  "sprite_size": 256,
   "directions": [
     "south"
   ],
@@ -15,7 +15,32 @@
         "south": [
           {
             "base": "span_single_east_west/south/frame_00_base.png",
-            "team_mask": "span_single_east_west/south/frame_00_teammask.png"
+            "team_mask": "span_single_east_west/south/frame_00_teammask.png",
+            "source": "art/tiles/candidates/buildings/stone_bridge/sheets/south_contact_sheet.png",
+            "source_slot": 1,
+            "source_bbox": {
+              "x": 45,
+              "y": 147,
+              "w": 252,
+              "h": 167
+            },
+            "final_bbox": {
+              "x": 6,
+              "y": 72,
+              "w": 245,
+              "h": 162
+            },
+            "anchor": [
+              128,
+              234
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.9722222222222222,
+            "fit_profile": "full_tile",
+            "manual_review": "pending"
           }
         ]
       }
@@ -29,7 +54,32 @@
         "south": [
           {
             "base": "span_single_north_south/south/frame_00_base.png",
-            "team_mask": "span_single_north_south/south/frame_00_teammask.png"
+            "team_mask": "span_single_north_south/south/frame_00_teammask.png",
+            "source": "art/tiles/candidates/buildings/stone_bridge/sheets/south_contact_sheet.png",
+            "source_slot": 2,
+            "source_bbox": {
+              "x": 87,
+              "y": 86,
+              "w": 148,
+              "h": 227
+            },
+            "final_bbox": {
+              "x": 48,
+              "y": 5,
+              "w": 160,
+              "h": 245
+            },
+            "anchor": [
+              128,
+              234
+            ],
+            "anchor_offset": [
+              0,
+              16
+            ],
+            "scale": 1.079295154185022,
+            "fit_profile": "full_tile",
+            "manual_review": "pending"
           }
         ]
       }
@@ -43,7 +93,32 @@
         "south": [
           {
             "base": "span_half_east_west/south/frame_00_base.png",
-            "team_mask": "span_half_east_west/south/frame_00_teammask.png"
+            "team_mask": "span_half_east_west/south/frame_00_teammask.png",
+            "source": "art/tiles/candidates/buildings/stone_bridge/sheets/south_contact_sheet.png",
+            "source_slot": 3,
+            "source_bbox": {
+              "x": 35,
+              "y": 159,
+              "w": 177,
+              "h": 154
+            },
+            "final_bbox": {
+              "x": 7,
+              "y": 21,
+              "w": 242,
+              "h": 213
+            },
+            "anchor": [
+              128,
+              234
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 1.384180790960452,
+            "fit_profile": "full_tile",
+            "manual_review": "pending"
           }
         ]
       }
@@ -57,7 +132,32 @@
         "south": [
           {
             "base": "span_half_north_south/south/frame_00_base.png",
-            "team_mask": "span_half_north_south/south/frame_00_teammask.png"
+            "team_mask": "span_half_north_south/south/frame_00_teammask.png",
+            "source": "art/tiles/candidates/buildings/stone_bridge/sheets/south_contact_sheet.png",
+            "source_slot": 4,
+            "source_bbox": {
+              "x": 92,
+              "y": 118,
+              "w": 143,
+              "h": 196
+            },
+            "final_bbox": {
+              "x": 39,
+              "y": 5,
+              "w": 179,
+              "h": 245
+            },
+            "anchor": [
+              128,
+              234
+            ],
+            "anchor_offset": [
+              0,
+              16
+            ],
+            "scale": 1.25,
+            "fit_profile": "full_tile",
+            "manual_review": "pending"
           }
         ]
       }
@@ -71,7 +171,32 @@
         "south": [
           {
             "base": "span_joined_east_west/south/frame_00_base.png",
-            "team_mask": "span_joined_east_west/south/frame_00_teammask.png"
+            "team_mask": "span_joined_east_west/south/frame_00_teammask.png",
+            "source": "art/tiles/candidates/buildings/stone_bridge/sheets/south_contact_sheet.png",
+            "source_slot": 5,
+            "source_bbox": {
+              "x": 19,
+              "y": 0,
+              "w": 294,
+              "h": 313
+            },
+            "final_bbox": {
+              "x": 13,
+              "y": 5,
+              "w": 230,
+              "h": 245
+            },
+            "anchor": [
+              128,
+              234
+            ],
+            "anchor_offset": [
+              0,
+              16
+            ],
+            "scale": 0.7827476038338658,
+            "fit_profile": "full_tile",
+            "manual_review": "pending"
           }
         ]
       }
@@ -85,7 +210,32 @@
         "south": [
           {
             "base": "span_joined_north_south/south/frame_00_base.png",
-            "team_mask": "span_joined_north_south/south/frame_00_teammask.png"
+            "team_mask": "span_joined_north_south/south/frame_00_teammask.png",
+            "source": "art/tiles/candidates/buildings/stone_bridge/sheets/south_contact_sheet.png",
+            "source_slot": 6,
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 237,
+              "h": 313
+            },
+            "final_bbox": {
+              "x": 35,
+              "y": 5,
+              "w": 186,
+              "h": 245
+            },
+            "anchor": [
+              128,
+              234
+            ],
+            "anchor_offset": [
+              0,
+              16
+            ],
+            "scale": 0.7827476038338658,
+            "fit_profile": "full_tile",
+            "manual_review": "pending"
           }
         ]
       }
@@ -99,7 +249,32 @@
         "south": [
           {
             "base": "construction/south/frame_00_base.png",
-            "team_mask": "construction/south/frame_00_teammask.png"
+            "team_mask": "construction/south/frame_00_teammask.png",
+            "source": "art/tiles/candidates/buildings/stone_bridge/sheets/south_contact_sheet.png",
+            "source_slot": 7,
+            "source_bbox": {
+              "x": 19,
+              "y": 0,
+              "w": 254,
+              "h": 313
+            },
+            "final_bbox": {
+              "x": 29,
+              "y": 5,
+              "w": 199,
+              "h": 245
+            },
+            "anchor": [
+              128,
+              234
+            ],
+            "anchor_offset": [
+              0,
+              16
+            ],
+            "scale": 0.7827476038338658,
+            "fit_profile": "full_tile",
+            "manual_review": "pending"
           }
         ]
       }
@@ -113,7 +288,32 @@
         "south": [
           {
             "base": "damaged/south/frame_00_base.png",
-            "team_mask": "damaged/south/frame_00_teammask.png"
+            "team_mask": "damaged/south/frame_00_teammask.png",
+            "source": "art/tiles/candidates/buildings/stone_bridge/sheets/south_contact_sheet.png",
+            "source_slot": 8,
+            "source_bbox": {
+              "x": 32,
+              "y": 0,
+              "w": 248,
+              "h": 313
+            },
+            "final_bbox": {
+              "x": 31,
+              "y": 5,
+              "w": 193,
+              "h": 245
+            },
+            "anchor": [
+              128,
+              234
+            ],
+            "anchor_offset": [
+              0,
+              16
+            ],
+            "scale": 0.7827476038338658,
+            "fit_profile": "full_tile",
+            "manual_review": "pending"
           }
         ]
       }
@@ -127,7 +327,32 @@
         "south": [
           {
             "base": "broken/south/frame_00_base.png",
-            "team_mask": "broken/south/frame_00_teammask.png"
+            "team_mask": "broken/south/frame_00_teammask.png",
+            "source": "art/tiles/candidates/buildings/stone_bridge/sheets/south_contact_sheet.png",
+            "source_slot": 9,
+            "source_bbox": {
+              "x": 15,
+              "y": 0,
+              "w": 298,
+              "h": 313
+            },
+            "final_bbox": {
+              "x": 13,
+              "y": 5,
+              "w": 232,
+              "h": 245
+            },
+            "anchor": [
+              128,
+              234
+            ],
+            "anchor_offset": [
+              1,
+              16
+            ],
+            "scale": 0.7827476038338658,
+            "fit_profile": "full_tile",
+            "manual_review": "pending"
           }
         ]
       }
@@ -189,5 +414,47 @@
       }
     }
   },
-  "notes": "Generated from accepted stone bridge contact sheet under art/tiles/candidates/buildings/stone_bridge/sheets. Structural runtime idle/death aliases added from closest generated building/bridge/wall state."
+  "notes": "Generated from accepted stone bridge contact sheet under art/tiles/candidates/buildings/stone_bridge/sheets. Structural runtime idle/death aliases added from closest generated building/bridge/wall state.",
+  "asset_type": "building",
+  "source_canvas": {
+    "profile": "building_footprint_sprite_source",
+    "width_px": 256,
+    "height_px": 256,
+    "target_kind": "pre_crop_generation_slot",
+    "min_longest_side_px": 128,
+    "unit": "px",
+    "source": "realm range-based source-quality contract",
+    "range": {
+      "minimum_longest_side_px_after_crop": 128,
+      "pre_crop_target_px": 256,
+      "maximum_px": null
+    },
+    "pre_crop_target_px_per_footprint_tile": 256,
+    "runtime_min_longest_side_px_per_footprint_tile": 128,
+    "pre_crop_target_px_cap": 1536,
+    "footprint": {
+      "w": 1,
+      "h": 1
+    },
+    "scope": "per generated building sheet cell or standalone pre-crop source; 256px per footprint tile is the target capped at 1536px"
+  },
+  "placement": {
+    "projection": "footprint_world",
+    "anchor_kind": "footprint_origin",
+    "source_size": [
+      256,
+      256
+    ],
+    "anchor": [
+      128,
+      208
+    ],
+    "scale_policy": "entity_tile_zoom_1_55",
+    "footprint": [
+      1,
+      1
+    ],
+    "depth": "entity"
+  },
+  "source_workflow": "contact-sheet-resolution-replay"
 }

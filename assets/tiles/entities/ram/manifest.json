@@ -1,7 +1,7 @@
 {
   "schema": "realm.entity_tileset.v1",
   "entity": "ram",
-  "sprite_size": 48,
+  "sprite_size": 256,
   "directions": [
     "front",
     "back"
@@ -12,25 +12,151 @@
       "loop": true,
       "hold_last": false,
       "description": "idle",
+      "family": "idle",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "idle/front/frame_00_base.png",
-            "team_mask": "idle/front/frame_00_teammask.png"
+            "team_mask": "idle/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/ram/sheets/front_contact_sheet.png",
+            "source_slot": 1,
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 362,
+              "h": 362
+            },
+            "final_bbox": {
+              "x": 45,
+              "y": 50,
+              "w": 174,
+              "h": 158
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              4,
+              0
+            ],
+            "scale": 0.5,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              0,
+              2,
+              362,
+              364
+            ]
           },
           {
             "base": "idle/front/frame_01_base.png",
-            "team_mask": "idle/front/frame_01_teammask.png"
+            "team_mask": "idle/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/ram/sheets/front_contact_sheet.png",
+            "source_slot": 2,
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 362,
+              "h": 362
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 29,
+              "w": 181,
+              "h": 179
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.5,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              362,
+              0,
+              724,
+              362
+            ]
           }
         ],
         "back": [
           {
             "base": "idle/back/frame_00_base.png",
-            "team_mask": "idle/back/frame_00_teammask.png"
+            "team_mask": "idle/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/ram/sheets/back_contact_sheet.png",
+            "source_slot": 1,
+            "source_bbox": {
+              "x": 0,
+              "y": 1,
+              "w": 362,
+              "h": 361
+            },
+            "final_bbox": {
+              "x": 54,
+              "y": 28,
+              "w": 165,
+              "h": 180
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              8,
+              0
+            ],
+            "scale": 0.5,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              0,
+              0,
+              362,
+              362
+            ]
           },
           {
             "base": "idle/back/frame_01_base.png",
-            "team_mask": "idle/back/frame_01_teammask.png"
+            "team_mask": "idle/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/ram/sheets/back_contact_sheet.png",
+            "source_slot": 2,
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 362,
+              "h": 362
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 60,
+              "w": 181,
+              "h": 148
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.5,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              362,
+              0,
+              724,
+              362
+            ]
           }
         ]
       }
@@ -40,25 +166,151 @@
       "loop": true,
       "hold_last": false,
       "description": "roll",
+      "family": "roll",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "roll/front/frame_00_base.png",
-            "team_mask": "roll/front/frame_00_teammask.png"
+            "team_mask": "roll/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/ram/sheets/front_contact_sheet.png",
+            "source_slot": 3,
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 362,
+              "h": 362
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 51,
+              "w": 181,
+              "h": 157
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.5,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              724,
+              0,
+              1086,
+              362
+            ]
           },
           {
             "base": "roll/front/frame_01_base.png",
-            "team_mask": "roll/front/frame_01_teammask.png"
+            "team_mask": "roll/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/ram/sheets/front_contact_sheet.png",
+            "source_slot": 4,
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 362,
+              "h": 362
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 51,
+              "w": 167,
+              "h": 157
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -6,
+              0
+            ],
+            "scale": 0.5,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              1086,
+              0,
+              1448,
+              362
+            ]
           }
         ],
         "back": [
           {
             "base": "roll/back/frame_00_base.png",
-            "team_mask": "roll/back/frame_00_teammask.png"
+            "team_mask": "roll/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/ram/sheets/back_contact_sheet.png",
+            "source_slot": 3,
+            "source_bbox": {
+              "x": 0,
+              "y": 1,
+              "w": 362,
+              "h": 361
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 57,
+              "w": 179,
+              "h": 151
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.5,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              724,
+              0,
+              1086,
+              362
+            ]
           },
           {
             "base": "roll/back/frame_01_base.png",
-            "team_mask": "roll/back/frame_01_teammask.png"
+            "team_mask": "roll/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/ram/sheets/back_contact_sheet.png",
+            "source_slot": 4,
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 362,
+              "h": 362
+            },
+            "final_bbox": {
+              "x": 40,
+              "y": 59,
+              "w": 167,
+              "h": 144
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -4,
+              -5
+            ],
+            "scale": 0.5,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              1086,
+              0,
+              1448,
+              362
+            ]
           }
         ]
       }
@@ -68,25 +320,151 @@
       "loop": true,
       "hold_last": false,
       "description": "impact/ramming",
+      "family": "impact_ramming",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "impact_ramming/front/frame_00_base.png",
-            "team_mask": "impact_ramming/front/frame_00_teammask.png"
+            "team_mask": "impact_ramming/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/ram/sheets/front_contact_sheet.png",
+            "source_slot": 5,
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 362,
+              "h": 362
+            },
+            "final_bbox": {
+              "x": 47,
+              "y": 27,
+              "w": 172,
+              "h": 181
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              5,
+              0
+            ],
+            "scale": 0.5,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              0,
+              362,
+              362,
+              724
+            ]
           },
           {
             "base": "impact_ramming/front/frame_01_base.png",
-            "team_mask": "impact_ramming/front/frame_01_teammask.png"
+            "team_mask": "impact_ramming/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/ram/sheets/front_contact_sheet.png",
+            "source_slot": 6,
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 362,
+              "h": 362
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 27,
+              "w": 181,
+              "h": 181
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.5,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              362,
+              362,
+              724,
+              724
+            ]
           }
         ],
         "back": [
           {
             "base": "impact_ramming/back/frame_00_base.png",
-            "team_mask": "impact_ramming/back/frame_00_teammask.png"
+            "team_mask": "impact_ramming/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/ram/sheets/back_contact_sheet.png",
+            "source_slot": 5,
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 362,
+              "h": 362
+            },
+            "final_bbox": {
+              "x": 39,
+              "y": 27,
+              "w": 180,
+              "h": 181
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              1,
+              0
+            ],
+            "scale": 0.5,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              0,
+              362,
+              362,
+              724
+            ]
           },
           {
             "base": "impact_ramming/back/frame_01_base.png",
-            "team_mask": "impact_ramming/back/frame_01_teammask.png"
+            "team_mask": "impact_ramming/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/ram/sheets/back_contact_sheet.png",
+            "source_slot": 6,
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 362,
+              "h": 362
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 27,
+              "w": 181,
+              "h": 181
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.5,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              362,
+              362,
+              724,
+              724
+            ]
           }
         ]
       }
@@ -96,25 +474,151 @@
       "loop": true,
       "hold_last": false,
       "description": "damaged/alert",
+      "family": "damaged_alert",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "damaged_alert/front/frame_00_base.png",
-            "team_mask": "damaged_alert/front/frame_00_teammask.png"
+            "team_mask": "damaged_alert/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/ram/sheets/front_contact_sheet.png",
+            "source_slot": 7,
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 362,
+              "h": 362
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 27,
+              "w": 181,
+              "h": 181
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.5,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              724,
+              362,
+              1086,
+              724
+            ]
           },
           {
             "base": "damaged_alert/front/frame_01_base.png",
-            "team_mask": "damaged_alert/front/frame_01_teammask.png"
+            "team_mask": "damaged_alert/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/ram/sheets/front_contact_sheet.png",
+            "source_slot": 8,
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 362,
+              "h": 362
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 27,
+              "w": 169,
+              "h": 181
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -6,
+              0
+            ],
+            "scale": 0.5,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              1086,
+              362,
+              1448,
+              724
+            ]
           }
         ],
         "back": [
           {
             "base": "damaged_alert/back/frame_00_base.png",
-            "team_mask": "damaged_alert/back/frame_00_teammask.png"
+            "team_mask": "damaged_alert/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/ram/sheets/back_contact_sheet.png",
+            "source_slot": 7,
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 362,
+              "h": 362
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 27,
+              "w": 181,
+              "h": 181
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.5,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              724,
+              362,
+              1086,
+              724
+            ]
           },
           {
             "base": "damaged_alert/back/frame_01_base.png",
-            "team_mask": "damaged_alert/back/frame_01_teammask.png"
+            "team_mask": "damaged_alert/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/ram/sheets/back_contact_sheet.png",
+            "source_slot": 8,
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 362,
+              "h": 362
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 27,
+              "w": 168,
+              "h": 181
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -6,
+              0
+            ],
+            "scale": 0.5,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              1086,
+              362,
+              1448,
+              724
+            ]
           }
         ]
       }
@@ -124,25 +628,151 @@
       "loop": true,
       "hold_last": false,
       "description": "destroyed wreck",
+      "family": "destroyed_wreck",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "destroyed_wreck/front/frame_00_base.png",
-            "team_mask": "destroyed_wreck/front/frame_00_teammask.png"
+            "team_mask": "destroyed_wreck/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/ram/sheets/front_contact_sheet.png",
+            "source_slot": 9,
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 362,
+              "h": 361
+            },
+            "final_bbox": {
+              "x": 48,
+              "y": 28,
+              "w": 171,
+              "h": 154
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              6,
+              -26
+            ],
+            "scale": 0.5,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              0,
+              724,
+              362,
+              1086
+            ]
           },
           {
             "base": "destroyed_wreck/front/frame_01_base.png",
-            "team_mask": "destroyed_wreck/front/frame_01_teammask.png"
+            "team_mask": "destroyed_wreck/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/ram/sheets/front_contact_sheet.png",
+            "source_slot": 10,
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 362,
+              "h": 362
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 27,
+              "w": 181,
+              "h": 154
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              -27
+            ],
+            "scale": 0.5,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              362,
+              724,
+              724,
+              1086
+            ]
           }
         ],
         "back": [
           {
             "base": "destroyed_wreck/back/frame_00_base.png",
-            "team_mask": "destroyed_wreck/back/frame_00_teammask.png"
+            "team_mask": "destroyed_wreck/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/ram/sheets/back_contact_sheet.png",
+            "source_slot": 9,
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 362,
+              "h": 362
+            },
+            "final_bbox": {
+              "x": 39,
+              "y": 27,
+              "w": 179,
+              "h": 153
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              -28
+            ],
+            "scale": 0.5,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              0,
+              724,
+              362,
+              1086
+            ]
           },
           {
             "base": "destroyed_wreck/back/frame_01_base.png",
-            "team_mask": "destroyed_wreck/back/frame_01_teammask.png"
+            "team_mask": "destroyed_wreck/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/ram/sheets/back_contact_sheet.png",
+            "source_slot": 10,
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 362,
+              "h": 362
+            },
+            "final_bbox": {
+              "x": 39,
+              "y": 27,
+              "w": 180,
+              "h": 153
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              1,
+              -28
+            ],
+            "scale": 0.5,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              362,
+              724,
+              724,
+              1086
+            ]
           }
         ]
       }
@@ -152,29 +782,200 @@
       "loop": true,
       "hold_last": false,
       "description": "decayed wreckage",
+      "family": "decayed_wreckage",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "decayed_wreckage/front/frame_00_base.png",
-            "team_mask": "decayed_wreckage/front/frame_00_teammask.png"
+            "team_mask": "decayed_wreckage/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/ram/sheets/front_contact_sheet.png",
+            "source_slot": 11,
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 362,
+              "h": 362
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 27,
+              "w": 181,
+              "h": 158
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              -23
+            ],
+            "scale": 0.5,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              724,
+              724,
+              1086,
+              1086
+            ]
           },
           {
             "base": "decayed_wreckage/front/frame_01_base.png",
-            "team_mask": "decayed_wreckage/front/frame_01_teammask.png"
+            "team_mask": "decayed_wreckage/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/ram/sheets/front_contact_sheet.png",
+            "source_slot": 12,
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 362,
+              "h": 362
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 27,
+              "w": 174,
+              "h": 159
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -3,
+              -22
+            ],
+            "scale": 0.5,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              1086,
+              724,
+              1448,
+              1086
+            ]
           }
         ],
         "back": [
           {
             "base": "decayed_wreckage/back/frame_00_base.png",
-            "team_mask": "decayed_wreckage/back/frame_00_teammask.png"
+            "team_mask": "decayed_wreckage/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/ram/sheets/back_contact_sheet.png",
+            "source_slot": 11,
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 362,
+              "h": 362
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 27,
+              "w": 181,
+              "h": 153
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              -28
+            ],
+            "scale": 0.5,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              724,
+              724,
+              1086,
+              1086
+            ]
           },
           {
             "base": "decayed_wreckage/back/frame_01_base.png",
-            "team_mask": "decayed_wreckage/back/frame_01_teammask.png"
+            "team_mask": "decayed_wreckage/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/ram/sheets/back_contact_sheet.png",
+            "source_slot": 12,
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 362,
+              "h": 362
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 27,
+              "w": 170,
+              "h": 179
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -5,
+              -2
+            ],
+            "scale": 0.5,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              1086,
+              724,
+              1448,
+              1086
+            ]
           }
         ]
       }
     }
   },
-  "notes": "Generated ram tileset from one 2x6 image-gen front/back contact sheet. Each authored action has front/back 48x48 base and team-mask frames; frame_01 duplicates frame_00 pending hand-authored animation polish."
+  "notes": "Generated ram tileset from one 2x6 image-gen front/back contact sheet. Each authored action has front/back 48x48 base and team-mask frames; frame_01 duplicates frame_00 pending hand-authored animation polish.",
+  "asset_type": "unit",
+  "source_canvas": {
+    "profile": "sprite_overlay_source",
+    "width_px": 256,
+    "height_px": 256,
+    "target_kind": "pre_crop_generation_slot",
+    "min_longest_side_px": 128,
+    "unit": "px",
+    "source": "realm range-based source-quality contract",
+    "range": {
+      "minimum_longest_side_px_after_crop": 128,
+      "pre_crop_target_px": 256,
+      "maximum_px": null
+    },
+    "visual_envelope": {
+      "w": 1,
+      "h": 1
+    },
+    "pre_crop_target_px_per_visual_tile": 256,
+    "runtime_min_longest_side_px_per_visual_tile": 128,
+    "scope": "per generated actor sheet cell or standalone pre-crop source"
+  },
+  "placement": {
+    "projection": "upright_world",
+    "anchor_kind": "feet",
+    "source_size": [
+      256,
+      256
+    ],
+    "anchor": [
+      128,
+      208
+    ],
+    "scale_policy": "entity_tile_zoom_1_55",
+    "footprint": [
+      1,
+      1
+    ],
+    "visual_envelope": [
+      1,
+      1
+    ],
+    "depth": "entity"
+  },
+  "source_workflow": "contact-sheet-resolution-replay"
 }

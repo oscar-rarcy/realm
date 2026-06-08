@@ -42,8 +42,10 @@ Generate a Realm sprite reference sheet for **Farm**.
 
 ## Output Resolution
 
-- Final accepted standalone source canvas: 512 by 512 px.
-- Use this resolution from the generated JSON spec for every accepted standalone sprite frame; contact-sheet slots may be larger, but each slot must be cleanly crop/downscale-safe to 512 by 512 px.
+- Generation slot target before crop: about 256 by 256 px per accepted sprite frame.
+- Contact sheets may be larger than this overall; divide the sheet by its grid to judge the approximate slot size.
+- Slightly larger slots are fine. Do not downscale accepted art into tiny draw-size runtime proxies during promotion.
+- Cropped runtime source floor: longest side at least 128 px after crop.
 
 ## Image Output Contract
 
@@ -65,7 +67,7 @@ Generate a Realm sprite reference sheet for **Farm**.
 
 ## States To Generate
 
-Generate **one frame for each state**. There are 16 state(s). Each image may contain at most **16 states** in a **4 by 4** grid.
+Generate **one sprite frame for each listed slot**. There are 16 frame slot(s). Each image may contain at most **16 frame slots** in a **4 by 4** grid.
 
 Environment states are generated only for the completed building. Do not make a full cross-product of construction, damaged, garrisoned, and weather states.
 Night states should add visible warm light sources; broad nighttime dimming can still be handled by the renderer.
@@ -73,6 +75,7 @@ Night states should add visible warm light sources; broad nighttime dimming can 
 ### Sheet
 
 Use a **4 by 4** grid for this sheet.
+Slot target for this sheet: about **256 by 256 px** per cell before crop.
 
 - row 1, column 1: `sowing` - sowing
 - row 1, column 2: `growing` - growing
@@ -101,23 +104,23 @@ Use a **4 by 4** grid for this sheet.
 
 ## Prompt
 
-Generate sprites for my Realm Farm. The footprint is 1 by 1 tile(s). Team colour is required and the recommended preview player colour is blue (#00AFFF). Use south direction artwork. Create one frame for each of the 16 listed states. Order states left to right and top to bottom within each sheet. Keep the subject consistent across every slot. Final accepted standalone frames use the generated spec resolution: 512 by 512 px. Use transparent background, or a single flat #ff00ff magenta background if transparency is not available. Use clean readable simplified medieval painted-building proportions, stable anchor, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork. 
+Generate sprites for my Realm Farm. The footprint is 1 by 1 tile(s). Team colour is required and the recommended preview player colour is blue (#00AFFF). Use south direction artwork. Create one sprite frame for each of the 16 listed frame slots. Order slots left to right and top to bottom within each sheet. Keep the subject consistent across every slot. Aim for about 256 by 256 px per sheet slot before crop; larger slots are fine if the sheet grid is clean. Keep the accepted runtime crop's longest side at least 128 px. Use transparent background, or a single flat #ff00ff magenta background if transparency is not available. Use clean readable simplified medieval painted-building proportions, stable anchor, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork. 
 
 Slot order:
 - Grid: 4 by 4
-  - row 1, column 1: sowing
-  - row 1, column 2: growing
-  - row 1, column 3: ripe
-  - row 1, column 4: tended
-  - row 2, column 1: winter-dead/snowed
-  - row 2, column 2: depleted/dead
-  - row 2, column 3: 0-33 percent construction: foundation footprint and early site materials
-  - row 2, column 4: 34-66 percent construction: visible frame and scaffolding
-  - row 3, column 1: 67-99 percent construction: nearly complete shell with final work visible
-  - row 3, column 2: complete usable building
-  - row 3, column 3: damaged building below half HP, readable but not destroyed
-  - row 3, column 4: completed farm at night with a tiny warm lantern or torch marker, crops still readable
-  - row 4, column 1: completed farm in rain, wet furrows and small splash frame 1
-  - row 4, column 2: completed farm in rain, wet furrows and small splash frame 2
-  - row 4, column 3: completed farm with light snow on furrows and crop edges
-  - row 4, column 4: completed farm heavily snowed or winter-dead but still identifiable as a farm
+  - row 1, column 1: `sowing` - sowing
+  - row 1, column 2: `growing` - growing
+  - row 1, column 3: `ripe` - ripe
+  - row 1, column 4: `tended` - tended
+  - row 2, column 1: `winter_dead_snowed` - winter-dead/snowed
+  - row 2, column 2: `depleted_dead` - depleted/dead
+  - row 2, column 3: `construction_0_foundation` - 0-33 percent construction: foundation footprint and early site materials
+  - row 2, column 4: `construction_1_frame` - 34-66 percent construction: visible frame and scaffolding
+  - row 3, column 1: `construction_2_nearly_complete` - 67-99 percent construction: nearly complete shell with final work visible
+  - row 3, column 2: `complete` - complete usable building
+  - row 3, column 3: `damaged` - damaged building below half HP, readable but not destroyed
+  - row 3, column 4: `night_lit` - completed farm at night with a tiny warm lantern or torch marker, crops still readable
+  - row 4, column 1: `rain_frame_1` - completed farm in rain, wet furrows and small splash frame 1
+  - row 4, column 2: `rain_frame_2` - completed farm in rain, wet furrows and small splash frame 2
+  - row 4, column 3: `snow_light` - completed farm with light snow on furrows and crop edges
+  - row 4, column 4: `snow_heavy` - completed farm heavily snowed or winter-dead but still identifiable as a farm

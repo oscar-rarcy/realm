@@ -26,8 +26,10 @@ def sha256_or_none(path_text: str | Path | None) -> str | None:
     return h.hexdigest()
 
 
-def make_contact(items: list[dict], out: Path, label_strip: str = "") -> None:
-    paths = [item["required_paths"][0] for item in items]
+def make_contact(items: list[dict], out: Path, label_strip: str = "", reference_images: list[str] | None = None) -> None:
+    refs = [(path, f"ref:{Path(path).stem}") for path in (reference_images or [])]
+    runtime_paths = [(item["required_paths"][0], item["required_paths"][0].replace(label_strip, "")) for item in items]
+    paths = refs + runtime_paths
     thumb, pad, label_h, cols = 96, 10, 34, 4
     rows = (len(paths) + cols - 1) // cols
     sheet = Image.new("RGB", (cols * (thumb + pad) + pad, rows * (thumb + label_h + pad) + pad), (248, 246, 238))
@@ -36,7 +38,7 @@ def make_contact(items: list[dict], out: Path, label_strip: str = "") -> None:
         font = ImageFont.truetype("arial.ttf", 10)
     except OSError:
         font = ImageFont.load_default()
-    for idx, rel in enumerate(paths):
+    for idx, (rel, label) in enumerate(paths):
         col, row = idx % cols, idx // cols
         x, y = pad + col * (thumb + pad), pad + row * (thumb + label_h + pad)
         sheet.paste(Image.new("RGB", (thumb, thumb), (255, 0, 255)), (x, y))
@@ -44,7 +46,6 @@ def make_contact(items: list[dict], out: Path, label_strip: str = "") -> None:
             rgba = img.convert("RGBA")
             rgba.thumbnail((thumb, thumb), Image.Resampling.NEAREST)
             sheet.paste(rgba, (x + (thumb - rgba.width) // 2, y + (thumb - rgba.height) // 2), rgba)
-        label = rel.replace(label_strip, "")
         draw.text((x, y + thumb + 3), label[:22], fill=(30, 30, 30), font=font)
         draw.text((x, y + thumb + 16), label[22:44], fill=(30, 30, 30), font=font)
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -57,6 +58,7 @@ def main() -> int:
     parser.add_argument("--out", required=True)
     parser.add_argument("--label-strip", default="")
     parser.add_argument("--style-contract", default="realm_paper_cutout_small_tile")
+    parser.add_argument("--reference-image", action="append", default=[], help="Optional reference thumbnails to place before batch items.")
     parser.add_argument("--review-note", required=True)
     parser.add_argument("--reviewer", default="codex_visual_review")
     parser.add_argument("--accept", action="store_true")
@@ -66,7 +68,7 @@ def main() -> int:
 
     items = json.loads(Path(args.batch).read_text(encoding="utf-8"))["batch"]
     out = Path(args.out)
-    make_contact(items, out, args.label_strip)
+    make_contact(items, out, args.label_strip, args.reference_image)
 
     review_path = Path("art/tiles/reviews/production-review.json")
     review = json.loads(review_path.read_text(encoding="utf-8")) if review_path.exists() else {"assets": {}, "patterns": []}
@@ -83,7 +85,7 @@ def main() -> int:
                 "style_contract": args.style_contract,
                 "canonical_prompt_export": item.get("prompt"),
                 "canonical_json_spec": item.get("spec"),
-                "reference_images": [],
+                "reference_images": args.reference_image,
                 "generation_ledger_id": event_id,
                 "reviewed_at": datetime.now(timezone.utc).date().isoformat(),
                 "reviewer": args.reviewer,
@@ -99,8 +101,8 @@ def main() -> int:
                 "prompt_sha256": sha256_or_none(item.get("prompt")),
                 "canonical_json_spec": item.get("spec"),
                 "json_spec_sha256": sha256_or_none(item.get("spec")),
-                "reference_images": [],
-                "reference_image_sha256": {},
+                "reference_images": args.reference_image,
+                "reference_image_sha256": {path: sha256_or_none(path) for path in args.reference_image},
                 "premade_grid_path": None,
                 "premade_grid_sha256": None,
                 "seed_asset_path": None,

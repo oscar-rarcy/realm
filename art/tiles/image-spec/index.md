@@ -13,7 +13,7 @@ This folder is the complete Realm image-generation specification for the current
 - Peasant idle is the only sprite lane assumed to already exist; every other prompt should be treated as needed art.
 - Ground prompts are top-down square tile art. Feature prompts are transparent anchored sprites. Decal prompts are transparent ground overlays. Projectile, effect, and user-interface prompts are transparent overlays.
 - User-supplied unit references under `art/reference/units/` are equipment and silhouette references only; generated unit sheets must be stylized Realm art, not copies of the reference image style or pixels.
-- Every runtime asset group uses the generated JSON source-canvas resolution for accepted standalone frames. Grounds are high-resolution tile sources; actors, buildings, features, decals, projectiles, effects, and UI markers preserve enough source resolution for close zoom instead of collapsing to 48 by 48 px.
+- Every runtime asset group uses the generated JSON source-canvas policy. The listed canvas size is the generation slot or pre-crop standalone target, not a demand that contact sheets all use one exact size. Cropped runtime sprites use the listed longest-side floor to reject tiny draw-size proxies. Grounds remain full high-resolution tile sources.
 - Unit and animal actor prompts use the tiny medieval paper-cutout style. Human face rules appear only for unit prompts; animal face rules appear for animal prompts and Knight.
 - Projectile prompts use the same moving paper-cutout treatment because projectiles move through the world.
 - Building and decal prompts use simplified painted map-art, not paper cutouts.
@@ -31,7 +31,6 @@ This folder is the complete Realm image-generation specification for the current
 - [grass ground](grounds/grass.md)
 - [meadow ground](grounds/meadow.md)
 - [dirt ground](grounds/dirt.md)
-- [road ground](grounds/road.md)
 - [mud ground](grounds/mud.md)
 - [sand ground](grounds/sand.md)
 - [dunes ground](grounds/dunes.md)

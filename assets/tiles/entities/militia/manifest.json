@@ -1,7 +1,7 @@
 {
   "schema": "realm.entity_tileset.v1",
   "entity": "militia",
-  "sprite_size": 48,
+  "sprite_size": 256,
   "directions": [
     "front",
     "back"
@@ -12,25 +12,151 @@
       "loop": true,
       "hold_last": false,
       "description": "Basic weapons: idle; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement",
+      "family": "basic_weapons__idle",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "basic_weapons__idle/front/frame_00_base.png",
-            "team_mask": "basic_weapons__idle/front/frame_00_teammask.png"
+            "team_mask": "basic_weapons__idle/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/front_contact_sheet.png",
+            "source_slot": 1,
+            "source_crop_box": [
+              151,
+              24,
+              397,
+              270
+            ],
+            "source_bbox": {
+              "x": 42,
+              "y": 0,
+              "w": 162,
+              "h": 246
+            },
+            "final_bbox": {
+              "x": 54,
+              "y": 21,
+              "w": 148,
+              "h": 224
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9105691056910569,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "basic_weapons__idle/front/frame_01_base.png",
-            "team_mask": "basic_weapons__idle/front/frame_01_teammask.png"
+            "team_mask": "basic_weapons__idle/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/front_contact_sheet.png",
+            "source_slot": 1,
+            "source_crop_box": [
+              151,
+              24,
+              397,
+              270
+            ],
+            "source_bbox": {
+              "x": 42,
+              "y": 0,
+              "w": 162,
+              "h": 246
+            },
+            "final_bbox": {
+              "x": 54,
+              "y": 21,
+              "w": 148,
+              "h": 224
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9105691056910569,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ],
         "back": [
           {
             "base": "basic_weapons__idle/back/frame_00_base.png",
-            "team_mask": "basic_weapons__idle/back/frame_00_teammask.png"
+            "team_mask": "basic_weapons__idle/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/back_contact_sheet.png",
+            "source_slot": 1,
+            "source_crop_box": [
+              163,
+              25,
+              393,
+              255
+            ],
+            "source_bbox": {
+              "x": 34,
+              "y": 0,
+              "w": 162,
+              "h": 230
+            },
+            "final_bbox": {
+              "x": 49,
+              "y": 21,
+              "w": 158,
+              "h": 224
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9739130434782609,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "basic_weapons__idle/back/frame_01_base.png",
-            "team_mask": "basic_weapons__idle/back/frame_01_teammask.png"
+            "team_mask": "basic_weapons__idle/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/back_contact_sheet.png",
+            "source_slot": 1,
+            "source_crop_box": [
+              163,
+              25,
+              393,
+              255
+            ],
+            "source_bbox": {
+              "x": 34,
+              "y": 0,
+              "w": 162,
+              "h": 230
+            },
+            "final_bbox": {
+              "x": 49,
+              "y": 21,
+              "w": 158,
+              "h": 224
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9739130434782609,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ]
       }
@@ -40,25 +166,151 @@
       "loop": true,
       "hold_last": false,
       "description": "Basic weapons: walk; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement",
+      "family": "basic_weapons__walk",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "basic_weapons__walk/front/frame_00_base.png",
-            "team_mask": "basic_weapons__walk/front/frame_00_teammask.png"
+            "team_mask": "basic_weapons__walk/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/front_contact_sheet.png",
+            "source_slot": 3,
+            "source_crop_box": [
+              161,
+              286,
+              400,
+              525
+            ],
+            "source_bbox": {
+              "x": 47,
+              "y": 0,
+              "w": 145,
+              "h": 238
+            },
+            "final_bbox": {
+              "x": 60,
+              "y": 21,
+              "w": 136,
+              "h": 224
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9411764705882353,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "basic_weapons__walk/front/frame_01_base.png",
-            "team_mask": "basic_weapons__walk/front/frame_01_teammask.png"
+            "team_mask": "basic_weapons__walk/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/front_contact_sheet.png",
+            "source_slot": 3,
+            "source_crop_box": [
+              161,
+              286,
+              400,
+              525
+            ],
+            "source_bbox": {
+              "x": 47,
+              "y": 0,
+              "w": 145,
+              "h": 238
+            },
+            "final_bbox": {
+              "x": 60,
+              "y": 21,
+              "w": 136,
+              "h": 224
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9411764705882353,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ],
         "back": [
           {
             "base": "basic_weapons__walk/back/frame_00_base.png",
-            "team_mask": "basic_weapons__walk/back/frame_00_teammask.png"
+            "team_mask": "basic_weapons__walk/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/back_contact_sheet.png",
+            "source_slot": 3,
+            "source_crop_box": [
+              164,
+              270,
+              383,
+              489
+            ],
+            "source_bbox": {
+              "x": 27,
+              "y": 7,
+              "w": 164,
+              "h": 205
+            },
+            "final_bbox": {
+              "x": 39,
+              "y": 21,
+              "w": 179,
+              "h": 224
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 1.0926829268292684,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "basic_weapons__walk/back/frame_01_base.png",
-            "team_mask": "basic_weapons__walk/back/frame_01_teammask.png"
+            "team_mask": "basic_weapons__walk/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/back_contact_sheet.png",
+            "source_slot": 3,
+            "source_crop_box": [
+              164,
+              270,
+              383,
+              489
+            ],
+            "source_bbox": {
+              "x": 27,
+              "y": 7,
+              "w": 164,
+              "h": 205
+            },
+            "final_bbox": {
+              "x": 39,
+              "y": 21,
+              "w": 179,
+              "h": 224
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 1.0926829268292684,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ]
       }
@@ -68,25 +320,151 @@
       "loop": true,
       "hold_last": false,
       "description": "Basic weapons: attack swing/thrust; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement",
+      "family": "basic_weapons__attack_swing_thrust",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "basic_weapons__attack_swing_thrust/front/frame_00_base.png",
-            "team_mask": "basic_weapons__attack_swing_thrust/front/frame_00_teammask.png"
+            "team_mask": "basic_weapons__attack_swing_thrust/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/front_contact_sheet.png",
+            "source_slot": 5,
+            "source_crop_box": [
+              102,
+              520,
+              359,
+              777
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 257,
+              "h": 257
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 27,
+              "w": 181,
+              "h": 181
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.7042801556420234,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "basic_weapons__attack_swing_thrust/front/frame_01_base.png",
-            "team_mask": "basic_weapons__attack_swing_thrust/front/frame_01_teammask.png"
+            "team_mask": "basic_weapons__attack_swing_thrust/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/front_contact_sheet.png",
+            "source_slot": 5,
+            "source_crop_box": [
+              102,
+              520,
+              359,
+              777
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 257,
+              "h": 257
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 27,
+              "w": 181,
+              "h": 181
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.7042801556420234,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ],
         "back": [
           {
             "base": "basic_weapons__attack_swing_thrust/back/frame_00_base.png",
-            "team_mask": "basic_weapons__attack_swing_thrust/back/frame_00_teammask.png"
+            "team_mask": "basic_weapons__attack_swing_thrust/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/back_contact_sheet.png",
+            "source_slot": 5,
+            "source_crop_box": [
+              165,
+              479,
+              418,
+              732
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 253,
+              "h": 253
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 27,
+              "w": 181,
+              "h": 181
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.7154150197628458,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "basic_weapons__attack_swing_thrust/back/frame_01_base.png",
-            "team_mask": "basic_weapons__attack_swing_thrust/back/frame_01_teammask.png"
+            "team_mask": "basic_weapons__attack_swing_thrust/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/back_contact_sheet.png",
+            "source_slot": 5,
+            "source_crop_box": [
+              165,
+              479,
+              418,
+              732
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 253,
+              "h": 253
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 27,
+              "w": 181,
+              "h": 181
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.7154150197628458,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ]
       }
@@ -96,25 +474,151 @@
       "loop": true,
       "hold_last": false,
       "description": "Basic weapons: hold-position; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement",
+      "family": "basic_weapons__hold_position",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "basic_weapons__hold_position/front/frame_00_base.png",
-            "team_mask": "basic_weapons__hold_position/front/frame_00_teammask.png"
+            "team_mask": "basic_weapons__hold_position/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/front_contact_sheet.png",
+            "source_slot": 7,
+            "source_crop_box": [
+              163,
+              741,
+              402,
+              980
+            ],
+            "source_bbox": {
+              "x": 43,
+              "y": 0,
+              "w": 153,
+              "h": 234
+            },
+            "final_bbox": {
+              "x": 55,
+              "y": 21,
+              "w": 146,
+              "h": 224
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9572649572649573,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "basic_weapons__hold_position/front/frame_01_base.png",
-            "team_mask": "basic_weapons__hold_position/front/frame_01_teammask.png"
+            "team_mask": "basic_weapons__hold_position/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/front_contact_sheet.png",
+            "source_slot": 7,
+            "source_crop_box": [
+              163,
+              741,
+              402,
+              980
+            ],
+            "source_bbox": {
+              "x": 43,
+              "y": 0,
+              "w": 153,
+              "h": 234
+            },
+            "final_bbox": {
+              "x": 55,
+              "y": 21,
+              "w": 146,
+              "h": 224
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9572649572649573,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ],
         "back": [
           {
             "base": "basic_weapons__hold_position/back/frame_00_base.png",
-            "team_mask": "basic_weapons__hold_position/back/frame_00_teammask.png"
+            "team_mask": "basic_weapons__hold_position/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/back_contact_sheet.png",
+            "source_slot": 7,
+            "source_crop_box": [
+              150,
+              715,
+              369,
+              934
+            ],
+            "source_bbox": {
+              "x": 21,
+              "y": 6,
+              "w": 176,
+              "h": 206
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 21,
+              "w": 181,
+              "h": 212
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              25
+            ],
+            "scale": 1.0284090909090908,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "basic_weapons__hold_position/back/frame_01_base.png",
-            "team_mask": "basic_weapons__hold_position/back/frame_01_teammask.png"
+            "team_mask": "basic_weapons__hold_position/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/back_contact_sheet.png",
+            "source_slot": 7,
+            "source_crop_box": [
+              150,
+              715,
+              369,
+              934
+            ],
+            "source_bbox": {
+              "x": 21,
+              "y": 6,
+              "w": 176,
+              "h": 206
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 21,
+              "w": 181,
+              "h": 212
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              25
+            ],
+            "scale": 1.0284090909090908,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ]
       }
@@ -124,25 +628,151 @@
       "loop": true,
       "hold_last": false,
       "description": "Basic weapons: hit/alert; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement",
+      "family": "basic_weapons__hit_alert",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "basic_weapons__hit_alert/front/frame_00_base.png",
-            "team_mask": "basic_weapons__hit_alert/front/frame_00_teammask.png"
+            "team_mask": "basic_weapons__hit_alert/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/front_contact_sheet.png",
+            "source_slot": 9,
+            "source_crop_box": [
+              102,
+              944,
+              359,
+              1201
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 257,
+              "h": 236
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 42,
+              "w": 181,
+              "h": 166
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.7042801556420234,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "basic_weapons__hit_alert/front/frame_01_base.png",
-            "team_mask": "basic_weapons__hit_alert/front/frame_01_teammask.png"
+            "team_mask": "basic_weapons__hit_alert/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/front_contact_sheet.png",
+            "source_slot": 9,
+            "source_crop_box": [
+              102,
+              944,
+              359,
+              1201
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 257,
+              "h": 236
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 42,
+              "w": 181,
+              "h": 166
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.7042801556420234,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ],
         "back": [
           {
             "base": "basic_weapons__hit_alert/back/frame_00_base.png",
-            "team_mask": "basic_weapons__hit_alert/back/frame_00_teammask.png"
+            "team_mask": "basic_weapons__hit_alert/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/back_contact_sheet.png",
+            "source_slot": 9,
+            "source_crop_box": [
+              164,
+              932,
+              383,
+              1151
+            ],
+            "source_bbox": {
+              "x": 16,
+              "y": 13,
+              "w": 188,
+              "h": 192
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 23,
+              "w": 181,
+              "h": 185
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.9627659574468085,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "basic_weapons__hit_alert/back/frame_01_base.png",
-            "team_mask": "basic_weapons__hit_alert/back/frame_01_teammask.png"
+            "team_mask": "basic_weapons__hit_alert/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/back_contact_sheet.png",
+            "source_slot": 9,
+            "source_crop_box": [
+              164,
+              932,
+              383,
+              1151
+            ],
+            "source_bbox": {
+              "x": 16,
+              "y": 13,
+              "w": 188,
+              "h": 192
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 23,
+              "w": 181,
+              "h": 185
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.9627659574468085,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ]
       }
@@ -152,25 +782,151 @@
       "loop": true,
       "hold_last": false,
       "description": "Basic weapons: dead; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement",
+      "family": "basic_weapons__dead",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "basic_weapons__dead/front/frame_00_base.png",
-            "team_mask": "basic_weapons__dead/front/frame_00_teammask.png"
+            "team_mask": "basic_weapons__dead/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/front_contact_sheet.png",
+            "source_slot": 11,
+            "source_crop_box": [
+              114,
+              1174,
+              386,
+              1446
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 272,
+              "h": 272
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 27,
+              "w": 181,
+              "h": 181
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.6654411764705882,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "basic_weapons__dead/front/frame_01_base.png",
-            "team_mask": "basic_weapons__dead/front/frame_01_teammask.png"
+            "team_mask": "basic_weapons__dead/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/front_contact_sheet.png",
+            "source_slot": 11,
+            "source_crop_box": [
+              114,
+              1174,
+              386,
+              1446
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 272,
+              "h": 272
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 27,
+              "w": 181,
+              "h": 181
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.6654411764705882,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ],
         "back": [
           {
             "base": "basic_weapons__dead/back/frame_00_base.png",
-            "team_mask": "basic_weapons__dead/back/frame_00_teammask.png"
+            "team_mask": "basic_weapons__dead/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/back_contact_sheet.png",
+            "source_slot": 11,
+            "source_crop_box": [
+              144,
+              1098,
+              418,
+              1372
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 274,
+              "h": 274
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 27,
+              "w": 181,
+              "h": 181
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.6605839416058394,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "basic_weapons__dead/back/frame_01_base.png",
-            "team_mask": "basic_weapons__dead/back/frame_01_teammask.png"
+            "team_mask": "basic_weapons__dead/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/back_contact_sheet.png",
+            "source_slot": 11,
+            "source_crop_box": [
+              144,
+              1098,
+              418,
+              1372
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 274,
+              "h": 274
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 27,
+              "w": 181,
+              "h": 181
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.6605839416058394,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ]
       }
@@ -180,25 +936,151 @@
       "loop": true,
       "hold_last": false,
       "description": "Basic weapons: decayed skeleton with armour and weapons; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement",
+      "family": "basic_weapons__decayed_skeleton_with_armour_and_weapons",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "basic_weapons__decayed_skeleton_with_armour_and_weapons/front/frame_00_base.png",
-            "team_mask": "basic_weapons__decayed_skeleton_with_armour_and_weapons/front/frame_00_teammask.png"
+            "team_mask": "basic_weapons__decayed_skeleton_with_armour_and_weapons/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/front_contact_sheet.png",
+            "source_slot": 13,
+            "source_crop_box": [
+              152,
+              1376,
+              395,
+              1619
+            ],
+            "source_bbox": {
+              "x": 41,
+              "y": 0,
+              "w": 161,
+              "h": 243
+            },
+            "final_bbox": {
+              "x": 54,
+              "y": 21,
+              "w": 148,
+              "h": 224
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9218106995884774,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "basic_weapons__decayed_skeleton_with_armour_and_weapons/front/frame_01_base.png",
-            "team_mask": "basic_weapons__decayed_skeleton_with_armour_and_weapons/front/frame_01_teammask.png"
+            "team_mask": "basic_weapons__decayed_skeleton_with_armour_and_weapons/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/front_contact_sheet.png",
+            "source_slot": 13,
+            "source_crop_box": [
+              152,
+              1376,
+              395,
+              1619
+            ],
+            "source_bbox": {
+              "x": 41,
+              "y": 0,
+              "w": 161,
+              "h": 243
+            },
+            "final_bbox": {
+              "x": 54,
+              "y": 21,
+              "w": 148,
+              "h": 224
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9218106995884774,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ],
         "back": [
           {
             "base": "basic_weapons__decayed_skeleton_with_armour_and_weapons/back/frame_00_base.png",
-            "team_mask": "basic_weapons__decayed_skeleton_with_armour_and_weapons/back/frame_00_teammask.png"
+            "team_mask": "basic_weapons__decayed_skeleton_with_armour_and_weapons/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/back_contact_sheet.png",
+            "source_slot": 13,
+            "source_crop_box": [
+              146,
+              1258,
+              404,
+              1516
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 258,
+              "h": 239
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 40,
+              "w": 181,
+              "h": 168
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.7015503875968992,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "basic_weapons__decayed_skeleton_with_armour_and_weapons/back/frame_01_base.png",
-            "team_mask": "basic_weapons__decayed_skeleton_with_armour_and_weapons/back/frame_01_teammask.png"
+            "team_mask": "basic_weapons__decayed_skeleton_with_armour_and_weapons/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/back_contact_sheet.png",
+            "source_slot": 13,
+            "source_crop_box": [
+              146,
+              1258,
+              404,
+              1516
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 258,
+              "h": 239
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 40,
+              "w": 181,
+              "h": 168
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.7015503875968992,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ]
       }
@@ -208,25 +1090,151 @@
       "loop": true,
       "hold_last": false,
       "description": "Iron Weapons: idle; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims",
+      "family": "iron_weapons__idle",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "iron_weapons__idle/front/frame_00_base.png",
-            "team_mask": "iron_weapons__idle/front/frame_00_teammask.png"
+            "team_mask": "iron_weapons__idle/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/front_contact_sheet.png",
+            "source_slot": 2,
+            "source_crop_box": [
+              550,
+              24,
+              796,
+              270
+            ],
+            "source_bbox": {
+              "x": 39,
+              "y": 0,
+              "w": 167,
+              "h": 246
+            },
+            "final_bbox": {
+              "x": 52,
+              "y": 21,
+              "w": 152,
+              "h": 224
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9105691056910569,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "iron_weapons__idle/front/frame_01_base.png",
-            "team_mask": "iron_weapons__idle/front/frame_01_teammask.png"
+            "team_mask": "iron_weapons__idle/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/front_contact_sheet.png",
+            "source_slot": 2,
+            "source_crop_box": [
+              550,
+              24,
+              796,
+              270
+            ],
+            "source_bbox": {
+              "x": 39,
+              "y": 0,
+              "w": 167,
+              "h": 246
+            },
+            "final_bbox": {
+              "x": 52,
+              "y": 21,
+              "w": 152,
+              "h": 224
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9105691056910569,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ],
         "back": [
           {
             "base": "iron_weapons__idle/back/frame_00_base.png",
-            "team_mask": "iron_weapons__idle/back/frame_00_teammask.png"
+            "team_mask": "iron_weapons__idle/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/back_contact_sheet.png",
+            "source_slot": 2,
+            "source_crop_box": [
+              614,
+              25,
+              844,
+              255
+            ],
+            "source_bbox": {
+              "x": 32,
+              "y": 0,
+              "w": 166,
+              "h": 230
+            },
+            "final_bbox": {
+              "x": 47,
+              "y": 21,
+              "w": 162,
+              "h": 224
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9739130434782609,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "iron_weapons__idle/back/frame_01_base.png",
-            "team_mask": "iron_weapons__idle/back/frame_01_teammask.png"
+            "team_mask": "iron_weapons__idle/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/back_contact_sheet.png",
+            "source_slot": 2,
+            "source_crop_box": [
+              614,
+              25,
+              844,
+              255
+            ],
+            "source_bbox": {
+              "x": 32,
+              "y": 0,
+              "w": 166,
+              "h": 230
+            },
+            "final_bbox": {
+              "x": 47,
+              "y": 21,
+              "w": 162,
+              "h": 224
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9739130434782609,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ]
       }
@@ -236,25 +1244,151 @@
       "loop": true,
       "hold_last": false,
       "description": "Iron Weapons: walk; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims",
+      "family": "iron_weapons__walk",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "iron_weapons__walk/front/frame_00_base.png",
-            "team_mask": "iron_weapons__walk/front/frame_00_teammask.png"
+            "team_mask": "iron_weapons__walk/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/front_contact_sheet.png",
+            "source_slot": 4,
+            "source_crop_box": [
+              554,
+              286,
+              793,
+              525
+            ],
+            "source_bbox": {
+              "x": 44,
+              "y": 0,
+              "w": 151,
+              "h": 238
+            },
+            "final_bbox": {
+              "x": 57,
+              "y": 21,
+              "w": 142,
+              "h": 224
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9411764705882353,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "iron_weapons__walk/front/frame_01_base.png",
-            "team_mask": "iron_weapons__walk/front/frame_01_teammask.png"
+            "team_mask": "iron_weapons__walk/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/front_contact_sheet.png",
+            "source_slot": 4,
+            "source_crop_box": [
+              554,
+              286,
+              793,
+              525
+            ],
+            "source_bbox": {
+              "x": 44,
+              "y": 0,
+              "w": 151,
+              "h": 238
+            },
+            "final_bbox": {
+              "x": 57,
+              "y": 21,
+              "w": 142,
+              "h": 224
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9411764705882353,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ],
         "back": [
           {
             "base": "iron_weapons__walk/back/frame_00_base.png",
-            "team_mask": "iron_weapons__walk/back/frame_00_teammask.png"
+            "team_mask": "iron_weapons__walk/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/back_contact_sheet.png",
+            "source_slot": 4,
+            "source_crop_box": [
+              614,
+              272,
+              833,
+              491
+            ],
+            "source_bbox": {
+              "x": 26,
+              "y": 6,
+              "w": 166,
+              "h": 208
+            },
+            "final_bbox": {
+              "x": 39,
+              "y": 21,
+              "w": 179,
+              "h": 224
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 1.0769230769230769,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "iron_weapons__walk/back/frame_01_base.png",
-            "team_mask": "iron_weapons__walk/back/frame_01_teammask.png"
+            "team_mask": "iron_weapons__walk/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/back_contact_sheet.png",
+            "source_slot": 4,
+            "source_crop_box": [
+              614,
+              272,
+              833,
+              491
+            ],
+            "source_bbox": {
+              "x": 26,
+              "y": 6,
+              "w": 166,
+              "h": 208
+            },
+            "final_bbox": {
+              "x": 39,
+              "y": 21,
+              "w": 179,
+              "h": 224
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 1.0769230769230769,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ]
       }
@@ -264,25 +1398,151 @@
       "loop": true,
       "hold_last": false,
       "description": "Iron Weapons: attack swing/thrust; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims",
+      "family": "iron_weapons__attack_swing_thrust",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "iron_weapons__attack_swing_thrust/front/frame_00_base.png",
-            "team_mask": "iron_weapons__attack_swing_thrust/front/frame_00_teammask.png"
+            "team_mask": "iron_weapons__attack_swing_thrust/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/front_contact_sheet.png",
+            "source_slot": 6,
+            "source_crop_box": [
+              509,
+              541,
+              748,
+              780
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 10,
+              "w": 238,
+              "h": 229
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 34,
+              "w": 181,
+              "h": 174
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.7605042016806722,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "iron_weapons__attack_swing_thrust/front/frame_01_base.png",
-            "team_mask": "iron_weapons__attack_swing_thrust/front/frame_01_teammask.png"
+            "team_mask": "iron_weapons__attack_swing_thrust/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/front_contact_sheet.png",
+            "source_slot": 6,
+            "source_crop_box": [
+              509,
+              541,
+              748,
+              780
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 10,
+              "w": 238,
+              "h": 229
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 34,
+              "w": 181,
+              "h": 174
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.7605042016806722,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ],
         "back": [
           {
             "base": "iron_weapons__attack_swing_thrust/back/frame_00_base.png",
-            "team_mask": "iron_weapons__attack_swing_thrust/back/frame_00_teammask.png"
+            "team_mask": "iron_weapons__attack_swing_thrust/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/back_contact_sheet.png",
+            "source_slot": 6,
+            "source_crop_box": [
+              610,
+              476,
+              870,
+              736
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 260,
+              "h": 260
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 27,
+              "w": 181,
+              "h": 181
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.6961538461538461,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "iron_weapons__attack_swing_thrust/back/frame_01_base.png",
-            "team_mask": "iron_weapons__attack_swing_thrust/back/frame_01_teammask.png"
+            "team_mask": "iron_weapons__attack_swing_thrust/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/back_contact_sheet.png",
+            "source_slot": 6,
+            "source_crop_box": [
+              610,
+              476,
+              870,
+              736
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 260,
+              "h": 260
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 27,
+              "w": 181,
+              "h": 181
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.6961538461538461,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ]
       }
@@ -292,25 +1552,151 @@
       "loop": true,
       "hold_last": false,
       "description": "Iron Weapons: hold-position; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims",
+      "family": "iron_weapons__hold_position",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "iron_weapons__hold_position/front/frame_00_base.png",
-            "team_mask": "iron_weapons__hold_position/front/frame_00_teammask.png"
+            "team_mask": "iron_weapons__hold_position/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/front_contact_sheet.png",
+            "source_slot": 8,
+            "source_crop_box": [
+              554,
+              742,
+              793,
+              981
+            ],
+            "source_bbox": {
+              "x": 51,
+              "y": 0,
+              "w": 138,
+              "h": 236
+            },
+            "final_bbox": {
+              "x": 63,
+              "y": 21,
+              "w": 131,
+              "h": 224
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9491525423728814,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "iron_weapons__hold_position/front/frame_01_base.png",
-            "team_mask": "iron_weapons__hold_position/front/frame_01_teammask.png"
+            "team_mask": "iron_weapons__hold_position/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/front_contact_sheet.png",
+            "source_slot": 8,
+            "source_crop_box": [
+              554,
+              742,
+              793,
+              981
+            ],
+            "source_bbox": {
+              "x": 51,
+              "y": 0,
+              "w": 138,
+              "h": 236
+            },
+            "final_bbox": {
+              "x": 63,
+              "y": 21,
+              "w": 131,
+              "h": 224
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9491525423728814,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ],
         "back": [
           {
             "base": "iron_weapons__hold_position/back/frame_00_base.png",
-            "team_mask": "iron_weapons__hold_position/back/frame_00_teammask.png"
+            "team_mask": "iron_weapons__hold_position/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/back_contact_sheet.png",
+            "source_slot": 8,
+            "source_crop_box": [
+              586,
+              714,
+              805,
+              933
+            ],
+            "source_bbox": {
+              "x": 18,
+              "y": 7,
+              "w": 184,
+              "h": 206
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 21,
+              "w": 181,
+              "h": 203
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              16
+            ],
+            "scale": 0.9836956521739131,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "iron_weapons__hold_position/back/frame_01_base.png",
-            "team_mask": "iron_weapons__hold_position/back/frame_01_teammask.png"
+            "team_mask": "iron_weapons__hold_position/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/back_contact_sheet.png",
+            "source_slot": 8,
+            "source_crop_box": [
+              586,
+              714,
+              805,
+              933
+            ],
+            "source_bbox": {
+              "x": 18,
+              "y": 7,
+              "w": 184,
+              "h": 206
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 21,
+              "w": 181,
+              "h": 203
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              16
+            ],
+            "scale": 0.9836956521739131,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ]
       }
@@ -320,25 +1706,151 @@
       "loop": true,
       "hold_last": false,
       "description": "Iron Weapons: hit/alert; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims",
+      "family": "iron_weapons__hit_alert",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "iron_weapons__hit_alert/front/frame_00_base.png",
-            "team_mask": "iron_weapons__hit_alert/front/frame_00_teammask.png"
+            "team_mask": "iron_weapons__hit_alert/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/front_contact_sheet.png",
+            "source_slot": 10,
+            "source_crop_box": [
+              511,
+              955,
+              756,
+              1200
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 245,
+              "h": 228
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 40,
+              "w": 181,
+              "h": 168
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.7387755102040816,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "iron_weapons__hit_alert/front/frame_01_base.png",
-            "team_mask": "iron_weapons__hit_alert/front/frame_01_teammask.png"
+            "team_mask": "iron_weapons__hit_alert/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/front_contact_sheet.png",
+            "source_slot": 10,
+            "source_crop_box": [
+              511,
+              955,
+              756,
+              1200
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 245,
+              "h": 228
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 40,
+              "w": 181,
+              "h": 168
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.7387755102040816,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ],
         "back": [
           {
             "base": "iron_weapons__hit_alert/back/frame_00_base.png",
-            "team_mask": "iron_weapons__hit_alert/back/frame_00_teammask.png"
+            "team_mask": "iron_weapons__hit_alert/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/back_contact_sheet.png",
+            "source_slot": 10,
+            "source_crop_box": [
+              602,
+              930,
+              821,
+              1149
+            ],
+            "source_bbox": {
+              "x": 18,
+              "y": 10,
+              "w": 184,
+              "h": 199
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 21,
+              "w": 181,
+              "h": 196
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              9
+            ],
+            "scale": 0.9836956521739131,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "iron_weapons__hit_alert/back/frame_01_base.png",
-            "team_mask": "iron_weapons__hit_alert/back/frame_01_teammask.png"
+            "team_mask": "iron_weapons__hit_alert/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/back_contact_sheet.png",
+            "source_slot": 10,
+            "source_crop_box": [
+              602,
+              930,
+              821,
+              1149
+            ],
+            "source_bbox": {
+              "x": 18,
+              "y": 10,
+              "w": 184,
+              "h": 199
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 21,
+              "w": 181,
+              "h": 196
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              9
+            ],
+            "scale": 0.9836956521739131,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ]
       }
@@ -348,25 +1860,151 @@
       "loop": true,
       "hold_last": false,
       "description": "Iron Weapons: dead; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims",
+      "family": "iron_weapons__dead",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "iron_weapons__dead/front/frame_00_base.png",
-            "team_mask": "iron_weapons__dead/front/frame_00_teammask.png"
+            "team_mask": "iron_weapons__dead/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/front_contact_sheet.png",
+            "source_slot": 12,
+            "source_crop_box": [
+              513,
+              1171,
+              791,
+              1449
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 278,
+              "h": 278
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 27,
+              "w": 181,
+              "h": 181
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.6510791366906474,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "iron_weapons__dead/front/frame_01_base.png",
-            "team_mask": "iron_weapons__dead/front/frame_01_teammask.png"
+            "team_mask": "iron_weapons__dead/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/front_contact_sheet.png",
+            "source_slot": 12,
+            "source_crop_box": [
+              513,
+              1171,
+              791,
+              1449
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 278,
+              "h": 278
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 27,
+              "w": 181,
+              "h": 181
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.6510791366906474,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ],
         "back": [
           {
             "base": "iron_weapons__dead/back/frame_00_base.png",
-            "team_mask": "iron_weapons__dead/back/frame_00_teammask.png"
+            "team_mask": "iron_weapons__dead/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/back_contact_sheet.png",
+            "source_slot": 12,
+            "source_crop_box": [
+              573,
+              1095,
+              870,
+              1392
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 297,
+              "h": 297
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 27,
+              "w": 181,
+              "h": 181
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.6094276094276094,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "iron_weapons__dead/back/frame_01_base.png",
-            "team_mask": "iron_weapons__dead/back/frame_01_teammask.png"
+            "team_mask": "iron_weapons__dead/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/back_contact_sheet.png",
+            "source_slot": 12,
+            "source_crop_box": [
+              573,
+              1095,
+              870,
+              1392
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 297,
+              "h": 297
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 27,
+              "w": 181,
+              "h": 181
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.6094276094276094,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ]
       }
@@ -376,85 +2014,200 @@
       "loop": true,
       "hold_last": false,
       "description": "Iron Weapons: decayed skeleton with armour and weapons; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims",
+      "family": "iron_weapons__decayed_skeleton_with_armour_and_weapons",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "iron_weapons__decayed_skeleton_with_armour_and_weapons/front/frame_00_base.png",
-            "team_mask": "iron_weapons__decayed_skeleton_with_armour_and_weapons/front/frame_00_teammask.png"
+            "team_mask": "iron_weapons__decayed_skeleton_with_armour_and_weapons/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/front_contact_sheet.png",
+            "source_slot": 14,
+            "source_crop_box": [
+              547,
+              1376,
+              790,
+              1619
+            ],
+            "source_bbox": {
+              "x": 39,
+              "y": 0,
+              "w": 165,
+              "h": 243
+            },
+            "final_bbox": {
+              "x": 52,
+              "y": 21,
+              "w": 152,
+              "h": 224
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9218106995884774,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "iron_weapons__decayed_skeleton_with_armour_and_weapons/front/frame_01_base.png",
-            "team_mask": "iron_weapons__decayed_skeleton_with_armour_and_weapons/front/frame_01_teammask.png"
+            "team_mask": "iron_weapons__decayed_skeleton_with_armour_and_weapons/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/front_contact_sheet.png",
+            "source_slot": 14,
+            "source_crop_box": [
+              547,
+              1376,
+              790,
+              1619
+            ],
+            "source_bbox": {
+              "x": 39,
+              "y": 0,
+              "w": 165,
+              "h": 243
+            },
+            "final_bbox": {
+              "x": 52,
+              "y": 21,
+              "w": 152,
+              "h": 224
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9218106995884774,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ],
         "back": [
           {
             "base": "iron_weapons__decayed_skeleton_with_armour_and_weapons/back/frame_00_base.png",
-            "team_mask": "iron_weapons__decayed_skeleton_with_armour_and_weapons/back/frame_00_teammask.png"
+            "team_mask": "iron_weapons__decayed_skeleton_with_armour_and_weapons/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/back_contact_sheet.png",
+            "source_slot": 14,
+            "source_crop_box": [
+              589,
+              1248,
+              863,
+              1522
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 274,
+              "h": 260
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 36,
+              "w": 181,
+              "h": 172
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.6605839416058394,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "iron_weapons__decayed_skeleton_with_armour_and_weapons/back/frame_01_base.png",
-            "team_mask": "iron_weapons__decayed_skeleton_with_armour_and_weapons/back/frame_01_teammask.png"
-          }
-        ]
-      }
-    },
-    "idle": {
-      "frame_ms": 250,
-      "loop": true,
-      "hold_last": false,
-      "description": "Runtime alias for basic_weapons__idle",
-      "directions": {
-        "front": [
-          {
-            "base": "idle/front/frame_00_base.png",
-            "team_mask": "idle/front/frame_00_teammask.png"
-          },
-          {
-            "base": "idle/front/frame_01_base.png",
-            "team_mask": "idle/front/frame_01_teammask.png"
-          }
-        ],
-        "back": [
-          {
-            "base": "idle/back/frame_00_base.png",
-            "team_mask": "idle/back/frame_00_teammask.png"
-          },
-          {
-            "base": "idle/back/frame_01_base.png",
-            "team_mask": "idle/back/frame_01_teammask.png"
-          }
-        ]
-      }
-    },
-    "death": {
-      "frame_ms": 250,
-      "loop": false,
-      "hold_last": true,
-      "description": "Runtime alias for basic_weapons__dead",
-      "directions": {
-        "front": [
-          {
-            "base": "death/front/frame_00_base.png",
-            "team_mask": "death/front/frame_00_teammask.png"
-          },
-          {
-            "base": "death/front/frame_01_base.png",
-            "team_mask": "death/front/frame_01_teammask.png"
-          }
-        ],
-        "back": [
-          {
-            "base": "death/back/frame_00_base.png",
-            "team_mask": "death/back/frame_00_teammask.png"
-          },
-          {
-            "base": "death/back/frame_01_base.png",
-            "team_mask": "death/back/frame_01_teammask.png"
+            "team_mask": "iron_weapons__decayed_skeleton_with_armour_and_weapons/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/militia/sheets/back_contact_sheet.png",
+            "source_slot": 14,
+            "source_crop_box": [
+              589,
+              1248,
+              863,
+              1522
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 274,
+              "h": 260
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 36,
+              "w": 181,
+              "h": 172
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.6605839416058394,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ]
       }
     }
   },
-  "notes": "Generated militia tileset from two 2x7 image-gen contact sheets. Each authored action has front/back 48x48 base and team-mask frames; frame_01 duplicates frame_00 pending hand-authored animation polish. Runtime idle/death aliases added from closest generated action variants; opaque magenta cleanup applied where needed."
+  "notes": "Generated militia tileset from two 2x7 image-gen contact sheets. Each authored action has front/back 48x48 base and team-mask frames; frame_01 duplicates frame_00 pending hand-authored animation polish. Runtime idle/death aliases added from closest generated action variants; opaque magenta cleanup applied where needed.",
+  "asset_type": "unit",
+  "source_canvas": {
+    "profile": "sprite_overlay_source",
+    "width_px": 256,
+    "height_px": 256,
+    "target_kind": "pre_crop_generation_slot",
+    "min_longest_side_px": 128,
+    "unit": "px",
+    "source": "realm range-based source-quality contract",
+    "range": {
+      "minimum_longest_side_px_after_crop": 128,
+      "pre_crop_target_px": 256,
+      "maximum_px": null
+    },
+    "visual_envelope": {
+      "w": 1,
+      "h": 1
+    },
+    "pre_crop_target_px_per_visual_tile": 256,
+    "runtime_min_longest_side_px_per_visual_tile": 128,
+    "scope": "per generated actor sheet cell or standalone pre-crop source"
+  },
+  "placement": {
+    "projection": "upright_world",
+    "anchor_kind": "feet",
+    "source_size": [
+      256,
+      256
+    ],
+    "anchor": [
+      128,
+      208
+    ],
+    "scale_policy": "entity_tile_zoom_1_55",
+    "footprint": [
+      1,
+      1
+    ],
+    "visual_envelope": [
+      1,
+      1
+    ],
+    "depth": "entity"
+  },
+  "source_workflow": "contact-sheet-resolution-replay"
 }

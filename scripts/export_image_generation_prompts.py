@@ -19,6 +19,7 @@ from export_tile_specs import (
     ROOT,
     USER_INTERFACE_ASSET_NAMES,
     ammunition_refs_for_entity,
+    apply_action_visual_envelopes,
     category_for_entity,
     clean_cell,
     entity_profile,
@@ -40,6 +41,8 @@ from export_tile_specs import (
     source_canvas_for_group,
     team_color_slots_for_entity,
     team_color_variant_rules_for_entity,
+    visual_envelope_for_entity,
+    visual_envelope_notes_for_entity,
 )
 
 
@@ -111,14 +114,6 @@ def ground_specs() -> list[tuple[str, str, str, list[dict[str, str]]]]:
         state_item("winter_frozen", "bare earth in winter, frozen with frost and patchy snow"),
         *rain_frames("rain", "bare earth"),
         *rain_frames("storm", "bare earth"),
-    ]),
-    ("road", "road ground", "top-down square packed road or worn cobble floor, readable as a movement route and not a transparent overlay", [
-        state_item("spring_clear", "packed road or worn cobble ground in clear spring weather"),
-        state_item("summer_dry", "packed road or worn cobble ground in dry summer weather"),
-        state_item("autumn_leaf_litter", "packed road or worn cobble ground with autumn leaf litter caught at the edges"),
-        state_item("winter_snow_edges", "packed road or worn cobble ground with snow gathered on edges but the route still readable"),
-        *rain_frames("rain", "packed road or worn cobble ground"),
-        *rain_frames("storm", "packed road or worn cobble ground"),
     ]),
     ("mud", "mud ground", "top-down square wet mud floor with ruts and puddled surface", [
         state_item("clear_wet", "mud terrain in clear weather, wet dark surface and puddles"),
@@ -298,8 +293,40 @@ def grid_for_count(count: int) -> tuple[int, int]:
     return cols, rows
 
 
-def sheet_chunks(items: list[dict[str, str]]) -> list[list[dict[str, str]]]:
+def sheet_chunks(items: list[dict[str, Any]]) -> list[list[dict[str, Any]]]:
     return [items[i:i + MAX_SLOTS_PER_SHEET] for i in range(0, len(items), MAX_SLOTS_PER_SHEET)] or [[]]
+
+
+def slot_canvas_key(slot: dict[str, Any]) -> tuple[int, int]:
+    canvas = slot.get("source_canvas")
+    if isinstance(canvas, dict):
+        return (int(canvas.get("width_px", 0) or 0), int(canvas.get("height_px", 0) or 0))
+    return (0, 0)
+
+
+def grouped_sheet_chunks(items: list[dict[str, Any]]) -> list[list[dict[str, Any]]]:
+    groups: dict[tuple[int, int], list[dict[str, Any]]] = {}
+    order: list[tuple[int, int]] = []
+    for item in items:
+        key = slot_canvas_key(item)
+        if key not in groups:
+            groups[key] = []
+            order.append(key)
+        groups[key].append(item)
+    sheets: list[list[dict[str, Any]]] = []
+    for key in order:
+        sheets.extend(sheet_chunks(groups[key]))
+    return sheets or [[]]
+
+
+def uniform_source_canvas(slots: list[dict[str, Any]], fallback: dict[str, Any]) -> dict[str, Any] | None:
+    canvases = [slot.get("source_canvas") for slot in slots if isinstance(slot.get("source_canvas"), dict)]
+    if not canvases:
+        return fallback
+    first = (canvases[0].get("width_px"), canvases[0].get("height_px"))
+    if all((canvas.get("width_px"), canvas.get("height_px")) == first for canvas in canvases):
+        return canvases[0]
+    return None
 
 
 def grid_for_sheet(total_count: int, sheet_count: int) -> tuple[int, int]:
@@ -314,7 +341,7 @@ def slot_name(index: int, cols: int) -> str:
     return f"row {row}, column {col}"
 
 
-def state_item(state_id: str, description: str) -> dict[str, str]:
+def state_item(state_id: str, description: str) -> dict[str, Any]:
     return {"id": state_id, "description": description}
 
 
@@ -371,10 +398,20 @@ def rain_frames(prefix: str, subject: str) -> list[dict[str, str]]:
     ]
 
 
-def death_states_for(enum_name: str, category: str) -> list[dict[str, str]]:
+def death_states_for(enum_name: str, category: str) -> list[dict[str, Any]]:
     if category == "animals":
         return [
-            {"id": "death", "description": "runtime two-frame animal death sequence: freshly dead readable carcass followed by the same animal's clean depleted skeleton remains"},
+            {
+                "id": "death",
+                "description": "runtime four-frame animal death sequence: freshly dead readable carcass, partly harvested carcass, mostly harvested carcass, then clean depleted skeleton remains",
+                "frames_recommended": 4,
+                "phases": [
+                    "freshly dead readable carcass",
+                    "partly harvested carcass",
+                    "mostly harvested carcass",
+                    "clean depleted skeleton remains",
+                ],
+            },
         ]
     if category != "units":
         return []
@@ -394,7 +431,7 @@ def death_states_for(enum_name: str, category: str) -> list[dict[str, str]]:
     ]
 
 
-def add_death_states(enum_name: str, category: str, actions: list[dict[str, str]]) -> list[dict[str, str]]:
+def add_death_states(enum_name: str, category: str, actions: list[dict[str, Any]]) -> list[dict[str, Any]]:
     death_states = death_states_for(enum_name, category)
     if not death_states:
         return actions
@@ -411,7 +448,7 @@ def add_death_states(enum_name: str, category: str, actions: list[dict[str, str]
     return filtered + death_states
 
 
-def append_unique_actions(actions: list[dict[str, str]], extras: list[dict[str, str]]) -> None:
+def append_unique_actions(actions: list[dict[str, Any]], extras: list[dict[str, Any]]) -> None:
     seen = {action["id"] for action in actions}
     for extra in extras:
         if extra["id"] in seen:
@@ -424,11 +461,11 @@ def research_tier_variants(enum_name: str) -> list[dict[str, Any]]:
     return research_tier_variants_for_entity(enum_name)
 
 
-def apply_research_variants(enum_name: str, actions: list[dict[str, str]]) -> list[dict[str, str]]:
+def apply_research_variants(enum_name: str, actions: list[dict[str, Any]]) -> list[dict[str, Any]]:
     variants = research_tier_variants(enum_name)
     if not variants:
         return actions
-    expanded: list[dict[str, str]] = []
+    expanded: list[dict[str, Any]] = []
     for variant in variants:
         for action in actions:
             expanded.append(
@@ -553,14 +590,21 @@ def building_environment_states(enum_name: str) -> list[dict[str, str]]:
     ]
 
 
-def entity_actions(enum_name: str, category: str, stats: dict[str, Any], audit: dict[str, str]) -> list[dict[str, str]]:
+def entity_actions(enum_name: str, category: str, stats: dict[str, Any], audit: dict[str, str]) -> list[dict[str, Any]]:
     if enum_name == "E_PEASANT":
         actions = []
         for action in peasant_actions():
             if action["id"] == "death":
                 continue
             description = action.get("description") or action.get("id", "")
-            actions.append({"id": action["id"], "description": clean_cell(description)})
+            actions.append(
+                {
+                    "id": action["id"],
+                    "description": clean_cell(description),
+                    "frames_recommended": action.get("frames_recommended") or action.get("frame_count") or len(action.get("phases", [])) or 2,
+                    "phases": action.get("phases"),
+                }
+            )
         return add_death_states(enum_name, category, actions)
 
     out = []
@@ -569,7 +613,13 @@ def entity_actions(enum_name: str, category: str, stats: dict[str, Any], audit: 
         action_id = lower_slug(state.replace("/", " "))
         if category == "animals" and action_id == "idle_graze":
             action_id = "idle"
-        out.append({"id": action_id, "description": guided_action_description(enum_name, action_id, state)})
+        out.append(
+            {
+                "id": action_id,
+                "description": guided_action_description(enum_name, action_id, state),
+                "frames_recommended": 1 if category == "buildings" else 2,
+            }
+        )
     if category == "buildings":
         if enum_name == "E_WOODEN_BRIDGE":
             append_unique_actions(out, [
@@ -620,7 +670,57 @@ def entity_actions(enum_name: str, category: str, stats: dict[str, Any], audit: 
         ])
     for action in out:
         action["description"] = guided_action_description(enum_name, action["id"], action["description"])
-    return apply_research_variants(enum_name, add_death_states(enum_name, category, out))
+    actions = apply_research_variants(enum_name, add_death_states(enum_name, category, out))
+    return apply_action_visual_envelopes(enum_name, category, stats["footprint"], actions)
+
+
+def entity_action_frame_count(action: dict[str, Any], category: str) -> int:
+    for key in ("frames_recommended", "frame_count"):
+        value = action.get(key)
+        if isinstance(value, int) and value > 0:
+            return value
+    phases = action.get("phases")
+    if isinstance(phases, list) and phases:
+        return len(phases)
+    return 2 if category in {"animals", "units"} else 1
+
+
+def entity_generation_slots(actions: list[dict[str, Any]], category: str) -> list[dict[str, Any]]:
+    slots: list[dict[str, Any]] = []
+    for action in actions:
+        frame_count = entity_action_frame_count(action, category)
+        phases = action.get("phases") if isinstance(action.get("phases"), list) else []
+        canvas = action.get("source_canvas") if isinstance(action.get("source_canvas"), dict) else None
+        envelope = action.get("visual_envelope") if isinstance(action.get("visual_envelope"), dict) else None
+        envelope_note = action.get("visual_envelope_note") if action.get("visual_envelope_note") else ""
+        slot_suffix = ""
+        if canvas:
+            slot_suffix += f" Slot target: about {canvas['width_px']} by {canvas['height_px']} px before crop."
+        if envelope:
+            slot_suffix += f" Visual envelope: {envelope['w']} by {envelope['h']} tile(s)."
+        if envelope_note:
+            slot_suffix += f" {envelope_note}."
+        for frame_index in range(frame_count):
+            if frame_count == 1:
+                slots.append(
+                    {
+                        "id": str(action["id"]),
+                        "description": f"`{action['id']}` - {action['description']}{slot_suffix}",
+                        **({"source_canvas": canvas} if canvas else {}),
+                        **({"visual_envelope": envelope} if envelope else {}),
+                    }
+                )
+                continue
+            phase = phases[frame_index] if frame_index < len(phases) else action["description"]
+            slots.append(
+                {
+                    "id": f"{action['id']} frame {frame_index:02d}",
+                    "description": f"`{action['id']}` frame {frame_index:02d} - {phase}{slot_suffix}",
+                    **({"source_canvas": canvas} if canvas else {}),
+                    **({"visual_envelope": envelope} if envelope else {}),
+                }
+            )
+    return slots
 
 
 def terrain_items(enum_name: str, audit: dict[str, str]) -> list[dict[str, str]]:
@@ -849,7 +949,7 @@ def sheet_label(sheet_index: int, sheet_count: int) -> str:
 
 def append_slot_order(lines: list[str], sheets: list[list[dict[str, str]]], total_count: int) -> None:
     for sheet_index, sheet in enumerate(sheets, start=1):
-        cols, rows = grid_for_sheet(total_count, len(sheet))
+        cols, rows = grid_for_sheet(len(sheet), len(sheet))
         if len(sheets) > 1:
             lines.append(f"- Sheet {sheet_index} of {len(sheets)}: {cols} by {rows} grid")
         else:
@@ -884,13 +984,23 @@ def common_sheet_contract(
     if source_canvas:
         width = source_canvas["width_px"]
         height = source_canvas["height_px"]
+        min_width = source_canvas.get("min_width_px")
+        min_height = source_canvas.get("min_height_px")
+        min_longest_side = source_canvas.get("min_longest_side_px")
         resolution_lines = [
             "## Output Resolution",
             "",
-            f"- Final accepted standalone source canvas: {width} by {height} px.",
-            f"- Use this resolution from the generated JSON spec for every accepted standalone {item_noun}; contact-sheet slots may be larger, but each slot must be cleanly crop/downscale-safe to {width} by {height} px.",
-            "",
+            f"- Generation slot target before crop: about {width} by {height} px per accepted {item_noun}.",
+            "- Contact sheets may be larger than this overall; divide the sheet by its grid to judge the approximate slot size.",
+            "- Slightly larger slots are fine. Do not downscale accepted art into tiny draw-size runtime proxies during promotion.",
         ]
+        if min_width and min_height:
+            resolution_lines.append(f"- Full-canvas runtime acceptance floor: {min_width} by {min_height} px.")
+        if min_longest_side:
+            resolution_lines.append(
+                f"- Cropped runtime source floor: longest side at least {min_longest_side} px after crop."
+            )
+        resolution_lines.append("")
     team_rule_lines = []
     if team_color_required:
         team_rule_lines = [
@@ -1317,7 +1427,7 @@ def entity_quality_notes(enum_name: str, category: str, stats: dict[str, Any]) -
             "## Entity-Specific Art Notes",
             "",
             "- Keep species silhouette readable in living, attacking, fleeing, and runtime death frames.",
-            "- The runtime death action has two frames: frame 00 is the freshly dead animal body, and frame 01 is the same animal's clean depleted skeleton remains.",
+            "- The runtime death action has four frames: frame 00 is the freshly dead animal body, frame 01 is partly harvested, frame 02 is mostly harvested, and frame 03 is the same animal's clean depleted skeleton remains.",
             "- Carcass and skeleton frames should lie naturally on the ground and stay inside the cell; avoid gore-heavy imagery.",
             "",
         ]
@@ -1378,7 +1488,7 @@ def research_visual_contract(enum_name: str) -> list[str]:
 def entity_markdown(enum_name: str, category: str, stats: dict[str, Any], audit: dict[str, str]) -> str:
     profile = entity_profile(enum_name, audit)
     actions = entity_actions(enum_name, category, stats, audit)
-    sheets = sheet_chunks(actions)
+    slots = entity_generation_slots(actions, category)
     directions = ["front", "back"] if category != "buildings" else ["south"]
     team_color_required = category in {"units", "buildings"}
     team_slots = team_color_slots_for_entity(enum_name, profile, team_color_required)
@@ -1387,7 +1497,17 @@ def entity_markdown(enum_name: str, category: str, stats: dict[str, Any], audit:
     aspect_variant_rules = generation_aspect_variant_rules_for_entity(enum_name, category)
     projectile_sentence = " Use projectile reference files for released projectiles." if ammunition_refs_for_entity(enum_name) else ""
     footprint = stats["footprint"]
-    source_canvas = source_canvas_for_entity(enum_name, category, footprint)
+    visual_envelope = visual_envelope_for_entity(enum_name, category)
+    visual_envelope_note = visual_envelope_notes_for_entity(enum_name, category)
+    entity_source_canvas = source_canvas_for_entity(enum_name, category, footprint, visual_envelope)
+    source_canvas = uniform_source_canvas(slots, entity_source_canvas)
+    sheets = grouped_sheet_chunks(slots) if source_canvas is None else sheet_chunks(slots)
+    visual_envelope_lines = []
+    if visual_envelope != {"w": 1, "h": 1}:
+        visual_envelope_lines = [
+            f"- Visual sprite envelope: {visual_envelope['w']} by {visual_envelope['h']} tile(s); this is visual overhang only, not gameplay occupancy.",
+            *( [f"- Visual envelope note: {visual_envelope_note}"] if visual_envelope_note else [] ),
+        ]
 
     direction_sentence = (
         f"Generate one Realm sprite reference sheet per direction for **{stats['name']}**."
@@ -1412,6 +1532,7 @@ def entity_markdown(enum_name: str, category: str, stats: dict[str, Any], audit:
         f"- Visual design: {profile.get('visual_design') or 'unspecified'}",
         f"- Projection: upright sprite anchored over projected isometric map tiles",
         f"- Footprint: {footprint['w']} by {footprint['h']} tile(s)",
+        *visual_envelope_lines,
         f"- Directions: {', '.join(directions)}",
         *(["- Team colour required: yes"] if team_color_required else []),
         "",
@@ -1439,9 +1560,16 @@ def entity_markdown(enum_name: str, category: str, stats: dict[str, Any], audit:
         *entity_quality_notes(enum_name, category, stats),
         "## States To Generate",
         "",
-        f"Generate **one frame for each state**. There are {len(actions)} state(s). Each image may contain at most **16 states** in a **4 by 4** grid.",
+        f"Generate **one sprite frame for each listed slot**. There are {len(slots)} frame slot(s). Each image may contain at most **16 frame slots** in a **4 by 4** grid.",
         "",
     ]
+    if source_canvas is None:
+        lines.extend(
+            [
+                "This asset has state-specific sprite envelopes. Do not mix different slot target sizes in one contact sheet; use the sheet groups below.",
+                "",
+            ]
+        )
 
     if category == "buildings":
         lines.extend(
@@ -1454,8 +1582,8 @@ def entity_markdown(enum_name: str, category: str, stats: dict[str, Any], audit:
     elif category == "animals":
         lines.extend(
             [
-                "Animal runtime death uses two frames: freshly dead readable carcass, then the same animal's clean depleted skeleton remains.",
-                "Do not generate separate partly harvested or mostly harvested runtime actions unless the C++ animation contract adds them.",
+                "Animal runtime death uses four frames: freshly dead readable carcass, partly harvested carcass, mostly harvested carcass, then the same animal's clean depleted skeleton remains.",
+                "Do not generate separate `dead`, `partly_harvested`, `mostly_harvested`, or `decayed_skeleton` runtime actions; these are frames of the single `death` action.",
                 "",
             ]
         )
@@ -1468,15 +1596,22 @@ def entity_markdown(enum_name: str, category: str, stats: dict[str, Any], audit:
             )
 
     for sheet_index, sheet in enumerate(sheets, start=1):
-        cols, rows = grid_for_sheet(len(actions), len(sheet))
+        cols, rows = grid_for_sheet(len(sheet), len(sheet))
         label = sheet_label(sheet_index, len(sheets))
         lines.extend([f"### {label}", ""])
         lines.append(f"Use a **{cols} by {rows}** grid for this sheet.")
-        if len(actions) > MAX_SLOTS_PER_SHEET and len(sheet) < MAX_SLOTS_PER_SHEET:
+        sheet_canvas = sheet[0].get("source_canvas") if sheet and isinstance(sheet[0].get("source_canvas"), dict) else source_canvas
+        if sheet_canvas:
+            lines.append(
+                f"Slot target for this sheet: about **{sheet_canvas['width_px']} by {sheet_canvas['height_px']} px** per cell before crop."
+            )
+        if len(sheet) == MAX_SLOTS_PER_SHEET:
+            pass
+        elif len(slots) > MAX_SLOTS_PER_SHEET or source_canvas is None:
             lines.append("Leave unused cells empty.")
         lines.append("")
-        for i, action in enumerate(sheet):
-            lines.append(f"- {slot_name(i, cols)}: `{action['id']}` - {action['description']}")
+        for i, slot in enumerate(sheet):
+            lines.append(f"- {slot_name(i, cols)}: {slot['description']}")
         lines.append("")
 
     team_colour_prompt = ""
@@ -1486,17 +1621,26 @@ def entity_markdown(enum_name: str, category: str, stats: dict[str, Any], audit:
         )
     source_canvas_prompt = ""
     if source_canvas:
-        source_canvas_prompt = (
-            f"Final accepted standalone frames use the generated spec resolution: {source_canvas['width_px']} by {source_canvas['height_px']} px. "
+        min_longest_side = source_canvas.get("min_longest_side_px")
+        runtime_floor = (
+            f"Keep the accepted runtime crop's longest side at least {min_longest_side} px. "
+            if min_longest_side
+            else ""
         )
+        source_canvas_prompt = (
+            f"Aim for about {source_canvas['width_px']} by {source_canvas['height_px']} px per sheet slot before crop; "
+            f"larger slots are fine if the sheet grid is clean. {runtime_floor}"
+        )
+    else:
+        source_canvas_prompt = "Use the per-sheet slot target listed for each sheet group; do not combine different slot target sizes into one sheet. "
     background_prompt = sheet_prompt_background_sentence(category)
     reference_prompt = ""
     if category == "units":
         reference_prompt = "If unit reference images are supplied, use them only for equipment and silhouette cues, then redraw into stylized Realm sprite art; do not copy their source style or pixels."
     elif category == "animals":
         reference_prompt = "If animal reference images are supplied, use them only for species identity, pose, facing direction, silhouette, and major colour cues, then redraw into stylized Realm sprite art; do not copy their source style or pixels."
-    state_create_prompt = create_each_sentence("frame", len(actions), "state", "states")
-    state_split_prompt = split_guidance_sentence(len(actions), "states")
+    state_create_prompt = create_each_sentence("sprite frame", len(slots), "frame slot", "frame slots")
+    state_split_prompt = split_guidance_sentence(len(slots), "frame slots")
     lines.extend(
         [
             *production_follow_up(category, "sprite frame"),
@@ -1506,7 +1650,7 @@ def entity_markdown(enum_name: str, category: str, stats: dict[str, Any], audit:
             (
                 f"Generate sprites for my Realm {stats['name']}. The footprint is {footprint['w']} by "
                 f"{footprint['h']} tile(s). {team_colour_prompt}"
-                f"{direction_prompt} {state_create_prompt}{state_split_prompt} Order states left to right "
+                f"{direction_prompt} {state_create_prompt}{state_split_prompt} Order slots left to right "
                 "and top to bottom within each sheet. Keep the subject "
                 f"consistent across every slot. {source_canvas_prompt}{background_prompt} {entity_summary_style_phrase(category)}, stable anchor, clear gutters, "
                 f"no text labels, no numbers, no watermark, and no cropped artwork. "
@@ -1517,7 +1661,7 @@ def entity_markdown(enum_name: str, category: str, stats: dict[str, Any], audit:
             "Slot order:",
         ]
     )
-    append_slot_order(lines, sheets, len(actions))
+    append_slot_order(lines, sheets, len(slots))
     lines.append("")
     return "\n".join(lines)
 
@@ -1909,7 +2053,7 @@ def index_markdown(index: dict[str, list[tuple[str, str]]]) -> str:
         "- Peasant idle is the only sprite lane assumed to already exist; every other prompt should be treated as needed art.",
         "- Ground prompts are top-down square tile art. Feature prompts are transparent anchored sprites. Decal prompts are transparent ground overlays. Projectile, effect, and user-interface prompts are transparent overlays.",
         "- User-supplied unit references under `art/reference/units/` are equipment and silhouette references only; generated unit sheets must be stylized Realm art, not copies of the reference image style or pixels.",
-        "- Every runtime asset group uses the generated JSON source-canvas resolution for accepted standalone frames. Grounds are high-resolution tile sources; actors, buildings, features, decals, projectiles, effects, and UI markers preserve enough source resolution for close zoom instead of collapsing to 48 by 48 px.",
+        "- Every runtime asset group uses the generated JSON source-canvas policy. The listed canvas size is the generation slot or pre-crop standalone target, not a demand that contact sheets all use one exact size. Cropped runtime sprites use the listed longest-side floor to reject tiny draw-size proxies. Grounds remain full high-resolution tile sources.",
         "- Unit and animal actor prompts use the tiny medieval paper-cutout style. Human face rules appear only for unit prompts; animal face rules appear for animal prompts and Knight.",
         "- Projectile prompts use the same moving paper-cutout treatment because projectiles move through the world.",
         "- Building and decal prompts use simplified painted map-art, not paper cutouts.",
@@ -1968,8 +2112,8 @@ This prompt set treats seasons, weather, night, and depletion as visual states f
 
 ## Animals
 
-- Animals use the runtime `death` action with two frames: freshly dead readable carcass, then the same animal's clean depleted skeleton remains.
-- Do not create separate partly harvested or mostly harvested runtime actions unless the C++ animation contract adds them.
+- Animals use the runtime `death` action with four frames: freshly dead readable carcass, partly harvested carcass, mostly harvested carcass, then the same animal's clean depleted skeleton remains.
+- Do not create separate `dead`, `partly_harvested`, `mostly_harvested`, or `decayed_skeleton` runtime actions; these are frames of the single `death` action.
 - Equipment and durable objects should remain visible on military units and vehicles; animal carcasses should keep species silhouette readable.
 """
 

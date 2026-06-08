@@ -1,7 +1,7 @@
 {
   "schema": "realm.entity_tileset.v1",
   "entity": "sheep",
-  "sprite_size": 48,
+  "sprite_size": 256,
   "directions": [
     "front",
     "back"
@@ -16,21 +16,121 @@
         "front": [
           {
             "base": "idle_graze/front/frame_00_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "idle_graze/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/animals/sheep/sheets/front_contact_sheet.png",
+            "source_slot": 1,
+            "source_bbox": {
+              "x": 29,
+              "y": 157,
+              "w": 239,
+              "h": 157
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 89,
+              "w": 181,
+              "h": 119
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.7573221757322176,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "idle_graze/front/frame_01_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "idle_graze/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/animals/sheep/sheets/front_contact_sheet.png",
+            "source_slot": 2,
+            "source_bbox": {
+              "x": 39,
+              "y": 157,
+              "w": 230,
+              "h": 156
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 85,
+              "w": 181,
+              "h": 123
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.7869565217391304,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ],
         "back": [
           {
             "base": "idle_graze/back/frame_00_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "idle_graze/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/animals/sheep/sheets/back_contact_sheet.png",
+            "source_slot": 1,
+            "source_bbox": {
+              "x": 12,
+              "y": 11,
+              "w": 301,
+              "h": 303
+            },
+            "final_bbox": {
+              "x": 59,
+              "y": 95,
+              "w": 138,
+              "h": 113
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.6013289036544851,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "idle_graze/back/frame_01_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "idle_graze/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/animals/sheep/sheets/back_contact_sheet.png",
+            "source_slot": 2,
+            "source_bbox": {
+              "x": 8,
+              "y": 10,
+              "w": 299,
+              "h": 303
+            },
+            "final_bbox": {
+              "x": 63,
+              "y": 82,
+              "w": 139,
+              "h": 126
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              4,
+              0
+            ],
+            "scale": 0.6053511705685619,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ]
       }
@@ -44,21 +144,121 @@
         "front": [
           {
             "base": "walk/front/frame_00_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "walk/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/animals/sheep/sheets/front_contact_sheet.png",
+            "source_slot": 3,
+            "source_bbox": {
+              "x": 49,
+              "y": 147,
+              "w": 216,
+              "h": 166
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 69,
+              "w": 181,
+              "h": 139
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.8379629629629629,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "walk/front/frame_01_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "walk/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/animals/sheep/sheets/front_contact_sheet.png",
+            "source_slot": 4,
+            "source_bbox": {
+              "x": 49,
+              "y": 143,
+              "w": 207,
+              "h": 171
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 58,
+              "w": 181,
+              "h": 150
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.8743961352657005,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ],
         "back": [
           {
             "base": "walk/back/frame_00_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "walk/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/animals/sheep/sheets/back_contact_sheet.png",
+            "source_slot": 3,
+            "source_bbox": {
+              "x": 6,
+              "y": 10,
+              "w": 299,
+              "h": 303
+            },
+            "final_bbox": {
+              "x": 57,
+              "y": 76,
+              "w": 139,
+              "h": 132
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -2,
+              0
+            ],
+            "scale": 0.6053511705685619,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "walk/back/frame_01_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "walk/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/animals/sheep/sheets/back_contact_sheet.png",
+            "source_slot": 4,
+            "source_bbox": {
+              "x": 3,
+              "y": 11,
+              "w": 299,
+              "h": 303
+            },
+            "final_bbox": {
+              "x": 60,
+              "y": 79,
+              "w": 135,
+              "h": 129
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.6053511705685619,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ]
       }
@@ -72,21 +272,121 @@
         "front": [
           {
             "base": "flee/front/frame_00_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "flee/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/animals/sheep/sheets/front_contact_sheet.png",
+            "source_slot": 5,
+            "source_bbox": {
+              "x": 34,
+              "y": 0,
+              "w": 246,
+              "h": 313
+            },
+            "final_bbox": {
+              "x": 40,
+              "y": 21,
+              "w": 176,
+              "h": 224
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.7156549520766773,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "flee/front/frame_01_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "flee/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/animals/sheep/sheets/front_contact_sheet.png",
+            "source_slot": 6,
+            "source_bbox": {
+              "x": 55,
+              "y": 0,
+              "w": 228,
+              "h": 313
+            },
+            "final_bbox": {
+              "x": 47,
+              "y": 21,
+              "w": 163,
+              "h": 224
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.7156549520766773,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ],
         "back": [
           {
             "base": "flee/back/frame_00_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "flee/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/animals/sheep/sheets/back_contact_sheet.png",
+            "source_slot": 5,
+            "source_bbox": {
+              "x": 11,
+              "y": 0,
+              "w": 299,
+              "h": 313
+            },
+            "final_bbox": {
+              "x": 60,
+              "y": 21,
+              "w": 144,
+              "h": 189
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              4,
+              2
+            ],
+            "scale": 0.6053511705685619,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "flee/back/frame_01_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "flee/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/animals/sheep/sheets/back_contact_sheet.png",
+            "source_slot": 6,
+            "source_bbox": {
+              "x": 8,
+              "y": 0,
+              "w": 299,
+              "h": 313
+            },
+            "final_bbox": {
+              "x": 67,
+              "y": 21,
+              "w": 133,
+              "h": 189
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              6,
+              2
+            ],
+            "scale": 0.6053511705685619,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ]
       }
@@ -100,21 +400,121 @@
         "front": [
           {
             "base": "dead/front/frame_00_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "dead/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/animals/sheep/sheets/front_contact_sheet.png",
+            "source_slot": 7,
+            "source_bbox": {
+              "x": 43,
+              "y": 0,
+              "w": 202,
+              "h": 313
+            },
+            "final_bbox": {
+              "x": 86,
+              "y": 91,
+              "w": 85,
+              "h": 133
+            },
+            "anchor": [
+              128,
+              224
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.4249201277955272,
+            "fit_profile": "lying",
+            "manual_review": "pending"
           },
           {
             "base": "dead/front/frame_01_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "dead/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/animals/sheep/sheets/front_contact_sheet.png",
+            "source_slot": 8,
+            "source_bbox": {
+              "x": 46,
+              "y": 0,
+              "w": 187,
+              "h": 313
+            },
+            "final_bbox": {
+              "x": 89,
+              "y": 91,
+              "w": 79,
+              "h": 133
+            },
+            "anchor": [
+              128,
+              224
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.4249201277955272,
+            "fit_profile": "lying",
+            "manual_review": "pending"
           }
         ],
         "back": [
           {
             "base": "dead/back/frame_00_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "dead/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/animals/sheep/sheets/back_contact_sheet.png",
+            "source_slot": 7,
+            "source_bbox": {
+              "x": 39,
+              "y": 0,
+              "w": 266,
+              "h": 313
+            },
+            "final_bbox": {
+              "x": 72,
+              "y": 91,
+              "w": 81,
+              "h": 133
+            },
+            "anchor": [
+              128,
+              224
+            ],
+            "anchor_offset": [
+              -16,
+              0
+            ],
+            "scale": 0.4249201277955272,
+            "fit_profile": "lying",
+            "manual_review": "pending"
           },
           {
             "base": "dead/back/frame_01_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "dead/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/animals/sheep/sheets/back_contact_sheet.png",
+            "source_slot": 8,
+            "source_bbox": {
+              "x": 2,
+              "y": 0,
+              "w": 299,
+              "h": 313
+            },
+            "final_bbox": {
+              "x": 80,
+              "y": 91,
+              "w": 78,
+              "h": 133
+            },
+            "anchor": [
+              128,
+              224
+            ],
+            "anchor_offset": [
+              -9,
+              0
+            ],
+            "scale": 0.4249201277955272,
+            "fit_profile": "lying",
+            "manual_review": "pending"
           }
         ]
       }
@@ -128,21 +528,121 @@
         "front": [
           {
             "base": "decayed_skeleton/front/frame_00_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "decayed_skeleton/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/animals/sheep/sheets/front_contact_sheet.png",
+            "source_slot": 9,
+            "source_bbox": {
+              "x": 34,
+              "y": 0,
+              "w": 221,
+              "h": 97
+            },
+            "final_bbox": {
+              "x": 11,
+              "y": 121,
+              "w": 234,
+              "h": 103
+            },
+            "anchor": [
+              128,
+              224
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 1.0588235294117647,
+            "fit_profile": "lying",
+            "manual_review": "pending"
           },
           {
             "base": "decayed_skeleton/front/frame_01_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "decayed_skeleton/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/animals/sheep/sheets/front_contact_sheet.png",
+            "source_slot": 10,
+            "source_bbox": {
+              "x": 28,
+              "y": 0,
+              "w": 260,
+              "h": 80
+            },
+            "final_bbox": {
+              "x": 11,
+              "y": 152,
+              "w": 234,
+              "h": 72
+            },
+            "anchor": [
+              128,
+              224
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.9,
+            "fit_profile": "lying",
+            "manual_review": "pending"
           }
         ],
         "back": [
           {
             "base": "decayed_skeleton/back/frame_00_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "decayed_skeleton/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/animals/sheep/sheets/back_contact_sheet.png",
+            "source_slot": 9,
+            "source_bbox": {
+              "x": 11,
+              "y": 0,
+              "w": 301,
+              "h": 313
+            },
+            "final_bbox": {
+              "x": 68,
+              "y": 91,
+              "w": 100,
+              "h": 51
+            },
+            "anchor": [
+              128,
+              224
+            ],
+            "anchor_offset": [
+              -10,
+              -82
+            ],
+            "scale": 0.4249201277955272,
+            "fit_profile": "lying",
+            "manual_review": "pending"
           },
           {
             "base": "decayed_skeleton/back/frame_01_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "decayed_skeleton/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/animals/sheep/sheets/back_contact_sheet.png",
+            "source_slot": 10,
+            "source_bbox": {
+              "x": 8,
+              "y": 0,
+              "w": 299,
+              "h": 313
+            },
+            "final_bbox": {
+              "x": 73,
+              "y": 91,
+              "w": 119,
+              "h": 85
+            },
+            "anchor": [
+              128,
+              224
+            ],
+            "anchor_offset": [
+              4,
+              -48
+            ],
+            "scale": 0.4249201277955272,
+            "fit_profile": "lying",
+            "manual_review": "pending"
           }
         ]
       }
@@ -151,26 +651,242 @@
       "frame_ms": 30000,
       "loop": false,
       "hold_last": true,
-      "description": "Runtime-compatible death placeholder frames.",
+      "description": "runtime animal death sequence: frame 00 freshly dead, frame 01 partly harvested, frame 02 mostly harvested, frame 03 clean depleted skeleton remains",
       "directions": {
         "front": [
           {
             "base": "death/front/frame_00_base.png",
-            "team_mask": "death/front/frame_00_teammask.png"
+            "team_mask": "death/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/animals/sheep/sheets/front_contact_sheet.png",
+            "source_slot": 11,
+            "source_bbox": {
+              "x": 10,
+              "y": 0,
+              "w": 282,
+              "h": 115
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 134,
+              "w": 181,
+              "h": 74
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.6418439716312057,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "death/front/frame_01_base.png",
-            "team_mask": "death/front/frame_01_teammask.png"
+            "team_mask": "death/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/animals/sheep/sheets/front_contact_sheet.png",
+            "source_slot": 12,
+            "source_bbox": {
+              "x": 11,
+              "y": 0,
+              "w": 285,
+              "h": 119
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 132,
+              "w": 181,
+              "h": 76
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.6350877192982456,
+            "fit_profile": "standing",
+            "manual_review": "pending"
+          },
+          {
+            "base": "death/front/frame_02_base.png",
+            "team_mask": "death/front/frame_02_teammask.png",
+            "source": "art/tiles/candidates/animals/sheep/sheets/front_contact_sheet.png",
+            "source_slot": 13,
+            "source_bbox": {
+              "x": 15,
+              "y": 14,
+              "w": 284,
+              "h": 151
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 112,
+              "w": 181,
+              "h": 96
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.6373239436619719,
+            "fit_profile": "standing",
+            "manual_review": "accepted as canonical death phase reuse from existing generated alias art"
+          },
+          {
+            "base": "death/front/frame_03_base.png",
+            "team_mask": "death/front/frame_03_teammask.png",
+            "source": "art/tiles/candidates/animals/sheep/sheets/front_contact_sheet.png",
+            "source_slot": 14,
+            "source_bbox": {
+              "x": 19,
+              "y": 22,
+              "w": 267,
+              "h": 141
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 112,
+              "w": 181,
+              "h": 96
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.6779026217228464,
+            "fit_profile": "standing",
+            "manual_review": "accepted as canonical death phase reuse from existing generated alias art"
           }
         ],
         "back": [
           {
             "base": "death/back/frame_00_base.png",
-            "team_mask": "death/back/frame_00_teammask.png"
+            "team_mask": "death/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/animals/sheep/sheets/back_contact_sheet.png",
+            "source_slot": 11,
+            "source_bbox": {
+              "x": 6,
+              "y": 0,
+              "w": 299,
+              "h": 214
+            },
+            "final_bbox": {
+              "x": 44,
+              "y": 78,
+              "w": 166,
+              "h": 80
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -1,
+              -50
+            ],
+            "scale": 0.6053511705685619,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "death/back/frame_01_base.png",
-            "team_mask": "death/back/frame_01_teammask.png"
+            "team_mask": "death/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/animals/sheep/sheets/back_contact_sheet.png",
+            "source_slot": 12,
+            "source_bbox": {
+              "x": 2,
+              "y": 0,
+              "w": 299,
+              "h": 288
+            },
+            "final_bbox": {
+              "x": 44,
+              "y": 34,
+              "w": 170,
+              "h": 81
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              1,
+              -93
+            ],
+            "scale": 0.6053511705685619,
+            "fit_profile": "standing",
+            "manual_review": "pending"
+          },
+          {
+            "base": "death/back/frame_02_base.png",
+            "team_mask": "death/back/frame_02_teammask.png",
+            "source": "art/tiles/candidates/animals/sheep/sheets/back_contact_sheet.png",
+            "source_slot": 13,
+            "source_bbox": {
+              "x": 27,
+              "y": 0,
+              "w": 286,
+              "h": 303
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 82,
+              "w": 172,
+              "h": 86
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -4,
+              -40
+            ],
+            "scale": 0.6328671328671329,
+            "fit_profile": "standing",
+            "manual_review": "accepted as canonical death phase reuse from existing generated alias art"
+          },
+          {
+            "base": "death/back/frame_03_base.png",
+            "team_mask": "death/back/frame_03_teammask.png",
+            "source": "art/tiles/candidates/animals/sheep/sheets/back_contact_sheet.png",
+            "source_slot": 14,
+            "source_bbox": {
+              "x": 8,
+              "y": 0,
+              "w": 299,
+              "h": 302
+            },
+            "final_bbox": {
+              "x": 45,
+              "y": 84,
+              "w": 171,
+              "h": 84
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              2,
+              -40
+            ],
+            "scale": 0.6053511705685619,
+            "fit_profile": "standing",
+            "manual_review": "accepted as canonical death phase reuse from existing generated alias art"
           }
         ]
       }
@@ -184,25 +900,160 @@
         "front": [
           {
             "base": "idle/front/frame_00_base.png",
-            "team_mask": "idle/front/frame_00_teammask.png"
+            "team_mask": "idle/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/animals/sheep/sheets/front_contact_sheet.png",
+            "source_slot": 1,
+            "source_bbox": {
+              "x": 29,
+              "y": 157,
+              "w": 239,
+              "h": 157
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 89,
+              "w": 181,
+              "h": 119
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.7573221757322176,
+            "fit_profile": "standing",
+            "manual_review": "pending alias review; copied from canonical idle_graze frame"
           },
           {
             "base": "idle/front/frame_01_base.png",
-            "team_mask": "idle/front/frame_01_teammask.png"
+            "team_mask": "idle/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/animals/sheep/sheets/front_contact_sheet.png",
+            "source_slot": 2,
+            "source_bbox": {
+              "x": 39,
+              "y": 157,
+              "w": 230,
+              "h": 156
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 85,
+              "w": 181,
+              "h": 123
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.7869565217391304,
+            "fit_profile": "standing",
+            "manual_review": "pending alias review; copied from canonical idle_graze frame"
           }
         ],
         "back": [
           {
             "base": "idle/back/frame_00_base.png",
-            "team_mask": "idle/back/frame_00_teammask.png"
+            "team_mask": "idle/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/animals/sheep/sheets/back_contact_sheet.png",
+            "source_slot": 1,
+            "source_bbox": {
+              "x": 12,
+              "y": 11,
+              "w": 301,
+              "h": 303
+            },
+            "final_bbox": {
+              "x": 59,
+              "y": 95,
+              "w": 138,
+              "h": 113
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.6013289036544851,
+            "fit_profile": "standing",
+            "manual_review": "pending alias review; copied from canonical idle_graze frame"
           },
           {
             "base": "idle/back/frame_01_base.png",
-            "team_mask": "idle/back/frame_01_teammask.png"
+            "team_mask": "idle/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/animals/sheep/sheets/back_contact_sheet.png",
+            "source_slot": 2,
+            "source_bbox": {
+              "x": 8,
+              "y": 10,
+              "w": 299,
+              "h": 303
+            },
+            "final_bbox": {
+              "x": 63,
+              "y": 82,
+              "w": 139,
+              "h": 126
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              4,
+              0
+            ],
+            "scale": 0.6053511705685619,
+            "fit_profile": "standing",
+            "manual_review": "pending alias review; copied from canonical idle_graze frame"
           }
         ]
       }
     }
   },
-  "notes": "Generated from accepted sheep contact sheets under art/tiles/candidates/animals/sheep/sheets. Runtime idle/death aliases added from closest generated action variants; opaque magenta cleanup applied where needed."
+  "notes": "Generated from accepted sheep contact sheets under art/tiles/candidates/animals/sheep/sheets. Runtime idle/death aliases added from closest generated action variants; opaque magenta cleanup applied where needed.",
+  "asset_type": "animal",
+  "source_canvas": {
+    "profile": "sprite_overlay_source",
+    "width_px": 256,
+    "height_px": 256,
+    "target_kind": "pre_crop_generation_slot",
+    "min_longest_side_px": 128,
+    "unit": "px",
+    "source": "realm range-based source-quality contract",
+    "range": {
+      "minimum_longest_side_px_after_crop": 128,
+      "pre_crop_target_px": 256,
+      "maximum_px": null
+    },
+    "scope": "per generated actor sheet cell or standalone pre-crop source"
+  },
+  "placement": {
+    "projection": "upright_world",
+    "anchor_kind": "feet",
+    "source_size": [
+      256,
+      256
+    ],
+    "anchor": [
+      128,
+      208
+    ],
+    "scale_policy": "entity_tile_zoom_1_55",
+    "footprint": [
+      1,
+      1
+    ],
+    "depth": "entity"
+  },
+  "source_workflow": "contact-sheet-resolution-replay"
 }

@@ -1,6 +1,7 @@
 #include "render/sdl/sdl_terminal.h"
 #include "realm.h"
 #include "core/world_index.h"
+#include "render/ascii_portraits.h"
 #include "view_state.h"
 
 Color termBg() { return rgb(3, 5, 8); }
@@ -37,7 +38,7 @@ SDL_Rect terminalMapPixelRect(const TerminalFrame& frame) {
     int panelW = 24;
     int panelX = frame.cols - panelW;
     int mapCols = panelX >= 1 ? panelX - 1 : frame.cols;
-    int topRows = 2;
+    int topRows = 1;
     int bottomRows = 2;
     return SDL_Rect{0, topRows * frame.cellH,
                     std::max(1, mapCols * frame.cellW),
@@ -108,7 +109,7 @@ void updateTerminalCamera(int cols, int rows, bool keepCursor) {
     terminalMapCellMetrics(mapCellW, mapCellH);
     int mapCols = cols - panelW - 1;
     if (mapCols < 30) mapCols = cols;
-    int mapRows = rows - 4;
+    int mapRows = rows - 3;
     if (mapRows < 10) mapRows = rows - 2;
     int mapPixelW = std::max(1, mapCols * uiCellW);
     int mapPixelH = std::max(1, mapRows * uiCellH);
@@ -202,21 +203,10 @@ void terminalDrawTop(TerminalFrame& frame) {
     termPutString(frame, rx, 0, right.str(), termFg(), termBar());
 }
 
-void terminalDrawTerrainBar(TerminalFrame& frame) {
-    int w = std::max(0, std::min(view.viewW, frame.cols));
-    termFillH(frame, 1, 0, w, '-', termDim(), termBg());
-    if (!inBounds(view.cursorX, view.cursorY) || !g.map[view.cursorY][view.cursorX].explored[0]) return;
-    const Tile& ct = g.map[view.cursorY][view.cursorX];
-    std::ostringstream ss;
-    ss << terrainName(ct.terrain) << " [" << biomeName(ct.biome) << "]";
-    if (ct.resources > 0) ss << " Res:" << ct.resources;
-    termPutString(frame, 1, 1, termTrunc(ss.str(), std::max(0, w - 2)), termFg(), termBg());
-}
-
 [[maybe_unused]] static void terminalDrawMap(TerminalFrame& frame, const WorldIndex& world) {
     for (int sy = 0; sy < view.viewH; ++sy) {
         int my = view.viewY + sy;
-        int row = sy + 2;
+        int row = sy + 1;
         if (row < 0 || row >= frame.rows - 2) continue;
         for (int sx = 0; sx < view.viewW; ++sx) {
             int mx = view.viewX + sx;
@@ -273,8 +263,10 @@ void terminalDrawSelection(TerminalFrame& frame, const WorldIndex& world, int pa
         if (ct.resources > 0) {
             std::ostringstream res; res << "Resource: " << ct.resources;
             line(res.str(), termHigh());
+        } else {
+            line("Resource: --", termDim());
         }
-        int stack = 0;
+        std::vector<std::string> stackNames;
         for (auto& e : g.entities) {
             if (!e.alive || e.state == S_GARRISONED) continue;
             auto& st = STATS[e.type];
@@ -282,14 +274,19 @@ void terminalDrawSelection(TerminalFrame& frame, const WorldIndex& world, int pa
                 ? (view.cursorX >= e.x && view.cursorX < e.x + st.sizeW && view.cursorY >= e.y && view.cursorY < e.y + st.sizeH)
                 : (view.cursorX == e.x && view.cursorY == e.y);
             if (!covers) continue;
-            if (stack == 0) line("Stack:");
-            if (stack < 3) line(std::string(" ") + st.name);
-            stack++;
+            stackNames.push_back(st.name);
         }
-        if (stack == 0) line("Stack: empty", termDim());
-        else if (stack > 3) {
-            std::ostringstream more; more << "+" << (stack - 3) << " more";
-            line(more.str());
+        if (stackNames.empty()) {
+            line("Stack: empty", termDim());
+            line("Stack+: --", termDim());
+        } else {
+            line(std::string("Stack: ") + stackNames.front());
+            if (stackNames.size() > 1) {
+                std::ostringstream more; more << "Stack+: +" << (stackNames.size() - 1) << " more";
+                line(more.str());
+            } else {
+                line("Stack+: --", termDim());
+            }
         }
         if (g.local.diagnostics) {
             std::ostringstream ds; ds << "Diag T" << g.tick << " M:" << modeName(g.mode);
@@ -299,8 +296,15 @@ void terminalDrawSelection(TerminalFrame& frame, const WorldIndex& world, int pa
             std::ostringstream ds3; ds3 << "Seed:" << g.seed << " AI:" << g.startupAIs;
             line(ds3.str(), termHigh());
         }
-        y++;
+    } else {
+        line("Tile: unknown", termDim());
+        line("Biome: unknown", termDim());
+        line("Resource: --", termDim());
+        line("Stack: --", termDim());
+        line("Stack+: --", termDim());
     }
+
+    line("-- Selection --", termDim());
 
     if (g.local.selectedIds.size() > 1) {
         std::ostringstream gs; gs << "Group: " << g.local.selectedIds.size() << " units";
@@ -315,7 +319,6 @@ void terminalDrawSelection(TerminalFrame& frame, const WorldIndex& world, int pa
     Entity* sel = renderFindEntity(g, world, g.local.selectedId);
     if (!sel) {
         line("No selection", termDim());
-        y++;
         line("-- Legend (ASCII) --", termDim());
         line("$ Gold   T Oak");
         line("^ Mtn    Y Pine");
@@ -333,6 +336,10 @@ void terminalDrawSelection(TerminalFrame& frame, const WorldIndex& world, int pa
     }
 
     auto& st = STATS[sel->type];
+    ascii_hud::Portrait portrait = ascii_hud::entityPortrait(sel->type);
+    for (const char* row : portrait) {
+        line(row, ownerTermFg(sel->owner));
+    }
     line(st.name, ownerTermFg(sel->owner));
     int barW = panelW - 4;
     int filled = sel->hp * barW / std::max(1, sel->maxHp);
@@ -522,7 +529,6 @@ TerminalFrame buildAsciiTerminalFrame(const WorldIndex& world) {
     TerminalFrame frame = makeBlankTerminalFrame();
     updateTerminalCamera(frame.cols, frame.rows, !s.middleDown);
     terminalDrawTop(frame);
-    terminalDrawTerrainBar(frame);
     terminalDrawPanel(frame, world);
     terminalDrawBottom(frame, world);
     terminalDrawHelpOverlay(frame);

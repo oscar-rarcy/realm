@@ -21,6 +21,10 @@
     "footprint": {
       "w": 1,
       "h": 1
+    },
+    "visual_envelope": {
+      "w": 1,
+      "h": 1
     }
   },
   "runtime": {
@@ -82,12 +86,31 @@
       "description": "default square image-generation aspect ratio"
     },
     "generation_aspect_variant_rules": [],
+    "visual_envelope": {
+      "w": 1,
+      "h": 1
+    },
+    "visual_envelope_note": "",
     "source_canvas": {
-      "width_px": 512,
-      "height_px": 512,
+      "profile": "sprite_overlay_source",
+      "width_px": 256,
+      "height_px": 256,
+      "target_kind": "pre_crop_generation_slot",
+      "min_longest_side_px": 128,
       "unit": "px",
-      "scope": "per accepted standalone high-resolution actor sprite frame",
-      "source": "realm high-resolution source-quality contract"
+      "source": "realm range-based source-quality contract",
+      "range": {
+        "minimum_longest_side_px_after_crop": 128,
+        "pre_crop_target_px": 256,
+        "maximum_px": null
+      },
+      "visual_envelope": {
+        "w": 1,
+        "h": 1
+      },
+      "pre_crop_target_px_per_visual_tile": 256,
+      "runtime_min_longest_side_px_per_visual_tile": 128,
+      "scope": "per generated actor sheet cell or standalone pre-crop source"
     }
   },
   "states": [
@@ -124,11 +147,13 @@
     },
     {
       "id": "death",
-      "description": "runtime animal death sequence: frame 00 is the freshly dead readable carcass; frame 01 is the same animal's clean depleted skeleton remains",
+      "description": "runtime animal death sequence: frame 00 is the freshly dead readable carcass; frame 01 is partly harvested; frame 02 is mostly harvested; frame 03 is clean depleted skeleton remains",
       "source": "src/core/entity_animation.cpp",
-      "frames_recommended": 2,
+      "frames_recommended": 4,
       "phases": [
         "freshly dead animal body lying on the ground, species silhouette still readable",
+        "partly harvested animal carcass lying on the ground, species silhouette still readable",
+        "mostly harvested animal carcass lying on the ground, species silhouette still readable",
         "clean depleted skeleton remains of the same animal, species silhouette still readable"
       ]
     }

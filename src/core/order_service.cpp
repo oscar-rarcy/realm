@@ -83,7 +83,7 @@ ServiceResult startSingleMove(Game& game, const WorldIndex& world, EventSink& ev
         unit.state = S_IDLE;
         return fail("Can't reach there.");
     }
-    emitActionMarker(events, unit.owner, target, 'x');
+    emitActionMarker(events, unit.owner, target, attackMove ? '!' : 'x');
     return ok();
 }
 

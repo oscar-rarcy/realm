@@ -104,6 +104,10 @@ std::filesystem::path effectUiTilePath(const std::string& assetId) {
     return std::filesystem::path("assets") / "tiles" / "effects-ui" / (assetId + ".png");
 }
 
+std::filesystem::path screenUiTilePath(const std::string& assetId) {
+    return std::filesystem::path("assets") / "tiles" / "ui" / (assetId + ".png");
+}
+
 std::string readTextFile(const std::filesystem::path& path) {
     std::ifstream in(path, std::ios::binary);
     if (!in) return {};
@@ -287,6 +291,8 @@ TilesetPlacement defaultEntityPlacement(const std::string& assetType, int sprite
     placement.anchorY = (int)std::lround(spriteSize * (39.0 / 48.0));
     placement.footprintWidth = 1;
     placement.footprintHeight = 1;
+    placement.visualEnvelopeWidth = 1;
+    placement.visualEnvelopeHeight = 1;
     placement.projection = TilesetProjection::UprightWorld;
     placement.anchorKind = TilesetAnchorKind::Feet;
     placement.scalePolicy = TilesetScalePolicy::EntityTileZoom155;
@@ -322,6 +328,10 @@ void applyPlacementObject(TilesetPlacement& placement, const std::string& object
         placement.footprintWidth = std::max(1, x);
         placement.footprintHeight = std::max(1, y);
     }
+    if (parseIntPairAfter(objectText, 0, "visual_envelope", x, y)) {
+        placement.visualEnvelopeWidth = std::max(1, x);
+        placement.visualEnvelopeHeight = std::max(1, y);
+    }
 }
 
 EntityFramePlacement loadEntityFramePlacement(const TilesetAssetRequest& request) {
@@ -350,6 +360,7 @@ EntityFramePlacement loadEntityFramePlacement(const TilesetAssetRequest& request
             if (actionOpen != std::string::npos && actionClose != std::string::npos) {
                 std::string actionText = manifest.substr(actionOpen, actionClose - actionOpen + 1);
                 int ax = 0, ay = 0;
+                applyPlacementObject(resolved.placement, parseObjectField(actionText, "placement"));
                 if (parseIntPairAfter(actionText, 0, "anchor", ax, ay)) {
                     resolved.placement.anchorX = ax;
                     resolved.placement.anchorY = ay;
@@ -914,6 +925,13 @@ std::string tilesetEntitySlug(EntityType type) {
     return entityAssetSlug(type);
 }
 
+TilesetPlacement tilesetResolveEntityFramePlacement(EntityType type, const std::string& action,
+                                                    const std::string& direction, int frameIndex) {
+    TilesetAssetRequest request{type, action, direction, frameIndex, SDL_Color{0, 0, 0, 0}, 0, 0};
+    EntityFramePlacement resolved = loadEntityFramePlacement(request);
+    return resolved.placement;
+}
+
 TilesetAssetFrame tilesetLoadEntityFrame(SDL_Renderer* renderer, const TilesetAssetRequest& request) {
     if (!renderer || request.type == E_NONE || request.action.empty() || request.direction.empty()) {
         return {};
@@ -1063,6 +1081,12 @@ TilesetAssetFrame tilesetLoadProjectileTileScaled(SDL_Renderer* renderer, Projec
 TilesetAssetFrame tilesetLoadEffectUiTileScaled(SDL_Renderer* renderer, const std::string& assetId,
                                                 int width, int height) {
     return loadImageTexture(renderer, effectUiTilePath(assetId), "effects-ui", width, height,
+                            ImageTransform::Scaled);
+}
+
+TilesetAssetFrame tilesetLoadScreenUiTileScaled(SDL_Renderer* renderer, const std::string& assetId,
+                                                int width, int height) {
+    return loadImageTexture(renderer, screenUiTilePath(assetId), "screen-ui", width, height,
                             ImageTransform::Scaled);
 }
 

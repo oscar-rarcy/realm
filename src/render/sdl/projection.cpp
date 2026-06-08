@@ -31,8 +31,26 @@ bool pointInDiamond(int px, int py, int cx, int cy, int hw, int hh) {
     return dx + dy <= 1.0f;
 }
 
+void normalizeWebAsciiViewportPoint(int& px, int& py) {
+#if defined(REALM_WEB)
+    if (displayMode != DM_ASCII || !s.viewportOnly) return;
+    int outW = 0, outH = 0;
+    SDL_GetRendererOutputSize(s.ren, &outW, &outH);
+    if (s.winW <= 0 || s.winH <= 0 || outW <= 0 || outH <= 0) return;
+    float sx = outW / (float)s.winW;
+    float sy = outH / (float)s.winH;
+    if (!std::isfinite(sx) || !std::isfinite(sy) || sx <= 1.01f || sy <= 1.01f) return;
+    px = (int)std::lround(px / sx);
+    py = (int)std::lround(py / sy);
+#else
+    (void)px;
+    (void)py;
+#endif
+}
+
 bool screenToMap(int px, int py, int& mx, int& my) {
-    if (displayMode == DM_ASCII && !isAsciiMobileGui()) {
+    normalizeWebAsciiViewportPoint(px, py);
+    if (displayMode == DM_ASCII && !isAsciiMobileGui() && !s.viewportOnly) {
         SDL_GetWindowSize(s.win, &s.winW, &s.winH);
         TerminalFrame frame = makeBlankTerminalFrame();
         updateTerminalCamera(frame.cols, frame.rows, !s.middleDown);
@@ -48,10 +66,12 @@ bool screenToMap(int px, int py, int& mx, int& my) {
         return inBounds(mx, my);
     }
 
+    if (tilesetHudConsumesPointer(px, py)) return false;
+
     SDL_Rect mr = mapRect();
     if (px < mr.x || py < mr.y || px >= mr.x + mr.w || py >= mr.y + mr.h) return false;
 
-    if (isAsciiMobileGui()) {
+    if (isAsciiMobileGui() && !s.viewportOnly) {
         int cellW = 8, cellH = 15;
         asciiMobileCellMetrics(cellW, cellH);
         int sx = (px - mr.x) / std::max(1, cellW);
@@ -94,7 +114,8 @@ bool screenToMap(int px, int py, int& mx, int& my) {
 }
 
 bool screenToMapOffset(int px, int py, int& sxOut, int& syOut) {
-    if (displayMode == DM_ASCII && !isAsciiMobileGui()) {
+    normalizeWebAsciiViewportPoint(px, py);
+    if (displayMode == DM_ASCII && !isAsciiMobileGui() && !s.viewportOnly) {
         SDL_GetWindowSize(s.win, &s.winW, &s.winH);
         TerminalFrame frame = makeBlankTerminalFrame();
         updateTerminalCamera(frame.cols, frame.rows, !s.middleDown);
@@ -107,10 +128,12 @@ bool screenToMapOffset(int px, int py, int& sxOut, int& syOut) {
         return sxOut >= 0 && syOut >= 0 && sxOut < view.viewW && syOut < view.viewH;
     }
 
+    if (tilesetHudConsumesPointer(px, py)) return false;
+
     SDL_Rect mr = mapRect();
     if (px < mr.x || py < mr.y || px >= mr.x + mr.w || py >= mr.y + mr.h) return false;
 
-    if (isAsciiMobileGui()) {
+    if (isAsciiMobileGui() && !s.viewportOnly) {
         int cellW = 8, cellH = 15;
         asciiMobileCellMetrics(cellW, cellH);
         sxOut = (px - mr.x) / std::max(1, cellW);
@@ -151,7 +174,7 @@ bool screenToMapOffset(int px, int py, int& sxOut, int& syOut) {
 
 bool mapTileScreenCenter(int mx, int my, int& px, int& py) {
     if (!inBounds(mx, my)) return false;
-    if (displayMode == DM_ASCII && !isAsciiMobileGui()) {
+    if (displayMode == DM_ASCII && !isAsciiMobileGui() && !s.viewportOnly) {
         SDL_GetWindowSize(s.win, &s.winW, &s.winH);
         TerminalFrame frame = makeBlankTerminalFrame();
         updateTerminalCamera(frame.cols, frame.rows, !s.middleDown);
@@ -184,7 +207,7 @@ bool mapTileScreenCenter(int mx, int my, int& px, int& py) {
 }
 
 bool mapTileAtViewportCenter(int& mx, int& my, int& px, int& py) {
-    if (displayMode == DM_ASCII && !isAsciiMobileGui()) {
+    if (displayMode == DM_ASCII && !isAsciiMobileGui() && !s.viewportOnly) {
         TerminalFrame frame = makeBlankTerminalFrame();
         updateTerminalCamera(frame.cols, frame.rows, false);
         mx = view.viewX + view.viewW / 2;

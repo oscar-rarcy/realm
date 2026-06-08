@@ -1,7 +1,7 @@
 {
   "schema": "realm.entity_tileset.v1",
   "entity": "farm",
-  "sprite_size": 32,
+  "sprite_size": 256,
   "directions": [
     "south"
   ],
@@ -15,7 +15,32 @@
         "south": [
           {
             "base": "sowing/south/frame_00_base.png",
-            "team_mask": "sowing/south/frame_00_teammask.png"
+            "team_mask": "sowing/south/frame_00_teammask.png",
+            "source": "art/tiles/candidates/buildings/farm/sheets/south_contact_sheet.png",
+            "source_slot": 1,
+            "source_bbox": {
+              "x": 13,
+              "y": 100,
+              "w": 301,
+              "h": 210
+            },
+            "final_bbox": {
+              "x": 6,
+              "y": 63,
+              "w": 245,
+              "h": 171
+            },
+            "anchor": [
+              128,
+              234
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.813953488372093,
+            "fit_profile": "full_tile",
+            "manual_review": "pending"
           }
         ]
       }
@@ -29,7 +54,32 @@
         "south": [
           {
             "base": "growing/south/frame_00_base.png",
-            "team_mask": "growing/south/frame_00_teammask.png"
+            "team_mask": "growing/south/frame_00_teammask.png",
+            "source": "art/tiles/candidates/buildings/farm/sheets/south_contact_sheet.png",
+            "source_slot": 2,
+            "source_bbox": {
+              "x": 11,
+              "y": 98,
+              "w": 300,
+              "h": 213
+            },
+            "final_bbox": {
+              "x": 6,
+              "y": 60,
+              "w": 245,
+              "h": 174
+            },
+            "anchor": [
+              128,
+              234
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.8166666666666667,
+            "fit_profile": "full_tile",
+            "manual_review": "pending"
           }
         ]
       }
@@ -43,7 +93,32 @@
         "south": [
           {
             "base": "ripe/south/frame_00_base.png",
-            "team_mask": "ripe/south/frame_00_teammask.png"
+            "team_mask": "ripe/south/frame_00_teammask.png",
+            "source": "art/tiles/candidates/buildings/farm/sheets/south_contact_sheet.png",
+            "source_slot": 3,
+            "source_bbox": {
+              "x": 8,
+              "y": 97,
+              "w": 305,
+              "h": 215
+            },
+            "final_bbox": {
+              "x": 6,
+              "y": 61,
+              "w": 245,
+              "h": 173
+            },
+            "anchor": [
+              128,
+              234
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.8032786885245902,
+            "fit_profile": "full_tile",
+            "manual_review": "pending"
           }
         ]
       }
@@ -57,7 +132,32 @@
         "south": [
           {
             "base": "tended/south/frame_00_base.png",
-            "team_mask": "tended/south/frame_00_teammask.png"
+            "team_mask": "tended/south/frame_00_teammask.png",
+            "source": "art/tiles/candidates/buildings/farm/sheets/south_contact_sheet.png",
+            "source_slot": 4,
+            "source_bbox": {
+              "x": 0,
+              "y": 84,
+              "w": 293,
+              "h": 229
+            },
+            "final_bbox": {
+              "x": 6,
+              "y": 45,
+              "w": 245,
+              "h": 189
+            },
+            "anchor": [
+              128,
+              234
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.8361774744027304,
+            "fit_profile": "full_tile",
+            "manual_review": "pending"
           }
         ]
       }
@@ -71,7 +171,32 @@
         "south": [
           {
             "base": "winter_dead_snowed/south/frame_00_base.png",
-            "team_mask": "winter_dead_snowed/south/frame_00_teammask.png"
+            "team_mask": "winter_dead_snowed/south/frame_00_teammask.png",
+            "source": "art/tiles/candidates/buildings/farm/sheets/south_contact_sheet.png",
+            "source_slot": 5,
+            "source_bbox": {
+              "x": 9,
+              "y": 66,
+              "w": 299,
+              "h": 219
+            },
+            "final_bbox": {
+              "x": 37,
+              "y": 91,
+              "w": 182,
+              "h": 133
+            },
+            "anchor": [
+              128,
+              224
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.6073059360730594,
+            "fit_profile": "lying",
+            "manual_review": "pending"
           }
         ]
       }
@@ -85,7 +210,32 @@
         "south": [
           {
             "base": "depleted_dead/south/frame_00_base.png",
-            "team_mask": "depleted_dead/south/frame_00_teammask.png"
+            "team_mask": "depleted_dead/south/frame_00_teammask.png",
+            "source": "art/tiles/candidates/buildings/farm/sheets/south_contact_sheet.png",
+            "source_slot": 6,
+            "source_bbox": {
+              "x": 5,
+              "y": 71,
+              "w": 308,
+              "h": 216
+            },
+            "final_bbox": {
+              "x": 33,
+              "y": 91,
+              "w": 190,
+              "h": 132
+            },
+            "anchor": [
+              128,
+              224
+            ],
+            "anchor_offset": [
+              0,
+              -1
+            ],
+            "scale": 0.6157407407407407,
+            "fit_profile": "lying",
+            "manual_review": "pending"
           }
         ]
       }
@@ -147,5 +297,47 @@
       }
     }
   },
-  "notes": "Generated from accepted farm contact sheet under art/tiles/candidates/buildings/farm/sheets. Structural runtime idle/death aliases added from closest generated building/bridge/wall state."
+  "notes": "Generated from accepted farm contact sheet under art/tiles/candidates/buildings/farm/sheets. Structural runtime idle/death aliases added from closest generated building/bridge/wall state.",
+  "asset_type": "building",
+  "source_canvas": {
+    "profile": "building_footprint_sprite_source",
+    "width_px": 256,
+    "height_px": 256,
+    "target_kind": "pre_crop_generation_slot",
+    "min_longest_side_px": 128,
+    "unit": "px",
+    "source": "realm range-based source-quality contract",
+    "range": {
+      "minimum_longest_side_px_after_crop": 128,
+      "pre_crop_target_px": 256,
+      "maximum_px": null
+    },
+    "pre_crop_target_px_per_footprint_tile": 256,
+    "runtime_min_longest_side_px_per_footprint_tile": 128,
+    "pre_crop_target_px_cap": 1536,
+    "footprint": {
+      "w": 1,
+      "h": 1
+    },
+    "scope": "per generated building sheet cell or standalone pre-crop source; 256px per footprint tile is the target capped at 1536px"
+  },
+  "placement": {
+    "projection": "footprint_world",
+    "anchor_kind": "footprint_origin",
+    "source_size": [
+      256,
+      256
+    ],
+    "anchor": [
+      128,
+      208
+    ],
+    "scale_policy": "entity_tile_zoom_1_55",
+    "footprint": [
+      1,
+      1
+    ],
+    "depth": "entity"
+  },
+  "source_workflow": "contact-sheet-resolution-replay"
 }

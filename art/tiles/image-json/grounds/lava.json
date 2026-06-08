@@ -33,11 +33,20 @@
       "description": "default square image-generation aspect ratio"
     },
     "source_canvas": {
+      "profile": "ground_tile_source",
       "width_px": 1024,
       "height_px": 1024,
+      "target_kind": "standalone_full_tile",
+      "min_width_px": 512,
+      "min_height_px": 512,
       "unit": "px",
-      "scope": "per standalone high-resolution ground source tile",
-      "source": "realm high-resolution source-quality contract"
+      "source": "realm range-based source-quality contract",
+      "range": {
+        "minimum_px": 512,
+        "recommended_px": 1024,
+        "maximum_px": null
+      },
+      "scope": "per standalone high-resolution ground source tile"
     }
   },
   "paths": {

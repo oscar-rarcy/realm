@@ -44,6 +44,32 @@ EXPECTED_STYLE_CONTRACTS = (
     ("assets/tiles/projectiles/", {"realm_paper_cutout_small_tile", "realm_projectile_cutout"}),
     ("assets/tiles/effects-ui/", {"realm_effect_overlay", "realm_ui_marker", "procedural_overlay"}),
 )
+BUILDING_ENTITY_SLUGS = {
+    "barracks",
+    "blacksmith",
+    "castle",
+    "church",
+    "dock",
+    "farm",
+    "gate",
+    "house",
+    "lumber_camp",
+    "market",
+    "mill",
+    "mining_camp",
+    "stable",
+    "stone_bridge",
+    "tower",
+    "town_hall",
+    "wall",
+    "wooden_bridge",
+}
+PROJECTILE_EFFECT_FILENAMES = {
+    "arrow_projectile.png",
+    "catapult_boulder_projectile.png",
+    "tower_bolt_projectile.png",
+    "warship_shot_projectile.png",
+}
 GROUND_CURRENT_REQUIRED = (
     "art/tiles/reference/grounds/current/blank.png",
     "art/tiles/reference/grounds/current/grass.png",
@@ -218,10 +244,69 @@ def has_bright_crop_box_artifact(stats: AssetStats) -> bool:
     col_threshold = max(10, int(stats.height * 0.28))
     long_rows = sum(1 for count in row_hits if count >= row_threshold)
     long_cols = sum(1 for count in col_hits if count >= col_threshold)
-    return long_rows >= 1 and long_cols >= 1
+    if long_rows >= 2 and long_cols >= 2:
+        return True
+
+    # Image generation often leaves low-alpha/off-white crop rectangles or
+    # magenta guide fragments that are visible in contact sheets but too dim
+    # for the bright-pixel detector above. Detect only detached sparse line or
+    # rectangle components so legitimate spears, reins, and silhouette details
+    # connected to the main sprite do not fail the audit.
+    with Image.open(stats.path) as img:
+        rgba = img.convert("RGBA")
+        pix = rgba.load()
+        w, h = rgba.size
+        visible = {(x, y) for y in range(h) for x in range(w) if pix[x, y][3] > 0}
+        components: list[list[tuple[int, int]]] = []
+        while visible:
+            start = visible.pop()
+            stack = [start]
+            comp = [start]
+            while stack:
+                x, y = stack.pop()
+                for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+                    if (nx, ny) in visible:
+                        visible.remove((nx, ny))
+                        stack.append((nx, ny))
+                        comp.append((nx, ny))
+            components.append(comp)
+    if len(components) <= 1:
+        return False
+    components.sort(key=len, reverse=True)
+    for comp in components[1:]:
+        xs = [x for x, _ in comp]
+        ys = [y for _, y in comp]
+        x0, y0, x1, y1 = min(xs), min(ys), max(xs), max(ys)
+        bw, bh = x1 - x0 + 1, y1 - y0 + 1
+        if bw <= 0 or bh <= 0:
+            continue
+        density = len(comp) / float(bw * bh)
+        line_like = (bw >= max(8, int(w * 0.25)) and bh <= 3) or (bh >= max(8, int(h * 0.25)) and bw <= 3)
+        sparse_rect = bw >= max(12, int(w * 0.35)) and bh >= max(12, int(h * 0.35)) and density < 0.18
+        magenta_like = 0
+        pale_like = 0
+        for x, y in comp:
+            r, g, b, a = pix[x, y]
+            if r > 200 and b > 120 and g < 140:
+                magenta_like += 1
+            greyish = max(r, g, b) - min(r, g, b) <= 35
+            if greyish and r >= 170 and g >= 150 and b >= 130:
+                pale_like += 1
+        suspicious_colour = (magenta_like + pale_like) >= max(3, len(comp) // 3)
+        if suspicious_colour and (line_like or sparse_rect):
+            return True
+    return False
 
 
 def expected_style_contracts(rel: str) -> set[str]:
+    if rel.startswith("assets/tiles/effects-ui/"):
+        name = rel.rsplit("/", 1)[-1]
+        if name in PROJECTILE_EFFECT_FILENAMES:
+            return {"realm_projectile_cutout"}
+    if rel.startswith("assets/tiles/entities/"):
+        parts = rel.split("/")
+        if len(parts) > 3 and parts[3] in BUILDING_ENTITY_SLUGS:
+            return {"realm_map_integrated_painted_feature"}
     for prefix, contracts in EXPECTED_STYLE_CONTRACTS:
         if rel.startswith(prefix):
             return contracts

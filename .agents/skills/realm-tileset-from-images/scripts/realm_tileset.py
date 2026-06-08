@@ -21,7 +21,7 @@ from PIL import Image, ImageColor, ImageDraw, ImageFont
 
 SELF_TILE = "self_tile"
 ADJACENT_TARGET = "adjacent_target_tile_or_entity"
-DEFAULT_RUNTIME_SPRITE_SIZE = 512
+DEFAULT_RUNTIME_SPRITE_SIZE = 256
 
 FIT_PROFILES: dict[str, dict[str, Any]] = {
     "standing": {"max_w": 34, "max_h": 42, "anchor": [24, 39], "padding": 4},
@@ -156,9 +156,9 @@ def spec_source_canvas(spec: dict[str, Any] | None) -> dict[str, Any]:
     return {}
 
 
-def runtime_size_for_spec(spec: dict[str, Any] | None, requested_size: int | None = None) -> int:
+def runtime_dimensions_for_spec(spec: dict[str, Any] | None, requested_size: int | None = None) -> tuple[int, int]:
     if requested_size and requested_size > 0:
-        return int(requested_size)
+        return int(requested_size), int(requested_size)
     canvas = spec_source_canvas(spec)
     try:
         width = int(canvas.get("width_px", 0))
@@ -166,7 +166,14 @@ def runtime_size_for_spec(spec: dict[str, Any] | None, requested_size: int | Non
     except (TypeError, ValueError):
         width = 0
         height = 0
-    return max(DEFAULT_RUNTIME_SPRITE_SIZE, width, height)
+    if width > 0 and height > 0:
+        return max(1, width), max(1, height)
+    return DEFAULT_RUNTIME_SPRITE_SIZE, DEFAULT_RUNTIME_SPRITE_SIZE
+
+
+def runtime_size_for_spec(spec: dict[str, Any] | None, requested_size: int | None = None) -> int:
+    width, height = runtime_dimensions_for_spec(spec, requested_size)
+    return max(width, height)
 
 
 def spec_footprint(spec: dict[str, Any] | None) -> tuple[int, int]:
@@ -180,6 +187,24 @@ def spec_footprint(spec: dict[str, Any] | None) -> tuple[int, int]:
     if isinstance(runtime, dict) and isinstance(runtime.get("legacy_footprint"), dict):
         fp = runtime["legacy_footprint"]
         return (max(1, int(fp.get("w", 1))), max(1, int(fp.get("h", 1))))
+    return (1, 1)
+
+
+def spec_visual_envelope(spec: dict[str, Any] | None) -> tuple[int, int]:
+    if not isinstance(spec, dict):
+        return (1, 1)
+    art = spec.get("art")
+    if isinstance(art, dict) and isinstance(art.get("visual_envelope"), dict):
+        envelope = art["visual_envelope"]
+        return (max(1, int(envelope.get("w", 1))), max(1, int(envelope.get("h", 1))))
+    placement = spec.get("placement")
+    if isinstance(placement, dict) and isinstance(placement.get("visual_envelope"), dict):
+        envelope = placement["visual_envelope"]
+        return (max(1, int(envelope.get("w", 1))), max(1, int(envelope.get("h", 1))))
+    canvas = spec_source_canvas(spec)
+    if isinstance(canvas.get("visual_envelope"), dict):
+        envelope = canvas["visual_envelope"]
+        return (max(1, int(envelope.get("w", 1))), max(1, int(envelope.get("h", 1))))
     return (1, 1)
 
 
@@ -774,39 +799,47 @@ def bbox_record(box: tuple[int, int, int, int] | None) -> dict[str, int] | None:
 
 def normalize_sprite_canvas(
     transparent: Image.Image,
-    size: int,
+    size: int | tuple[int, int],
     fit_profile_id: str,
 ) -> tuple[Image.Image, dict[str, Any]]:
     profile = FIT_PROFILES[fit_profile_id]
+    if isinstance(size, tuple):
+        canvas_w, canvas_h = max(1, int(size[0])), max(1, int(size[1]))
+    else:
+        canvas_w = canvas_h = max(1, int(size))
     source = transparent.convert("RGBA")
     source_box = alpha_bbox(source)
     if source_box is None:
-        return Image.new("RGBA", (size, size), (0, 0, 0, 0)), {
+        return Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0)), {
             "source_bbox": None,
             "final_bbox": None,
-            "anchor": profile["anchor"],
+            "anchor": [
+                int(profile["anchor"][0] * canvas_w / 48),
+                int(profile["anchor"][1] * canvas_h / 48),
+            ],
             "anchor_offset": [0, 0],
             "scale": 1.0,
             "fit_profile": fit_profile_id,
         }
 
     crop = source.crop(source_box)
-    max_w = max(1, int(profile["max_w"] * size / 48))
-    max_h = max(1, int(profile["max_h"] * size / 48))
+    max_w = max(1, int(profile["max_w"] * canvas_w / 48))
+    max_h = max(1, int(profile["max_h"] * canvas_h / 48))
     scale = min(max_w / crop.width, max_h / crop.height)
     out_w = max(1, int(round(crop.width * scale)))
     out_h = max(1, int(round(crop.height * scale)))
     resized = crop.resize((out_w, out_h), Image.Resampling.LANCZOS)
 
-    anchor_x = int(profile["anchor"][0] * size / 48)
-    anchor_y = int(profile["anchor"][1] * size / 48)
-    padding = int(profile.get("padding", 0) * size / 48)
+    anchor_x = int(profile["anchor"][0] * canvas_w / 48)
+    anchor_y = int(profile["anchor"][1] * canvas_h / 48)
+    padding_x = int(profile.get("padding", 0) * canvas_w / 48)
+    padding_y = int(profile.get("padding", 0) * canvas_h / 48)
     x = anchor_x - out_w // 2
     y = anchor_y - out_h
-    x = min(max(padding, x), max(padding, size - padding - out_w))
-    y = min(max(padding, y), max(padding, size - padding - out_h))
+    x = min(max(padding_x, x), max(padding_x, canvas_w - padding_x - out_w))
+    y = min(max(padding_y, y), max(padding_y, canvas_h - padding_y - out_h))
 
-    canvas = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    canvas = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
     canvas.alpha_composite(resized, (x, y))
     canvas = clear_resized_edge_haze(canvas)
     final_box = alpha_bbox(canvas)
@@ -865,7 +898,7 @@ def clear_residual_key_artifacts(img: Image.Image, key: tuple[int, int, int], th
 def process_tile_image(
     raw_tile: Image.Image,
     spec: dict[str, Any],
-    size: int,
+    size: int | tuple[int, int],
     key_color: tuple[int, int, int],
     key_threshold: float,
     team_color: tuple[int, int, int],
@@ -1195,15 +1228,18 @@ def copy_missing_source(
             )
 
 
-def default_manifest_placement(asset_type: str, size: int) -> dict[str, Any]:
-    size = max(1, int(size))
+def default_manifest_placement(asset_type: str, width: int, height: int | None = None) -> dict[str, Any]:
+    width = max(1, int(width))
+    height = max(1, int(height if height is not None else width))
     placement = {
         "projection": "upright_world",
         "anchor_kind": "feet",
-        "source_size": [size, size],
-        "anchor": [size // 2, int(round(size * 39 / 48))],
+        "source_size": [width, height],
+        "anchor": [width // 2, int(round(height * 39 / 48))],
         "scale_policy": "entity_tile_zoom_1_55",
         "footprint": [1, 1],
+        "visual_envelope": [max(1, int(round(width / DEFAULT_RUNTIME_SPRITE_SIZE))),
+                            max(1, int(round(height / DEFAULT_RUNTIME_SPRITE_SIZE)))],
         "depth": "entity",
     }
     if asset_type in {"building", "buildings"}:
@@ -1227,7 +1263,8 @@ def default_manifest_placement(asset_type: str, size: int) -> dict[str, Any]:
 
 
 def build_manifest(args: argparse.Namespace, assumptions: list[str], unit_spec: dict[str, Any] | None = None) -> dict[str, Any]:
-    args.size = runtime_size_for_spec(unit_spec, getattr(args, "size", None))
+    target_width, target_height = runtime_dimensions_for_spec(unit_spec, getattr(args, "size", None))
+    args.size = max(target_width, target_height)
     directions = spec_directions(unit_spec)
     actions = {}
     for spec in spec_actions(unit_spec):
@@ -1243,6 +1280,14 @@ def build_manifest(args: argparse.Namespace, assumptions: list[str], unit_spec: 
             "anchor": FIT_PROFILES[spec["fit_profile"]]["anchor"],
             "directions": {direction: [] for direction in directions},
         }
+        if isinstance(spec.get("placement"), dict):
+            entry["placement"] = spec["placement"]
+        if isinstance(spec.get("source_canvas"), dict):
+            entry["source_canvas"] = spec["source_canvas"]
+        if isinstance(spec.get("visual_envelope"), dict):
+            entry["visual_envelope"] = spec["visual_envelope"]
+        if spec.get("visual_envelope_note"):
+            entry["visual_envelope_note"] = spec["visual_envelope_note"]
         durations = spec.get("frame_durations_ms") or []
         if durations:
             entry["frame_durations_ms"] = durations
@@ -1250,9 +1295,11 @@ def build_manifest(args: argparse.Namespace, assumptions: list[str], unit_spec: 
             entry["transition_after_ms"] = spec["transition_after_ms"]
         actions[spec["id"]] = entry
     asset_type = spec_asset_type(unit_spec or {})
-    placement = default_manifest_placement(asset_type, args.size)
+    placement = default_manifest_placement(asset_type, target_width, target_height)
     footprint_w, footprint_h = spec_footprint(unit_spec)
     placement["footprint"] = [footprint_w, footprint_h]
+    visual_w, visual_h = spec_visual_envelope(unit_spec)
+    placement["visual_envelope"] = [visual_w, visual_h]
     source_canvas = spec_source_canvas(unit_spec)
     return {
         "schema": "realm.entity_tileset.v1",
@@ -2263,7 +2310,8 @@ def command_split_batch_source(args: argparse.Namespace) -> None:
 def command_process_frame(args: argparse.Namespace) -> None:
     entity = args.entity.strip().lower().replace("_", "-")
     unit_spec = load_unit_spec(entity, args.spec_source, args.spec_binary, args.spec_json)
-    args.size = runtime_size_for_spec(unit_spec, args.size)
+    target_dimensions = runtime_dimensions_for_spec(unit_spec, args.size)
+    args.size = max(target_dimensions)
     spec = action_spec(args.action, unit_spec)
     if args.direction not in spec_directions(unit_spec):
         raise SystemExit(f"unknown direction for {entity}: {args.direction}. Known directions: {', '.join(spec_directions(unit_spec))}")
@@ -2281,7 +2329,7 @@ def command_process_frame(args: argparse.Namespace) -> None:
     base, team_mask, stats = process_tile_image(
         raw_tile,
         spec,
-        args.size,
+        target_dimensions,
         key_color,
         args.magenta_threshold,
         team_color,
@@ -2447,7 +2495,7 @@ def build_parser() -> argparse.ArgumentParser:
     extract.add_argument("--review-out", default="build/tileset-review")
     extract.add_argument("--cols", type=int, default=4)
     extract.add_argument("--rows", type=int, default=4)
-    extract.add_argument("--size", type=int, default=48)
+    extract.add_argument("--size", type=int, help="override generated spec source-canvas runtime size")
     extract.add_argument("--magenta", default="#ff00ff")
     extract.add_argument("--magenta-threshold", type=float, default=62.0)
     extract.add_argument("--team-color", default="#0088cc")
@@ -2551,7 +2599,7 @@ def build_parser() -> argparse.ArgumentParser:
     split_batch.add_argument("--force", action="store_true")
     split_batch.set_defaults(func=command_split_batch_source)
 
-    process = sub.add_parser("process-frame", help="process one 1024 source tile into final base/mask assets")
+    process = sub.add_parser("process-frame", help="process one source tile into final base/mask assets")
     process.add_argument("--entity", default="peasant")
     add_spec_source_args(process)
     process.add_argument("--action", required=True)

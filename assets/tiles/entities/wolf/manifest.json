@@ -1,7 +1,7 @@
 {
   "schema": "realm.entity_tileset.v1",
   "entity": "wolf",
-  "sprite_size": 48,
+  "sprite_size": 256,
   "directions": [
     "front",
     "back"
@@ -16,21 +16,121 @@
         "front": [
           {
             "base": "idle/front/frame_00_base.png",
-            "team_mask": "idle/front/frame_00_teammask.png"
+            "team_mask": "idle/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/animals/wolf/sheets/front_contact_sheet.png",
+            "source_slot": 1,
+            "source_bbox": {
+              "x": 8,
+              "y": 8,
+              "w": 303,
+              "h": 306
+            },
+            "final_bbox": {
+              "x": 47,
+              "y": 95,
+              "w": 155,
+              "h": 113
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -4,
+              0
+            ],
+            "scale": 0.5973597359735974,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "idle/front/frame_01_base.png",
-            "team_mask": "idle/front/frame_01_teammask.png"
+            "team_mask": "idle/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/animals/wolf/sheets/front_contact_sheet.png",
+            "source_slot": 2,
+            "source_bbox": {
+              "x": 6,
+              "y": 7,
+              "w": 302,
+              "h": 306
+            },
+            "final_bbox": {
+              "x": 48,
+              "y": 26,
+              "w": 171,
+              "h": 182
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              6,
+              0
+            ],
+            "scale": 0.5993377483443708,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ],
         "back": [
           {
             "base": "idle/back/frame_00_base.png",
-            "team_mask": "idle/back/frame_00_teammask.png"
+            "team_mask": "idle/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/animals/wolf/sheets/back_contact_sheet.png",
+            "source_slot": 1,
+            "source_bbox": {
+              "x": 53,
+              "y": 127,
+              "w": 234,
+              "h": 187
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 63,
+              "w": 181,
+              "h": 145
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.7735042735042735,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "idle/back/frame_01_base.png",
-            "team_mask": "idle/back/frame_01_teammask.png"
+            "team_mask": "idle/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/animals/wolf/sheets/back_contact_sheet.png",
+            "source_slot": 2,
+            "source_bbox": {
+              "x": 52,
+              "y": 128,
+              "w": 232,
+              "h": 185
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 64,
+              "w": 181,
+              "h": 144
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.7801724137931034,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ]
       }
@@ -44,21 +144,121 @@
         "front": [
           {
             "base": "prowl/front/frame_00_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "prowl/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/animals/wolf/sheets/front_contact_sheet.png",
+            "source_slot": 3,
+            "source_bbox": {
+              "x": 5,
+              "y": 7,
+              "w": 302,
+              "h": 306
+            },
+            "final_bbox": {
+              "x": 45,
+              "y": 128,
+              "w": 157,
+              "h": 80
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -4,
+              0
+            ],
+            "scale": 0.5993377483443708,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "prowl/front/frame_01_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "prowl/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/animals/wolf/sheets/front_contact_sheet.png",
+            "source_slot": 4,
+            "source_bbox": {
+              "x": 3,
+              "y": 8,
+              "w": 303,
+              "h": 306
+            },
+            "final_bbox": {
+              "x": 45,
+              "y": 25,
+              "w": 173,
+              "h": 183
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              4,
+              0
+            ],
+            "scale": 0.5973597359735974,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ],
         "back": [
           {
             "base": "prowl/back/frame_00_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "prowl/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/animals/wolf/sheets/back_contact_sheet.png",
+            "source_slot": 3,
+            "source_bbox": {
+              "x": 22,
+              "y": 197,
+              "w": 264,
+              "h": 116
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 128,
+              "w": 181,
+              "h": 80
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.6856060606060606,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "prowl/back/frame_01_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "prowl/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/animals/wolf/sheets/back_contact_sheet.png",
+            "source_slot": 4,
+            "source_bbox": {
+              "x": 11,
+              "y": 202,
+              "w": 265,
+              "h": 112
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 132,
+              "w": 181,
+              "h": 76
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.6830188679245283,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ]
       }
@@ -72,21 +272,121 @@
         "front": [
           {
             "base": "attack/front/frame_00_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "attack/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/animals/wolf/sheets/front_contact_sheet.png",
+            "source_slot": 5,
+            "source_bbox": {
+              "x": 7,
+              "y": 0,
+              "w": 302,
+              "h": 313
+            },
+            "final_bbox": {
+              "x": 51,
+              "y": 21,
+              "w": 129,
+              "h": 188
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -12,
+              1
+            ],
+            "scale": 0.5993377483443708,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "attack/front/frame_01_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "attack/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/animals/wolf/sheets/front_contact_sheet.png",
+            "source_slot": 6,
+            "source_bbox": {
+              "x": 6,
+              "y": 0,
+              "w": 302,
+              "h": 313
+            },
+            "final_bbox": {
+              "x": 62,
+              "y": 21,
+              "w": 119,
+              "h": 188
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -6,
+              1
+            ],
+            "scale": 0.5993377483443708,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ],
         "back": [
           {
             "base": "attack/back/frame_00_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "attack/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/animals/wolf/sheets/back_contact_sheet.png",
+            "source_slot": 5,
+            "source_bbox": {
+              "x": 42,
+              "y": 0,
+              "w": 243,
+              "h": 313
+            },
+            "final_bbox": {
+              "x": 41,
+              "y": 21,
+              "w": 174,
+              "h": 224
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.7156549520766773,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "attack/back/frame_01_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "attack/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/animals/wolf/sheets/back_contact_sheet.png",
+            "source_slot": 6,
+            "source_bbox": {
+              "x": 43,
+              "y": 0,
+              "w": 231,
+              "h": 313
+            },
+            "final_bbox": {
+              "x": 46,
+              "y": 21,
+              "w": 165,
+              "h": 224
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.7156549520766773,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ]
       }
@@ -100,21 +400,121 @@
         "front": [
           {
             "base": "winter_aggressive_variant_optional/front/frame_00_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "winter_aggressive_variant_optional/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/animals/wolf/sheets/front_contact_sheet.png",
+            "source_slot": 7,
+            "source_bbox": {
+              "x": 5,
+              "y": 0,
+              "w": 302,
+              "h": 313
+            },
+            "final_bbox": {
+              "x": 56,
+              "y": 21,
+              "w": 141,
+              "h": 188
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -2,
+              1
+            ],
+            "scale": 0.5993377483443708,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "winter_aggressive_variant_optional/front/frame_01_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "winter_aggressive_variant_optional/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/animals/wolf/sheets/front_contact_sheet.png",
+            "source_slot": 8,
+            "source_bbox": {
+              "x": 2,
+              "y": 0,
+              "w": 303,
+              "h": 313
+            },
+            "final_bbox": {
+              "x": 60,
+              "y": 21,
+              "w": 134,
+              "h": 187
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -1,
+              0
+            ],
+            "scale": 0.5973597359735974,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ],
         "back": [
           {
             "base": "winter_aggressive_variant_optional/back/frame_00_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "winter_aggressive_variant_optional/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/animals/wolf/sheets/back_contact_sheet.png",
+            "source_slot": 7,
+            "source_bbox": {
+              "x": 15,
+              "y": 0,
+              "w": 250,
+              "h": 313
+            },
+            "final_bbox": {
+              "x": 39,
+              "y": 21,
+              "w": 179,
+              "h": 224
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.7156549520766773,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "winter_aggressive_variant_optional/back/frame_01_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "winter_aggressive_variant_optional/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/animals/wolf/sheets/back_contact_sheet.png",
+            "source_slot": 8,
+            "source_bbox": {
+              "x": 4,
+              "y": 0,
+              "w": 268,
+              "h": 313
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 21,
+              "w": 181,
+              "h": 211
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              24
+            ],
+            "scale": 0.6753731343283582,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ]
       }
@@ -128,21 +528,121 @@
         "front": [
           {
             "base": "dead/front/frame_00_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "dead/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/animals/wolf/sheets/front_contact_sheet.png",
+            "source_slot": 9,
+            "source_bbox": {
+              "x": 7,
+              "y": 0,
+              "w": 303,
+              "h": 313
+            },
+            "final_bbox": {
+              "x": 71,
+              "y": 91,
+              "w": 116,
+              "h": 57
+            },
+            "anchor": [
+              128,
+              224
+            ],
+            "anchor_offset": [
+              1,
+              -76
+            ],
+            "scale": 0.4249201277955272,
+            "fit_profile": "lying",
+            "manual_review": "pending"
           },
           {
             "base": "dead/front/frame_01_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "dead/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/animals/wolf/sheets/front_contact_sheet.png",
+            "source_slot": 10,
+            "source_bbox": {
+              "x": 6,
+              "y": 0,
+              "w": 302,
+              "h": 313
+            },
+            "final_bbox": {
+              "x": 68,
+              "y": 91,
+              "w": 119,
+              "h": 55
+            },
+            "anchor": [
+              128,
+              224
+            ],
+            "anchor_offset": [
+              0,
+              -78
+            ],
+            "scale": 0.4249201277955272,
+            "fit_profile": "lying",
+            "manual_review": "pending"
           }
         ],
         "back": [
           {
             "base": "dead/back/frame_00_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "dead/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/animals/wolf/sheets/back_contact_sheet.png",
+            "source_slot": 9,
+            "source_bbox": {
+              "x": 28,
+              "y": 0,
+              "w": 285,
+              "h": 127
+            },
+            "final_bbox": {
+              "x": 11,
+              "y": 120,
+              "w": 234,
+              "h": 104
+            },
+            "anchor": [
+              128,
+              224
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.8210526315789474,
+            "fit_profile": "lying",
+            "manual_review": "pending"
           },
           {
             "base": "dead/back/frame_01_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "dead/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/animals/wolf/sheets/back_contact_sheet.png",
+            "source_slot": 10,
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 303,
+              "h": 130
+            },
+            "final_bbox": {
+              "x": 11,
+              "y": 124,
+              "w": 234,
+              "h": 100
+            },
+            "anchor": [
+              128,
+              224
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.7722772277227723,
+            "fit_profile": "lying",
+            "manual_review": "pending"
           }
         ]
       }
@@ -156,21 +656,121 @@
         "front": [
           {
             "base": "decayed_skeleton/front/frame_00_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "decayed_skeleton/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/animals/wolf/sheets/front_contact_sheet.png",
+            "source_slot": 11,
+            "source_bbox": {
+              "x": 5,
+              "y": 0,
+              "w": 302,
+              "h": 313
+            },
+            "final_bbox": {
+              "x": 68,
+              "y": 91,
+              "w": 114,
+              "h": 59
+            },
+            "anchor": [
+              128,
+              224
+            ],
+            "anchor_offset": [
+              -3,
+              -74
+            ],
+            "scale": 0.4249201277955272,
+            "fit_profile": "lying",
+            "manual_review": "pending"
           },
           {
             "base": "decayed_skeleton/front/frame_01_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "decayed_skeleton/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/animals/wolf/sheets/front_contact_sheet.png",
+            "source_slot": 12,
+            "source_bbox": {
+              "x": 2,
+              "y": 0,
+              "w": 303,
+              "h": 313
+            },
+            "final_bbox": {
+              "x": 69,
+              "y": 91,
+              "w": 111,
+              "h": 60
+            },
+            "anchor": [
+              128,
+              224
+            ],
+            "anchor_offset": [
+              -4,
+              -73
+            ],
+            "scale": 0.4249201277955272,
+            "fit_profile": "lying",
+            "manual_review": "pending"
           }
         ],
         "back": [
           {
             "base": "decayed_skeleton/back/frame_00_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "decayed_skeleton/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/animals/wolf/sheets/back_contact_sheet.png",
+            "source_slot": 11,
+            "source_bbox": {
+              "x": 13,
+              "y": 0,
+              "w": 300,
+              "h": 164
+            },
+            "final_bbox": {
+              "x": 11,
+              "y": 96,
+              "w": 234,
+              "h": 128
+            },
+            "anchor": [
+              128,
+              224
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.78,
+            "fit_profile": "lying",
+            "manual_review": "pending"
           },
           {
             "base": "decayed_skeleton/back/frame_01_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "decayed_skeleton/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/animals/wolf/sheets/back_contact_sheet.png",
+            "source_slot": 12,
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 288,
+              "h": 165
+            },
+            "final_bbox": {
+              "x": 12,
+              "y": 91,
+              "w": 232,
+              "h": 133
+            },
+            "anchor": [
+              128,
+              224
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.806060606060606,
+            "fit_profile": "lying",
+            "manual_review": "pending"
           }
         ]
       }
@@ -179,30 +779,253 @@
       "frame_ms": 30000,
       "loop": false,
       "hold_last": true,
-      "description": "Runtime-compatible death placeholder frames.",
+      "description": "runtime animal death sequence: frame 00 freshly dead, frame 01 partly harvested, frame 02 mostly harvested, frame 03 clean depleted skeleton remains",
       "directions": {
         "front": [
           {
             "base": "death/front/frame_00_base.png",
-            "team_mask": "death/front/frame_00_teammask.png"
+            "team_mask": "death/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/animals/wolf/sheets/front_contact_sheet.png",
+            "source_slot": 13,
+            "source_bbox": {
+              "x": 8,
+              "y": 0,
+              "w": 303,
+              "h": 304
+            },
+            "final_bbox": {
+              "x": 46,
+              "y": 77,
+              "w": 165,
+              "h": 87
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              -44
+            ],
+            "scale": 0.5973597359735974,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "death/front/frame_01_base.png",
-            "team_mask": "death/front/frame_01_teammask.png"
+            "team_mask": "death/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/animals/wolf/sheets/front_contact_sheet.png",
+            "source_slot": 14,
+            "source_bbox": {
+              "x": 6,
+              "y": 0,
+              "w": 302,
+              "h": 303
+            },
+            "final_bbox": {
+              "x": 46,
+              "y": 75,
+              "w": 161,
+              "h": 91
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -2,
+              -42
+            ],
+            "scale": 0.5993377483443708,
+            "fit_profile": "standing",
+            "manual_review": "pending"
+          },
+          {
+            "base": "death/front/frame_02_base.png",
+            "team_mask": "death/front/frame_02_teammask.png",
+            "source": "art/tiles/candidates/animals/wolf/death_missing_v001/batch_source.png",
+            "source_slot": 1,
+            "final_bbox": {
+              "x": 5,
+              "y": 73,
+              "w": 243,
+              "h": 109
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "fit_profile": "lying",
+            "manual_review": "accepted wolf missing death frame repair from canonical prompt sheet"
+          },
+          {
+            "base": "death/front/frame_03_base.png",
+            "team_mask": "death/front/frame_03_teammask.png",
+            "source": "art/tiles/candidates/animals/wolf/death_missing_v001/batch_source.png",
+            "source_slot": 2,
+            "final_bbox": {
+              "x": 6,
+              "y": 87,
+              "w": 243,
+              "h": 98
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "fit_profile": "lying",
+            "manual_review": "accepted wolf missing death frame repair from canonical prompt sheet"
           }
         ],
         "back": [
           {
             "base": "death/back/frame_00_base.png",
-            "team_mask": "death/back/frame_00_teammask.png"
+            "team_mask": "death/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/animals/wolf/sheets/back_contact_sheet.png",
+            "source_slot": 13,
+            "source_bbox": {
+              "x": 22,
+              "y": 49,
+              "w": 284,
+              "h": 153
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 110,
+              "w": 181,
+              "h": 98
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.6373239436619719,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "death/back/frame_01_base.png",
-            "team_mask": "death/back/frame_01_teammask.png"
+            "team_mask": "death/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/animals/wolf/sheets/back_contact_sheet.png",
+            "source_slot": 14,
+            "source_bbox": {
+              "x": 11,
+              "y": 50,
+              "w": 286,
+              "h": 150
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 113,
+              "w": 181,
+              "h": 95
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.6328671328671329,
+            "fit_profile": "standing",
+            "manual_review": "pending"
+          },
+          {
+            "base": "death/back/frame_02_base.png",
+            "team_mask": "death/back/frame_02_teammask.png",
+            "source": "art/tiles/candidates/animals/wolf/death_missing_v001/batch_source.png",
+            "source_slot": 3,
+            "final_bbox": {
+              "x": 19,
+              "y": 50,
+              "w": 217,
+              "h": 151
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "fit_profile": "lying",
+            "manual_review": "accepted wolf missing death frame repair from canonical prompt sheet"
+          },
+          {
+            "base": "death/back/frame_03_base.png",
+            "team_mask": "death/back/frame_03_teammask.png",
+            "source": "art/tiles/candidates/animals/wolf/death_missing_v001/batch_source.png",
+            "source_slot": 4,
+            "final_bbox": {
+              "x": 22,
+              "y": 63,
+              "w": 210,
+              "h": 135
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "fit_profile": "lying",
+            "manual_review": "accepted wolf missing death frame repair from canonical prompt sheet"
           }
         ]
       }
     }
   },
-  "notes": "Generated from accepted wolf contact sheets under art/tiles/candidates/animals/wolf/sheets. Runtime idle/death aliases added from closest generated action variants; opaque magenta cleanup applied where needed."
+  "notes": "Generated from accepted wolf contact sheets under art/tiles/candidates/animals/wolf/sheets. Runtime idle/death aliases added from closest generated action variants; opaque magenta cleanup applied where needed.",
+  "asset_type": "animal",
+  "source_canvas": {
+    "profile": "sprite_overlay_source",
+    "width_px": 256,
+    "height_px": 256,
+    "target_kind": "pre_crop_generation_slot",
+    "min_longest_side_px": 128,
+    "unit": "px",
+    "source": "realm range-based source-quality contract",
+    "range": {
+      "minimum_longest_side_px_after_crop": 128,
+      "pre_crop_target_px": 256,
+      "maximum_px": null
+    },
+    "scope": "per generated actor sheet cell or standalone pre-crop source"
+  },
+  "placement": {
+    "projection": "upright_world",
+    "anchor_kind": "feet",
+    "source_size": [
+      256,
+      256
+    ],
+    "anchor": [
+      128,
+      208
+    ],
+    "scale_policy": "entity_tile_zoom_1_55",
+    "footprint": [
+      1,
+      1
+    ],
+    "depth": "entity"
+  },
+  "source_workflow": "contact-sheet-resolution-replay"
 }

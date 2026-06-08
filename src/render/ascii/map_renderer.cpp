@@ -6,7 +6,7 @@
 
 void renderMap(const WorldIndex& world) {
     int maxY, maxX; getmaxyx(stdscr, maxY, maxX);
-    int panelW = 24; view.viewW = maxX - panelW - 1; view.viewH = maxY - 4;
+    int panelW = 24; view.viewW = maxX - panelW - 1; view.viewH = maxY - 3;
     if (view.viewW < 30) view.viewW = maxX;
     if (view.viewH < 10) view.viewH = maxY - 2;
     view.viewW = std::min(view.viewW, MAP_W); view.viewH = std::min(view.viewH, MAP_H);
@@ -91,7 +91,7 @@ void renderMap(const WorldIndex& world) {
 
     for (int sy = 0; sy < view.viewH; sy++) { int my = view.viewY + sy;
         for (int sx = 0; sx < view.viewW; sx++) { int mx = view.viewX + sx;
-            int scY = sy+2, scX = sx;
+            int scY = sy+1, scX = sx;
             if (!inBounds(mx, my)) { mvaddch(scY, scX, ' '); continue; }
             const TileRenderInfo* tileInfo = tileInfoAt(mx, my);
             Terrain terrain = tileInfo ? tileInfo->terrain : g.map[my][mx].terrain;

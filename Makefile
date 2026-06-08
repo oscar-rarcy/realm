@@ -18,6 +18,11 @@ endif
 
 UNAME_S := $(shell uname -s 2>/dev/null || echo Unknown)
 
+ifeq ($(origin REALM_VISUAL_MODE),undefined)
+-include .env
+-include .env.local
+endif
+
 ifeq ($(NATIVE_WINDOWS),1)
   TERM_TARGET := $(BIN_DIR)/realm-terminal$(EXEEXT)
   GFX_TARGET := $(BIN_DIR)/realm$(EXEEXT)
@@ -39,11 +44,35 @@ GAME_SRCS := $(CORE_SRCS) $(SIM_SRCS) $(COMMAND_SRCS) $(AI_SRCS) $(MAP_SRCS) $(P
 
 RENDER_MODEL_SRCS := $(SRC_DIR)/render/display_model.cpp $(SRC_DIR)/render/entity_visual_defs.cpp $(SRC_DIR)/render/ground_shader.cpp $(SRC_DIR)/render/render_model.cpp
 ASCII_RENDER_SRCS := $(RENDER_MODEL_SRCS) $(wildcard $(SRC_DIR)/render/ascii/*.cpp)
-SDL_RENDER_SRCS := $(RENDER_MODEL_SRCS) $(wildcard $(SRC_DIR)/render/sdl/*.cpp)
+SDL_ALL_SRCS := $(wildcard $(SRC_DIR)/render/sdl/*.cpp)
+SDL_TILESET_SRCS := $(SRC_DIR)/render/sdl/tileset_assets.cpp $(SRC_DIR)/render/sdl/tileset_hud_renderer.cpp
+SDL_TILESET_LAB_SRCS := $(SRC_DIR)/render/sdl/tileset_lab.cpp
+SDL_TILESET_DISABLED_SRCS := $(SRC_DIR)/render/sdl/tileset_disabled.cpp
+SDL_RENDER_BASE_SRCS := $(filter-out $(SDL_TILESET_SRCS) $(SDL_TILESET_LAB_SRCS) $(SDL_TILESET_DISABLED_SRCS),$(SDL_ALL_SRCS))
+
+REALM_VISUAL_MODE_FOR_BUILD := $(subst _,-,$(strip $(REALM_VISUAL_MODE)))
+ifeq ($(origin REALM_ENABLE_TILESET),undefined)
+  ifneq ($(filter ascii-only ascii terminal console,$(REALM_VISUAL_MODE_FOR_BUILD)),)
+    REALM_ENABLE_TILESET := 0
+  else
+    REALM_ENABLE_TILESET := 1
+  endif
+endif
+ifeq ($(REALM_ENABLE_TILESET),0)
+  SDL_RENDER_SRCS := $(RENDER_MODEL_SRCS) $(SDL_RENDER_BASE_SRCS) $(SDL_TILESET_DISABLED_SRCS)
+  SDL_TILESET_CXXFLAGS := -DREALM_ENABLE_TILESET=0
+  SDL_TILESET_LIBS :=
+  SDL_TILESET_CHECK :=
+else
+  SDL_RENDER_SRCS := $(RENDER_MODEL_SRCS) $(SDL_RENDER_BASE_SRCS) $(SDL_TILESET_SRCS)
+  SDL_TILESET_CXXFLAGS := -DREALM_ENABLE_TILESET=1
+  SDL_TILESET_LIBS = $(PNG_LIBS)
+  SDL_TILESET_CHECK := libpng
+endif
 
 TERM_SRCS := $(SRC_DIR)/platform/main_terminal.cpp $(GAME_SRCS) $(ASCII_RENDER_SRCS)
 GFX_SRCS := $(SRC_DIR)/platform/main_sdl.cpp $(GAME_SRCS) $(SDL_RENDER_SRCS)
-LAB_SRCS := $(SRC_DIR)/platform/main_lab.cpp $(GAME_SRCS) $(SDL_RENDER_SRCS)
+LAB_SRCS := $(SRC_DIR)/platform/main_lab.cpp $(GAME_SRCS) $(RENDER_MODEL_SRCS) $(SDL_RENDER_BASE_SRCS) $(SDL_TILESET_SRCS) $(SDL_TILESET_LAB_SRCS)
 TEST_SRCS := tests/realm_headless_tests.cpp $(GAME_SRCS) $(SRC_DIR)/render/ground_shader.cpp $(SRC_DIR)/render/render_model.cpp
 WEB_SRCS := $(SRC_DIR)/platform/main_web.cpp $(GAME_SRCS) $(SDL_RENDER_SRCS)
 
@@ -65,6 +94,7 @@ WINDOWS_RUNTIME_DLLS := SDL2.dll SDL2_ttf.dll libgcc_s_seh-1.dll libstdc++-6.dll
 endif
 
 DEFAULT_INCLUDES := -I$(INC_DIR) -I$(SRC_DIR)
+DEPFLAGS ?= -MMD -MP
 
 define objs_for
 $(patsubst %.cpp,$(OBJ_DIR)/$(1)/%.o,$(filter %.cpp,$(2)))
@@ -74,9 +104,10 @@ TERM_OBJS := $(call objs_for,term,$(TERM_SRCS))
 GFX_OBJS := $(call objs_for,gfx,$(GFX_SRCS))
 LAB_OBJS := $(call objs_for,lab,$(LAB_SRCS))
 TEST_OBJS := $(call objs_for,test,$(TEST_SRCS))
+DEP_FILES := $(TERM_OBJS:.o=.d) $(GFX_OBJS:.o=.d) $(LAB_OBJS:.o=.d) $(TEST_OBJS:.o=.d)
 
 .DEFAULT_GOAL := gui
-.PHONY: all gui gfx lab terminal term run run-gui run-lab run-terminal web test ui-test ascii-compare debug sanitize package clean check-sdl check-ncurses copy-windows-runtime help
+.PHONY: all gui gfx lab terminal term run run-gui run-lab run-terminal web test ui-test ascii-compare profile-tileset debug sanitize package clean check-sdl check-ncurses copy-windows-runtime help
 
 all: gui
 
@@ -137,8 +168,8 @@ web:
 	bash scripts/build-web.sh
 
 check-sdl:
-	@$(PKG_CONFIG) --exists sdl2 SDL2_ttf libpng || ( \
-		echo "Missing SDL2/SDL2_ttf/libpng development packages."; \
+	@$(PKG_CONFIG) --exists sdl2 SDL2_ttf $(SDL_TILESET_CHECK) || ( \
+		echo "Missing SDL2/SDL2_ttf$(if $(SDL_TILESET_CHECK),/libpng,) development packages."; \
 		echo "Windows/MSYS2 UCRT64:"; \
 		echo "  pacman -S --needed mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-make mingw-w64-ucrt-x86_64-pkgconf mingw-w64-ucrt-x86_64-SDL2 mingw-w64-ucrt-x86_64-SDL2_ttf mingw-w64-ucrt-x86_64-libpng"; \
 		echo "Linux/WSL:"; \
@@ -151,7 +182,7 @@ check-ncurses:
 	@$(PKG_CONFIG) --exists ncursesw 2>/dev/null || true
 
 $(GFX_TARGET): $(GFX_OBJS) | $(BIN_DIR)
-	$(CXX) $(CXXFLAGS) -o $@ $(GFX_OBJS) $(SDL_LIBS) $(PNG_LIBS)
+	$(CXX) $(CXXFLAGS) -o $@ $(GFX_OBJS) $(SDL_LIBS) $(SDL_TILESET_LIBS)
 
 $(LAB_TARGET): $(LAB_OBJS) | $(BIN_DIR)
 	$(CXX) $(CXXFLAGS) -o $@ $(LAB_OBJS) $(SDL_LIBS) $(PNG_LIBS)
@@ -164,19 +195,19 @@ $(TEST_TARGET): $(TEST_OBJS) | $(BIN_DIR)
 
 $(OBJ_DIR)/term/%.o: %.cpp | $(OBJ_DIR)
 	@mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) -DUSE_NCURSES_RENDERER $(DEFAULT_INCLUDES) $(NCURSES_CFLAGS) -c -o $@ $<
+	$(CXX) $(CXXFLAGS) $(DEPFLAGS) -DUSE_NCURSES_RENDERER $(DEFAULT_INCLUDES) $(NCURSES_CFLAGS) -c -o $@ $<
 
 $(OBJ_DIR)/gfx/%.o: %.cpp | $(OBJ_DIR)
 	@mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) -DUSE_SDL_RENDERER $(DEFAULT_INCLUDES) $(SDL_CFLAGS) $(PNG_CFLAGS) -c -o $@ $<
+	$(CXX) $(CXXFLAGS) $(DEPFLAGS) -DUSE_SDL_RENDERER $(SDL_TILESET_CXXFLAGS) $(DEFAULT_INCLUDES) $(SDL_CFLAGS) $(if $(SDL_TILESET_CHECK),$(PNG_CFLAGS),) -c -o $@ $<
 
 $(OBJ_DIR)/lab/%.o: %.cpp | $(OBJ_DIR)
 	@mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) -DUSE_SDL_RENDERER $(DEFAULT_INCLUDES) $(SDL_CFLAGS) $(PNG_CFLAGS) -c -o $@ $<
+	$(CXX) $(CXXFLAGS) $(DEPFLAGS) -DUSE_SDL_RENDERER $(DEFAULT_INCLUDES) $(SDL_CFLAGS) $(PNG_CFLAGS) -c -o $@ $<
 
 $(OBJ_DIR)/test/%.o: %.cpp | $(OBJ_DIR)
 	@mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) -DREALM_ENABLE_WORLD_INDEX_STATS $(DEFAULT_INCLUDES) -c -o $@ $<
+	$(CXX) $(CXXFLAGS) $(DEPFLAGS) -DREALM_ENABLE_WORLD_INDEX_STATS $(DEFAULT_INCLUDES) -c -o $@ $<
 
 test: $(TEST_TARGET)
 	./$(TEST_TARGET)
@@ -189,6 +220,17 @@ ui-test: gui
 
 ascii-compare: gui
 	REALM_ASCII_COMPARE=1 ./$(GFX_TARGET)
+
+PROFILE_FRAMES ?= 600
+PROFILE_WARMUP_FRAMES ?= 120
+PROFILE_TICK_EVERY ?= 6
+PROFILE_AIS ?= 3
+PROFILE_ZOOM ?= 20
+PROFILE_PRESENT ?= 1
+PROFILE_DIR ?= build/profiles/make-profile-tileset
+
+profile-tileset: gui
+	REALM_PROFILE_TILESET=1 REALM_PROFILE_FRAMES=$(PROFILE_FRAMES) REALM_PROFILE_WARMUP_FRAMES=$(PROFILE_WARMUP_FRAMES) REALM_PROFILE_TICK_EVERY=$(PROFILE_TICK_EVERY) REALM_PROFILE_AIS=$(PROFILE_AIS) REALM_PROFILE_ZOOM=$(PROFILE_ZOOM) REALM_PROFILE_PRESENT=$(PROFILE_PRESENT) REALM_PROFILE_DIR=$(PROFILE_DIR) ./$(GFX_TARGET)
 
 debug:
 	$(MAKE) clean
@@ -203,6 +245,8 @@ sanitize:
 	$(MAKE) clean
 	REALM_TEST_LONG_TICKS=2000 $(MAKE) CXX="$(CXX)" CXXFLAGS="$(CXXFLAGS) -O0 -g -fsanitize=address,undefined -fno-omit-frame-pointer" test
 endif
+
+-include $(DEP_FILES)
 
 package: gui
 	/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/package-windows.ps1

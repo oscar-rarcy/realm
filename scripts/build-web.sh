@@ -81,10 +81,28 @@ ASSET_DIR="$BUILD_DIR/assets"
 FONT_DIR="$ASSET_DIR/fonts"
 EMSDK_DIR="${REALM_EMSDK_DIR:-$ROOT_DIR/.emsdk}"
 
+configure_local_emsdk_python() {
+  local candidate
+  for candidate in "$EMSDK_DIR"/python/*/python.exe "$EMSDK_DIR"/python/*/bin/python3; do
+    [[ -x "$candidate" ]] || continue
+    export PYTHON="$candidate"
+    if command -v cygpath >/dev/null 2>&1 && [[ "$candidate" == *.exe ]]; then
+      export EMSDK_PYTHON="$(cygpath -w "$candidate")"
+    else
+      export EMSDK_PYTHON="$candidate"
+    fi
+    export PATH="$(dirname "$candidate"):$PATH"
+    return 0
+  done
+  return 1
+}
+
 activate_local_emsdk() {
   [[ -f "$EMSDK_DIR/emsdk_env.sh" ]] || return 1
+  configure_local_emsdk_python || true
   # shellcheck disable=SC1091
   source "$EMSDK_DIR/emsdk_env.sh" >/dev/null 2>&1
+  configure_local_emsdk_python || true
   command -v em++ >/dev/null 2>&1
 }
 
@@ -170,16 +188,6 @@ if [[ ! -f "$FONT_DIR/RealmSymbols.ttf" ]]; then
     || cp "$FONT_DIR/DejaVuSansMono.ttf" "$FONT_DIR/RealmSymbols.ttf"
 fi
 
-if [[ -f assets/app-icon.svg ]]; then
-  mkdir -p "$ASSET_DIR"
-  cp assets/app-icon.svg "$ASSET_DIR/app-icon.svg"
-fi
-
-if [[ -d assets/tiles ]]; then
-  mkdir -p "$ASSET_DIR"
-  cp -R assets/tiles "$ASSET_DIR/tiles"
-fi
-
 COMMON_SOURCES=(
   src/platform/main_web.cpp
   src/core/*.cpp
@@ -196,36 +204,93 @@ COMMON_SOURCES=(
   src/render/entity_visual_defs.cpp
   src/render/ground_shader.cpp
   src/render/render_model.cpp
-  src/render/sdl/*.cpp
 )
 
-em++ "${COMMON_SOURCES[@]}" \
-  -std=c++17 -O2 -Wall -Wextra \
-  -DREALM_WEB -DUSE_SDL_RENDERER \
-  "-DREALM_VISUAL_MODE_DEFAULT=\"$REALM_VISUAL_MODE\"" \
-  -Iinclude \
-  -Isrc \
-  -sUSE_SDL=2 \
-  -sUSE_SDL_TTF=2 \
-  -sUSE_LIBPNG=1 \
-  -sALLOW_MEMORY_GROWTH=1 \
-  -sSTACK_SIZE=8388608 \
-  -sEXIT_RUNTIME=0 \
-  -sASSERTIONS=1 \
-  -sEXPORTED_FUNCTIONS='["_main","_realm_web_tick","_realm_web_entity_count","_realm_web_selected_id","_realm_web_selected_count","_realm_web_view_x","_realm_web_view_y","_realm_web_view_w","_realm_web_view_h","_realm_web_cursor_x","_realm_web_cursor_y","_realm_web_first_owned_unit_x","_realm_web_first_owned_unit_y","_realm_web_screen_x_for_tile","_realm_web_screen_y_for_tile","_realm_web_screen","_realm_web_ascii_only","_realm_web_display_mode","_realm_web_context_menu_open","_realm_web_context_menu_option_count","_realm_web_test_force_loss"]' \
-  -sEXPORTED_RUNTIME_METHODS='["ccall","cwrap"]' \
-  --preload-file "$ASSET_DIR@/assets" \
-  --preload-file "$FONT_DIR/DejaVuSansMono.ttf@/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf" \
-  --preload-file "$FONT_DIR/RealmSymbols.ttf@/assets/fonts/RealmSymbols.ttf" \
-  --shell-file web/shell.html \
-  -o "$DIST_DIR/index.html"
+SDL_BASE_SOURCES=()
+for source in src/render/sdl/*.cpp; do
+  case "$source" in
+    src/render/sdl/tileset_assets.cpp|src/render/sdl/tileset_hud_renderer.cpp|src/render/sdl/tileset_lab.cpp|src/render/sdl/tileset_disabled.cpp)
+      ;;
+    *)
+      SDL_BASE_SOURCES+=("$source")
+      ;;
+  esac
+done
 
-perl -0pi -e 's#<script async src=index\.js></script>#<script>(function(){var base=window.realmAssetBase||"/";var script=document.createElement("script");script.async=true;script.src=base+"index.js";document.currentScript.after(script);}());</script>#' "$DIST_DIR/index.html"
+visual_mode_is_ascii_only() {
+  local mode="${1,,}"
+  mode="${mode//_/-}"
+  case "$mode" in
+    ascii-only|ascii|terminal|console) return 0 ;;
+    *) return 1 ;;
+  esac
+}
 
-mkdir -p "$DIST_DIR/embed" "$DIST_DIR/ascii" "$DIST_DIR/ascii/embed"
+patch_shell_loader() {
+  local html="$1"
+  perl -0pi -e 's#<script async src=index\.js></script>#<script>(function(){var base=window.realmAssetBase||"/";var script=document.createElement("script");script.async=true;script.src=base+"index.js";document.currentScript.after(script);}());</script>#' "$html"
+}
+
+build_web_app() {
+  local output_html="$1"
+  local visual_mode="$2"
+  local tileset_enabled="$3"
+  local output_dir
+  output_dir="$(dirname "$output_html")"
+  mkdir -p "$output_dir"
+
+  local -a sources=("${COMMON_SOURCES[@]}" "${SDL_BASE_SOURCES[@]}")
+  local -a png_args=()
+  local -a preload_args=(
+    --preload-file "$FONT_DIR/DejaVuSansMono.ttf@/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf"
+    --preload-file "$FONT_DIR/RealmSymbols.ttf@/assets/fonts/RealmSymbols.ttf"
+  )
+
+  if [[ "$tileset_enabled" == "1" ]]; then
+    sources+=(src/render/sdl/tileset_assets.cpp src/render/sdl/tileset_hud_renderer.cpp)
+    png_args=(-sUSE_LIBPNG=1)
+    if [[ -d assets/tiles ]]; then
+      rm -rf "$ASSET_DIR/tiles"
+      cp -R assets/tiles "$ASSET_DIR/tiles"
+      preload_args+=(--preload-file "$ASSET_DIR/tiles@/assets/tiles")
+    fi
+  else
+    sources+=(src/render/sdl/tileset_disabled.cpp)
+  fi
+
+  em++ "${sources[@]}" \
+    -std=c++17 -O2 -Wall -Wextra \
+    -DREALM_WEB -DUSE_SDL_RENDERER "-DREALM_ENABLE_TILESET=$tileset_enabled" \
+    "-DREALM_VISUAL_MODE_DEFAULT=\"$visual_mode\"" \
+    -Iinclude \
+    -Isrc \
+    -sUSE_SDL=2 \
+    -sUSE_SDL_TTF=2 \
+    "${png_args[@]}" \
+    -sALLOW_MEMORY_GROWTH=1 \
+    -sSTACK_SIZE=8388608 \
+    -sEXIT_RUNTIME=0 \
+    -sASSERTIONS=1 \
+    -sEXPORTED_FUNCTIONS='["_main","_realm_web_tick","_realm_web_entity_count","_realm_web_selected_id","_realm_web_selected_count","_realm_web_view_x","_realm_web_view_y","_realm_web_view_w","_realm_web_view_h","_realm_web_cursor_x","_realm_web_cursor_y","_realm_web_first_owned_unit_x","_realm_web_first_owned_unit_y","_realm_web_screen_x_for_tile","_realm_web_screen_y_for_tile","_realm_web_screen","_realm_web_ascii_only","_realm_web_display_mode","_realm_web_context_menu_open","_realm_web_context_menu_option_count","_realm_web_test_force_loss"]' \
+    -sEXPORTED_RUNTIME_METHODS='["ccall","cwrap"]' \
+    "${preload_args[@]}" \
+    --shell-file web/shell.html \
+    -o "$output_html"
+
+  patch_shell_loader "$output_html"
+}
+
+MAIN_TILESET_ENABLED=1
+if visual_mode_is_ascii_only "$REALM_VISUAL_MODE"; then
+  MAIN_TILESET_ENABLED=0
+fi
+
+build_web_app "$DIST_DIR/index.html" "$REALM_VISUAL_MODE" "$MAIN_TILESET_ENABLED"
+build_web_app "$DIST_DIR/ascii/index.html" "ascii-only" 0
+
+mkdir -p "$DIST_DIR/embed" "$DIST_DIR/ascii/embed"
 cp "$DIST_DIR/index.html" "$DIST_DIR/embed/index.html"
-cp "$DIST_DIR/index.html" "$DIST_DIR/ascii/index.html"
-cp "$DIST_DIR/index.html" "$DIST_DIR/ascii/embed/index.html"
+cp "$DIST_DIR/ascii/index.html" "$DIST_DIR/ascii/embed/index.html"
 
 cat > "$DIST_DIR/_headers" <<'HEADERS'
 /*.wasm
@@ -236,14 +301,15 @@ cat > "$DIST_DIR/_headers" <<'HEADERS'
 HEADERS
 
 cat > "$DIST_DIR/_redirects" <<'REDIRECTS'
-/ascii /index.html 200
-/ascii/* /index.html 200
+/ascii /ascii/index.html 200
+/ascii/* /ascii/index.html 200
 /* /index.html 200
 REDIRECTS
 
-if [[ -f "$ASSET_DIR/app-icon.svg" ]]; then
-  mkdir -p "$DIST_DIR/assets"
-  cp "$ASSET_DIR/app-icon.svg" "$DIST_DIR/assets/app-icon.svg"
+if [[ -f assets/app-icon.svg ]]; then
+  mkdir -p "$DIST_DIR/assets" "$DIST_DIR/ascii/assets"
+  cp assets/app-icon.svg "$DIST_DIR/assets/app-icon.svg"
+  cp assets/app-icon.svg "$DIST_DIR/ascii/assets/app-icon.svg"
 fi
 
 echo "Realm web build complete:"

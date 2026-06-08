@@ -192,7 +192,7 @@ Ground prompts must say:
 - Make it tileable or at least edge-compatible.
 - Include season/weather/material states only when the actual material identity changes.
 
-Examples: grass, meadow, dirt, road, mud, sand, dunes, snow, tundra, ice, water, shallows, marsh, gravel, ash, lava, hills, rocky ground, castle floor.
+Examples: grass, meadow, dirt, mud, sand, dunes, snow, tundra, ice, water, shallows, marsh, gravel, ash, lava, hills, rocky ground, castle floor. Roads are generated as decals, not ground tiles.
 
 ### Feature
 
@@ -444,6 +444,26 @@ This keeps the map looking settled without requiring a unique ground tile for ev
 
 Final game-loadable tileset assets live under `assets/tiles/`. `assets/tiles/entities/<entity>/manifest.json` and its referenced `*_base.png` / `*_teammask.png` files are the runtime contract.
 
+Runtime PNGs are source-quality inputs, not draw-size cache files. The shared
+source-resolution policy lives in `scripts/tileset_resolution_policy.py`; generated
+JSON specs copy that policy into `art.source_canvas`.
+
+- `width_px` / `height_px` describe the generation slot or standalone source
+  target before crop. Sprite-like assets normally target about 256 px per visual
+  envelope tile, so a normal actor uses 256 by 256, a tall 1 by 2 pike actor
+  uses 256 by 512, and a wide 2 by 1 lance actor uses 512 by 256.
+- `placement.footprint` is gameplay occupancy. `art.visual_envelope` and
+  `placement.visual_envelope` are visual overhang. A unit can occupy one map
+  tile while using a taller or wider sprite canvas.
+- `min_width_px` / `min_height_px` are used only for full-canvas lanes such as
+  grounds. Cropped sprite lanes use `min_longest_side_px` instead, because
+  transparent margins may be removed after generation.
+- Buildings target about 256 px per footprint tile on the largest axis before
+  crop, capped at 1536 px.
+- Promotion and coverage tooling must reject tiny 32 px, 48 px, or other
+  draw-size crops as final runtime art unless an explicit forced exception is
+  recorded.
+
 ## Runtime Placement Contract
 
 Any runtime asset that is not a full tile-space ground should declare how it is positioned. The normal rule is:
@@ -460,10 +480,11 @@ Actor-like manifests use a top-level `placement` block:
 {
   "projection": "upright_world",
   "anchor_kind": "feet",
-  "source_size": [48, 48],
-  "anchor": [24, 39],
+  "source_size": [256, 512],
+  "anchor": [128, 416],
   "scale_policy": "entity_tile_zoom_1_55",
   "footprint": [1, 1],
+  "visual_envelope": [1, 2],
   "depth": "entity"
 }
 ```

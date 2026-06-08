@@ -21,6 +21,10 @@
     "footprint": {
       "w": 1,
       "h": 1
+    },
+    "visual_envelope": {
+      "w": 2,
+      "h": 1
     }
   },
   "runtime": {
@@ -249,31 +253,37 @@
     "visual_design": "Armoured rider on horse; should read as cavalry even at small size",
     "source_role": "fast heavy cavalry",
     "generation_aspect": {
-      "id": "portrait_4_3",
-      "preset": "Portrait",
-      "ratio": "4:3",
-      "description": "taller cavalry sheet with extra vertical room for horse and rider silhouette"
+      "id": "story_16_9",
+      "preset": "Story",
+      "ratio": "16:9",
+      "description": "wide sheet with extra horizontal room for long spears, pikes, and lances"
     },
-    "generation_aspect_variant_rules": [
-      {
-        "variant": "iron_weapons__open_helmet",
-        "preset": "Story",
-        "ratio": "16:9",
-        "description": "use for Iron Weapons Knight lance states so the lance has horizontal room"
-      },
-      {
-        "variant": "iron_weapons__plate_helm",
-        "preset": "Story",
-        "ratio": "16:9",
-        "description": "use for Iron Weapons Knight lance states so the lance has horizontal room"
-      }
-    ],
+    "generation_aspect_variant_rules": [],
+    "visual_envelope": {
+      "w": 2,
+      "h": 1
+    },
+    "visual_envelope_note": "logical 1x1 unit; Iron Weapons lance actions override the visual envelope when the lance is upright or couched forward",
     "source_canvas": {
+      "profile": "sprite_overlay_source",
       "width_px": 512,
-      "height_px": 512,
+      "height_px": 256,
+      "target_kind": "pre_crop_generation_slot",
+      "min_longest_side_px": 256,
       "unit": "px",
-      "scope": "per accepted standalone high-resolution actor sprite frame",
-      "source": "realm high-resolution source-quality contract"
+      "source": "realm range-based source-quality contract",
+      "range": {
+        "minimum_longest_side_px_after_crop": 256,
+        "pre_crop_target_px": 512,
+        "maximum_px": null
+      },
+      "visual_envelope": {
+        "w": 2,
+        "h": 1
+      },
+      "pre_crop_target_px_per_visual_tile": 256,
+      "runtime_min_longest_side_px_per_visual_tile": 128,
+      "scope": "per generated actor sheet cell or standalone pre-crop source"
     }
   },
   "states": [
@@ -295,6 +305,56 @@
         "name": "Basic weapons + Open Helmet",
         "research": [],
         "is_default": true
+      },
+      "visual_envelope": {
+        "w": 2,
+        "h": 1
+      },
+      "visual_envelope_note": "",
+      "generation_aspect": {
+        "id": "story_16_9",
+        "preset": "Story",
+        "ratio": "16:9",
+        "description": "wide sheet with extra horizontal room for long spears, pikes, and lances"
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 512,
+        "height_px": 256,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 256,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 256,
+          "pre_crop_target_px": 512,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 2,
+          "h": 1
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "placement": {
+        "source_size": [
+          512,
+          256
+        ],
+        "anchor": [
+          256,
+          208
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          2,
+          1
+        ]
       }
     },
     {
@@ -307,6 +367,56 @@
         "name": "Basic weapons + Open Helmet",
         "research": [],
         "is_default": true
+      },
+      "visual_envelope": {
+        "w": 2,
+        "h": 1
+      },
+      "visual_envelope_note": "",
+      "generation_aspect": {
+        "id": "story_16_9",
+        "preset": "Story",
+        "ratio": "16:9",
+        "description": "wide sheet with extra horizontal room for long spears, pikes, and lances"
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 512,
+        "height_px": 256,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 256,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 256,
+          "pre_crop_target_px": 512,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 2,
+          "h": 1
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "placement": {
+        "source_size": [
+          512,
+          256
+        ],
+        "anchor": [
+          256,
+          208
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          2,
+          1
+        ]
       }
     },
     {
@@ -319,6 +429,56 @@
         "name": "Basic weapons + Open Helmet",
         "research": [],
         "is_default": true
+      },
+      "visual_envelope": {
+        "w": 2,
+        "h": 1
+      },
+      "visual_envelope_note": "basic spear can angle forward but should not exceed the mounted cavalry silhouette",
+      "generation_aspect": {
+        "id": "story_16_9",
+        "preset": "Story",
+        "ratio": "16:9",
+        "description": "wide sheet with extra horizontal room for long spears, pikes, and lances"
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 512,
+        "height_px": 256,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 256,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 256,
+          "pre_crop_target_px": 512,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 2,
+          "h": 1
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "placement": {
+        "source_size": [
+          512,
+          256
+        ],
+        "anchor": [
+          256,
+          208
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          2,
+          1
+        ]
       }
     },
     {
@@ -331,6 +491,56 @@
         "name": "Basic weapons + Open Helmet",
         "research": [],
         "is_default": true
+      },
+      "visual_envelope": {
+        "w": 2,
+        "h": 1
+      },
+      "visual_envelope_note": "",
+      "generation_aspect": {
+        "id": "story_16_9",
+        "preset": "Story",
+        "ratio": "16:9",
+        "description": "wide sheet with extra horizontal room for long spears, pikes, and lances"
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 512,
+        "height_px": 256,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 256,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 256,
+          "pre_crop_target_px": 512,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 2,
+          "h": 1
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "placement": {
+        "source_size": [
+          512,
+          256
+        ],
+        "anchor": [
+          256,
+          208
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          2,
+          1
+        ]
       }
     },
     {
@@ -343,6 +553,56 @@
         "name": "Basic weapons + Open Helmet",
         "research": [],
         "is_default": true
+      },
+      "visual_envelope": {
+        "w": 2,
+        "h": 1
+      },
+      "visual_envelope_note": "",
+      "generation_aspect": {
+        "id": "story_16_9",
+        "preset": "Story",
+        "ratio": "16:9",
+        "description": "wide sheet with extra horizontal room for long spears, pikes, and lances"
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 512,
+        "height_px": 256,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 256,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 256,
+          "pre_crop_target_px": 512,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 2,
+          "h": 1
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "placement": {
+        "source_size": [
+          512,
+          256
+        ],
+        "anchor": [
+          256,
+          208
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          2,
+          1
+        ]
       }
     },
     {
@@ -355,6 +615,56 @@
         "name": "Basic weapons + Open Helmet",
         "research": [],
         "is_default": true
+      },
+      "visual_envelope": {
+        "w": 2,
+        "h": 1
+      },
+      "visual_envelope_note": "",
+      "generation_aspect": {
+        "id": "story_16_9",
+        "preset": "Story",
+        "ratio": "16:9",
+        "description": "wide sheet with extra horizontal room for long spears, pikes, and lances"
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 512,
+        "height_px": 256,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 256,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 256,
+          "pre_crop_target_px": 512,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 2,
+          "h": 1
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "placement": {
+        "source_size": [
+          512,
+          256
+        ],
+        "anchor": [
+          256,
+          208
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          2,
+          1
+        ]
       }
     },
     {
@@ -369,6 +679,56 @@
           "Plate Helm"
         ],
         "is_default": false
+      },
+      "visual_envelope": {
+        "w": 2,
+        "h": 1
+      },
+      "visual_envelope_note": "",
+      "generation_aspect": {
+        "id": "story_16_9",
+        "preset": "Story",
+        "ratio": "16:9",
+        "description": "wide sheet with extra horizontal room for long spears, pikes, and lances"
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 512,
+        "height_px": 256,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 256,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 256,
+          "pre_crop_target_px": 512,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 2,
+          "h": 1
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "placement": {
+        "source_size": [
+          512,
+          256
+        ],
+        "anchor": [
+          256,
+          208
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          2,
+          1
+        ]
       }
     },
     {
@@ -383,6 +743,56 @@
           "Plate Helm"
         ],
         "is_default": false
+      },
+      "visual_envelope": {
+        "w": 2,
+        "h": 1
+      },
+      "visual_envelope_note": "",
+      "generation_aspect": {
+        "id": "story_16_9",
+        "preset": "Story",
+        "ratio": "16:9",
+        "description": "wide sheet with extra horizontal room for long spears, pikes, and lances"
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 512,
+        "height_px": 256,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 256,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 256,
+          "pre_crop_target_px": 512,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 2,
+          "h": 1
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "placement": {
+        "source_size": [
+          512,
+          256
+        ],
+        "anchor": [
+          256,
+          208
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          2,
+          1
+        ]
       }
     },
     {
@@ -397,6 +807,56 @@
           "Plate Helm"
         ],
         "is_default": false
+      },
+      "visual_envelope": {
+        "w": 2,
+        "h": 1
+      },
+      "visual_envelope_note": "basic spear can angle forward but should not exceed the mounted cavalry silhouette",
+      "generation_aspect": {
+        "id": "story_16_9",
+        "preset": "Story",
+        "ratio": "16:9",
+        "description": "wide sheet with extra horizontal room for long spears, pikes, and lances"
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 512,
+        "height_px": 256,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 256,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 256,
+          "pre_crop_target_px": 512,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 2,
+          "h": 1
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "placement": {
+        "source_size": [
+          512,
+          256
+        ],
+        "anchor": [
+          256,
+          208
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          2,
+          1
+        ]
       }
     },
     {
@@ -411,6 +871,56 @@
           "Plate Helm"
         ],
         "is_default": false
+      },
+      "visual_envelope": {
+        "w": 2,
+        "h": 1
+      },
+      "visual_envelope_note": "",
+      "generation_aspect": {
+        "id": "story_16_9",
+        "preset": "Story",
+        "ratio": "16:9",
+        "description": "wide sheet with extra horizontal room for long spears, pikes, and lances"
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 512,
+        "height_px": 256,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 256,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 256,
+          "pre_crop_target_px": 512,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 2,
+          "h": 1
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "placement": {
+        "source_size": [
+          512,
+          256
+        ],
+        "anchor": [
+          256,
+          208
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          2,
+          1
+        ]
       }
     },
     {
@@ -425,6 +935,56 @@
           "Plate Helm"
         ],
         "is_default": false
+      },
+      "visual_envelope": {
+        "w": 2,
+        "h": 1
+      },
+      "visual_envelope_note": "",
+      "generation_aspect": {
+        "id": "story_16_9",
+        "preset": "Story",
+        "ratio": "16:9",
+        "description": "wide sheet with extra horizontal room for long spears, pikes, and lances"
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 512,
+        "height_px": 256,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 256,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 256,
+          "pre_crop_target_px": 512,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 2,
+          "h": 1
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "placement": {
+        "source_size": [
+          512,
+          256
+        ],
+        "anchor": [
+          256,
+          208
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          2,
+          1
+        ]
       }
     },
     {
@@ -439,6 +999,56 @@
           "Plate Helm"
         ],
         "is_default": false
+      },
+      "visual_envelope": {
+        "w": 2,
+        "h": 1
+      },
+      "visual_envelope_note": "",
+      "generation_aspect": {
+        "id": "story_16_9",
+        "preset": "Story",
+        "ratio": "16:9",
+        "description": "wide sheet with extra horizontal room for long spears, pikes, and lances"
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 512,
+        "height_px": 256,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 256,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 256,
+          "pre_crop_target_px": 512,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 2,
+          "h": 1
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "placement": {
+        "source_size": [
+          512,
+          256
+        ],
+        "anchor": [
+          256,
+          208
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          2,
+          1
+        ]
       }
     },
     {
@@ -455,10 +1065,54 @@
         "is_default": false
       },
       "generation_aspect": {
-        "id": "story_16_9",
-        "preset": "Story",
-        "ratio": "16:9",
-        "description": "wide sheet with extra horizontal room for long spears, pikes, and lances"
+        "id": "square_1_1",
+        "preset": "Square",
+        "ratio": "1:1",
+        "description": "default square image-generation aspect ratio"
+      },
+      "visual_envelope": {
+        "w": 2,
+        "h": 2
+      },
+      "visual_envelope_note": "Iron Weapons lance is upright or near-upright above a mounted knight; keep horse, rider, and lance inside the slot",
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 512,
+        "height_px": 512,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 256,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 256,
+          "pre_crop_target_px": 512,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 2,
+          "h": 2
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "placement": {
+        "source_size": [
+          512,
+          512
+        ],
+        "anchor": [
+          256,
+          416
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          2,
+          2
+        ]
       }
     },
     {
@@ -475,10 +1129,54 @@
         "is_default": false
       },
       "generation_aspect": {
-        "id": "story_16_9",
-        "preset": "Story",
-        "ratio": "16:9",
-        "description": "wide sheet with extra horizontal room for long spears, pikes, and lances"
+        "id": "square_1_1",
+        "preset": "Square",
+        "ratio": "1:1",
+        "description": "default square image-generation aspect ratio"
+      },
+      "visual_envelope": {
+        "w": 2,
+        "h": 2
+      },
+      "visual_envelope_note": "Iron Weapons lance is upright or near-upright above a mounted knight; keep horse, rider, and lance inside the slot",
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 512,
+        "height_px": 512,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 256,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 256,
+          "pre_crop_target_px": 512,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 2,
+          "h": 2
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "placement": {
+        "source_size": [
+          512,
+          512
+        ],
+        "anchor": [
+          256,
+          416
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          2,
+          2
+        ]
       }
     },
     {
@@ -495,10 +1193,54 @@
         "is_default": false
       },
       "generation_aspect": {
-        "id": "story_16_9",
+        "id": "wide_3_1",
         "preset": "Story",
-        "ratio": "16:9",
-        "description": "wide sheet with extra horizontal room for long spears, pikes, and lances"
+        "ratio": "3:1",
+        "description": "very wide sprite slot for forward-thrust pikes, lances, and lying long weapons"
+      },
+      "visual_envelope": {
+        "w": 3,
+        "h": 1
+      },
+      "visual_envelope_note": "Iron Weapons lance is couched forward or lying with the mount; keep the full lance inside the wide slot",
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 768,
+        "height_px": 256,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 384,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 384,
+          "pre_crop_target_px": 768,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 3,
+          "h": 1
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "placement": {
+        "source_size": [
+          768,
+          256
+        ],
+        "anchor": [
+          384,
+          208
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          3,
+          1
+        ]
       }
     },
     {
@@ -515,10 +1257,54 @@
         "is_default": false
       },
       "generation_aspect": {
-        "id": "story_16_9",
-        "preset": "Story",
-        "ratio": "16:9",
-        "description": "wide sheet with extra horizontal room for long spears, pikes, and lances"
+        "id": "square_1_1",
+        "preset": "Square",
+        "ratio": "1:1",
+        "description": "default square image-generation aspect ratio"
+      },
+      "visual_envelope": {
+        "w": 2,
+        "h": 2
+      },
+      "visual_envelope_note": "Iron Weapons lance is upright or near-upright above a mounted knight; keep horse, rider, and lance inside the slot",
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 512,
+        "height_px": 512,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 256,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 256,
+          "pre_crop_target_px": 512,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 2,
+          "h": 2
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "placement": {
+        "source_size": [
+          512,
+          512
+        ],
+        "anchor": [
+          256,
+          416
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          2,
+          2
+        ]
       }
     },
     {
@@ -535,10 +1321,54 @@
         "is_default": false
       },
       "generation_aspect": {
-        "id": "story_16_9",
+        "id": "wide_3_1",
         "preset": "Story",
-        "ratio": "16:9",
-        "description": "wide sheet with extra horizontal room for long spears, pikes, and lances"
+        "ratio": "3:1",
+        "description": "very wide sprite slot for forward-thrust pikes, lances, and lying long weapons"
+      },
+      "visual_envelope": {
+        "w": 3,
+        "h": 1
+      },
+      "visual_envelope_note": "Iron Weapons lance is couched forward or lying with the mount; keep the full lance inside the wide slot",
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 768,
+        "height_px": 256,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 384,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 384,
+          "pre_crop_target_px": 768,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 3,
+          "h": 1
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "placement": {
+        "source_size": [
+          768,
+          256
+        ],
+        "anchor": [
+          384,
+          208
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          3,
+          1
+        ]
       }
     },
     {
@@ -555,10 +1385,54 @@
         "is_default": false
       },
       "generation_aspect": {
-        "id": "story_16_9",
+        "id": "wide_3_1",
         "preset": "Story",
-        "ratio": "16:9",
-        "description": "wide sheet with extra horizontal room for long spears, pikes, and lances"
+        "ratio": "3:1",
+        "description": "very wide sprite slot for forward-thrust pikes, lances, and lying long weapons"
+      },
+      "visual_envelope": {
+        "w": 3,
+        "h": 1
+      },
+      "visual_envelope_note": "Iron Weapons lance is couched forward or lying with the mount; keep the full lance inside the wide slot",
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 768,
+        "height_px": 256,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 384,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 384,
+          "pre_crop_target_px": 768,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 3,
+          "h": 1
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "placement": {
+        "source_size": [
+          768,
+          256
+        ],
+        "anchor": [
+          384,
+          208
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          3,
+          1
+        ]
       }
     },
     {
@@ -576,10 +1450,54 @@
         "is_default": false
       },
       "generation_aspect": {
-        "id": "story_16_9",
-        "preset": "Story",
-        "ratio": "16:9",
-        "description": "wide sheet with extra horizontal room for long spears, pikes, and lances"
+        "id": "square_1_1",
+        "preset": "Square",
+        "ratio": "1:1",
+        "description": "default square image-generation aspect ratio"
+      },
+      "visual_envelope": {
+        "w": 2,
+        "h": 2
+      },
+      "visual_envelope_note": "Iron Weapons lance is upright or near-upright above a mounted knight; keep horse, rider, and lance inside the slot",
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 512,
+        "height_px": 512,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 256,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 256,
+          "pre_crop_target_px": 512,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 2,
+          "h": 2
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "placement": {
+        "source_size": [
+          512,
+          512
+        ],
+        "anchor": [
+          256,
+          416
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          2,
+          2
+        ]
       }
     },
     {
@@ -597,10 +1515,54 @@
         "is_default": false
       },
       "generation_aspect": {
-        "id": "story_16_9",
-        "preset": "Story",
-        "ratio": "16:9",
-        "description": "wide sheet with extra horizontal room for long spears, pikes, and lances"
+        "id": "square_1_1",
+        "preset": "Square",
+        "ratio": "1:1",
+        "description": "default square image-generation aspect ratio"
+      },
+      "visual_envelope": {
+        "w": 2,
+        "h": 2
+      },
+      "visual_envelope_note": "Iron Weapons lance is upright or near-upright above a mounted knight; keep horse, rider, and lance inside the slot",
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 512,
+        "height_px": 512,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 256,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 256,
+          "pre_crop_target_px": 512,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 2,
+          "h": 2
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "placement": {
+        "source_size": [
+          512,
+          512
+        ],
+        "anchor": [
+          256,
+          416
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          2,
+          2
+        ]
       }
     },
     {
@@ -618,10 +1580,54 @@
         "is_default": false
       },
       "generation_aspect": {
-        "id": "story_16_9",
+        "id": "wide_3_1",
         "preset": "Story",
-        "ratio": "16:9",
-        "description": "wide sheet with extra horizontal room for long spears, pikes, and lances"
+        "ratio": "3:1",
+        "description": "very wide sprite slot for forward-thrust pikes, lances, and lying long weapons"
+      },
+      "visual_envelope": {
+        "w": 3,
+        "h": 1
+      },
+      "visual_envelope_note": "Iron Weapons lance is couched forward or lying with the mount; keep the full lance inside the wide slot",
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 768,
+        "height_px": 256,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 384,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 384,
+          "pre_crop_target_px": 768,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 3,
+          "h": 1
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "placement": {
+        "source_size": [
+          768,
+          256
+        ],
+        "anchor": [
+          384,
+          208
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          3,
+          1
+        ]
       }
     },
     {
@@ -639,10 +1645,54 @@
         "is_default": false
       },
       "generation_aspect": {
-        "id": "story_16_9",
-        "preset": "Story",
-        "ratio": "16:9",
-        "description": "wide sheet with extra horizontal room for long spears, pikes, and lances"
+        "id": "square_1_1",
+        "preset": "Square",
+        "ratio": "1:1",
+        "description": "default square image-generation aspect ratio"
+      },
+      "visual_envelope": {
+        "w": 2,
+        "h": 2
+      },
+      "visual_envelope_note": "Iron Weapons lance is upright or near-upright above a mounted knight; keep horse, rider, and lance inside the slot",
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 512,
+        "height_px": 512,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 256,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 256,
+          "pre_crop_target_px": 512,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 2,
+          "h": 2
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "placement": {
+        "source_size": [
+          512,
+          512
+        ],
+        "anchor": [
+          256,
+          416
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          2,
+          2
+        ]
       }
     },
     {
@@ -660,10 +1710,54 @@
         "is_default": false
       },
       "generation_aspect": {
-        "id": "story_16_9",
+        "id": "wide_3_1",
         "preset": "Story",
-        "ratio": "16:9",
-        "description": "wide sheet with extra horizontal room for long spears, pikes, and lances"
+        "ratio": "3:1",
+        "description": "very wide sprite slot for forward-thrust pikes, lances, and lying long weapons"
+      },
+      "visual_envelope": {
+        "w": 3,
+        "h": 1
+      },
+      "visual_envelope_note": "Iron Weapons lance is couched forward or lying with the mount; keep the full lance inside the wide slot",
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 768,
+        "height_px": 256,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 384,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 384,
+          "pre_crop_target_px": 768,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 3,
+          "h": 1
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "placement": {
+        "source_size": [
+          768,
+          256
+        ],
+        "anchor": [
+          384,
+          208
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          3,
+          1
+        ]
       }
     },
     {
@@ -681,10 +1775,54 @@
         "is_default": false
       },
       "generation_aspect": {
-        "id": "story_16_9",
+        "id": "wide_3_1",
         "preset": "Story",
-        "ratio": "16:9",
-        "description": "wide sheet with extra horizontal room for long spears, pikes, and lances"
+        "ratio": "3:1",
+        "description": "very wide sprite slot for forward-thrust pikes, lances, and lying long weapons"
+      },
+      "visual_envelope": {
+        "w": 3,
+        "h": 1
+      },
+      "visual_envelope_note": "Iron Weapons lance is couched forward or lying with the mount; keep the full lance inside the wide slot",
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 768,
+        "height_px": 256,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 384,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 384,
+          "pre_crop_target_px": 768,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 3,
+          "h": 1
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "placement": {
+        "source_size": [
+          768,
+          256
+        ],
+        "anchor": [
+          384,
+          208
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          3,
+          1
+        ]
       }
     }
   ],

@@ -27,6 +27,8 @@ struct LabState {
     int actionIndex = 0;
     int direction = 0; // 0 front, 1 back
     int frame = 0;
+    std::string forcedAction;
+    int forcedFrameCount = 0;
     int hue = 197;
     int speedPercent = 100;
     bool playing = true;
@@ -145,11 +147,13 @@ const EntityActionAnimationSpec* labActionSpec(const LabState& lab) {
 }
 
 const char* labActionId(const LabState& lab) {
+    if (!lab.forcedAction.empty()) return lab.forcedAction.c_str();
     if (const EntityActionAnimationSpec* spec = labActionSpec(lab)) return spec->action;
     return "idle";
 }
 
 int labFrameCount(const LabState& lab) {
+    if (lab.forcedFrameCount > 0) return lab.forcedFrameCount;
     if (const EntityActionAnimationSpec* spec = labActionSpec(lab)) return std::max(1, spec->frameCount);
     return 1;
 }
@@ -798,7 +802,11 @@ void drawLabFrame(const LabState& lab, bool present) {
     int rx = s.winW - rightW + 18;
     int ry = 54;
     drawLabLine(rx, ry, "Animation Info", rgb(255,230,135));
-    if (const EntityActionAnimationSpec* spec = labActionSpec(lab)) {
+    if (!lab.forcedAction.empty()) {
+        drawLabLine(rx, ry, "id: " + lab.forcedAction);
+        drawLabLine(rx, ry, "forced asset action for tileset QA");
+        drawLabLine(rx, ry, "frames: " + std::to_string(labFrameCount(lab)));
+    } else if (const EntityActionAnimationSpec* spec = labActionSpec(lab)) {
         drawLabLine(rx, ry, "id: " + std::string(spec->action));
         drawLabLine(rx, ry, "family: " + std::string(spec->family));
         drawLabLine(rx, ry, "relation: " + std::string(actionTargetRelationId(spec->targetRelation)));
@@ -977,6 +985,33 @@ int runLabSmoke() {
     lab.lightMode = 0;
     lab.weather = W_CLEAR;
     ok = saveLabShot(lab, outDir / "08-bullseye-town-hall-footprint.bmp") && ok;
+
+    auto saveForcedActionShot = [&](EntityType type, const char* action, const char* name, int direction, int frame, int spriteSize) {
+        LabState shot;
+        shot.previewMode = 2;
+        shot.terrain = LAB_TERRAIN_BULLSEYE;
+        shot.entityType = type;
+        shot.forcedAction = action ? action : "";
+        shot.forcedFrameCount = 2;
+        shot.direction = direction;
+        shot.frame = frame;
+        shot.timeStep = 3;
+#ifdef _WIN32
+        _putenv_s("REALM_LAB_ENTITY_SPRITE_SIZE", std::to_string(spriteSize).c_str());
+#else
+        setenv("REALM_LAB_ENTITY_SPRITE_SIZE", std::to_string(spriteSize).c_str(), 1);
+#endif
+        return saveLabShot(shot, outDir / name);
+    };
+
+    ok = saveForcedActionShot(E_BOAR, "charge", "09-boar-charge-front.bmp", 0, 0, 180) && ok;
+    ok = saveForcedActionShot(E_BOAR, "death", "10-boar-death-skeleton-front.bmp", 0, 3, 180) && ok;
+    ok = saveForcedActionShot(E_SPEARMAN, "pike__idle", "11-spearman-pike-idle-front.bmp", 0, 0, 220) && ok;
+    ok = saveForcedActionShot(E_SPEARMAN, "pike__spear_thrust", "12-spearman-pike-thrust-front.bmp", 0, 0, 220) && ok;
+    ok = saveForcedActionShot(E_KNIGHT, "iron_weapons__open_helmet__idle", "13-knight-iron-lance-idle-front.bmp", 0, 0, 220) && ok;
+    ok = saveForcedActionShot(E_KNIGHT, "iron_weapons__open_helmet__charge_strike", "14-knight-iron-lance-charge-front.bmp", 0, 0, 220) && ok;
+    ok = saveForcedActionShot(E_KNIGHT, "iron_weapons__plate_helm__idle", "15-knight-plate-lance-idle-front.bmp", 0, 0, 220) && ok;
+    ok = saveForcedActionShot(E_KNIGHT, "iron_weapons__plate_helm__charge_strike", "16-knight-plate-lance-charge-front.bmp", 0, 0, 220) && ok;
 
     std::cerr << "realm: lab smoke " << (ok ? "complete" : "failed")
               << " dir=" << outDir.string() << "\n";

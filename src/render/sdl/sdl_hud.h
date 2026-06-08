@@ -23,3 +23,10 @@ void addGridButtons(std::vector<MobileButton>& out, int x, int y, int w,
 void drawPanel(const WorldIndex& world);
 void drawBottom(const WorldIndex& world);
 bool devCaptureEnabled();
+bool tilesetHudEnabled();
+SDL_Rect tilesetHudOverlayRect();
+SDL_Rect tilesetHudMiniMapRect();
+bool tilesetHudConsumesPointer(int px, int py);
+bool tilesetHudClickableAt(int px, int py);
+void drawTilesetHud(const WorldIndex& world);
+void clearTilesetHudCaches();

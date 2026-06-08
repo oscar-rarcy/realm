@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "style": "dark floating tileset HUD, right-side fade as container, minimal cards and icon buttons",
+  "reference": "art/reference/hud/hud.png",
+  "materials": {
+    "build_card": "materials/build_card.png",
+    "build_card_selected": "materials/build_card_selected.png",
+    "build_card_unavailable": "materials/build_card_unavailable.png",
+    "button_slot": "materials/button_slot.png",
+    "button_slot_selected": "materials/button_slot_selected.png",
+    "portrait_frame": "materials/portrait_frame.png",
+    "resource_chip": "materials/resource_chip.png",
+    "right_fade": "materials/right_fade.png"
+  },
+  "icons": {
+    "gold": "icons/gold.png",
+    "wood": "icons/wood.png",
+    "food": "icons/food.png",
+    "population": "icons/population.png",
+    "stone": "icons/stone.png",
+    "build": "icons/build.png",
+    "house": "icons/house.png",
+    "flag": "icons/flag.png",
+    "gather": "icons/gather.png",
+    "stop": "icons/stop.png",
+    "attack": "icons/attack.png",
+    "menu": "icons/menu.png",
+    "settings": "icons/settings.png",
+    "fullscreen": "icons/fullscreen.png",
+    "close": "icons/close.png",
+    "back": "icons/back.png"
+  },
+  "notes": [
+    "Runtime assets live under assets/tiles/ui/hud; reference images stay under art/reference/hud.",
+    "Stone icon is included for visual completeness, but the current game economy does not spend stone.",
+    "Nested build categories are intentionally not represented because they would require a new UI mechanic."
+  ]
+}

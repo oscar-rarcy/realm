@@ -17,6 +17,10 @@
 #define REALM_VISUAL_MODE_DEFAULT "ascii-only"
 #endif
 
+#ifndef REALM_ENABLE_TILESET
+#define REALM_ENABLE_TILESET 1
+#endif
+
 namespace {
 
 std::string trim(std::string value) {
@@ -137,11 +141,19 @@ std::string realmVisualMode() {
 }
 
 bool realmVisualModeIsAsciiOnly() {
+#if !REALM_ENABLE_TILESET
+    return true;
+#else
     std::string mode = normalizedVisualMode();
     return mode == "ascii-only" || mode == "ascii" || mode == "terminal" || mode == "console";
+#endif
 }
 
 bool realmVisualModeAllowsTilesetMenu() {
+#if !REALM_ENABLE_TILESET
+    return false;
+#else
     std::string mode = normalizedVisualMode();
     return mode == "tileset-menu" || mode == "tileset" || mode == "selectable" || mode == "gui";
+#endif
 }

@@ -2,22 +2,26 @@
   "schema": "realm.entity_tileset.v1",
   "entity": "peasant",
   "asset_type": "unit",
-  "sprite_size": 48,
+  "sprite_size": 256,
   "team_color_source": "#00AFFF",
   "source_key_color": "#ff00ff",
   "placement": {
     "projection": "upright_world",
     "anchor_kind": "feet",
     "source_size": [
-      48,
-      48
+      256,
+      256
     ],
     "anchor": [
-      24,
-      39
+      128,
+      208
     ],
     "scale_policy": "entity_tile_zoom_1_55",
     "footprint": [
+      1,
+      1
+    ],
+    "visual_envelope": [
       1,
       1
     ],
@@ -34,13 +38,7 @@
       "hold_last": true,
       "description": "idle",
       "family": "idle",
-      "target_relation": "self_tile",
-      "range_tiles": 0,
       "fit_profile": "standing",
-      "anchor": [
-        24,
-        39
-      ],
       "directions": {
         "front": [
           {
@@ -48,66 +46,82 @@
             "team_mask": "idle/front/frame_00_teammask.png",
             "phase": "relaxed idle, arms at sides, both feet planted",
             "duration_ms": 20000,
-            "source": "art\\tiles\\workbench\\peasant\\idle\\front\\frame_00\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/front_contact_sheet.png",
             "source_bbox": {
-              "x": 12,
-              "y": 11,
-              "w": 609,
-              "h": 611
+              "x": 92,
+              "y": 30,
+              "w": 77,
+              "h": 137
             },
             "final_bbox": {
-              "x": 17,
-              "y": 7,
-              "w": 15,
-              "h": 28
+              "x": 65,
+              "y": 21,
+              "w": 126,
+              "h": 224
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
               0,
-              -4
+              37
             ],
-            "scale": 0.05582922824302135,
+            "scale": 1.635036496350365,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 70,
             "transparent_key_pixels": 305099,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 1,
+            "source_crop_box": [
+              2,
+              30,
+              256,
+              256
+            ],
+            "fit_profile": "standing"
           },
           {
             "base": "idle/front/frame_01_base.png",
             "team_mask": "idle/front/frame_01_teammask.png",
             "phase": "long-idle hold pose, arms crossed, both feet planted",
             "duration_ms": 20000,
-            "source": "art\\tiles\\workbench\\peasant\\idle\\front\\frame_01\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/front_contact_sheet.png",
             "source_bbox": {
-              "x": 12,
-              "y": 51,
-              "w": 610,
-              "h": 565
+              "x": 96,
+              "y": 59,
+              "w": 65,
+              "h": 135
             },
             "final_bbox": {
-              "x": 18,
-              "y": 8,
-              "w": 13,
-              "h": 27
+              "x": 74,
+              "y": 21,
+              "w": 108,
+              "h": 224
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
               0,
-              -4
+              37
             ],
-            "scale": 0.05573770491803279,
+            "scale": 1.6592592592592592,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 57,
             "transparent_key_pixels": 312261,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 2,
+            "source_crop_box": [
+              260,
+              0,
+              512,
+              256
+            ],
+            "fit_profile": "standing"
           }
         ],
         "back": [
@@ -116,74 +130,89 @@
             "team_mask": "idle/back/frame_00_teammask.png",
             "phase": "relaxed idle, arms at sides, both feet planted",
             "duration_ms": 20000,
-            "source": "art\\tiles\\workbench\\peasant\\idle\\back\\frame_00\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/back_contact_sheet.png",
             "source_bbox": {
-              "x": 5,
-              "y": 11,
-              "w": 610,
-              "h": 611
+              "x": 1,
+              "y": 30,
+              "w": 152,
+              "h": 193
             },
             "final_bbox": {
-              "x": 16,
-              "y": 5,
-              "w": 14,
-              "h": 30
+              "x": 40,
+              "y": 21,
+              "w": 176,
+              "h": 224
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
-              -1,
-              -4
+              0,
+              37
             ],
-            "scale": 0.05573770491803279,
+            "scale": 1.160621761658031,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 96,
             "transparent_key_pixels": 306906,
-            "edge_fringe_key_pixels": 166
+            "edge_fringe_key_pixels": 166,
+            "source_slot": 1,
+            "source_crop_box": [
+              0,
+              30,
+              256,
+              256
+            ],
+            "fit_profile": "standing"
           },
           {
             "base": "idle/back/frame_01_base.png",
             "team_mask": "idle/back/frame_01_teammask.png",
             "phase": "long-idle hold pose, arms crossed, both feet planted",
             "duration_ms": 20000,
-            "source": "art\\tiles\\workbench\\peasant\\idle\\back\\frame_01\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/back_contact_sheet.png",
             "source_bbox": {
-              "x": 5,
-              "y": 5,
-              "w": 610,
-              "h": 611
+              "x": 85,
+              "y": 59,
+              "w": 66,
+              "h": 134
             },
             "final_bbox": {
-              "x": 17,
-              "y": 7,
-              "w": 13,
-              "h": 28
+              "x": 73,
+              "y": 21,
+              "w": 110,
+              "h": 224
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
               0,
-              -4
+              37
             ],
-            "scale": 0.05573770491803279,
+            "scale": 1.671641791044776,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 97,
             "transparent_key_pixels": 314734,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 2,
+            "source_crop_box": [
+              256,
+              0,
+              502,
+              256
+            ],
+            "fit_profile": "standing"
           }
         ]
       },
-      "frame_durations_ms": [
-        0,
-        0
-      ],
-      "transition_after_ms": 20000
+      "phases": [
+        "relaxed idle, arms at sides, both feet planted",
+        "long-idle hold pose, arms crossed, both feet planted"
+      ]
     },
     "walk": {
       "frame_ms": 180,
@@ -191,13 +220,7 @@
       "hold_last": false,
       "description": "walk",
       "family": "gait",
-      "target_relation": "self_tile",
-      "range_tiles": 0,
       "fit_profile": "standing",
-      "anchor": [
-        24,
-        39
-      ],
       "directions": {
         "front": [
           {
@@ -205,66 +228,82 @@
             "team_mask": "walk/front/frame_00_teammask.png",
             "phase": "walking gait with the front/near leg forward and the rear/far leg back",
             "duration_ms": 180,
-            "source": "art\\tiles\\workbench\\peasant\\walk\\front\\frame_00\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/front_contact_sheet.png",
             "source_bbox": {
-              "x": 5,
-              "y": 5,
-              "w": 307,
-              "h": 307
+              "x": 2,
+              "y": 2,
+              "w": 252,
+              "h": 252
             },
             "final_bbox": {
-              "x": 15,
-              "y": 9,
-              "w": 17,
-              "h": 25
+              "x": 83,
+              "y": 50,
+              "w": 136,
+              "h": 141
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
-              0,
-              -5
+              23,
+              -17
             ],
-            "scale": 0.11074918566775244,
+            "scale": 0.7182539682539683,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 55,
             "transparent_key_pixels": 74862,
-            "edge_fringe_key_pixels": 39
+            "edge_fringe_key_pixels": 39,
+            "source_slot": 3,
+            "source_crop_box": [
+              514,
+              2,
+              768,
+              256
+            ],
+            "fit_profile": "standing"
           },
           {
             "base": "walk/front/frame_01_base.png",
             "team_mask": "walk/front/frame_01_teammask.png",
             "phase": "walking gait with the rear/far leg forward and the front/near leg back",
             "duration_ms": 180,
-            "source": "art\\tiles\\workbench\\peasant\\walk\\front\\frame_01\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/front_contact_sheet.png",
             "source_bbox": {
-              "x": 5,
-              "y": 5,
-              "w": 305,
-              "h": 307
+              "x": 1,
+              "y": 2,
+              "w": 255,
+              "h": 252
             },
             "final_bbox": {
-              "x": 15,
-              "y": 9,
-              "w": 17,
-              "h": 26
+              "x": 38,
+              "y": 46,
+              "w": 133,
+              "h": 138
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
-              0,
-              -4
+              -24,
+              -24
             ],
-            "scale": 0.11147540983606558,
+            "scale": 0.7098039215686275,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 55,
             "transparent_key_pixels": 75582,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 4,
+            "source_crop_box": [
+              768,
+              2,
+              1024,
+              256
+            ],
+            "fit_profile": "standing"
           }
         ],
         "back": [
@@ -273,74 +312,89 @@
             "team_mask": "walk/back/frame_00_teammask.png",
             "phase": "walking gait with the front/near leg forward and the rear/far leg back",
             "duration_ms": 180,
-            "source": "art\\tiles\\workbench\\peasant\\walk\\back\\frame_00\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/back_contact_sheet.png",
             "source_bbox": {
-              "x": 5,
-              "y": 5,
-              "w": 305,
-              "h": 307
+              "x": 0,
+              "y": 2,
+              "w": 253,
+              "h": 252
             },
             "final_bbox": {
-              "x": 16,
-              "y": 10,
-              "w": 16,
-              "h": 25
+              "x": 39,
+              "y": 36,
+              "w": 134,
+              "h": 161
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
-              0,
-              -4
+              -22,
+              -11
             ],
-            "scale": 0.11147540983606558,
+            "scale": 0.7154150197628458,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 79,
             "transparent_key_pixels": 75859,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 3,
+            "source_crop_box": [
+              512,
+              2,
+              766,
+              256
+            ],
+            "fit_profile": "standing"
           },
           {
             "base": "walk/back/frame_01_base.png",
             "team_mask": "walk/back/frame_01_teammask.png",
             "phase": "walking gait with the rear/far leg forward and the front/near leg back",
             "duration_ms": 180,
-            "source": "art\\tiles\\workbench\\peasant\\walk\\back\\frame_01\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/back_contact_sheet.png",
             "source_bbox": {
-              "x": 3,
-              "y": 5,
-              "w": 307,
-              "h": 307
+              "x": 0,
+              "y": 2,
+              "w": 252,
+              "h": 252
             },
             "final_bbox": {
-              "x": 16,
-              "y": 10,
-              "w": 16,
-              "h": 25
+              "x": 88,
+              "y": 53,
+              "w": 84,
+              "h": 131
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
-              0,
-              -4
+              2,
+              -24
             ],
-            "scale": 0.11074918566775244,
+            "scale": 0.7182539682539683,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 79,
             "transparent_key_pixels": 75429,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 4,
+            "source_crop_box": [
+              768,
+              2,
+              1022,
+              256
+            ],
+            "fit_profile": "standing"
           }
         ]
       },
-      "frame_durations_ms": [
-        0,
-        0
-      ],
-      "transition_after_ms": 0
+      "phases": [
+        "walking gait with the front/near leg forward and the rear/far leg back",
+        "walking gait with the rear/far leg forward and the front/near leg back"
+      ]
     },
     "chop_wood": {
       "frame_ms": 320,
@@ -348,13 +402,7 @@
       "hold_last": false,
       "description": "chop_wood",
       "family": "swing",
-      "target_relation": "adjacent_target_tile_or_entity",
-      "range_tiles": 0,
       "fit_profile": "wide_tool",
-      "anchor": [
-        24,
-        39
-      ],
       "directions": {
         "front": [
           {
@@ -362,66 +410,82 @@
             "team_mask": "chop_wood/front/frame_00_teammask.png",
             "phase": "axe at the bottom/contact part of the chop, axe head low and forward",
             "duration_ms": 320,
-            "source": "art\\tiles\\workbench\\peasant\\chop_wood\\front\\frame_00\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/front_contact_sheet.png",
             "source_bbox": {
-              "x": 5,
-              "y": 5,
-              "w": 307,
-              "h": 306
+              "x": 2,
+              "y": 2,
+              "w": 252,
+              "h": 254
             },
             "final_bbox": {
-              "x": 13,
-              "y": 10,
-              "w": 23,
-              "h": 27
+              "x": 17,
+              "y": 11,
+              "w": 222,
+              "h": 223
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
               0,
-              -2
+              26
             ],
-            "scale": 0.13725490196078433,
+            "scale": 0.8818897637795275,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 44,
             "transparent_key_pixels": 76589,
-            "edge_fringe_key_pixels": 2
+            "edge_fringe_key_pixels": 2,
+            "source_slot": 5,
+            "source_crop_box": [
+              1026,
+              0,
+              1280,
+              256
+            ],
+            "fit_profile": "wide_tool"
           },
           {
             "base": "chop_wood/front/frame_01_base.png",
             "team_mask": "chop_wood/front/frame_01_teammask.png",
             "phase": "axe raised high at the top of the swing",
             "duration_ms": 320,
-            "source": "art\\tiles\\workbench\\peasant\\chop_wood\\front\\frame_01\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/front_contact_sheet.png",
             "source_bbox": {
-              "x": 5,
-              "y": 0,
-              "w": 305,
-              "h": 311
+              "x": 1,
+              "y": 2,
+              "w": 255,
+              "h": 254
             },
             "final_bbox": {
-              "x": 13,
-              "y": 5,
-              "w": 19,
-              "h": 35
+              "x": 16,
+              "y": 14,
+              "w": 225,
+              "h": 215
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
-              -2,
-              1
+              0,
+              21
             ],
-            "scale": 0.13504823151125403,
+            "scale": 0.8818897637795275,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 50,
             "transparent_key_pixels": 76724,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 6,
+            "source_crop_box": [
+              1280,
+              0,
+              1536,
+              256
+            ],
+            "fit_profile": "wide_tool"
           }
         ],
         "back": [
@@ -430,74 +494,89 @@
             "team_mask": "chop_wood/back/frame_00_teammask.png",
             "phase": "axe at the bottom/contact part of the chop, axe head low and forward",
             "duration_ms": 320,
-            "source": "art\\tiles\\workbench\\peasant\\chop_wood\\back\\frame_00\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/back_contact_sheet.png",
             "source_bbox": {
-              "x": 5,
-              "y": 0,
-              "w": 305,
-              "h": 312
+              "x": 1,
+              "y": 2,
+              "w": 253,
+              "h": 254
             },
             "final_bbox": {
-              "x": 13,
-              "y": 11,
-              "w": 25,
-              "h": 27
+              "x": 17,
+              "y": 12,
+              "w": 223,
+              "h": 221
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
-              2,
-              -1
+              0,
+              25
             ],
-            "scale": 0.1346153846153846,
+            "scale": 0.8818897637795275,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 101,
             "transparent_key_pixels": 76638,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 5,
+            "source_crop_box": [
+              1024,
+              0,
+              1280,
+              256
+            ],
+            "fit_profile": "wide_tool"
           },
           {
             "base": "chop_wood/back/frame_01_base.png",
             "team_mask": "chop_wood/back/frame_01_teammask.png",
             "phase": "axe raised high at the top of the swing",
             "duration_ms": 320,
-            "source": "art\\tiles\\workbench\\peasant\\chop_wood\\back\\frame_01\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/back_contact_sheet.png",
             "source_bbox": {
-              "x": 1,
-              "y": 0,
-              "w": 309,
-              "h": 312
+              "x": 0,
+              "y": 2,
+              "w": 252,
+              "h": 254
             },
             "final_bbox": {
-              "x": 14,
-              "y": 5,
-              "w": 17,
-              "h": 36
+              "x": 17,
+              "y": 12,
+              "w": 222,
+              "h": 221
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
-              -2,
-              2
+              0,
+              25
             ],
-            "scale": 0.1346153846153846,
+            "scale": 0.8818897637795275,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 95,
             "transparent_key_pixels": 75774,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 6,
+            "source_crop_box": [
+              1280,
+              0,
+              1534,
+              256
+            ],
+            "fit_profile": "wide_tool"
           }
         ]
       },
-      "frame_durations_ms": [
-        0,
-        0
-      ],
-      "transition_after_ms": 0
+      "phases": [
+        "axe at the bottom/contact part of the chop, axe head low and forward",
+        "axe raised high at the top of the swing"
+      ]
     },
     "mine_gold": {
       "frame_ms": 320,
@@ -505,13 +584,7 @@
       "hold_last": false,
       "description": "mine_gold",
       "family": "swing",
-      "target_relation": "adjacent_target_tile_or_entity",
-      "range_tiles": 0,
       "fit_profile": "wide_tool",
-      "anchor": [
-        24,
-        39
-      ],
       "directions": {
         "front": [
           {
@@ -519,66 +592,82 @@
             "team_mask": "mine_gold/front/frame_00_teammask.png",
             "phase": "pickaxe at the bottom/contact part of the mining swing, pick head low and forward",
             "duration_ms": 320,
-            "source": "art\\tiles\\workbench\\peasant\\mine_gold\\front\\frame_00\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/front_contact_sheet.png",
             "source_bbox": {
-              "x": 5,
-              "y": 6,
-              "w": 307,
-              "h": 307
+              "x": 2,
+              "y": 1,
+              "w": 252,
+              "h": 254
             },
             "final_bbox": {
-              "x": 12,
+              "x": 17,
               "y": 12,
-              "w": 25,
-              "h": 26
+              "w": 222,
+              "h": 221
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
               0,
-              -1
+              25
             ],
-            "scale": 0.13680781758957655,
+            "scale": 0.8818897637795275,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 43,
             "transparent_key_pixels": 76569,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 7,
+            "source_crop_box": [
+              2,
+              257,
+              256,
+              512
+            ],
+            "fit_profile": "wide_tool"
           },
           {
             "base": "mine_gold/front/frame_01_base.png",
             "team_mask": "mine_gold/front/frame_01_teammask.png",
             "phase": "pickaxe raised high at the top of the swing",
             "duration_ms": 320,
-            "source": "art\\tiles\\workbench\\peasant\\mine_gold\\front\\frame_01\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/front_contact_sheet.png",
             "source_bbox": {
-              "x": 5,
-              "y": 6,
-              "w": 305,
-              "h": 307
+              "x": 1,
+              "y": 2,
+              "w": 255,
+              "h": 252
             },
             "final_bbox": {
-              "x": 14,
-              "y": 2,
-              "w": 18,
-              "h": 38
+              "x": 15,
+              "y": 11,
+              "w": 227,
+              "h": 223
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
-              -1,
-              1
+              0,
+              26
             ],
-            "scale": 0.13680781758957655,
+            "scale": 0.8888888888888888,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 50,
             "transparent_key_pixels": 76003,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 8,
+            "source_crop_box": [
+              256,
+              258,
+              512,
+              512
+            ],
+            "fit_profile": "wide_tool"
           }
         ],
         "back": [
@@ -587,74 +676,89 @@
             "team_mask": "mine_gold/back/frame_00_teammask.png",
             "phase": "pickaxe at the bottom/contact part of the mining swing, pick head low and forward",
             "duration_ms": 320,
-            "source": "art\\tiles\\workbench\\peasant\\mine_gold\\back\\frame_00\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/back_contact_sheet.png",
             "source_bbox": {
-              "x": 4,
-              "y": 6,
-              "w": 307,
-              "h": 307
+              "x": 0,
+              "y": 2,
+              "w": 254,
+              "h": 252
             },
             "final_bbox": {
-              "x": 13,
-              "y": 13,
-              "w": 24,
-              "h": 25
+              "x": 15,
+              "y": 66,
+              "w": 183,
+              "h": 167
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
-              1,
-              -1
+              -22,
+              25
             ],
-            "scale": 0.13680781758957655,
+            "scale": 0.8888888888888888,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 98,
             "transparent_key_pixels": 77485,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 7,
+            "source_crop_box": [
+              0,
+              258,
+              256,
+              512
+            ],
+            "fit_profile": "wide_tool"
           },
           {
             "base": "mine_gold/back/frame_01_base.png",
             "team_mask": "mine_gold/back/frame_01_teammask.png",
             "phase": "pickaxe raised high at the top of the swing",
             "duration_ms": 320,
-            "source": "art\\tiles\\workbench\\peasant\\mine_gold\\back\\frame_01\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/back_contact_sheet.png",
             "source_bbox": {
-              "x": 3,
-              "y": 6,
-              "w": 307,
-              "h": 307
+              "x": 0,
+              "y": 1,
+              "w": 252,
+              "h": 254
             },
             "final_bbox": {
-              "x": 11,
-              "y": 2,
-              "w": 20,
-              "h": 39
+              "x": 17,
+              "y": 12,
+              "w": 222,
+              "h": 222
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
-              -3,
-              2
+              0,
+              26
             ],
-            "scale": 0.13680781758957655,
+            "scale": 0.8818897637795275,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 98,
             "transparent_key_pixels": 75848,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 8,
+            "source_crop_box": [
+              256,
+              257,
+              510,
+              512
+            ],
+            "fit_profile": "wide_tool"
           }
         ]
       },
-      "frame_durations_ms": [
-        0,
-        0
-      ],
-      "transition_after_ms": 0
+      "phases": [
+        "pickaxe at the bottom/contact part of the mining swing, pick head low and forward",
+        "pickaxe raised high at the top of the swing"
+      ]
     },
     "gather_berries": {
       "frame_ms": 700,
@@ -662,13 +766,7 @@
       "hold_last": false,
       "description": "gather_berries",
       "family": "gather",
-      "target_relation": "adjacent_target_tile_or_entity",
-      "range_tiles": 0,
       "fit_profile": "kneeling",
-      "anchor": [
-        24,
-        40
-      ],
       "directions": {
         "front": [
           {
@@ -676,66 +774,82 @@
             "team_mask": "gather_berries/front/frame_00_teammask.png",
             "phase": "one hand reaching out toward berries beside a basket",
             "duration_ms": 700,
-            "source": "art\\tiles\\workbench\\peasant\\gather_berries\\front\\frame_00\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/front_contact_sheet.png",
             "source_bbox": {
-              "x": 5,
-              "y": 4,
-              "w": 307,
-              "h": 308
+              "x": 2,
+              "y": 0,
+              "w": 252,
+              "h": 254
             },
             "final_bbox": {
-              "x": 13,
-              "y": 11,
-              "w": 24,
-              "h": 23
+              "x": 38,
+              "y": 28,
+              "w": 183,
+              "h": 150
             },
             "anchor": [
-              24,
-              40
+              128,
+              213
             ],
             "anchor_offset": [
-              1,
-              -6
+              2,
+              -35
             ],
-            "scale": 0.11363636363636363,
+            "scale": 0.7322834645669292,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 43,
             "transparent_key_pixels": 71671,
-            "edge_fringe_key_pixels": 4
+            "edge_fringe_key_pixels": 4,
+            "source_slot": 9,
+            "source_crop_box": [
+              514,
+              256,
+              768,
+              511
+            ],
+            "fit_profile": "kneeling"
           },
           {
             "base": "gather_berries/front/frame_01_base.png",
             "team_mask": "gather_berries/front/frame_01_teammask.png",
             "phase": "hand back in the basket with berries",
             "duration_ms": 700,
-            "source": "art\\tiles\\workbench\\peasant\\gather_berries\\front\\frame_01\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/front_contact_sheet.png",
             "source_bbox": {
-              "x": 5,
-              "y": 4,
-              "w": 305,
-              "h": 308
+              "x": 1,
+              "y": 0,
+              "w": 255,
+              "h": 254
             },
             "final_bbox": {
-              "x": 14,
-              "y": 11,
-              "w": 20,
-              "h": 22
+              "x": 35,
+              "y": 28,
+              "w": 178,
+              "h": 147
             },
             "anchor": [
-              24,
-              40
+              128,
+              213
             ],
             "anchor_offset": [
-              0,
-              -7
+              -4,
+              -38
             ],
-            "scale": 0.11363636363636363,
+            "scale": 0.7322834645669292,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 41,
             "transparent_key_pixels": 76129,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 10,
+            "source_crop_box": [
+              768,
+              256,
+              1024,
+              511
+            ],
+            "fit_profile": "kneeling"
           }
         ],
         "back": [
@@ -744,74 +858,89 @@
             "team_mask": "gather_berries/back/frame_00_teammask.png",
             "phase": "one hand reaching out toward berries beside a basket",
             "duration_ms": 700,
-            "source": "art\\tiles\\workbench\\peasant\\gather_berries\\back\\frame_00\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/back_contact_sheet.png",
             "source_bbox": {
-              "x": 4,
-              "y": 4,
-              "w": 306,
-              "h": 308
+              "x": 1,
+              "y": 0,
+              "w": 252,
+              "h": 254
             },
             "final_bbox": {
-              "x": 12,
-              "y": 11,
-              "w": 24,
-              "h": 23
+              "x": 36,
+              "y": 28,
+              "w": 184,
+              "h": 183
             },
             "anchor": [
-              24,
-              40
+              128,
+              213
             ],
             "anchor_offset": [
               0,
-              -6
+              -2
             ],
-            "scale": 0.11363636363636363,
+            "scale": 0.7322834645669292,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 90,
             "transparent_key_pixels": 72558,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 9,
+            "source_crop_box": [
+              512,
+              256,
+              767,
+              511
+            ],
+            "fit_profile": "kneeling"
           },
           {
             "base": "gather_berries/back/frame_01_base.png",
             "team_mask": "gather_berries/back/frame_01_teammask.png",
             "phase": "hand back in the basket with berries",
             "duration_ms": 700,
-            "source": "art\\tiles\\workbench\\peasant\\gather_berries\\back\\frame_01\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/back_contact_sheet.png",
             "source_bbox": {
-              "x": 3,
-              "y": 4,
-              "w": 307,
-              "h": 308
+              "x": 0,
+              "y": 0,
+              "w": 252,
+              "h": 254
             },
             "final_bbox": {
-              "x": 13,
-              "y": 12,
-              "w": 22,
-              "h": 22
+              "x": 39,
+              "y": 28,
+              "w": 181,
+              "h": 153
             },
             "anchor": [
-              24,
-              40
+              128,
+              213
             ],
             "anchor_offset": [
-              0,
-              -6
+              2,
+              -32
             ],
-            "scale": 0.11363636363636363,
+            "scale": 0.7322834645669292,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 86,
             "transparent_key_pixels": 74502,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 10,
+            "source_crop_box": [
+              768,
+              256,
+              1022,
+              511
+            ],
+            "fit_profile": "kneeling"
           }
         ]
       },
-      "frame_durations_ms": [
-        0,
-        0
-      ],
-      "transition_after_ms": 0
+      "phases": [
+        "one hand reaching out toward berries beside a basket",
+        "hand back in the basket with berries"
+      ]
     },
     "hoe_soil": {
       "frame_ms": 520,
@@ -819,13 +948,7 @@
       "hold_last": false,
       "description": "hoe_soil",
       "family": "work_stroke",
-      "target_relation": "adjacent_target_tile_or_entity",
-      "range_tiles": 0,
       "fit_profile": "wide_tool",
-      "anchor": [
-        24,
-        39
-      ],
       "directions": {
         "front": [
           {
@@ -833,66 +956,82 @@
             "team_mask": "hoe_soil/front/frame_00_teammask.png",
             "phase": "arms outstretched with the hoe extended away from the body",
             "duration_ms": 520,
-            "source": "art\\tiles\\workbench\\peasant\\hoe_soil\\front\\frame_00\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/front_contact_sheet.png",
             "source_bbox": {
-              "x": 8,
-              "y": 7,
-              "w": 304,
-              "h": 306
+              "x": 3,
+              "y": 4,
+              "w": 251,
+              "h": 249
             },
             "final_bbox": {
-              "x": 9,
-              "y": 12,
-              "w": 33,
-              "h": 28
+              "x": 15,
+              "y": 10,
+              "w": 207,
+              "h": 200
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
-              2,
-              1
+              -10,
+              2
             ],
-            "scale": 0.13725490196078433,
+            "scale": 0.8995983935742972,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 59,
             "transparent_key_pixels": 74027,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 11,
+            "source_crop_box": [
+              1026,
+              258,
+              1280,
+              512
+            ],
+            "fit_profile": "wide_tool"
           },
           {
             "base": "hoe_soil/front/frame_01_base.png",
             "team_mask": "hoe_soil/front/frame_01_teammask.png",
             "phase": "arms pulled in after the hoe stroke while still holding the same farming hoe",
             "duration_ms": 520,
-            "source": "art\\tiles\\workbench\\peasant\\hoe_soil\\front\\frame_01\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/front_contact_sheet.png",
             "source_bbox": {
-              "x": 52,
-              "y": 7,
-              "w": 257,
-              "h": 306
+              "x": 1,
+              "y": 3,
+              "w": 251,
+              "h": 250
             },
             "final_bbox": {
-              "x": 7,
-              "y": 12,
-              "w": 25,
-              "h": 28
+              "x": 16,
+              "y": 63,
+              "w": 172,
+              "h": 168
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
-              -4,
-              1
+              -26,
+              23
             ],
-            "scale": 0.13725490196078433,
+            "scale": 0.896,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 53,
             "transparent_key_pixels": 75747,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 12,
+            "source_crop_box": [
+              1280,
+              259,
+              1534,
+              512
+            ],
+            "fit_profile": "wide_tool"
           }
         ],
         "back": [
@@ -901,74 +1040,89 @@
             "team_mask": "hoe_soil/back/frame_00_teammask.png",
             "phase": "arms outstretched with the hoe extended away from the body",
             "duration_ms": 520,
-            "source": "art\\tiles\\workbench\\peasant\\hoe_soil\\back\\frame_00\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/back_contact_sheet.png",
             "source_bbox": {
-              "x": 6,
-              "y": 7,
-              "w": 304,
-              "h": 306
+              "x": 2,
+              "y": 3,
+              "w": 252,
+              "h": 250
             },
             "final_bbox": {
-              "x": 11,
-              "y": 12,
-              "w": 30,
-              "h": 27
+              "x": 57,
+              "y": 63,
+              "w": 184,
+              "h": 158
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
-              2,
-              0
+              21,
+              13
             ],
-            "scale": 0.13725490196078433,
+            "scale": 0.896,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 104,
             "transparent_key_pixels": 75873,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 11,
+            "source_crop_box": [
+              1024,
+              259,
+              1280,
+              512
+            ],
+            "fit_profile": "wide_tool"
           },
           {
             "base": "hoe_soil/back/frame_01_base.png",
             "team_mask": "hoe_soil/back/frame_01_teammask.png",
             "phase": "arms pulled in after the hoe stroke while still holding the same farming hoe",
             "duration_ms": 520,
-            "source": "art\\tiles\\workbench\\peasant\\hoe_soil\\back\\frame_01\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/back_contact_sheet.png",
             "source_bbox": {
-              "x": 2,
-              "y": 7,
-              "w": 305,
-              "h": 306
+              "x": 1,
+              "y": 3,
+              "w": 218,
+              "h": 249
             },
             "final_bbox": {
-              "x": 11,
-              "y": 12,
-              "w": 29,
-              "h": 27
+              "x": 30,
+              "y": 64,
+              "w": 196,
+              "h": 145
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
-              2,
-              0
+              0,
+              1
             ],
-            "scale": 0.13725490196078433,
+            "scale": 0.8995983935742972,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 109,
             "transparent_key_pixels": 76054,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 12,
+            "source_crop_box": [
+              1280,
+              259,
+              1534,
+              512
+            ],
+            "fit_profile": "wide_tool"
           }
         ]
       },
-      "frame_durations_ms": [
-        0,
-        0
-      ],
-      "transition_after_ms": 0
+      "phases": [
+        "arms outstretched with the hoe extended away from the body",
+        "arms pulled in after the hoe stroke while still holding the same farming hoe"
+      ]
     },
     "gather_wheat": {
       "frame_ms": 520,
@@ -976,13 +1130,7 @@
       "hold_last": false,
       "description": "gather_wheat",
       "family": "gather",
-      "target_relation": "adjacent_target_tile_or_entity",
-      "range_tiles": 0,
       "fit_profile": "wide_tool",
-      "anchor": [
-        24,
-        39
-      ],
       "directions": {
         "front": [
           {
@@ -990,66 +1138,82 @@
             "team_mask": "gather_wheat/front/frame_00_teammask.png",
             "phase": "using a sickle to cut wheat",
             "duration_ms": 520,
-            "source": "art\\tiles\\workbench\\peasant\\gather_wheat\\front\\frame_00\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/front_contact_sheet.png",
             "source_bbox": {
-              "x": 8,
+              "x": 3,
               "y": 0,
-              "w": 304,
-              "h": 311
+              "w": 251,
+              "h": 256
             },
             "final_bbox": {
-              "x": 10,
-              "y": 12,
-              "w": 28,
-              "h": 27
+              "x": 18,
+              "y": 15,
+              "w": 183,
+              "h": 215
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
-              0,
-              0
+              -18,
+              22
             ],
-            "scale": 0.13504823151125403,
+            "scale": 0.875,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 63,
             "transparent_key_pixels": 70842,
-            "edge_fringe_key_pixels": 5
+            "edge_fringe_key_pixels": 5,
+            "source_slot": 13,
+            "source_crop_box": [
+              2,
+              512,
+              256,
+              768
+            ],
+            "fit_profile": "wide_tool"
           },
           {
             "base": "gather_wheat/front/frame_01_base.png",
             "team_mask": "gather_wheat/front/frame_01_teammask.png",
             "phase": "still holding the sickle while the free hand reaches for wheat",
             "duration_ms": 520,
-            "source": "art\\tiles\\workbench\\peasant\\gather_wheat\\front\\frame_01\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/front_contact_sheet.png",
             "source_bbox": {
-              "x": 5,
+              "x": 1,
               "y": 0,
-              "w": 304,
-              "h": 311
+              "w": 255,
+              "h": 256
             },
             "final_bbox": {
-              "x": 10,
-              "y": 12,
-              "w": 28,
-              "h": 27
+              "x": 17,
+              "y": 15,
+              "w": 207,
+              "h": 211
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
-              0,
-              0
+              -8,
+              18
             ],
-            "scale": 0.13504823151125403,
+            "scale": 0.875,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 58,
             "transparent_key_pixels": 73135,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 14,
+            "source_crop_box": [
+              256,
+              512,
+              512,
+              768
+            ],
+            "fit_profile": "wide_tool"
           }
         ],
         "back": [
@@ -1058,74 +1222,89 @@
             "team_mask": "gather_wheat/back/frame_00_teammask.png",
             "phase": "using a sickle to cut wheat",
             "duration_ms": 520,
-            "source": "art\\tiles\\workbench\\peasant\\gather_wheat\\back\\frame_00\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/back_contact_sheet.png",
             "source_bbox": {
-              "x": 6,
+              "x": 2,
               "y": 0,
-              "w": 304,
-              "h": 311
+              "w": 251,
+              "h": 256
             },
             "final_bbox": {
-              "x": 12,
-              "y": 12,
-              "w": 27,
-              "h": 27
+              "x": 18,
+              "y": 15,
+              "w": 206,
+              "h": 216
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
-              2,
-              0
+              -7,
+              23
             ],
-            "scale": 0.13504823151125403,
+            "scale": 0.875,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 104,
             "transparent_key_pixels": 73915,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 13,
+            "source_crop_box": [
+              0,
+              512,
+              256,
+              768
+            ],
+            "fit_profile": "wide_tool"
           },
           {
             "base": "gather_wheat/back/frame_01_base.png",
             "team_mask": "gather_wheat/back/frame_01_teammask.png",
             "phase": "still holding the sickle while the free hand reaches for wheat",
             "duration_ms": 520,
-            "source": "art\\tiles\\workbench\\peasant\\gather_wheat\\back\\frame_01\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/back_contact_sheet.png",
             "source_bbox": {
-              "x": 2,
+              "x": 1,
               "y": 0,
-              "w": 305,
-              "h": 311
+              "w": 249,
+              "h": 256
             },
             "final_bbox": {
-              "x": 11,
-              "y": 12,
-              "w": 27,
-              "h": 27
+              "x": 19,
+              "y": 13,
+              "w": 218,
+              "h": 198
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
               0,
-              0
+              3
             ],
-            "scale": 0.13504823151125403,
+            "scale": 0.875,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 107,
             "transparent_key_pixels": 73043,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 14,
+            "source_crop_box": [
+              256,
+              512,
+              510,
+              768
+            ],
+            "fit_profile": "wide_tool"
           }
         ]
       },
-      "frame_durations_ms": [
-        0,
-        0
-      ],
-      "transition_after_ms": 0
+      "phases": [
+        "using a sickle to cut wheat",
+        "still holding the sickle while the free hand reaches for wheat"
+      ]
     },
     "build": {
       "frame_ms": 300,
@@ -1133,13 +1312,7 @@
       "hold_last": false,
       "description": "build",
       "family": "hammer",
-      "target_relation": "adjacent_target_tile_or_entity",
-      "range_tiles": 0,
       "fit_profile": "kneeling",
-      "anchor": [
-        24,
-        40
-      ],
       "directions": {
         "front": [
           {
@@ -1147,66 +1320,82 @@
             "team_mask": "build/front/frame_00_teammask.png",
             "phase": "kneeling builder with hammer raised up",
             "duration_ms": 300,
-            "source": "art\\tiles\\workbench\\peasant\\build\\front\\frame_00\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/front_contact_sheet.png",
             "source_bbox": {
-              "x": 8,
-              "y": 5,
-              "w": 304,
-              "h": 303
+              "x": 3,
+              "y": 0,
+              "w": 251,
+              "h": 255
             },
             "final_bbox": {
-              "x": 13,
-              "y": 8,
-              "w": 20,
-              "h": 26
+              "x": 70,
+              "y": 46,
+              "w": 145,
+              "h": 167
             },
             "anchor": [
-              24,
-              40
+              128,
+              213
             ],
             "anchor_offset": [
-              -1,
-              -6
+              14,
+              0
             ],
-            "scale": 0.11551155115511551,
+            "scale": 0.7294117647058823,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 53,
             "transparent_key_pixels": 73988,
-            "edge_fringe_key_pixels": 32
+            "edge_fringe_key_pixels": 32,
+            "source_slot": 15,
+            "source_crop_box": [
+              514,
+              512,
+              768,
+              768
+            ],
+            "fit_profile": "kneeling"
           },
           {
             "base": "build/front/frame_01_base.png",
             "team_mask": "build/front/frame_01_teammask.png",
             "phase": "kneeling builder with hammer down",
             "duration_ms": 300,
-            "source": "art\\tiles\\workbench\\peasant\\build\\front\\frame_01\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/front_contact_sheet.png",
             "source_bbox": {
-              "x": 5,
-              "y": 5,
-              "w": 304,
-              "h": 303
+              "x": 1,
+              "y": 0,
+              "w": 253,
+              "h": 255
             },
             "final_bbox": {
-              "x": 10,
-              "y": 15,
-              "w": 25,
-              "h": 20
+              "x": 36,
+              "y": 40,
+              "w": 155,
+              "h": 173
             },
             "anchor": [
-              24,
-              40
+              128,
+              213
             ],
             "anchor_offset": [
-              -2,
-              -5
+              -14,
+              0
             ],
-            "scale": 0.11551155115511551,
+            "scale": 0.7294117647058823,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 41,
             "transparent_key_pixels": 76424,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 16,
+            "source_crop_box": [
+              768,
+              512,
+              1024,
+              768
+            ],
+            "fit_profile": "kneeling"
           }
         ],
         "back": [
@@ -1215,74 +1404,89 @@
             "team_mask": "build/back/frame_00_teammask.png",
             "phase": "kneeling builder with hammer raised up",
             "duration_ms": 300,
-            "source": "art\\tiles\\workbench\\peasant\\build\\back\\frame_00\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/back_contact_sheet.png",
             "source_bbox": {
-              "x": 6,
-              "y": 5,
-              "w": 304,
-              "h": 303
+              "x": 2,
+              "y": 0,
+              "w": 252,
+              "h": 255
             },
             "final_bbox": {
-              "x": 15,
-              "y": 9,
-              "w": 21,
-              "h": 26
+              "x": 39,
+              "y": 28,
+              "w": 171,
+              "h": 185
             },
             "anchor": [
-              24,
-              40
+              128,
+              213
             ],
             "anchor_offset": [
-              2,
-              -5
+              -4,
+              0
             ],
-            "scale": 0.11551155115511551,
+            "scale": 0.7294117647058823,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 86,
             "transparent_key_pixels": 72386,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 15,
+            "source_crop_box": [
+              512,
+              512,
+              768,
+              768
+            ],
+            "fit_profile": "kneeling"
           },
           {
             "base": "build/back/frame_01_base.png",
             "team_mask": "build/back/frame_01_teammask.png",
             "phase": "kneeling builder with hammer down",
             "duration_ms": 300,
-            "source": "art\\tiles\\workbench\\peasant\\build\\back\\frame_01\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/back_contact_sheet.png",
             "source_bbox": {
-              "x": 2,
-              "y": 5,
-              "w": 305,
-              "h": 303
+              "x": 1,
+              "y": 0,
+              "w": 249,
+              "h": 255
             },
             "final_bbox": {
-              "x": 12,
-              "y": 15,
-              "w": 23,
-              "h": 20
+              "x": 64,
+              "y": 80,
+              "w": 155,
+              "h": 132
             },
             "anchor": [
-              24,
-              40
+              128,
+              213
             ],
             "anchor_offset": [
-              0,
-              -5
+              14,
+              -1
             ],
-            "scale": 0.11551155115511551,
+            "scale": 0.7294117647058823,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 80,
             "transparent_key_pixels": 76670,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 16,
+            "source_crop_box": [
+              768,
+              512,
+              1022,
+              768
+            ],
+            "fit_profile": "kneeling"
           }
         ]
       },
-      "frame_durations_ms": [
-        0,
-        0
-      ],
-      "transition_after_ms": 0
+      "phases": [
+        "kneeling builder with hammer raised up",
+        "kneeling builder with hammer down"
+      ]
     },
     "carry_wood": {
       "frame_ms": 180,
@@ -1290,13 +1494,7 @@
       "hold_last": false,
       "description": "carry_wood",
       "family": "carry_gait",
-      "target_relation": "self_tile",
-      "range_tiles": 0,
       "fit_profile": "standing",
-      "anchor": [
-        24,
-        39
-      ],
       "directions": {
         "front": [
           {
@@ -1304,66 +1502,82 @@
             "team_mask": "carry_wood/front/frame_00_teammask.png",
             "phase": "carrying bundled logs while walking, front/near leg forward",
             "duration_ms": 180,
-            "source": "art\\tiles\\workbench\\peasant\\carry_wood\\front\\frame_00\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/front_contact_sheet.png",
             "source_bbox": {
-              "x": 8,
-              "y": 1,
-              "w": 304,
-              "h": 309
+              "x": 3,
+              "y": 0,
+              "w": 251,
+              "h": 252
             },
             "final_bbox": {
-              "x": 15,
-              "y": 7,
-              "w": 17,
-              "h": 25
+              "x": 38,
+              "y": 26,
+              "w": 132,
+              "h": 148
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
-              0,
-              -7
+              -24,
+              -34
             ],
-            "scale": 0.1118421052631579,
+            "scale": 0.7211155378486056,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 40,
             "transparent_key_pixels": 73272,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 17,
+            "source_crop_box": [
+              1026,
+              512,
+              1280,
+              766
+            ],
+            "fit_profile": "standing"
           },
           {
             "base": "carry_wood/front/frame_01_base.png",
             "team_mask": "carry_wood/front/frame_01_teammask.png",
             "phase": "carrying bundled logs while walking, rear/far leg forward",
             "duration_ms": 180,
-            "source": "art\\tiles\\workbench\\peasant\\carry_wood\\front\\frame_01\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/front_contact_sheet.png",
             "source_bbox": {
-              "x": 5,
-              "y": 1,
-              "w": 304,
-              "h": 308
+              "x": 1,
+              "y": 0,
+              "w": 251,
+              "h": 252
             },
             "final_bbox": {
-              "x": 13,
-              "y": 9,
-              "w": 18,
-              "h": 24
+              "x": 71,
+              "y": 46,
+              "w": 97,
+              "h": 131
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
-              -2,
-              -6
+              -8,
+              -31
             ],
-            "scale": 0.1118421052631579,
+            "scale": 0.7211155378486056,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 41,
             "transparent_key_pixels": 73550,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 18,
+            "source_crop_box": [
+              1280,
+              512,
+              1534,
+              766
+            ],
+            "fit_profile": "standing"
           }
         ],
         "back": [
@@ -1372,74 +1586,89 @@
             "team_mask": "carry_wood/back/frame_00_teammask.png",
             "phase": "carrying bundled logs while walking, front/near leg forward",
             "duration_ms": 180,
-            "source": "art\\tiles\\workbench\\peasant\\carry_wood\\back\\frame_00\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/back_contact_sheet.png",
             "source_bbox": {
-              "x": 6,
-              "y": 1,
-              "w": 304,
-              "h": 309
+              "x": 2,
+              "y": 0,
+              "w": 251,
+              "h": 252
             },
             "final_bbox": {
-              "x": 14,
-              "y": 7,
-              "w": 19,
-              "h": 25
+              "x": 40,
+              "y": 43,
+              "w": 134,
+              "h": 164
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
-              0,
-              -7
+              -21,
+              -1
             ],
-            "scale": 0.1118421052631579,
+            "scale": 0.7211155378486056,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 89,
             "transparent_key_pixels": 74115,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 17,
+            "source_crop_box": [
+              1024,
+              512,
+              1280,
+              766
+            ],
+            "fit_profile": "standing"
           },
           {
             "base": "carry_wood/back/frame_01_base.png",
             "team_mask": "carry_wood/back/frame_01_teammask.png",
             "phase": "carrying bundled logs while walking, rear/far leg forward",
             "duration_ms": 180,
-            "source": "art\\tiles\\workbench\\peasant\\carry_wood\\back\\frame_01\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/back_contact_sheet.png",
             "source_bbox": {
-              "x": 2,
-              "y": 1,
-              "w": 305,
-              "h": 309
+              "x": 1,
+              "y": 0,
+              "w": 248,
+              "h": 252
             },
             "final_bbox": {
-              "x": 14,
-              "y": 9,
-              "w": 18,
-              "h": 24
+              "x": 77,
+              "y": 45,
+              "w": 96,
+              "h": 133
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
-              -1,
-              -6
+              -3,
+              -30
             ],
-            "scale": 0.11147540983606558,
+            "scale": 0.7298387096774194,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 84,
             "transparent_key_pixels": 74127,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 18,
+            "source_crop_box": [
+              1280,
+              512,
+              1534,
+              766
+            ],
+            "fit_profile": "standing"
           }
         ]
       },
-      "frame_durations_ms": [
-        0,
-        0
-      ],
-      "transition_after_ms": 0
+      "phases": [
+        "carrying bundled logs while walking, front/near leg forward",
+        "carrying bundled logs while walking, rear/far leg forward"
+      ]
     },
     "carry_gold": {
       "frame_ms": 180,
@@ -1447,13 +1676,7 @@
       "hold_last": false,
       "description": "carry_gold",
       "family": "carry_gait",
-      "target_relation": "self_tile",
-      "range_tiles": 0,
       "fit_profile": "standing",
-      "anchor": [
-        24,
-        39
-      ],
       "directions": {
         "front": [
           {
@@ -1461,66 +1684,82 @@
             "team_mask": "carry_gold/front/frame_00_teammask.png",
             "phase": "carrying stones and gold ore while walking, front/near leg forward",
             "duration_ms": 180,
-            "source": "art\\tiles\\workbench\\peasant\\carry_gold\\front\\frame_00\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/front_contact_sheet.png",
             "source_bbox": {
-              "x": 7,
-              "y": 7,
-              "w": 306,
-              "h": 306
+              "x": 4,
+              "y": 3,
+              "w": 249,
+              "h": 250
             },
             "final_bbox": {
-              "x": 13,
-              "y": 11,
-              "w": 19,
-              "h": 24
+              "x": 71,
+              "y": 57,
+              "w": 98,
+              "h": 130
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
-              -2,
-              -4
+              -8,
+              -21
             ],
-            "scale": 0.1111111111111111,
+            "scale": 0.7269076305220884,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 42,
             "transparent_key_pixels": 74109,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 19,
+            "source_crop_box": [
+              2,
+              771,
+              256,
+              1024
+            ],
+            "fit_profile": "standing"
           },
           {
             "base": "carry_gold/front/frame_01_base.png",
             "team_mask": "carry_gold/front/frame_01_teammask.png",
             "phase": "carrying stones and gold ore while walking, rear/far leg forward",
             "duration_ms": 180,
-            "source": "art\\tiles\\workbench\\peasant\\carry_gold\\front\\frame_01\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/front_contact_sheet.png",
             "source_bbox": {
-              "x": 3,
-              "y": 7,
-              "w": 304,
-              "h": 306
+              "x": 1,
+              "y": 3,
+              "w": 254,
+              "h": 250
             },
             "final_bbox": {
-              "x": 14,
-              "y": 11,
-              "w": 17,
-              "h": 24
+              "x": 75,
+              "y": 61,
+              "w": 142,
+              "h": 131
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
-              -2,
-              -4
+              18,
+              -16
             ],
-            "scale": 0.1118421052631579,
+            "scale": 0.7125984251968503,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 43,
             "transparent_key_pixels": 75128,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 20,
+            "source_crop_box": [
+              257,
+              771,
+              512,
+              1024
+            ],
+            "fit_profile": "standing"
           }
         ],
         "back": [
@@ -1529,74 +1768,89 @@
             "team_mask": "carry_gold/back/frame_00_teammask.png",
             "phase": "carrying stones and gold ore while walking, front/near leg forward",
             "duration_ms": 180,
-            "source": "art\\tiles\\workbench\\peasant\\carry_gold\\back\\frame_00\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/back_contact_sheet.png",
             "source_bbox": {
-              "x": 6,
-              "y": 7,
-              "w": 304,
-              "h": 306
+              "x": 0,
+              "y": 3,
+              "w": 255,
+              "h": 250
             },
             "final_bbox": {
-              "x": 16,
-              "y": 11,
-              "w": 18,
-              "h": 24
+              "x": 39,
+              "y": 32,
+              "w": 179,
+              "h": 156
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
-              1,
-              -4
+              0,
+              -20
             ],
-            "scale": 0.1118421052631579,
+            "scale": 0.7098039215686275,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 78,
             "transparent_key_pixels": 74937,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 19,
+            "source_crop_box": [
+              0,
+              771,
+              256,
+              1024
+            ],
+            "fit_profile": "standing"
           },
           {
             "base": "carry_gold/back/frame_01_base.png",
             "team_mask": "carry_gold/back/frame_01_teammask.png",
             "phase": "carrying stones and gold ore while walking, rear/far leg forward",
             "duration_ms": 180,
-            "source": "art\\tiles\\workbench\\peasant\\carry_gold\\back\\frame_01\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/back_contact_sheet.png",
             "source_bbox": {
-              "x": 0,
-              "y": 7,
-              "w": 307,
-              "h": 306
+              "x": 58,
+              "y": 39,
+              "w": 128,
+              "h": 177
             },
             "final_bbox": {
-              "x": 15,
-              "y": 11,
-              "w": 18,
-              "h": 24
+              "x": 47,
+              "y": 21,
+              "w": 162,
+              "h": 224
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
               0,
-              -4
+              37
             ],
-            "scale": 0.11074918566775244,
+            "scale": 1.265536723163842,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 77,
             "transparent_key_pixels": 75000,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 20,
+            "source_crop_box": [
+              256,
+              780,
+              506,
+              1024
+            ],
+            "fit_profile": "standing"
           }
         ]
       },
-      "frame_durations_ms": [
-        0,
-        0
-      ],
-      "transition_after_ms": 0
+      "phases": [
+        "carrying stones and gold ore while walking, front/near leg forward",
+        "carrying stones and gold ore while walking, rear/far leg forward"
+      ]
     },
     "carry_berries": {
       "frame_ms": 180,
@@ -1604,13 +1858,7 @@
       "hold_last": false,
       "description": "carry_berries",
       "family": "carry_gait",
-      "target_relation": "self_tile",
-      "range_tiles": 0,
       "fit_profile": "standing",
-      "anchor": [
-        24,
-        39
-      ],
       "directions": {
         "front": [
           {
@@ -1618,66 +1866,82 @@
             "team_mask": "carry_berries/front/frame_00_teammask.png",
             "phase": "carrying berries while walking, front/near leg forward",
             "duration_ms": 180,
-            "source": "art\\tiles\\workbench\\peasant\\carry_berries\\front\\frame_00\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/front_contact_sheet.png",
             "source_bbox": {
-              "x": 7,
+              "x": 3,
               "y": 0,
-              "w": 306,
-              "h": 313
+              "w": 250,
+              "h": 256
             },
             "final_bbox": {
-              "x": 13,
-              "y": 10,
-              "w": 18,
-              "h": 25
+              "x": 70,
+              "y": 27,
+              "w": 141,
+              "h": 159
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
-              -2,
-              -4
+              12,
+              -22
             ],
-            "scale": 0.1111111111111111,
+            "scale": 0.724,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 41,
             "transparent_key_pixels": 74199,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 21,
+            "source_crop_box": [
+              515,
+              768,
+              768,
+              1024
+            ],
+            "fit_profile": "standing"
           },
           {
             "base": "carry_berries/front/frame_01_base.png",
             "team_mask": "carry_berries/front/frame_01_teammask.png",
             "phase": "carrying berries while walking, rear/far leg forward",
             "duration_ms": 180,
-            "source": "art\\tiles\\workbench\\peasant\\carry_berries\\front\\frame_01\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/front_contact_sheet.png",
             "source_bbox": {
-              "x": 3,
+              "x": 0,
               "y": 0,
-              "w": 304,
-              "h": 313
+              "w": 256,
+              "h": 256
             },
             "final_bbox": {
-              "x": 14,
-              "y": 10,
-              "w": 17,
-              "h": 25
+              "x": 52,
+              "y": 27,
+              "w": 165,
+              "h": 160
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
-              -2,
-              -4
+              6,
+              -21
             ],
-            "scale": 0.1118421052631579,
+            "scale": 0.70703125,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 39,
             "transparent_key_pixels": 74215,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 22,
+            "source_crop_box": [
+              768,
+              768,
+              1024,
+              1024
+            ],
+            "fit_profile": "standing"
           }
         ],
         "back": [
@@ -1686,74 +1950,89 @@
             "team_mask": "carry_berries/back/frame_00_teammask.png",
             "phase": "carrying berries while walking, front/near leg forward",
             "duration_ms": 180,
-            "source": "art\\tiles\\workbench\\peasant\\carry_berries\\back\\frame_00\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/back_contact_sheet.png",
             "source_bbox": {
-              "x": 1,
+              "x": 0,
               "y": 0,
-              "w": 308,
-              "h": 313
+              "w": 255,
+              "h": 256
             },
             "final_bbox": {
-              "x": 16,
-              "y": 11,
-              "w": 18,
-              "h": 24
+              "x": 39,
+              "y": 27,
+              "w": 139,
+              "h": 159
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
-              1,
-              -4
+              -20,
+              -22
             ],
-            "scale": 0.11038961038961038,
+            "scale": 0.7098039215686275,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 77,
             "transparent_key_pixels": 74776,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 21,
+            "source_crop_box": [
+              512,
+              768,
+              768,
+              1024
+            ],
+            "fit_profile": "standing"
           },
           {
             "base": "carry_berries/back/frame_01_base.png",
             "team_mask": "carry_berries/back/frame_01_teammask.png",
             "phase": "carrying berries while walking, rear/far leg forward",
             "duration_ms": 180,
-            "source": "art\\tiles\\workbench\\peasant\\carry_berries\\back\\frame_01\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/back_contact_sheet.png",
             "source_bbox": {
               "x": 0,
-              "y": 0,
-              "w": 307,
-              "h": 313
+              "y": 4,
+              "w": 249,
+              "h": 218
             },
             "final_bbox": {
-              "x": 15,
-              "y": 10,
-              "w": 17,
-              "h": 25
+              "x": 43,
+              "y": 51,
+              "w": 129,
+              "h": 157
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
-              0,
-              -4
+              -20,
+              0
             ],
-            "scale": 0.11074918566775244,
+            "scale": 0.7269076305220884,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 76,
             "transparent_key_pixels": 75074,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 22,
+            "source_crop_box": [
+              768,
+              768,
+              1020,
+              1009
+            ],
+            "fit_profile": "standing"
           }
         ]
       },
-      "frame_durations_ms": [
-        0,
-        0
-      ],
-      "transition_after_ms": 0
+      "phases": [
+        "carrying berries while walking, front/near leg forward",
+        "carrying berries while walking, rear/far leg forward"
+      ]
     },
     "carry_wheat": {
       "frame_ms": 180,
@@ -1761,13 +2040,7 @@
       "hold_last": false,
       "description": "carry_wheat",
       "family": "carry_gait",
-      "target_relation": "self_tile",
-      "range_tiles": 0,
       "fit_profile": "standing",
-      "anchor": [
-        24,
-        39
-      ],
       "directions": {
         "front": [
           {
@@ -1775,66 +2048,82 @@
             "team_mask": "carry_wheat/front/frame_00_teammask.png",
             "phase": "carrying wheat while walking, front/near leg forward",
             "duration_ms": 180,
-            "source": "art\\tiles\\workbench\\peasant\\carry_wheat\\front\\frame_00\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/front_contact_sheet.png",
             "source_bbox": {
-              "x": 7,
+              "x": 4,
               "y": 0,
-              "w": 306,
-              "h": 313
+              "w": 249,
+              "h": 256
             },
             "final_bbox": {
-              "x": 13,
-              "y": 10,
-              "w": 18,
-              "h": 25
+              "x": 70,
+              "y": 56,
+              "w": 99,
+              "h": 129
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
-              -2,
-              -4
+              -8,
+              -23
             ],
-            "scale": 0.1111111111111111,
+            "scale": 0.7269076305220884,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 40,
             "transparent_key_pixels": 74134,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 23,
+            "source_crop_box": [
+              1026,
+              768,
+              1280,
+              1024
+            ],
+            "fit_profile": "standing"
           },
           {
             "base": "carry_wheat/front/frame_01_base.png",
             "team_mask": "carry_wheat/front/frame_01_teammask.png",
             "phase": "carrying wheat while walking, rear/far leg forward",
             "duration_ms": 180,
-            "source": "art\\tiles\\workbench\\peasant\\carry_wheat\\front\\frame_01\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/front_contact_sheet.png",
             "source_bbox": {
-              "x": 3,
+              "x": 0,
               "y": 0,
-              "w": 304,
-              "h": 313
+              "w": 256,
+              "h": 256
             },
             "final_bbox": {
-              "x": 14,
-              "y": 11,
-              "w": 18,
-              "h": 24
+              "x": 76,
+              "y": 32,
+              "w": 137,
+              "h": 156
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
-              -1,
-              -4
+              16,
+              -20
             ],
-            "scale": 0.1118421052631579,
+            "scale": 0.70703125,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 46,
             "transparent_key_pixels": 74136,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 24,
+            "source_crop_box": [
+              1280,
+              768,
+              1536,
+              1024
+            ],
+            "fit_profile": "standing"
           }
         ],
         "back": [
@@ -1843,74 +2132,89 @@
             "team_mask": "carry_wheat/back/frame_00_teammask.png",
             "phase": "carrying wheat while walking, front/near leg forward",
             "duration_ms": 180,
-            "source": "art\\tiles\\workbench\\peasant\\carry_wheat\\back\\frame_00\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/back_contact_sheet.png",
             "source_bbox": {
-              "x": 6,
+              "x": 0,
               "y": 0,
-              "w": 303,
-              "h": 313
+              "w": 255,
+              "h": 256
             },
             "final_bbox": {
-              "x": 16,
-              "y": 11,
-              "w": 18,
-              "h": 24
+              "x": 84,
+              "y": 61,
+              "w": 95,
+              "h": 125
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
-              1,
-              -4
+              4,
+              -22
             ],
-            "scale": 0.11221122112211221,
+            "scale": 0.7098039215686275,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 77,
             "transparent_key_pixels": 74447,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 23,
+            "source_crop_box": [
+              1024,
+              768,
+              1280,
+              1024
+            ],
+            "fit_profile": "standing"
           },
           {
             "base": "carry_wheat/back/frame_01_base.png",
             "team_mask": "carry_wheat/back/frame_01_teammask.png",
             "phase": "carrying wheat while walking, rear/far leg forward",
             "duration_ms": 180,
-            "source": "art\\tiles\\workbench\\peasant\\carry_wheat\\back\\frame_01\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/back_contact_sheet.png",
             "source_bbox": {
               "x": 0,
-              "y": 0,
-              "w": 307,
-              "h": 313
+              "y": 5,
+              "w": 249,
+              "h": 224
             },
             "final_bbox": {
-              "x": 15,
-              "y": 11,
-              "w": 17,
-              "h": 24
+              "x": 80,
+              "y": 79,
+              "w": 93,
+              "h": 129
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
-              0,
-              -4
+              -2,
+              0
             ],
-            "scale": 0.11074918566775244,
+            "scale": 0.7269076305220884,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 79,
             "transparent_key_pixels": 74887,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 24,
+            "source_crop_box": [
+              1280,
+              768,
+              1532,
+              1013
+            ],
+            "fit_profile": "standing"
           }
         ]
       },
-      "frame_durations_ms": [
-        0,
-        0
-      ],
-      "transition_after_ms": 0
+      "phases": [
+        "carrying wheat while walking, front/near leg forward",
+        "carrying wheat while walking, rear/far leg forward"
+      ]
     },
     "gather_meat": {
       "frame_ms": 520,
@@ -1918,13 +2222,7 @@
       "hold_last": false,
       "description": "gather_meat",
       "family": "gather",
-      "target_relation": "adjacent_target_tile_or_entity",
-      "range_tiles": 0,
       "fit_profile": "kneeling",
-      "anchor": [
-        24,
-        40
-      ],
       "directions": {
         "front": [
           {
@@ -1932,66 +2230,82 @@
             "team_mask": "gather_meat/front/frame_00_teammask.png",
             "phase": "holding a knife while actively cutting or reaching toward meat",
             "duration_ms": 520,
-            "source": "art\\tiles\\workbench\\peasant\\gather_meat\\front\\frame_00\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/front_contact_sheet.png",
             "source_bbox": {
-              "x": 7,
+              "x": 3,
               "y": 0,
-              "w": 306,
-              "h": 308
+              "w": 250,
+              "h": 252
             },
             "final_bbox": {
-              "x": 12,
-              "y": 13,
-              "w": 22,
-              "h": 21
+              "x": 64,
+              "y": 68,
+              "w": 115,
+              "h": 109
             },
             "anchor": [
-              24,
-              40
+              128,
+              213
             ],
             "anchor_offset": [
-              -1,
-              -6
+              -6,
+              -36
             ],
-            "scale": 0.11363636363636363,
+            "scale": 0.7380952380952381,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 35,
             "transparent_key_pixels": 74673,
-            "edge_fringe_key_pixels": 3
+            "edge_fringe_key_pixels": 3,
+            "source_slot": 25,
+            "source_crop_box": [
+              3,
+              1024,
+              256,
+              1278
+            ],
+            "fit_profile": "kneeling"
           },
           {
             "base": "gather_meat/front/frame_01_base.png",
             "team_mask": "gather_meat/front/frame_01_teammask.png",
             "phase": "still holding the knife while taking meat with the free hand",
             "duration_ms": 520,
-            "source": "art\\tiles\\workbench\\peasant\\gather_meat\\front\\frame_01\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/front_contact_sheet.png",
             "source_bbox": {
-              "x": 3,
+              "x": 1,
               "y": 0,
-              "w": 304,
-              "h": 308
+              "w": 254,
+              "h": 252
             },
             "final_bbox": {
-              "x": 12,
-              "y": 13,
-              "w": 22,
-              "h": 21
+              "x": 62,
+              "y": 69,
+              "w": 157,
+              "h": 110
             },
             "anchor": [
-              24,
-              40
+              128,
+              213
             ],
             "anchor_offset": [
-              -1,
-              -6
+              12,
+              -34
             ],
-            "scale": 0.11363636363636363,
+            "scale": 0.7380952380952381,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 42,
             "transparent_key_pixels": 73975,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 26,
+            "source_crop_box": [
+              257,
+              1024,
+              512,
+              1278
+            ],
+            "fit_profile": "kneeling"
           }
         ],
         "back": [
@@ -2000,74 +2314,89 @@
             "team_mask": "gather_meat/back/frame_00_teammask.png",
             "phase": "holding a knife while actively cutting or reaching toward meat",
             "duration_ms": 520,
-            "source": "art\\tiles\\workbench\\peasant\\gather_meat\\back\\frame_00\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/back_contact_sheet.png",
             "source_bbox": {
-              "x": 6,
+              "x": 0,
               "y": 0,
-              "w": 304,
-              "h": 308
+              "w": 255,
+              "h": 252
             },
             "final_bbox": {
-              "x": 14,
-              "y": 13,
-              "w": 20,
-              "h": 22
+              "x": 36,
+              "y": 34,
+              "w": 144,
+              "h": 151
             },
             "anchor": [
-              24,
-              40
+              128,
+              213
             ],
             "anchor_offset": [
-              0,
-              -5
+              -20,
+              -28
             ],
-            "scale": 0.11363636363636363,
+            "scale": 0.7380952380952381,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 76,
             "transparent_key_pixels": 74900,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 25,
+            "source_crop_box": [
+              0,
+              1024,
+              256,
+              1278
+            ],
+            "fit_profile": "kneeling"
           },
           {
             "base": "gather_meat/back/frame_01_base.png",
             "team_mask": "gather_meat/back/frame_01_teammask.png",
             "phase": "still holding the knife while taking meat with the free hand",
             "duration_ms": 520,
-            "source": "art\\tiles\\workbench\\peasant\\gather_meat\\back\\frame_01\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/back_contact_sheet.png",
             "source_bbox": {
               "x": 0,
-              "y": 0,
-              "w": 307,
-              "h": 308
+              "y": 4,
+              "w": 249,
+              "h": 248
             },
             "final_bbox": {
-              "x": 13,
-              "y": 13,
-              "w": 20,
-              "h": 22
+              "x": 65,
+              "y": 27,
+              "w": 155,
+              "h": 157
             },
             "anchor": [
-              24,
-              40
+              128,
+              213
             ],
             "anchor_offset": [
-              -1,
-              -5
+              14,
+              -29
             ],
-            "scale": 0.11363636363636363,
+            "scale": 0.75,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 78,
             "transparent_key_pixels": 73159,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 26,
+            "source_crop_box": [
+              256,
+              1025,
+              508,
+              1280
+            ],
+            "fit_profile": "kneeling"
           }
         ]
       },
-      "frame_durations_ms": [
-        0,
-        0
-      ],
-      "transition_after_ms": 0
+      "phases": [
+        "holding a knife while actively cutting or reaching toward meat",
+        "still holding the knife while taking meat with the free hand"
+      ]
     },
     "carry_meat": {
       "frame_ms": 180,
@@ -2075,13 +2404,7 @@
       "hold_last": false,
       "description": "carry_meat",
       "family": "carry_gait",
-      "target_relation": "self_tile",
-      "range_tiles": 0,
       "fit_profile": "standing",
-      "anchor": [
-        24,
-        39
-      ],
       "directions": {
         "front": [
           {
@@ -2089,66 +2412,82 @@
             "team_mask": "carry_meat/front/frame_00_teammask.png",
             "phase": "carrying meat while walking, front/near leg forward",
             "duration_ms": 180,
-            "source": "art\\tiles\\workbench\\peasant\\carry_meat\\front\\frame_00\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/front_contact_sheet.png",
             "source_bbox": {
-              "x": 7,
-              "y": 7,
-              "w": 306,
-              "h": 306
+              "x": 2,
+              "y": 4,
+              "w": 251,
+              "h": 249
             },
             "final_bbox": {
-              "x": 14,
-              "y": 12,
-              "w": 18,
-              "h": 23
+              "x": 75,
+              "y": 64,
+              "w": 96,
+              "h": 122
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
-              -1,
-              -4
+              -5,
+              -22
             ],
-            "scale": 0.1111111111111111,
+            "scale": 0.7211155378486056,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 42,
             "transparent_key_pixels": 75718,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 27,
+            "source_crop_box": [
+              514,
+              1026,
+              768,
+              1280
+            ],
+            "fit_profile": "standing"
           },
           {
             "base": "carry_meat/front/frame_01_base.png",
             "team_mask": "carry_meat/front/frame_01_teammask.png",
             "phase": "carrying meat while walking, rear/far leg forward",
             "duration_ms": 180,
-            "source": "art\\tiles\\workbench\\peasant\\carry_meat\\front\\frame_01\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/front_contact_sheet.png",
             "source_bbox": {
-              "x": 3,
-              "y": 7,
-              "w": 306,
-              "h": 306
+              "x": 0,
+              "y": 4,
+              "w": 256,
+              "h": 249
             },
             "final_bbox": {
-              "x": 14,
-              "y": 12,
-              "w": 18,
-              "h": 23
+              "x": 75,
+              "y": 68,
+              "w": 143,
+              "h": 119
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
-              -1,
-              -4
+              18,
+              -21
             ],
-            "scale": 0.1111111111111111,
+            "scale": 0.70703125,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 42,
             "transparent_key_pixels": 76025,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 28,
+            "source_crop_box": [
+              768,
+              1026,
+              1024,
+              1280
+            ],
+            "fit_profile": "standing"
           }
         ],
         "back": [
@@ -2157,74 +2496,89 @@
             "team_mask": "carry_meat/back/frame_00_teammask.png",
             "phase": "carrying meat while walking, front/near leg forward",
             "duration_ms": 180,
-            "source": "art\\tiles\\workbench\\peasant\\carry_meat\\back\\frame_00\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/back_contact_sheet.png",
             "source_bbox": {
-              "x": 5,
-              "y": 7,
-              "w": 305,
-              "h": 306
+              "x": 0,
+              "y": 4,
+              "w": 256,
+              "h": 249
             },
             "final_bbox": {
-              "x": 15,
-              "y": 12,
-              "w": 18,
-              "h": 23
+              "x": 39,
+              "y": 68,
+              "w": 133,
+              "h": 120
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
-              0,
-              -4
+              -22,
+              -20
             ],
-            "scale": 0.11147540983606558,
+            "scale": 0.70703125,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 73,
             "transparent_key_pixels": 76286,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 27,
+            "source_crop_box": [
+              512,
+              1026,
+              768,
+              1280
+            ],
+            "fit_profile": "standing"
           },
           {
             "base": "carry_meat/back/frame_01_base.png",
             "team_mask": "carry_meat/back/frame_01_teammask.png",
             "phase": "carrying meat while walking, rear/far leg forward",
             "duration_ms": 180,
-            "source": "art\\tiles\\workbench\\peasant\\carry_meat\\back\\frame_01\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/back_contact_sheet.png",
             "source_bbox": {
-              "x": 2,
-              "y": 7,
-              "w": 306,
-              "h": 306
+              "x": 1,
+              "y": 4,
+              "w": 251,
+              "h": 248
             },
             "final_bbox": {
-              "x": 15,
-              "y": 12,
-              "w": 17,
-              "h": 23
+              "x": 80,
+              "y": 44,
+              "w": 139,
+              "h": 144
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
-              0,
-              -4
+              22,
+              -20
             ],
-            "scale": 0.1111111111111111,
+            "scale": 0.7211155378486056,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 75,
             "transparent_key_pixels": 76523,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 28,
+            "source_crop_box": [
+              768,
+              1027,
+              1022,
+              1280
+            ],
+            "fit_profile": "standing"
           }
         ]
       },
-      "frame_durations_ms": [
-        0,
-        0
-      ],
-      "transition_after_ms": 0
+      "phases": [
+        "carrying meat while walking, front/near leg forward",
+        "carrying meat while walking, rear/far leg forward"
+      ]
     },
     "club_attack": {
       "frame_ms": 260,
@@ -2232,13 +2586,7 @@
       "hold_last": false,
       "description": "club_attack",
       "family": "swing",
-      "target_relation": "adjacent_target_tile_or_entity",
-      "range_tiles": 0,
       "fit_profile": "wide_tool",
-      "anchor": [
-        24,
-        39
-      ],
       "directions": {
         "front": [
           {
@@ -2246,66 +2594,82 @@
             "team_mask": "club_attack/front/frame_00_teammask.png",
             "phase": "club at the top of the attack swing, held overhead but still inside the tile",
             "duration_ms": 260,
-            "source": "art\\tiles\\workbench\\peasant\\club_attack\\front\\frame_00\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/front_contact_sheet.png",
             "source_bbox": {
-              "x": 7,
-              "y": 5,
-              "w": 306,
-              "h": 306
+              "x": 4,
+              "y": 0,
+              "w": 249,
+              "h": 256
             },
             "final_bbox": {
-              "x": 13,
-              "y": 2,
-              "w": 18,
-              "h": 37
+              "x": 19,
+              "y": 10,
+              "w": 218,
+              "h": 224
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
-              -2,
-              0
+              0,
+              26
             ],
-            "scale": 0.13725490196078433,
+            "scale": 0.875,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 59,
             "transparent_key_pixels": 77130,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 29,
+            "source_crop_box": [
+              1026,
+              1024,
+              1280,
+              1280
+            ],
+            "fit_profile": "wide_tool"
           },
           {
             "base": "club_attack/front/frame_01_base.png",
             "team_mask": "club_attack/front/frame_01_teammask.png",
             "phase": "club at the bottom/contact part of the attack swing, still fully inside the tile",
             "duration_ms": 260,
-            "source": "art\\tiles\\workbench\\peasant\\club_attack\\front\\frame_01\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/front_contact_sheet.png",
             "source_bbox": {
-              "x": 3,
-              "y": 5,
-              "w": 306,
-              "h": 306
+              "x": 1,
+              "y": 0,
+              "w": 255,
+              "h": 256
             },
             "final_bbox": {
-              "x": 11,
-              "y": 13,
-              "w": 26,
-              "h": 26
+              "x": 19,
+              "y": 10,
+              "w": 221,
+              "h": 216
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
-              0,
-              0
+              2,
+              18
             ],
-            "scale": 0.13725490196078433,
+            "scale": 0.875,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 51,
             "transparent_key_pixels": 76926,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 30,
+            "source_crop_box": [
+              1280,
+              1024,
+              1536,
+              1280
+            ],
+            "fit_profile": "wide_tool"
           }
         ],
         "back": [
@@ -2314,74 +2678,89 @@
             "team_mask": "club_attack/back/frame_00_teammask.png",
             "phase": "club at the top of the attack swing, held overhead but still inside the tile",
             "duration_ms": 260,
-            "source": "art\\tiles\\workbench\\peasant\\club_attack\\back\\frame_00\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/back_contact_sheet.png",
             "source_bbox": {
-              "x": 5,
-              "y": 5,
-              "w": 305,
-              "h": 306
+              "x": 0,
+              "y": 0,
+              "w": 254,
+              "h": 256
             },
             "final_bbox": {
-              "x": 14,
-              "y": 5,
-              "w": 17,
-              "h": 34
+              "x": 17,
+              "y": 10,
+              "w": 222,
+              "h": 224
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
-              -2,
-              0
+              0,
+              26
             ],
-            "scale": 0.13725490196078433,
+            "scale": 0.875,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 104,
             "transparent_key_pixels": 76916,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 29,
+            "source_crop_box": [
+              1024,
+              1024,
+              1279,
+              1280
+            ],
+            "fit_profile": "wide_tool"
           },
           {
             "base": "club_attack/back/frame_01_base.png",
             "team_mask": "club_attack/back/frame_01_teammask.png",
             "phase": "club at the bottom/contact part of the attack swing, still fully inside the tile",
             "duration_ms": 260,
-            "source": "art\\tiles\\workbench\\peasant\\club_attack\\back\\frame_01\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/back_contact_sheet.png",
             "source_bbox": {
-              "x": 2,
-              "y": 5,
-              "w": 306,
-              "h": 306
+              "x": 1,
+              "y": 0,
+              "w": 251,
+              "h": 256
             },
             "final_bbox": {
-              "x": 12,
-              "y": 13,
-              "w": 26,
-              "h": 26
+              "x": 18,
+              "y": 11,
+              "w": 220,
+              "h": 222
             },
             "anchor": [
-              24,
-              39
+              128,
+              208
             ],
             "anchor_offset": [
-              1,
-              0
+              0,
+              25
             ],
-            "scale": 0.13725490196078433,
+            "scale": 0.875,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 97,
             "transparent_key_pixels": 77877,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 30,
+            "source_crop_box": [
+              1280,
+              1024,
+              1534,
+              1280
+            ],
+            "fit_profile": "wide_tool"
           }
         ]
       },
-      "frame_durations_ms": [
-        0,
-        0
-      ],
-      "transition_after_ms": 0
+      "phases": [
+        "club at the top of the attack swing, held overhead but still inside the tile",
+        "club at the bottom/contact part of the attack swing, still fully inside the tile"
+      ]
     },
     "death": {
       "frame_ms": 30000,
@@ -2389,13 +2768,7 @@
       "hold_last": true,
       "description": "death",
       "family": "one_shot",
-      "target_relation": "self_tile",
-      "range_tiles": 0,
       "fit_profile": "lying",
-      "anchor": [
-        24,
-        42
-      ],
       "directions": {
         "front": [
           {
@@ -2403,66 +2776,82 @@
             "team_mask": "death/front/frame_00_teammask.png",
             "phase": "dead villager body lying on the ground, not a skeleton",
             "duration_ms": 30000,
-            "source": "art\\tiles\\workbench\\peasant\\death\\front\\frame_00\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/front_contact_sheet.png",
             "source_bbox": {
-              "x": 7,
-              "y": 4,
-              "w": 306,
-              "h": 305
+              "x": 5,
+              "y": 0,
+              "w": 248,
+              "h": 256
             },
             "final_bbox": {
-              "x": 15,
-              "y": 29,
-              "w": 19,
-              "h": 10
+              "x": 78,
+              "y": 156,
+              "w": 98,
+              "h": 48
             },
             "anchor": [
-              24,
-              42
+              128,
+              224
             ],
             "anchor_offset": [
-              0,
-              -3
+              -1,
+              -20
             ],
-            "scale": 0.08196721311475409,
+            "scale": 0.51953125,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 25,
             "transparent_key_pixels": 79820,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 31,
+            "source_crop_box": [
+              2,
+              1280,
+              256,
+              1536
+            ],
+            "fit_profile": "lying"
           },
           {
             "base": "death/front/frame_01_base.png",
             "team_mask": "death/front/frame_01_teammask.png",
             "phase": "skeleton remains of the same villager in the same ground area, with small clothing scraps",
             "duration_ms": 30000,
-            "source": "art\\tiles\\workbench\\peasant\\death\\front\\frame_01\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/front_contact_sheet.png",
             "source_bbox": {
-              "x": 3,
-              "y": 4,
-              "w": 306,
-              "h": 305
+              "x": 0,
+              "y": 0,
+              "w": 256,
+              "h": 256
             },
             "final_bbox": {
-              "x": 14,
-              "y": 29,
-              "w": 20,
-              "h": 10
+              "x": 73,
+              "y": 156,
+              "w": 102,
+              "h": 67
             },
             "anchor": [
-              24,
-              42
+              128,
+              224
             ],
             "anchor_offset": [
-              0,
-              -3
+              -4,
+              -1
             ],
-            "scale": 0.08196721311475409,
+            "scale": 0.51953125,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 8,
             "transparent_key_pixels": 81239,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 32,
+            "source_crop_box": [
+              256,
+              1280,
+              512,
+              1536
+            ],
+            "fit_profile": "lying"
           }
         ],
         "back": [
@@ -2471,77 +2860,113 @@
             "team_mask": "death/back/frame_00_teammask.png",
             "phase": "dead villager body lying on the ground, not a skeleton",
             "duration_ms": 30000,
-            "source": "art\\tiles\\workbench\\peasant\\death\\back\\frame_00\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/back_contact_sheet.png",
             "source_bbox": {
-              "x": 5,
-              "y": 4,
-              "w": 305,
-              "h": 305
+              "x": 0,
+              "y": 0,
+              "w": 254,
+              "h": 256
             },
             "final_bbox": {
-              "x": 15,
-              "y": 29,
-              "w": 19,
-              "h": 9
+              "x": 82,
+              "y": 159,
+              "w": 94,
+              "h": 43
             },
             "anchor": [
-              24,
-              42
+              128,
+              224
             ],
             "anchor_offset": [
-              0,
-              -4
+              1,
+              -22
             ],
-            "scale": 0.08196721311475409,
+            "scale": 0.51953125,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 38,
             "transparent_key_pixels": 81007,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 31,
+            "source_crop_box": [
+              0,
+              1280,
+              256,
+              1536
+            ],
+            "fit_profile": "lying"
           },
           {
             "base": "death/back/frame_01_base.png",
             "team_mask": "death/back/frame_01_teammask.png",
             "phase": "skeleton remains of the same villager in the same ground area, with small clothing scraps",
             "duration_ms": 30000,
-            "source": "art\\tiles\\workbench\\peasant\\death\\back\\frame_01\\source.png",
+            "source": "art/tiles/candidates/units/peasant/sheets/back_contact_sheet.png",
             "source_bbox": {
-              "x": 2,
-              "y": 4,
-              "w": 306,
-              "h": 305
+              "x": 1,
+              "y": 0,
+              "w": 251,
+              "h": 256
             },
             "final_bbox": {
-              "x": 14,
-              "y": 29,
-              "w": 19,
-              "h": 10
+              "x": 76,
+              "y": 158,
+              "w": 97,
+              "h": 46
             },
             "anchor": [
-              24,
-              42
+              128,
+              224
             ],
             "anchor_offset": [
-              0,
-              -3
+              -4,
+              -20
             ],
-            "scale": 0.08196721311475409,
+            "scale": 0.51953125,
             "manual_review": "pending",
             "residual_key_pixels": 0,
             "team_mask_pixels": 8,
             "transparent_key_pixels": 81910,
-            "edge_fringe_key_pixels": 0
+            "edge_fringe_key_pixels": 0,
+            "source_slot": 32,
+            "source_crop_box": [
+              256,
+              1280,
+              510,
+              1536
+            ],
+            "fit_profile": "lying"
           }
         ]
       },
-      "frame_durations_ms": [
-        0,
-        0
-      ],
-      "transition_after_ms": 0
+      "phases": [
+        "dead villager body lying on the ground, not a skeleton",
+        "skeleton remains of the same villager in the same ground area, with small clothing scraps"
+      ]
     }
   },
   "assumptions": [],
-  "source_workflow": "single-frame",
-  "animation_spec_source": "image-json:C:\\Users\\Edward\\Code\\oscar\\realm\\art\\tiles\\image-json\\units\\peasant.json"
+  "source_workflow": "contact-sheet-resolution-replay",
+  "animation_spec_source": "image-json:C:\\Users\\Edward\\Code\\oscar\\realm\\art\\tiles\\image-json\\units\\peasant.json",
+  "source_canvas": {
+    "profile": "sprite_overlay_source",
+    "width_px": 256,
+    "height_px": 256,
+    "target_kind": "pre_crop_generation_slot",
+    "min_longest_side_px": 128,
+    "unit": "px",
+    "source": "realm range-based source-quality contract",
+    "range": {
+      "minimum_longest_side_px_after_crop": 128,
+      "pre_crop_target_px": 256,
+      "maximum_px": null
+    },
+    "visual_envelope": {
+      "w": 1,
+      "h": 1
+    },
+    "pre_crop_target_px_per_visual_tile": 256,
+    "runtime_min_longest_side_px_per_visual_tile": 128,
+    "scope": "per generated actor sheet cell or standalone pre-crop source"
+  }
 }

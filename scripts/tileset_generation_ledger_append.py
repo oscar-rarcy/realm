@@ -34,6 +34,7 @@ def main() -> int:
     parser.add_argument("--id", default=None)
     parser.add_argument("--asset-id", action="append", default=[])
     parser.add_argument("--canonical-prompt-export", required=True)
+    parser.add_argument("--canonical-json-spec")
     parser.add_argument("--reference-image", action="append", default=[])
     parser.add_argument("--premade-grid-path")
     parser.add_argument("--seed-asset-path")
@@ -51,6 +52,8 @@ def main() -> int:
         "asset_ids": args.asset_id,
         "canonical_prompt_export": args.canonical_prompt_export,
         "prompt_sha256": sha256_or_none(args.canonical_prompt_export),
+        "canonical_json_spec": args.canonical_json_spec,
+        "json_spec_sha256": sha256_or_none(args.canonical_json_spec),
         "reference_images": args.reference_image,
         "reference_image_sha256": hashes(args.reference_image),
         "premade_grid_path": args.premade_grid_path,

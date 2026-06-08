@@ -1,4 +1,5 @@
 #include "render/sdl/sdl_terminal.h"
+#include "render/sdl/sdl_hud.h"
 #include "realm.h"
 #include "view_state.h"
 
@@ -99,6 +100,9 @@ SDL_Rect mapRect() {
     if (s.viewportOnly) {
         return SDL_Rect{0, 0, std::max(1, s.winW), std::max(1, s.winH)};
     }
+    if (tilesetHudEnabled()) {
+        return SDL_Rect{0, 0, std::max(1, s.winW), std::max(1, s.winH)};
+    }
     if (isMobileGui()) {
         int hud = mobileHudExtent();
         if (mobilePortrait()) {
@@ -125,6 +129,9 @@ SDL_Rect mapSafeRect() {
 }
 
 SDL_Rect panelRect() {
+    if (tilesetHudEnabled()) {
+        return tilesetHudOverlayRect();
+    }
     if (isMobileGui()) {
         int hud = mobileHudExtent();
         if (mobilePortrait()) return SDL_Rect{0, std::max(1, s.winH - hud), s.winW, hud};
@@ -135,6 +142,7 @@ SDL_Rect panelRect() {
 
 SDL_Rect miniMapRect() {
     if (s.viewportOnly) return SDL_Rect{0, 0, 0, 0};
+    if (tilesetHudEnabled()) return tilesetHudMiniMapRect();
     SDL_Rect pr = panelRect();
     if (isMobileGui()) {
         int pad = mobileSafePad();
@@ -150,8 +158,75 @@ SDL_Rect miniMapRect() {
     return SDL_Rect{pr.x + 14, 12, std::max(1, pr.w - 28), 110};
 }
 
+SDL_Rect miniMapContentRect(SDL_Rect r) {
+    if (r.w <= 0 || r.h <= 0) return SDL_Rect{r.x, r.y, 0, 0};
+    if (tilesetHudEnabled()) {
+        int padX = std::min(8, std::max(0, r.w / 3));
+        int padY = std::min(7, std::max(0, r.h / 3));
+        return SDL_Rect{r.x + padX, r.y + padY,
+                        std::max(1, r.w - padX * 2),
+                        std::max(1, r.h - padY * 2)};
+    }
+    return r;
+}
+
 int isoHalfW() { return std::max(8, s.tile); }
 int isoHalfH() { return std::max(5, s.tile / 2); }
+
+bool miniMapUsesIsometricProjection() {
+    return s.isometric && displayMode == DM_EMOJI;
+}
+
+struct MiniMapProjection {
+    double hw = 1.0;
+    double hh = 1.0;
+    double scale = 1.0;
+    double originX = 0.0;
+    double originY = 0.0;
+};
+
+static MiniMapProjection miniMapProjectionForArea(SDL_Rect area) {
+    MiniMapProjection projection;
+    projection.hw = (double)isoHalfW();
+    projection.hh = (double)isoHalfH();
+    const double corners[4][2] = {
+        {0.0, 0.0},
+        {(double)(MAP_W - 1), 0.0},
+        {0.0, (double)(MAP_H - 1)},
+        {(double)(MAP_W - 1), (double)(MAP_H - 1)},
+    };
+    double minX = 1e12, minY = 1e12, maxX = -1e12, maxY = -1e12;
+    for (const auto& corner : corners) {
+        double sx = (corner[0] - corner[1]) * projection.hw;
+        double sy = (corner[0] + corner[1]) * projection.hh;
+        minX = std::min(minX, sx); maxX = std::max(maxX, sx);
+        minY = std::min(minY, sy); maxY = std::max(maxY, sy);
+    }
+
+    double spanX = std::max(1.0, maxX - minX);
+    double spanY = std::max(1.0, maxY - minY);
+    projection.scale = std::min((area.w - 1) / spanX, (area.h - 1) / spanY);
+    if (!std::isfinite(projection.scale) || projection.scale <= 0.0) projection.scale = 1.0;
+    projection.originX = area.x + (area.w - spanX * projection.scale) * 0.5 - minX * projection.scale;
+    projection.originY = area.y + (area.h - spanY * projection.scale) * 0.5 - minY * projection.scale;
+    return projection;
+}
+
+bool miniMapWorldToScreen(double mx, double my, SDL_Rect area, int& px, int& py) {
+    if (area.w <= 0 || area.h <= 0) return false;
+    if (!miniMapUsesIsometricProjection()) {
+        px = area.x + (int)std::floor(mx * (double)area.w / (double)MAP_W);
+        py = area.y + (int)std::floor(my * (double)area.h / (double)MAP_H);
+        px = std::max(area.x, std::min(px, area.x + area.w - 1));
+        py = std::max(area.y, std::min(py, area.y + area.h - 1));
+        return true;
+    }
+
+    MiniMapProjection projection = miniMapProjectionForArea(area);
+    px = (int)std::lround(projection.originX + (mx - my) * projection.hw * projection.scale);
+    py = (int)std::lround(projection.originY + (mx + my) * projection.hh * projection.scale);
+    return px >= area.x && py >= area.y && px < area.x + area.w && py < area.y + area.h;
+}
 
 float isoCameraViewX() {
     return (s.isometric && displayMode == DM_EMOJI && s.isoCameraActive) ? s.isoViewX : (float)view.viewX;
@@ -518,7 +593,7 @@ void centerViewOnTile(int mx, int my) {
     mx = std::max(0, std::min(mx, MAP_W - 1));
     my = std::max(0, std::min(my, MAP_H - 1));
 
-    if (displayMode == DM_ASCII && !isAsciiMobileGui()) {
+    if (displayMode == DM_ASCII && !isAsciiMobileGui() && !s.viewportOnly) {
         TerminalFrame frame = makeBlankTerminalFrame();
         updateTerminalCamera(frame.cols, frame.rows, false);
         view.viewX = mx - view.viewW / 2;
@@ -543,7 +618,7 @@ void centerViewOnTile(int mx, int my) {
 
 bool screenToMiniMapTile(int px, int py, int& mx, int& my, bool clampToMiniMap) {
     if (s.viewportOnly) return false;
-    if (displayMode == DM_ASCII && !isAsciiMobileGui()) {
+    if (displayMode == DM_ASCII && !isAsciiMobileGui() && !s.viewportOnly) {
         SDL_GetWindowSize(s.win, &s.winW, &s.winH);
         TerminalFrame frame = makeBlankTerminalFrame();
         updateTerminalCamera(frame.cols, frame.rows, !s.middleDown);
@@ -568,16 +643,28 @@ bool screenToMiniMapTile(int px, int py, int& mx, int& my, bool clampToMiniMap) 
         return true;
     }
 
-    SDL_Rect r = miniMapRect();
+    SDL_Rect outer = miniMapRect();
+    SDL_Rect r = miniMapContentRect(outer);
     if (clampToMiniMap) {
         px = std::max(r.x, std::min(px, r.x + r.w - 1));
         py = std::max(r.y, std::min(py, r.y + r.h - 1));
-    } else if (px < r.x || py < r.y || px >= r.x + r.w || py >= r.y + r.h) {
+    } else if (px < outer.x || py < outer.y || px >= outer.x + outer.w || py >= outer.y + outer.h) {
         return false;
     }
 
     int lx = std::max(0, std::min(px - r.x, r.w - 1));
     int ly = std::max(0, std::min(py - r.y, r.h - 1));
+    if (miniMapUsesIsometricProjection()) {
+        MiniMapProjection projection = miniMapProjectionForArea(r);
+        double fx = (px - projection.originX) / (projection.hw * projection.scale);
+        double fy = (py - projection.originY) / (projection.hh * projection.scale);
+        mx = (int)std::lround((fy + fx) * 0.5);
+        my = (int)std::lround((fy - fx) * 0.5);
+        mx = std::max(0, std::min(mx, MAP_W - 1));
+        my = std::max(0, std::min(my, MAP_H - 1));
+        return true;
+    }
+
     mx = std::max(0, std::min(lx * MAP_W / std::max(1, r.w), MAP_W - 1));
     my = std::max(0, std::min(ly * MAP_H / std::max(1, r.h), MAP_H - 1));
     return true;
@@ -703,12 +790,12 @@ void updateMiddlePan(int px, int py) {
         view.viewX = s.panStartViewX - (int)std::lround(dx / (float)std::max(1, s.tile));
         view.viewY = s.panStartViewY - (int)std::lround(dy / (float)std::max(1, s.tile));
     }
-    if (displayMode == DM_ASCII && !isAsciiMobileGui()) clampTerminalView();
+    if (displayMode == DM_ASCII && !isAsciiMobileGui() && !s.viewportOnly) clampTerminalView();
     else clampView();
 }
 
 void moveCursorToViewCenter() {
-    if (displayMode == DM_ASCII && !isAsciiMobileGui()) {
+    if (displayMode == DM_ASCII && !isAsciiMobileGui() && !s.viewportOnly) {
         TerminalFrame frame = makeBlankTerminalFrame();
         updateTerminalCamera(frame.cols, frame.rows, false);
         view.cursorX = view.viewX + view.viewW / 2;

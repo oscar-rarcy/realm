@@ -63,8 +63,10 @@ Generate one Realm sprite reference sheet per direction for **Boar**.
 
 ## Output Resolution
 
-- Final accepted standalone source canvas: 512 by 512 px.
-- Use this resolution from the generated JSON spec for every accepted standalone sprite frame; contact-sheet slots may be larger, but each slot must be cleanly crop/downscale-safe to 512 by 512 px.
+- Generation slot target before crop: about 256 by 256 px per accepted sprite frame.
+- Contact sheets may be larger than this overall; divide the sheet by its grid to judge the approximate slot size.
+- Slightly larger slots are fine. Do not downscale accepted art into tiny draw-size runtime proxies during promotion.
+- Cropped runtime source floor: longest side at least 128 px after crop.
 
 ## Image Output Contract
 
@@ -79,25 +81,33 @@ Generate one Realm sprite reference sheet per direction for **Boar**.
 ## Entity-Specific Art Notes
 
 - Keep species silhouette readable in living, attacking, fleeing, and runtime death frames.
-- The runtime death action has two frames: frame 00 is the freshly dead animal body, and frame 01 is the same animal's clean depleted skeleton remains.
+- The runtime death action has four frames: frame 00 is the freshly dead animal body, frame 01 is partly harvested, frame 02 is mostly harvested, and frame 03 is the same animal's clean depleted skeleton remains.
 - Carcass and skeleton frames should lie naturally on the ground and stay inside the cell; avoid gore-heavy imagery.
 
 ## States To Generate
 
-Generate **one frame for each state**. There are 5 state(s). Each image may contain at most **16 states** in a **4 by 4** grid.
+Generate **one sprite frame for each listed slot**. There are 12 frame slot(s). Each image may contain at most **16 frame slots** in a **4 by 4** grid.
 
-Animal runtime death uses two frames: freshly dead readable carcass, then the same animal's clean depleted skeleton remains.
-Do not generate separate partly harvested or mostly harvested runtime actions unless the C++ animation contract adds them.
+Animal runtime death uses four frames: freshly dead readable carcass, partly harvested carcass, mostly harvested carcass, then the same animal's clean depleted skeleton remains.
+Do not generate separate `dead`, `partly_harvested`, `mostly_harvested`, or `decayed_skeleton` runtime actions; these are frames of the single `death` action.
 
 ### Sheet
 
-Use a **3 by 2** grid for this sheet.
+Use a **4 by 3** grid for this sheet.
+Slot target for this sheet: about **256 by 256 px** per cell before crop.
 
-- row 1, column 1: `idle` - idle
-- row 1, column 2: `walk` - walk
-- row 1, column 3: `charge` - charge
-- row 2, column 1: `attack` - attack
-- row 2, column 2: `death` - runtime two-frame animal death sequence: freshly dead readable carcass followed by the same animal's clean depleted skeleton remains
+- row 1, column 1: `idle` frame 00 - idle
+- row 1, column 2: `idle` frame 01 - idle
+- row 1, column 3: `walk` frame 00 - walk
+- row 1, column 4: `walk` frame 01 - walk
+- row 2, column 1: `charge` frame 00 - charge
+- row 2, column 2: `charge` frame 01 - charge
+- row 2, column 3: `attack` frame 00 - attack
+- row 2, column 4: `attack` frame 01 - attack
+- row 3, column 1: `death` frame 00 - freshly dead readable carcass
+- row 3, column 2: `death` frame 01 - partly harvested carcass
+- row 3, column 3: `death` frame 02 - mostly harvested carcass
+- row 3, column 4: `death` frame 03 - clean depleted skeleton remains
 
 ## Production Follow-Up
 
@@ -110,12 +120,19 @@ Use a **3 by 2** grid for this sheet.
 
 ## Prompt
 
-Generate sprites for my Realm Boar. The footprint is 1 by 1 tile(s). Valid directions are front, back. Produce one sheet at a time for the requested direction, using the same state grid for each direction. Create one frame for each of the 5 listed states. Order states left to right and top to bottom within each sheet. Keep the subject consistent across every slot. Final accepted standalone frames use the generated spec resolution: 512 by 512 px. Use a flat pure #ff00ff magenta sheet background and clear gutters between cells. Use clean readable tiny paper-cutout sprite proportions, stable anchor, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork. If animal reference images are supplied, use them only for species identity, pose, facing direction, silhouette, and major colour cues, then redraw into stylized Realm sprite art; do not copy their source style or pixels.
+Generate sprites for my Realm Boar. The footprint is 1 by 1 tile(s). Valid directions are front, back. Produce one sheet at a time for the requested direction, using the same state grid for each direction. Create one sprite frame for each of the 12 listed frame slots. Order slots left to right and top to bottom within each sheet. Keep the subject consistent across every slot. Aim for about 256 by 256 px per sheet slot before crop; larger slots are fine if the sheet grid is clean. Keep the accepted runtime crop's longest side at least 128 px. Use a flat pure #ff00ff magenta sheet background and clear gutters between cells. Use clean readable tiny paper-cutout sprite proportions, stable anchor, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork. If animal reference images are supplied, use them only for species identity, pose, facing direction, silhouette, and major colour cues, then redraw into stylized Realm sprite art; do not copy their source style or pixels.
 
 Slot order:
-- Grid: 3 by 2
-  - row 1, column 1: idle
-  - row 1, column 2: walk
-  - row 1, column 3: charge
-  - row 2, column 1: attack
-  - row 2, column 2: runtime two-frame animal death sequence: freshly dead readable carcass followed by the same animal's clean depleted skeleton remains
+- Grid: 4 by 3
+  - row 1, column 1: `idle` frame 00 - idle
+  - row 1, column 2: `idle` frame 01 - idle
+  - row 1, column 3: `walk` frame 00 - walk
+  - row 1, column 4: `walk` frame 01 - walk
+  - row 2, column 1: `charge` frame 00 - charge
+  - row 2, column 2: `charge` frame 01 - charge
+  - row 2, column 3: `attack` frame 00 - attack
+  - row 2, column 4: `attack` frame 01 - attack
+  - row 3, column 1: `death` frame 00 - freshly dead readable carcass
+  - row 3, column 2: `death` frame 01 - partly harvested carcass
+  - row 3, column 3: `death` frame 02 - mostly harvested carcass
+  - row 3, column 4: `death` frame 03 - clean depleted skeleton remains

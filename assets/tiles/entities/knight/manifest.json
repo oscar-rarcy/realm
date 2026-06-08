@@ -1,7 +1,7 @@
 {
   "schema": "realm.entity_tileset.v1",
   "entity": "knight",
-  "sprite_size": 48,
+  "sprite_size": 768,
   "directions": [
     "front",
     "back"
@@ -11,730 +11,4577 @@
       "frame_ms": 250,
       "loop": true,
       "hold_last": false,
-      "description": "Basic weapons + Open Helmet: idle; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
+      "description": "Basic weapons + Open Helmet: idle mounted stance: rider's anatomical right hand carries the spear/lance upright or near-upright; shield is strapped to the rider's anatomical left forearm, relaxed on the far side beside or behind the horse neck/shoulder area, about one third to one half visible; the rider's anatomical left hand still holds or gathers the reins, with reins passing naturally near the shield-side hand; shield is not front-presented; reins are relaxed rather than tense; default/basic Knight with no research active; open nasal helmet, visible face, simple mail coif, and light shoulder protection only; reads as the mounted villager upgraded with cheap early cavalry gear, not polished noble cavalry; no horse armour and no barding; brown leather saddle and dark brown leather girth/belly strap; horse bridle/headstall/face straps and reins use blue #00AFFF; short spear with plain wooden shaft, leather grip, and dull bronze or scrap-metal spearhead; no pennant; round wooden shield with blue #00AFFF face, white diagonal stripe, and optional simple central boss; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
+      "family": "basic_weapons__open_helmet__idle",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "basic_weapons__open_helmet__idle/front/frame_00_base.png",
-            "team_mask": "basic_weapons__open_helmet__idle/front/frame_00_teammask.png"
+            "team_mask": "basic_weapons__open_helmet__idle/front/frame_00_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/front_contact_sheet.png",
+            "source_slot": 1,
+            "source_crop_box": [
+              0,
+              9,
+              452,
+              235
+            ],
+            "source_bbox": {
+              "x": 134,
+              "y": 0,
+              "w": 132,
+              "h": 226
+            },
+            "final_bbox": {
+              "x": 191,
+              "y": 21,
+              "w": 131,
+              "h": 224
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9911504424778761,
+            "fit_profile": "standing"
           },
           {
             "base": "basic_weapons__open_helmet__idle/front/frame_01_base.png",
-            "team_mask": "basic_weapons__open_helmet__idle/front/frame_01_teammask.png"
+            "team_mask": "basic_weapons__open_helmet__idle/front/frame_01_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/front_contact_sheet.png",
+            "source_slot": 1,
+            "source_crop_box": [
+              0,
+              9,
+              452,
+              235
+            ],
+            "source_bbox": {
+              "x": 134,
+              "y": 0,
+              "w": 132,
+              "h": 226
+            },
+            "final_bbox": {
+              "x": 191,
+              "y": 21,
+              "w": 131,
+              "h": 224
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9911504424778761,
+            "fit_profile": "standing"
           }
         ],
         "back": [
           {
             "base": "basic_weapons__open_helmet__idle/back/frame_00_base.png",
-            "team_mask": "basic_weapons__open_helmet__idle/back/frame_00_teammask.png"
+            "team_mask": "basic_weapons__open_helmet__idle/back/frame_00_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/back_contact_sheet.png",
+            "source_slot": 1,
+            "source_crop_box": [
+              0,
+              8,
+              454,
+              235
+            ],
+            "source_bbox": {
+              "x": 133,
+              "y": 0,
+              "w": 95,
+              "h": 227
+            },
+            "final_bbox": {
+              "x": 209,
+              "y": 21,
+              "w": 94,
+              "h": 224
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.986784140969163,
+            "fit_profile": "standing"
           },
           {
             "base": "basic_weapons__open_helmet__idle/back/frame_01_base.png",
-            "team_mask": "basic_weapons__open_helmet__idle/back/frame_01_teammask.png"
+            "team_mask": "basic_weapons__open_helmet__idle/back/frame_01_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/back_contact_sheet.png",
+            "source_slot": 1,
+            "source_crop_box": [
+              0,
+              8,
+              454,
+              235
+            ],
+            "source_bbox": {
+              "x": 133,
+              "y": 0,
+              "w": 95,
+              "h": 227
+            },
+            "final_bbox": {
+              "x": 209,
+              "y": 21,
+              "w": 94,
+              "h": 224
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.986784140969163,
+            "fit_profile": "standing"
           }
         ]
+      },
+      "placement": {
+        "source_size": [
+          512,
+          256
+        ],
+        "anchor": [
+          256,
+          208
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          2,
+          1
+        ]
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 512,
+        "height_px": 256,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 256,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 256,
+          "pre_crop_target_px": 512,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 2,
+          "h": 1
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "visual_envelope": {
+        "w": 2,
+        "h": 1
       }
     },
     "basic_weapons__open_helmet__trot": {
       "frame_ms": 250,
       "loop": true,
       "hold_last": false,
-      "description": "Basic weapons + Open Helmet: trot; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
+      "description": "Basic weapons + Open Helmet: controlled trot: rider's anatomical right hand carries the spear/lance while the horse moves; shield is strapped to the rider's anatomical left forearm, relaxed on the far side beside or behind the horse neck/shoulder area, about one third to one half visible; the rider's anatomical left hand still holds or gathers the reins, with reins passing naturally near the shield-side hand; horse can be guided by legs, knees, seat, spurs, training, and relaxed reins; default/basic Knight with no research active; open nasal helmet, visible face, simple mail coif, and light shoulder protection only; reads as the mounted villager upgraded with cheap early cavalry gear, not polished noble cavalry; no horse armour and no barding; brown leather saddle and dark brown leather girth/belly strap; horse bridle/headstall/face straps and reins use blue #00AFFF; short spear with plain wooden shaft, leather grip, and dull bronze or scrap-metal spearhead; no pennant; round wooden shield with blue #00AFFF face, white diagonal stripe, and optional simple central boss; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
+      "family": "basic_weapons__open_helmet__trot",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "basic_weapons__open_helmet__trot/front/frame_00_base.png",
-            "team_mask": "basic_weapons__open_helmet__trot/front/frame_00_teammask.png"
+            "team_mask": "basic_weapons__open_helmet__trot/front/frame_00_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/front_contact_sheet.png",
+            "source_slot": 2,
+            "source_crop_box": [
+              382,
+              12,
+              828,
+              235
+            ],
+            "source_bbox": {
+              "x": 148,
+              "y": 0,
+              "w": 148,
+              "h": 223
+            },
+            "final_bbox": {
+              "x": 182,
+              "y": 21,
+              "w": 149,
+              "h": 224
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 1.0044843049327354,
+            "fit_profile": "standing"
           },
           {
             "base": "basic_weapons__open_helmet__trot/front/frame_01_base.png",
-            "team_mask": "basic_weapons__open_helmet__trot/front/frame_01_teammask.png"
+            "team_mask": "basic_weapons__open_helmet__trot/front/frame_01_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/front_contact_sheet.png",
+            "source_slot": 2,
+            "source_crop_box": [
+              382,
+              12,
+              828,
+              235
+            ],
+            "source_bbox": {
+              "x": 148,
+              "y": 0,
+              "w": 148,
+              "h": 223
+            },
+            "final_bbox": {
+              "x": 182,
+              "y": 21,
+              "w": 149,
+              "h": 224
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 1.0044843049327354,
+            "fit_profile": "standing"
           }
         ],
         "back": [
           {
             "base": "basic_weapons__open_helmet__trot/back/frame_00_base.png",
-            "team_mask": "basic_weapons__open_helmet__trot/back/frame_00_teammask.png"
+            "team_mask": "basic_weapons__open_helmet__trot/back/frame_00_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/back_contact_sheet.png",
+            "source_slot": 2,
+            "source_crop_box": [
+              354,
+              8,
+              808,
+              235
+            ],
+            "source_bbox": {
+              "x": 177,
+              "y": 0,
+              "w": 100,
+              "h": 227
+            },
+            "final_bbox": {
+              "x": 207,
+              "y": 21,
+              "w": 99,
+              "h": 224
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.986784140969163,
+            "fit_profile": "standing"
           },
           {
             "base": "basic_weapons__open_helmet__trot/back/frame_01_base.png",
-            "team_mask": "basic_weapons__open_helmet__trot/back/frame_01_teammask.png"
+            "team_mask": "basic_weapons__open_helmet__trot/back/frame_01_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/back_contact_sheet.png",
+            "source_slot": 2,
+            "source_crop_box": [
+              354,
+              8,
+              808,
+              235
+            ],
+            "source_bbox": {
+              "x": 177,
+              "y": 0,
+              "w": 100,
+              "h": 227
+            },
+            "final_bbox": {
+              "x": 207,
+              "y": 21,
+              "w": 99,
+              "h": 224
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.986784140969163,
+            "fit_profile": "standing"
           }
         ]
+      },
+      "placement": {
+        "source_size": [
+          512,
+          256
+        ],
+        "anchor": [
+          256,
+          208
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          2,
+          1
+        ]
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 512,
+        "height_px": 256,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 256,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 256,
+          "pre_crop_target_px": 512,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 2,
+          "h": 1
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "visual_envelope": {
+        "w": 2,
+        "h": 1
       }
     },
     "basic_weapons__open_helmet__charge_strike": {
       "frame_ms": 250,
       "loop": true,
       "hold_last": false,
-      "description": "Basic weapons + Open Helmet: charge/strike; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
+      "description": "Basic weapons + Open Helmet: charge/strike action with the spear/lance allowed to angle for the attack; shield is strapped to the rider's anatomical left forearm, relaxed on the far side beside or behind the horse neck/shoulder area, about one third to one half visible; the rider's anatomical left hand still holds or gathers the reins, with reins passing naturally near the shield-side hand; keep the shield strapped, not gripped as a whole-hand object; default/basic Knight with no research active; open nasal helmet, visible face, simple mail coif, and light shoulder protection only; reads as the mounted villager upgraded with cheap early cavalry gear, not polished noble cavalry; no horse armour and no barding; brown leather saddle and dark brown leather girth/belly strap; horse bridle/headstall/face straps and reins use blue #00AFFF; short spear with plain wooden shaft, leather grip, and dull bronze or scrap-metal spearhead; no pennant; round wooden shield with blue #00AFFF face, white diagonal stripe, and optional simple central boss; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
+      "family": "basic_weapons__open_helmet__charge_strike",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "basic_weapons__open_helmet__charge_strike/front/frame_00_base.png",
-            "team_mask": "basic_weapons__open_helmet__charge_strike/front/frame_00_teammask.png"
+            "team_mask": "basic_weapons__open_helmet__charge_strike/front/frame_00_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/front_contact_sheet.png",
+            "source_slot": 3,
+            "source_crop_box": [
+              774,
+              6,
+              1232,
+              235
+            ],
+            "source_bbox": {
+              "x": 160,
+              "y": 0,
+              "w": 138,
+              "h": 229
+            },
+            "final_bbox": {
+              "x": 189,
+              "y": 21,
+              "w": 135,
+              "h": 224
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9781659388646288,
+            "fit_profile": "standing"
           },
           {
             "base": "basic_weapons__open_helmet__charge_strike/front/frame_01_base.png",
-            "team_mask": "basic_weapons__open_helmet__charge_strike/front/frame_01_teammask.png"
+            "team_mask": "basic_weapons__open_helmet__charge_strike/front/frame_01_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/front_contact_sheet.png",
+            "source_slot": 3,
+            "source_crop_box": [
+              774,
+              6,
+              1232,
+              235
+            ],
+            "source_bbox": {
+              "x": 160,
+              "y": 0,
+              "w": 138,
+              "h": 229
+            },
+            "final_bbox": {
+              "x": 189,
+              "y": 21,
+              "w": 135,
+              "h": 224
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9781659388646288,
+            "fit_profile": "standing"
           }
         ],
         "back": [
           {
             "base": "basic_weapons__open_helmet__charge_strike/back/frame_00_base.png",
-            "team_mask": "basic_weapons__open_helmet__charge_strike/back/frame_00_teammask.png"
+            "team_mask": "basic_weapons__open_helmet__charge_strike/back/frame_00_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/back_contact_sheet.png",
+            "source_slot": 3,
+            "source_crop_box": [
+              760,
+              4,
+              1222,
+              235
+            ],
+            "source_bbox": {
+              "x": 179,
+              "y": 0,
+              "w": 105,
+              "h": 231
+            },
+            "final_bbox": {
+              "x": 205,
+              "y": 21,
+              "w": 102,
+              "h": 224
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9696969696969697,
+            "fit_profile": "standing"
           },
           {
             "base": "basic_weapons__open_helmet__charge_strike/back/frame_01_base.png",
-            "team_mask": "basic_weapons__open_helmet__charge_strike/back/frame_01_teammask.png"
+            "team_mask": "basic_weapons__open_helmet__charge_strike/back/frame_01_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/back_contact_sheet.png",
+            "source_slot": 3,
+            "source_crop_box": [
+              760,
+              4,
+              1222,
+              235
+            ],
+            "source_bbox": {
+              "x": 179,
+              "y": 0,
+              "w": 105,
+              "h": 231
+            },
+            "final_bbox": {
+              "x": 205,
+              "y": 21,
+              "w": 102,
+              "h": 224
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9696969696969697,
+            "fit_profile": "standing"
           }
         ]
-      }
+      },
+      "placement": {
+        "source_size": [
+          512,
+          256
+        ],
+        "anchor": [
+          256,
+          208
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          2,
+          1
+        ]
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 512,
+        "height_px": 256,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 256,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 256,
+          "pre_crop_target_px": 512,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 2,
+          "h": 1
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "visual_envelope": {
+        "w": 2,
+        "h": 1
+      },
+      "visual_envelope_note": "basic spear can angle forward but should not exceed the mounted cavalry silhouette"
     },
     "basic_weapons__open_helmet__hit_alert": {
       "frame_ms": 250,
       "loop": true,
       "hold_last": false,
-      "description": "Basic weapons + Open Helmet: hit/alert; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
+      "description": "Basic weapons + Open Helmet: hit/alert mounted pose with the spear/lance still in the rider's anatomical right hand; shield is strapped to the rider's anatomical left forearm, relaxed on the far side beside or behind the horse neck/shoulder area, about one third to one half visible; the rider's anatomical left hand still holds or gathers the reins, with reins passing naturally near the shield-side hand; shield arm remains relaxed rather than actively presenting the shield; default/basic Knight with no research active; open nasal helmet, visible face, simple mail coif, and light shoulder protection only; reads as the mounted villager upgraded with cheap early cavalry gear, not polished noble cavalry; no horse armour and no barding; brown leather saddle and dark brown leather girth/belly strap; horse bridle/headstall/face straps and reins use blue #00AFFF; short spear with plain wooden shaft, leather grip, and dull bronze or scrap-metal spearhead; no pennant; round wooden shield with blue #00AFFF face, white diagonal stripe, and optional simple central boss; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
+      "family": "basic_weapons__open_helmet__hit_alert",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "basic_weapons__open_helmet__hit_alert/front/frame_00_base.png",
-            "team_mask": "basic_weapons__open_helmet__hit_alert/front/frame_00_teammask.png"
+            "team_mask": "basic_weapons__open_helmet__hit_alert/front/frame_00_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/front_contact_sheet.png",
+            "source_slot": 4,
+            "source_crop_box": [
+              1166,
+              5,
+              1626,
+              235
+            ],
+            "source_bbox": {
+              "x": 148,
+              "y": 0,
+              "w": 165,
+              "h": 230
+            },
+            "final_bbox": {
+              "x": 176,
+              "y": 21,
+              "w": 161,
+              "h": 224
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9739130434782609,
+            "fit_profile": "standing"
           },
           {
             "base": "basic_weapons__open_helmet__hit_alert/front/frame_01_base.png",
-            "team_mask": "basic_weapons__open_helmet__hit_alert/front/frame_01_teammask.png"
+            "team_mask": "basic_weapons__open_helmet__hit_alert/front/frame_01_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/front_contact_sheet.png",
+            "source_slot": 4,
+            "source_crop_box": [
+              1166,
+              5,
+              1626,
+              235
+            ],
+            "source_bbox": {
+              "x": 148,
+              "y": 0,
+              "w": 165,
+              "h": 230
+            },
+            "final_bbox": {
+              "x": 176,
+              "y": 21,
+              "w": 161,
+              "h": 224
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9739130434782609,
+            "fit_profile": "standing"
           }
         ],
         "back": [
           {
             "base": "basic_weapons__open_helmet__hit_alert/back/frame_00_base.png",
-            "team_mask": "basic_weapons__open_helmet__hit_alert/back/frame_00_teammask.png"
+            "team_mask": "basic_weapons__open_helmet__hit_alert/back/frame_00_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/back_contact_sheet.png",
+            "source_slot": 4,
+            "source_crop_box": [
+              1190,
+              3,
+              1654,
+              235
+            ],
+            "source_bbox": {
+              "x": 171,
+              "y": 0,
+              "w": 121,
+              "h": 232
+            },
+            "final_bbox": {
+              "x": 198,
+              "y": 21,
+              "w": 117,
+              "h": 224
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9655172413793104,
+            "fit_profile": "standing"
           },
           {
             "base": "basic_weapons__open_helmet__hit_alert/back/frame_01_base.png",
-            "team_mask": "basic_weapons__open_helmet__hit_alert/back/frame_01_teammask.png"
+            "team_mask": "basic_weapons__open_helmet__hit_alert/back/frame_01_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/back_contact_sheet.png",
+            "source_slot": 4,
+            "source_crop_box": [
+              1190,
+              3,
+              1654,
+              235
+            ],
+            "source_bbox": {
+              "x": 171,
+              "y": 0,
+              "w": 121,
+              "h": 232
+            },
+            "final_bbox": {
+              "x": 198,
+              "y": 21,
+              "w": 117,
+              "h": 224
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9655172413793104,
+            "fit_profile": "standing"
           }
         ]
+      },
+      "placement": {
+        "source_size": [
+          512,
+          256
+        ],
+        "anchor": [
+          256,
+          208
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          2,
+          1
+        ]
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 512,
+        "height_px": 256,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 256,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 256,
+          "pre_crop_target_px": 512,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 2,
+          "h": 1
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "visual_envelope": {
+        "w": 2,
+        "h": 1
       }
     },
     "basic_weapons__open_helmet__dead": {
       "frame_ms": 250,
       "loop": true,
       "hold_last": false,
-      "description": "Basic weapons + Open Helmet: dead; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
+      "description": "Basic weapons + Open Helmet: dead; default/basic Knight with no research active; open nasal helmet, visible face, simple mail coif, and light shoulder protection only; reads as the mounted villager upgraded with cheap early cavalry gear, not polished noble cavalry; no horse armour and no barding; brown leather saddle and dark brown leather girth/belly strap; horse bridle/headstall/face straps and reins use blue #00AFFF; short spear with plain wooden shaft, leather grip, and dull bronze or scrap-metal spearhead; no pennant; round wooden shield with blue #00AFFF face, white diagonal stripe, and optional simple central boss; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
+      "family": "basic_weapons__open_helmet__dead",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "basic_weapons__open_helmet__dead/front/frame_00_base.png",
-            "team_mask": "basic_weapons__open_helmet__dead/front/frame_00_teammask.png"
+            "team_mask": "basic_weapons__open_helmet__dead/front/frame_00_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/front_contact_sheet.png",
+            "source_slot": 5,
+            "source_crop_box": [
+              28,
+              235,
+              498,
+              470
+            ],
+            "source_bbox": {
+              "x": 29,
+              "y": 0,
+              "w": 441,
+              "h": 235
+            },
+            "final_bbox": {
+              "x": 75,
+              "y": 21,
+              "w": 362,
+              "h": 193
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              6
+            ],
+            "scale": 0.8208616780045351,
+            "fit_profile": "standing"
           },
           {
             "base": "basic_weapons__open_helmet__dead/front/frame_01_base.png",
-            "team_mask": "basic_weapons__open_helmet__dead/front/frame_01_teammask.png"
+            "team_mask": "basic_weapons__open_helmet__dead/front/frame_01_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/front_contact_sheet.png",
+            "source_slot": 5,
+            "source_crop_box": [
+              28,
+              235,
+              498,
+              470
+            ],
+            "source_bbox": {
+              "x": 29,
+              "y": 0,
+              "w": 441,
+              "h": 235
+            },
+            "final_bbox": {
+              "x": 75,
+              "y": 21,
+              "w": 362,
+              "h": 193
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              6
+            ],
+            "scale": 0.8208616780045351,
+            "fit_profile": "standing"
           }
         ],
         "back": [
           {
             "base": "basic_weapons__open_helmet__dead/back/frame_00_base.png",
-            "team_mask": "basic_weapons__open_helmet__dead/back/frame_00_teammask.png"
+            "team_mask": "basic_weapons__open_helmet__dead/back/frame_00_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/back_contact_sheet.png",
+            "source_slot": 5,
+            "source_crop_box": [
+              0,
+              235,
+              470,
+              470
+            ],
+            "source_bbox": {
+              "x": 71,
+              "y": 0,
+              "w": 270,
+              "h": 235
+            },
+            "final_bbox": {
+              "x": 128,
+              "y": 21,
+              "w": 257,
+              "h": 224
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9531914893617022,
+            "fit_profile": "standing"
           },
           {
             "base": "basic_weapons__open_helmet__dead/back/frame_01_base.png",
-            "team_mask": "basic_weapons__open_helmet__dead/back/frame_01_teammask.png"
+            "team_mask": "basic_weapons__open_helmet__dead/back/frame_01_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/back_contact_sheet.png",
+            "source_slot": 5,
+            "source_crop_box": [
+              0,
+              235,
+              470,
+              470
+            ],
+            "source_bbox": {
+              "x": 71,
+              "y": 0,
+              "w": 270,
+              "h": 235
+            },
+            "final_bbox": {
+              "x": 128,
+              "y": 21,
+              "w": 257,
+              "h": 224
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9531914893617022,
+            "fit_profile": "standing"
           }
         ]
+      },
+      "placement": {
+        "source_size": [
+          512,
+          256
+        ],
+        "anchor": [
+          256,
+          208
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          2,
+          1
+        ]
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 512,
+        "height_px": 256,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 256,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 256,
+          "pre_crop_target_px": 512,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 2,
+          "h": 1
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "visual_envelope": {
+        "w": 2,
+        "h": 1
       }
     },
     "basic_weapons__open_helmet__decayed_skeleton_with_armour_horse_gear_and_weapon": {
       "frame_ms": 250,
       "loop": true,
       "hold_last": false,
-      "description": "Basic weapons + Open Helmet: decayed skeleton with armour horse gear and weapon; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
+      "description": "Basic weapons + Open Helmet: decayed skeleton with armour horse gear and weapon; default/basic Knight with no research active; open nasal helmet, visible face, simple mail coif, and light shoulder protection only; reads as the mounted villager upgraded with cheap early cavalry gear, not polished noble cavalry; no horse armour and no barding; brown leather saddle and dark brown leather girth/belly strap; horse bridle/headstall/face straps and reins use blue #00AFFF; short spear with plain wooden shaft, leather grip, and dull bronze or scrap-metal spearhead; no pennant; round wooden shield with blue #00AFFF face, white diagonal stripe, and optional simple central boss; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
+      "family": "basic_weapons__open_helmet__decayed_skeleton_with_armour_horse_gear_and_weapon",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "basic_weapons__open_helmet__decayed_skeleton_with_armour_horse_gear_and_weapon/front/frame_00_base.png",
-            "team_mask": "basic_weapons__open_helmet__decayed_skeleton_with_armour_horse_gear_and_weapon/front/frame_00_teammask.png"
+            "team_mask": "basic_weapons__open_helmet__decayed_skeleton_with_armour_horse_gear_and_weapon/front/frame_00_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/front_contact_sheet.png",
+            "source_slot": 6,
+            "source_crop_box": [
+              418,
+              235,
+              888,
+              470
+            ],
+            "source_bbox": {
+              "x": 18,
+              "y": 0,
+              "w": 452,
+              "h": 235
+            },
+            "final_bbox": {
+              "x": 75,
+              "y": 21,
+              "w": 362,
+              "h": 188
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              1
+            ],
+            "scale": 0.8008849557522124,
+            "fit_profile": "standing"
           },
           {
             "base": "basic_weapons__open_helmet__decayed_skeleton_with_armour_horse_gear_and_weapon/front/frame_01_base.png",
-            "team_mask": "basic_weapons__open_helmet__decayed_skeleton_with_armour_horse_gear_and_weapon/front/frame_01_teammask.png"
+            "team_mask": "basic_weapons__open_helmet__decayed_skeleton_with_armour_horse_gear_and_weapon/front/frame_01_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/front_contact_sheet.png",
+            "source_slot": 6,
+            "source_crop_box": [
+              418,
+              235,
+              888,
+              470
+            ],
+            "source_bbox": {
+              "x": 18,
+              "y": 0,
+              "w": 452,
+              "h": 235
+            },
+            "final_bbox": {
+              "x": 75,
+              "y": 21,
+              "w": 362,
+              "h": 188
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              1
+            ],
+            "scale": 0.8008849557522124,
+            "fit_profile": "standing"
           }
         ],
         "back": [
           {
             "base": "basic_weapons__open_helmet__decayed_skeleton_with_armour_horse_gear_and_weapon/back/frame_00_base.png",
-            "team_mask": "basic_weapons__open_helmet__decayed_skeleton_with_armour_horse_gear_and_weapon/back/frame_00_teammask.png"
+            "team_mask": "basic_weapons__open_helmet__decayed_skeleton_with_armour_horse_gear_and_weapon/back/frame_00_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/back_contact_sheet.png",
+            "source_slot": 6,
+            "source_crop_box": [
+              354,
+              235,
+              824,
+              470
+            ],
+            "source_bbox": {
+              "x": 116,
+              "y": 0,
+              "w": 239,
+              "h": 235
+            },
+            "final_bbox": {
+              "x": 142,
+              "y": 21,
+              "w": 228,
+              "h": 224
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9531914893617022,
+            "fit_profile": "standing"
           },
           {
             "base": "basic_weapons__open_helmet__decayed_skeleton_with_armour_horse_gear_and_weapon/back/frame_01_base.png",
-            "team_mask": "basic_weapons__open_helmet__decayed_skeleton_with_armour_horse_gear_and_weapon/back/frame_01_teammask.png"
+            "team_mask": "basic_weapons__open_helmet__decayed_skeleton_with_armour_horse_gear_and_weapon/back/frame_01_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/back_contact_sheet.png",
+            "source_slot": 6,
+            "source_crop_box": [
+              354,
+              235,
+              824,
+              470
+            ],
+            "source_bbox": {
+              "x": 116,
+              "y": 0,
+              "w": 239,
+              "h": 235
+            },
+            "final_bbox": {
+              "x": 142,
+              "y": 21,
+              "w": 228,
+              "h": 224
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9531914893617022,
+            "fit_profile": "standing"
           }
         ]
+      },
+      "placement": {
+        "source_size": [
+          512,
+          256
+        ],
+        "anchor": [
+          256,
+          208
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          2,
+          1
+        ]
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 512,
+        "height_px": 256,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 256,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 256,
+          "pre_crop_target_px": 512,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 2,
+          "h": 1
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "visual_envelope": {
+        "w": 2,
+        "h": 1
       }
     },
     "basic_weapons__plate_helm__idle": {
       "frame_ms": 250,
       "loop": true,
       "hold_last": false,
-      "description": "Basic weapons + Plate Helm: idle; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+      "description": "Basic weapons + Plate Helm: idle mounted stance: rider's anatomical right hand carries the spear/lance upright or near-upright; shield is strapped to the rider's anatomical left forearm, relaxed on the far side beside or behind the horse neck/shoulder area, about one third to one half visible; the rider's anatomical left hand still holds or gathers the reins, with reins passing naturally near the shield-side hand; shield is not front-presented; reins are relaxed rather than tense; Plate Helm active and Iron Weapons inactive; same Plate Helm armour package as iron_weapons__plate_helm: closed plate helm, blue plume/crest, and full plate-style rider armour silhouette; same horse armour/barding package as iron_weapons__plate_helm, with plated head armour/chanfron, neck plates/crinet, and chest/front armour/peytral; saddle/saddle cloth becomes blue #00AFFF; dark brown leather girth/belly strap under the horse remains non-team-colour and must never become blue; horse bridle/headstall/face straps and reins remain blue #00AFFF where visible; same short spear as the default/basic variant, with plain wooden shaft, leather grip, and dull bronze or scrap-metal spearhead; no pennant and do not upgrade to a lance; same round wooden shield as the default/basic variant, with blue #00AFFF face and white diagonal stripe; no reinforced iron rim, rivets, or kite-shield upgrade; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
+      "family": "basic_weapons__plate_helm__idle",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "basic_weapons__plate_helm__idle/front/frame_00_base.png",
-            "team_mask": "basic_weapons__plate_helm__idle/front/frame_00_teammask.png"
+            "team_mask": "basic_weapons__plate_helm__idle/front/frame_00_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/front_contact_sheet.png",
+            "source_slot": 7,
+            "source_crop_box": [
+              818,
+              235,
+              1288,
+              470
+            ],
+            "source_bbox": {
+              "x": 6,
+              "y": 0,
+              "w": 464,
+              "h": 235
+            },
+            "final_bbox": {
+              "x": 75,
+              "y": 25,
+              "w": 362,
+              "h": 183
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.7801724137931034,
+            "fit_profile": "standing"
           },
           {
             "base": "basic_weapons__plate_helm__idle/front/frame_01_base.png",
-            "team_mask": "basic_weapons__plate_helm__idle/front/frame_01_teammask.png"
+            "team_mask": "basic_weapons__plate_helm__idle/front/frame_01_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/front_contact_sheet.png",
+            "source_slot": 7,
+            "source_crop_box": [
+              818,
+              235,
+              1288,
+              470
+            ],
+            "source_bbox": {
+              "x": 6,
+              "y": 0,
+              "w": 464,
+              "h": 235
+            },
+            "final_bbox": {
+              "x": 75,
+              "y": 25,
+              "w": 362,
+              "h": 183
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.7801724137931034,
+            "fit_profile": "standing"
           }
         ],
         "back": [
           {
             "base": "basic_weapons__plate_helm__idle/back/frame_00_base.png",
-            "team_mask": "basic_weapons__plate_helm__idle/back/frame_00_teammask.png"
+            "team_mask": "basic_weapons__plate_helm__idle/back/frame_00_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/back_contact_sheet.png",
+            "source_slot": 7,
+            "source_crop_box": [
+              787,
+              235,
+              1257,
+              470
+            ],
+            "source_bbox": {
+              "x": 101,
+              "y": 0,
+              "w": 268,
+              "h": 235
+            },
+            "final_bbox": {
+              "x": 129,
+              "y": 21,
+              "w": 255,
+              "h": 224
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9531914893617022,
+            "fit_profile": "standing"
           },
           {
             "base": "basic_weapons__plate_helm__idle/back/frame_01_base.png",
-            "team_mask": "basic_weapons__plate_helm__idle/back/frame_01_teammask.png"
+            "team_mask": "basic_weapons__plate_helm__idle/back/frame_01_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/back_contact_sheet.png",
+            "source_slot": 7,
+            "source_crop_box": [
+              787,
+              235,
+              1257,
+              470
+            ],
+            "source_bbox": {
+              "x": 101,
+              "y": 0,
+              "w": 268,
+              "h": 235
+            },
+            "final_bbox": {
+              "x": 129,
+              "y": 21,
+              "w": 255,
+              "h": 224
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9531914893617022,
+            "fit_profile": "standing"
           }
         ]
+      },
+      "placement": {
+        "source_size": [
+          512,
+          256
+        ],
+        "anchor": [
+          256,
+          208
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          2,
+          1
+        ]
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 512,
+        "height_px": 256,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 256,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 256,
+          "pre_crop_target_px": 512,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 2,
+          "h": 1
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "visual_envelope": {
+        "w": 2,
+        "h": 1
       }
     },
     "basic_weapons__plate_helm__trot": {
       "frame_ms": 250,
       "loop": true,
       "hold_last": false,
-      "description": "Basic weapons + Plate Helm: trot; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+      "description": "Basic weapons + Plate Helm: controlled trot: rider's anatomical right hand carries the spear/lance while the horse moves; shield is strapped to the rider's anatomical left forearm, relaxed on the far side beside or behind the horse neck/shoulder area, about one third to one half visible; the rider's anatomical left hand still holds or gathers the reins, with reins passing naturally near the shield-side hand; horse can be guided by legs, knees, seat, spurs, training, and relaxed reins; Plate Helm active and Iron Weapons inactive; same Plate Helm armour package as iron_weapons__plate_helm: closed plate helm, blue plume/crest, and full plate-style rider armour silhouette; same horse armour/barding package as iron_weapons__plate_helm, with plated head armour/chanfron, neck plates/crinet, and chest/front armour/peytral; saddle/saddle cloth becomes blue #00AFFF; dark brown leather girth/belly strap under the horse remains non-team-colour and must never become blue; horse bridle/headstall/face straps and reins remain blue #00AFFF where visible; same short spear as the default/basic variant, with plain wooden shaft, leather grip, and dull bronze or scrap-metal spearhead; no pennant and do not upgrade to a lance; same round wooden shield as the default/basic variant, with blue #00AFFF face and white diagonal stripe; no reinforced iron rim, rivets, or kite-shield upgrade; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
+      "family": "basic_weapons__plate_helm__trot",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "basic_weapons__plate_helm__trot/front/frame_00_base.png",
-            "team_mask": "basic_weapons__plate_helm__trot/front/frame_00_teammask.png"
+            "team_mask": "basic_weapons__plate_helm__trot/front/frame_00_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/front_contact_sheet.png",
+            "source_slot": 8,
+            "source_crop_box": [
+              1128,
+              235,
+              1598,
+              470
+            ],
+            "source_bbox": {
+              "x": 87,
+              "y": 0,
+              "w": 295,
+              "h": 235
+            },
+            "final_bbox": {
+              "x": 116,
+              "y": 21,
+              "w": 281,
+              "h": 224
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9531914893617022,
+            "fit_profile": "standing"
           },
           {
             "base": "basic_weapons__plate_helm__trot/front/frame_01_base.png",
-            "team_mask": "basic_weapons__plate_helm__trot/front/frame_01_teammask.png"
+            "team_mask": "basic_weapons__plate_helm__trot/front/frame_01_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/front_contact_sheet.png",
+            "source_slot": 8,
+            "source_crop_box": [
+              1128,
+              235,
+              1598,
+              470
+            ],
+            "source_bbox": {
+              "x": 87,
+              "y": 0,
+              "w": 295,
+              "h": 235
+            },
+            "final_bbox": {
+              "x": 116,
+              "y": 21,
+              "w": 281,
+              "h": 224
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9531914893617022,
+            "fit_profile": "standing"
           }
         ],
         "back": [
           {
             "base": "basic_weapons__plate_helm__trot/back/frame_00_base.png",
-            "team_mask": "basic_weapons__plate_helm__trot/back/frame_00_teammask.png"
+            "team_mask": "basic_weapons__plate_helm__trot/back/frame_00_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/back_contact_sheet.png",
+            "source_slot": 8,
+            "source_crop_box": [
+              1202,
+              235,
+              1672,
+              470
+            ],
+            "source_bbox": {
+              "x": 105,
+              "y": 0,
+              "w": 285,
+              "h": 235
+            },
+            "final_bbox": {
+              "x": 120,
+              "y": 21,
+              "w": 272,
+              "h": 224
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9531914893617022,
+            "fit_profile": "standing"
           },
           {
             "base": "basic_weapons__plate_helm__trot/back/frame_01_base.png",
-            "team_mask": "basic_weapons__plate_helm__trot/back/frame_01_teammask.png"
+            "team_mask": "basic_weapons__plate_helm__trot/back/frame_01_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/back_contact_sheet.png",
+            "source_slot": 8,
+            "source_crop_box": [
+              1202,
+              235,
+              1672,
+              470
+            ],
+            "source_bbox": {
+              "x": 105,
+              "y": 0,
+              "w": 285,
+              "h": 235
+            },
+            "final_bbox": {
+              "x": 120,
+              "y": 21,
+              "w": 272,
+              "h": 224
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9531914893617022,
+            "fit_profile": "standing"
           }
         ]
+      },
+      "placement": {
+        "source_size": [
+          512,
+          256
+        ],
+        "anchor": [
+          256,
+          208
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          2,
+          1
+        ]
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 512,
+        "height_px": 256,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 256,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 256,
+          "pre_crop_target_px": 512,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 2,
+          "h": 1
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "visual_envelope": {
+        "w": 2,
+        "h": 1
       }
     },
     "basic_weapons__plate_helm__charge_strike": {
       "frame_ms": 250,
       "loop": true,
       "hold_last": false,
-      "description": "Basic weapons + Plate Helm: charge/strike; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+      "description": "Basic weapons + Plate Helm: charge/strike action with the spear/lance allowed to angle for the attack; shield is strapped to the rider's anatomical left forearm, relaxed on the far side beside or behind the horse neck/shoulder area, about one third to one half visible; the rider's anatomical left hand still holds or gathers the reins, with reins passing naturally near the shield-side hand; keep the shield strapped, not gripped as a whole-hand object; Plate Helm active and Iron Weapons inactive; same Plate Helm armour package as iron_weapons__plate_helm: closed plate helm, blue plume/crest, and full plate-style rider armour silhouette; same horse armour/barding package as iron_weapons__plate_helm, with plated head armour/chanfron, neck plates/crinet, and chest/front armour/peytral; saddle/saddle cloth becomes blue #00AFFF; dark brown leather girth/belly strap under the horse remains non-team-colour and must never become blue; horse bridle/headstall/face straps and reins remain blue #00AFFF where visible; same short spear as the default/basic variant, with plain wooden shaft, leather grip, and dull bronze or scrap-metal spearhead; no pennant and do not upgrade to a lance; same round wooden shield as the default/basic variant, with blue #00AFFF face and white diagonal stripe; no reinforced iron rim, rivets, or kite-shield upgrade; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
+      "family": "basic_weapons__plate_helm__charge_strike",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "basic_weapons__plate_helm__charge_strike/front/frame_00_base.png",
-            "team_mask": "basic_weapons__plate_helm__charge_strike/front/frame_00_teammask.png"
+            "team_mask": "basic_weapons__plate_helm__charge_strike/front/frame_00_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/front_contact_sheet.png",
+            "source_slot": 9,
+            "source_crop_box": [
+              0,
+              470,
+              472,
+              706
+            ],
+            "source_bbox": {
+              "x": 73,
+              "y": 0,
+              "w": 198,
+              "h": 236
+            },
+            "final_bbox": {
+              "x": 162,
+              "y": 21,
+              "w": 188,
+              "h": 224
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9491525423728814,
+            "fit_profile": "standing"
           },
           {
             "base": "basic_weapons__plate_helm__charge_strike/front/frame_01_base.png",
-            "team_mask": "basic_weapons__plate_helm__charge_strike/front/frame_01_teammask.png"
+            "team_mask": "basic_weapons__plate_helm__charge_strike/front/frame_01_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/front_contact_sheet.png",
+            "source_slot": 9,
+            "source_crop_box": [
+              0,
+              470,
+              472,
+              706
+            ],
+            "source_bbox": {
+              "x": 73,
+              "y": 0,
+              "w": 198,
+              "h": 236
+            },
+            "final_bbox": {
+              "x": 162,
+              "y": 21,
+              "w": 188,
+              "h": 224
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9491525423728814,
+            "fit_profile": "standing"
           }
         ],
         "back": [
           {
             "base": "basic_weapons__plate_helm__charge_strike/back/frame_00_base.png",
-            "team_mask": "basic_weapons__plate_helm__charge_strike/back/frame_00_teammask.png"
+            "team_mask": "basic_weapons__plate_helm__charge_strike/back/frame_00_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/back_contact_sheet.png",
+            "source_slot": 9,
+            "source_crop_box": [
+              36,
+              470,
+              508,
+              706
+            ],
+            "source_bbox": {
+              "x": 35,
+              "y": 0,
+              "w": 437,
+              "h": 236
+            },
+            "final_bbox": {
+              "x": 75,
+              "y": 21,
+              "w": 362,
+              "h": 195
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              8
+            ],
+            "scale": 0.8283752860411899,
+            "fit_profile": "standing"
           },
           {
             "base": "basic_weapons__plate_helm__charge_strike/back/frame_01_base.png",
-            "team_mask": "basic_weapons__plate_helm__charge_strike/back/frame_01_teammask.png"
+            "team_mask": "basic_weapons__plate_helm__charge_strike/back/frame_01_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/back_contact_sheet.png",
+            "source_slot": 9,
+            "source_crop_box": [
+              36,
+              470,
+              508,
+              706
+            ],
+            "source_bbox": {
+              "x": 35,
+              "y": 0,
+              "w": 437,
+              "h": 236
+            },
+            "final_bbox": {
+              "x": 75,
+              "y": 21,
+              "w": 362,
+              "h": 195
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              8
+            ],
+            "scale": 0.8283752860411899,
+            "fit_profile": "standing"
           }
         ]
-      }
+      },
+      "placement": {
+        "source_size": [
+          512,
+          256
+        ],
+        "anchor": [
+          256,
+          208
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          2,
+          1
+        ]
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 512,
+        "height_px": 256,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 256,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 256,
+          "pre_crop_target_px": 512,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 2,
+          "h": 1
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "visual_envelope": {
+        "w": 2,
+        "h": 1
+      },
+      "visual_envelope_note": "basic spear can angle forward but should not exceed the mounted cavalry silhouette"
     },
     "basic_weapons__plate_helm__hit_alert": {
       "frame_ms": 250,
       "loop": true,
       "hold_last": false,
-      "description": "Basic weapons + Plate Helm: hit/alert; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+      "description": "Basic weapons + Plate Helm: hit/alert mounted pose with the spear/lance still in the rider's anatomical right hand; shield is strapped to the rider's anatomical left forearm, relaxed on the far side beside or behind the horse neck/shoulder area, about one third to one half visible; the rider's anatomical left hand still holds or gathers the reins, with reins passing naturally near the shield-side hand; shield arm remains relaxed rather than actively presenting the shield; Plate Helm active and Iron Weapons inactive; same Plate Helm armour package as iron_weapons__plate_helm: closed plate helm, blue plume/crest, and full plate-style rider armour silhouette; same horse armour/barding package as iron_weapons__plate_helm, with plated head armour/chanfron, neck plates/crinet, and chest/front armour/peytral; saddle/saddle cloth becomes blue #00AFFF; dark brown leather girth/belly strap under the horse remains non-team-colour and must never become blue; horse bridle/headstall/face straps and reins remain blue #00AFFF where visible; same short spear as the default/basic variant, with plain wooden shaft, leather grip, and dull bronze or scrap-metal spearhead; no pennant and do not upgrade to a lance; same round wooden shield as the default/basic variant, with blue #00AFFF face and white diagonal stripe; no reinforced iron rim, rivets, or kite-shield upgrade; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
+      "family": "basic_weapons__plate_helm__hit_alert",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "basic_weapons__plate_helm__hit_alert/front/frame_00_base.png",
-            "team_mask": "basic_weapons__plate_helm__hit_alert/front/frame_00_teammask.png"
+            "team_mask": "basic_weapons__plate_helm__hit_alert/front/frame_00_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/front_contact_sheet.png",
+            "source_slot": 10,
+            "source_crop_box": [
+              348,
+              470,
+              820,
+              706
+            ],
+            "source_bbox": {
+              "x": 138,
+              "y": 0,
+              "w": 195,
+              "h": 236
+            },
+            "final_bbox": {
+              "x": 164,
+              "y": 21,
+              "w": 185,
+              "h": 224
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9491525423728814,
+            "fit_profile": "standing"
           },
           {
             "base": "basic_weapons__plate_helm__hit_alert/front/frame_01_base.png",
-            "team_mask": "basic_weapons__plate_helm__hit_alert/front/frame_01_teammask.png"
+            "team_mask": "basic_weapons__plate_helm__hit_alert/front/frame_01_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/front_contact_sheet.png",
+            "source_slot": 10,
+            "source_crop_box": [
+              348,
+              470,
+              820,
+              706
+            ],
+            "source_bbox": {
+              "x": 138,
+              "y": 0,
+              "w": 195,
+              "h": 236
+            },
+            "final_bbox": {
+              "x": 164,
+              "y": 21,
+              "w": 185,
+              "h": 224
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9491525423728814,
+            "fit_profile": "standing"
           }
         ],
         "back": [
           {
             "base": "basic_weapons__plate_helm__hit_alert/back/frame_00_base.png",
-            "team_mask": "basic_weapons__plate_helm__hit_alert/back/frame_00_teammask.png"
+            "team_mask": "basic_weapons__plate_helm__hit_alert/back/frame_00_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/back_contact_sheet.png",
+            "source_slot": 10,
+            "source_crop_box": [
+              332,
+              470,
+              804,
+              706
+            ],
+            "source_bbox": {
+              "x": 136,
+              "y": 0,
+              "w": 198,
+              "h": 236
+            },
+            "final_bbox": {
+              "x": 162,
+              "y": 21,
+              "w": 188,
+              "h": 224
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9491525423728814,
+            "fit_profile": "standing"
           },
           {
             "base": "basic_weapons__plate_helm__hit_alert/back/frame_01_base.png",
-            "team_mask": "basic_weapons__plate_helm__hit_alert/back/frame_01_teammask.png"
+            "team_mask": "basic_weapons__plate_helm__hit_alert/back/frame_01_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/back_contact_sheet.png",
+            "source_slot": 10,
+            "source_crop_box": [
+              332,
+              470,
+              804,
+              706
+            ],
+            "source_bbox": {
+              "x": 136,
+              "y": 0,
+              "w": 198,
+              "h": 236
+            },
+            "final_bbox": {
+              "x": 162,
+              "y": 21,
+              "w": 188,
+              "h": 224
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9491525423728814,
+            "fit_profile": "standing"
           }
         ]
+      },
+      "placement": {
+        "source_size": [
+          512,
+          256
+        ],
+        "anchor": [
+          256,
+          208
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          2,
+          1
+        ]
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 512,
+        "height_px": 256,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 256,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 256,
+          "pre_crop_target_px": 512,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 2,
+          "h": 1
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "visual_envelope": {
+        "w": 2,
+        "h": 1
       }
     },
     "basic_weapons__plate_helm__dead": {
       "frame_ms": 250,
       "loop": true,
       "hold_last": false,
-      "description": "Basic weapons + Plate Helm: dead; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+      "description": "Basic weapons + Plate Helm: dead; Plate Helm active and Iron Weapons inactive; same Plate Helm armour package as iron_weapons__plate_helm: closed plate helm, blue plume/crest, and full plate-style rider armour silhouette; same horse armour/barding package as iron_weapons__plate_helm, with plated head armour/chanfron, neck plates/crinet, and chest/front armour/peytral; saddle/saddle cloth becomes blue #00AFFF; dark brown leather girth/belly strap under the horse remains non-team-colour and must never become blue; horse bridle/headstall/face straps and reins remain blue #00AFFF where visible; same short spear as the default/basic variant, with plain wooden shaft, leather grip, and dull bronze or scrap-metal spearhead; no pennant and do not upgrade to a lance; same round wooden shield as the default/basic variant, with blue #00AFFF face and white diagonal stripe; no reinforced iron rim, rivets, or kite-shield upgrade; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
+      "family": "basic_weapons__plate_helm__dead",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "basic_weapons__plate_helm__dead/front/frame_00_base.png",
-            "team_mask": "basic_weapons__plate_helm__dead/front/frame_00_teammask.png"
+            "team_mask": "basic_weapons__plate_helm__dead/front/frame_00_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/front_contact_sheet.png",
+            "source_slot": 11,
+            "source_crop_box": [
+              745,
+              470,
+              1217,
+              706
+            ],
+            "source_bbox": {
+              "x": 157,
+              "y": 0,
+              "w": 158,
+              "h": 236
+            },
+            "final_bbox": {
+              "x": 181,
+              "y": 21,
+              "w": 150,
+              "h": 224
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9491525423728814,
+            "fit_profile": "standing"
           },
           {
             "base": "basic_weapons__plate_helm__dead/front/frame_01_base.png",
-            "team_mask": "basic_weapons__plate_helm__dead/front/frame_01_teammask.png"
+            "team_mask": "basic_weapons__plate_helm__dead/front/frame_01_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/front_contact_sheet.png",
+            "source_slot": 11,
+            "source_crop_box": [
+              745,
+              470,
+              1217,
+              706
+            ],
+            "source_bbox": {
+              "x": 157,
+              "y": 0,
+              "w": 158,
+              "h": 236
+            },
+            "final_bbox": {
+              "x": 181,
+              "y": 21,
+              "w": 150,
+              "h": 224
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9491525423728814,
+            "fit_profile": "standing"
           }
         ],
         "back": [
           {
             "base": "basic_weapons__plate_helm__dead/back/frame_00_base.png",
-            "team_mask": "basic_weapons__plate_helm__dead/back/frame_00_teammask.png"
+            "team_mask": "basic_weapons__plate_helm__dead/back/frame_00_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/back_contact_sheet.png",
+            "source_slot": 11,
+            "source_crop_box": [
+              781,
+              470,
+              1253,
+              706
+            ],
+            "source_bbox": {
+              "x": 108,
+              "y": 0,
+              "w": 255,
+              "h": 236
+            },
+            "final_bbox": {
+              "x": 135,
+              "y": 21,
+              "w": 242,
+              "h": 224
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9491525423728814,
+            "fit_profile": "standing"
           },
           {
             "base": "basic_weapons__plate_helm__dead/back/frame_01_base.png",
-            "team_mask": "basic_weapons__plate_helm__dead/back/frame_01_teammask.png"
+            "team_mask": "basic_weapons__plate_helm__dead/back/frame_01_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/back_contact_sheet.png",
+            "source_slot": 11,
+            "source_crop_box": [
+              781,
+              470,
+              1253,
+              706
+            ],
+            "source_bbox": {
+              "x": 108,
+              "y": 0,
+              "w": 255,
+              "h": 236
+            },
+            "final_bbox": {
+              "x": 135,
+              "y": 21,
+              "w": 242,
+              "h": 224
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9491525423728814,
+            "fit_profile": "standing"
           }
         ]
+      },
+      "placement": {
+        "source_size": [
+          512,
+          256
+        ],
+        "anchor": [
+          256,
+          208
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          2,
+          1
+        ]
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 512,
+        "height_px": 256,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 256,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 256,
+          "pre_crop_target_px": 512,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 2,
+          "h": 1
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "visual_envelope": {
+        "w": 2,
+        "h": 1
       }
     },
     "basic_weapons__plate_helm__decayed_skeleton_with_armour_horse_gear_and_weapon": {
       "frame_ms": 250,
       "loop": true,
       "hold_last": false,
-      "description": "Basic weapons + Plate Helm: decayed skeleton with armour horse gear and weapon; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+      "description": "Basic weapons + Plate Helm: decayed skeleton with armour horse gear and weapon; Plate Helm active and Iron Weapons inactive; same Plate Helm armour package as iron_weapons__plate_helm: closed plate helm, blue plume/crest, and full plate-style rider armour silhouette; same horse armour/barding package as iron_weapons__plate_helm, with plated head armour/chanfron, neck plates/crinet, and chest/front armour/peytral; saddle/saddle cloth becomes blue #00AFFF; dark brown leather girth/belly strap under the horse remains non-team-colour and must never become blue; horse bridle/headstall/face straps and reins remain blue #00AFFF where visible; same short spear as the default/basic variant, with plain wooden shaft, leather grip, and dull bronze or scrap-metal spearhead; no pennant and do not upgrade to a lance; same round wooden shield as the default/basic variant, with blue #00AFFF face and white diagonal stripe; no reinforced iron rim, rivets, or kite-shield upgrade; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
+      "family": "basic_weapons__plate_helm__decayed_skeleton_with_armour_horse_gear_and_weapon",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "basic_weapons__plate_helm__decayed_skeleton_with_armour_horse_gear_and_weapon/front/frame_00_base.png",
-            "team_mask": "basic_weapons__plate_helm__decayed_skeleton_with_armour_horse_gear_and_weapon/front/frame_00_teammask.png"
+            "team_mask": "basic_weapons__plate_helm__decayed_skeleton_with_armour_horse_gear_and_weapon/front/frame_00_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/front_contact_sheet.png",
+            "source_slot": 12,
+            "source_crop_box": [
+              1161,
+              470,
+              1633,
+              706
+            ],
+            "source_bbox": {
+              "x": 132,
+              "y": 0,
+              "w": 208,
+              "h": 236
+            },
+            "final_bbox": {
+              "x": 158,
+              "y": 21,
+              "w": 197,
+              "h": 224
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9491525423728814,
+            "fit_profile": "standing"
           },
           {
             "base": "basic_weapons__plate_helm__decayed_skeleton_with_armour_horse_gear_and_weapon/front/frame_01_base.png",
-            "team_mask": "basic_weapons__plate_helm__decayed_skeleton_with_armour_horse_gear_and_weapon/front/frame_01_teammask.png"
+            "team_mask": "basic_weapons__plate_helm__decayed_skeleton_with_armour_horse_gear_and_weapon/front/frame_01_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/front_contact_sheet.png",
+            "source_slot": 12,
+            "source_crop_box": [
+              1161,
+              470,
+              1633,
+              706
+            ],
+            "source_bbox": {
+              "x": 132,
+              "y": 0,
+              "w": 208,
+              "h": 236
+            },
+            "final_bbox": {
+              "x": 158,
+              "y": 21,
+              "w": 197,
+              "h": 224
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9491525423728814,
+            "fit_profile": "standing"
           }
         ],
         "back": [
           {
             "base": "basic_weapons__plate_helm__decayed_skeleton_with_armour_horse_gear_and_weapon/back/frame_00_base.png",
-            "team_mask": "basic_weapons__plate_helm__decayed_skeleton_with_armour_horse_gear_and_weapon/back/frame_00_teammask.png"
+            "team_mask": "basic_weapons__plate_helm__decayed_skeleton_with_armour_horse_gear_and_weapon/back/frame_00_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/back_contact_sheet.png",
+            "source_slot": 12,
+            "source_crop_box": [
+              1160,
+              470,
+              1632,
+              706
+            ],
+            "source_bbox": {
+              "x": 147,
+              "y": 0,
+              "w": 177,
+              "h": 236
+            },
+            "final_bbox": {
+              "x": 172,
+              "y": 21,
+              "w": 168,
+              "h": 224
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9491525423728814,
+            "fit_profile": "standing"
           },
           {
             "base": "basic_weapons__plate_helm__decayed_skeleton_with_armour_horse_gear_and_weapon/back/frame_01_base.png",
-            "team_mask": "basic_weapons__plate_helm__decayed_skeleton_with_armour_horse_gear_and_weapon/back/frame_01_teammask.png"
+            "team_mask": "basic_weapons__plate_helm__decayed_skeleton_with_armour_horse_gear_and_weapon/back/frame_01_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/knight/sheets/back_contact_sheet.png",
+            "source_slot": 12,
+            "source_crop_box": [
+              1160,
+              470,
+              1632,
+              706
+            ],
+            "source_bbox": {
+              "x": 147,
+              "y": 0,
+              "w": 177,
+              "h": 236
+            },
+            "final_bbox": {
+              "x": 172,
+              "y": 21,
+              "w": 168,
+              "h": 224
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 0.9491525423728814,
+            "fit_profile": "standing"
           }
         ]
+      },
+      "placement": {
+        "source_size": [
+          512,
+          256
+        ],
+        "anchor": [
+          256,
+          208
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          2,
+          1
+        ]
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 512,
+        "height_px": 256,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 256,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 256,
+          "pre_crop_target_px": 512,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 2,
+          "h": 1
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "visual_envelope": {
+        "w": 2,
+        "h": 1
       }
     },
     "iron_weapons__open_helmet__idle": {
       "frame_ms": 250,
       "loop": true,
       "hold_last": false,
-      "description": "Iron Weapons + Open Helmet: idle; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
+      "description": "Iron Weapons + Open Helmet: idle mounted stance: rider's anatomical right hand carries the spear/lance upright or near-upright; shield is strapped to the rider's anatomical left forearm, relaxed on the far side beside or behind the horse neck/shoulder area, about one third to one half visible; the rider's anatomical left hand still holds or gathers the reins, with reins passing naturally near the shield-side hand; shield is not front-presented; reins are relaxed rather than tense; Iron Weapons active and Plate Helm inactive; same open-helmet/light-armour package as basic_weapons__open_helmet: open nasal helmet, visible face, simple mail coif, and light shoulder protection; no full plate armour and no plume/crest; no horse armour and no barding; brown leather saddle and dark brown leather girth/belly strap; horse bridle/headstall/face straps and reins use blue #00AFFF; heavy mounted cavalry lance, longer than the default short spear, with wooden shaft, large bright iron lance head, visible iron socket/fittings, and metal butt cap; small practical lance pennant in blue #00AFFF with a white diagonal stripe, pointing/trailing outward away from the rider rather than inward across the rider; pentagonal/kite-style shield with blue #00AFFF face, white diagonal stripe, reinforced iron rim, and iron rivets/fasteners; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
+      "family": "iron_weapons__open_helmet__idle",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "iron_weapons__open_helmet__idle/front/frame_00_base.png",
-            "team_mask": "iron_weapons__open_helmet__idle/front/frame_00_teammask.png"
+            "team_mask": "iron_weapons__open_helmet__idle/front/frame_00_teammask.png",
+            "manual_review": "targeted_generated_pike_lance_front_20260606",
+            "source": "art/tiles/candidates/units/knight/sheets/front_contact_sheet.png",
+            "source_sha256": "b625bdd803dc985938d45a6440f4f86593a07944cbdb41c42b7129c8b2a824e9",
+            "source_canvas": {
+              "profile": "sprite_overlay_source",
+              "width_px": 512,
+              "height_px": 512,
+              "target_kind": "pre_crop_generation_slot",
+              "min_longest_side_px": 256,
+              "unit": "px",
+              "source": "realm range-based source-quality contract",
+              "range": {
+                "minimum_longest_side_px_after_crop": 256,
+                "pre_crop_target_px": 512,
+                "maximum_px": null
+              },
+              "visual_envelope": {
+                "w": 2,
+                "h": 2
+              },
+              "pre_crop_target_px_per_visual_tile": 256,
+              "runtime_min_longest_side_px_per_visual_tile": 128,
+              "scope": "per generated actor sheet cell or standalone pre-crop source"
+            },
+            "visual_envelope": {
+              "w": 2,
+              "h": 2
+            },
+            "placement": {
+              "source_size": [
+                512,
+                512
+              ],
+              "anchor": [
+                256,
+                416
+              ],
+              "footprint": [
+                1,
+                1
+              ],
+              "visual_envelope": [
+                2,
+                2
+              ]
+            },
+            "fit_profile": "standing",
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 394,
+              "h": 382
+            },
+            "final_bbox": {
+              "x": 75,
+              "y": 65,
+              "w": 362,
+              "h": 351
+            },
+            "anchor": [
+              256,
+              416
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.9187817258883249,
+            "residual_key_pixels": 0,
+            "transparent_key_pixels": 1218566,
+            "edge_fringe_key_pixels": 0,
+            "team_mask_pixels": 5536,
+            "source_slot": 13,
+            "source_crop_box": [
+              52,
+              547,
+              446,
+              941
+            ]
           },
           {
             "base": "iron_weapons__open_helmet__idle/front/frame_01_base.png",
-            "team_mask": "iron_weapons__open_helmet__idle/front/frame_01_teammask.png"
+            "team_mask": "iron_weapons__open_helmet__idle/front/frame_01_teammask.png",
+            "manual_review": "targeted_generated_pike_lance_front_20260606",
+            "source": "art/tiles/candidates/units/knight/sheets/front_contact_sheet.png",
+            "source_sha256": "b625bdd803dc985938d45a6440f4f86593a07944cbdb41c42b7129c8b2a824e9",
+            "source_canvas": {
+              "profile": "sprite_overlay_source",
+              "width_px": 512,
+              "height_px": 512,
+              "target_kind": "pre_crop_generation_slot",
+              "min_longest_side_px": 256,
+              "unit": "px",
+              "source": "realm range-based source-quality contract",
+              "range": {
+                "minimum_longest_side_px_after_crop": 256,
+                "pre_crop_target_px": 512,
+                "maximum_px": null
+              },
+              "visual_envelope": {
+                "w": 2,
+                "h": 2
+              },
+              "pre_crop_target_px_per_visual_tile": 256,
+              "runtime_min_longest_side_px_per_visual_tile": 128,
+              "scope": "per generated actor sheet cell or standalone pre-crop source"
+            },
+            "visual_envelope": {
+              "w": 2,
+              "h": 2
+            },
+            "placement": {
+              "source_size": [
+                512,
+                512
+              ],
+              "anchor": [
+                256,
+                416
+              ],
+              "footprint": [
+                1,
+                1
+              ],
+              "visual_envelope": [
+                2,
+                2
+              ]
+            },
+            "fit_profile": "standing",
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 394,
+              "h": 382
+            },
+            "final_bbox": {
+              "x": 75,
+              "y": 65,
+              "w": 362,
+              "h": 351
+            },
+            "anchor": [
+              256,
+              416
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.9187817258883249,
+            "residual_key_pixels": 0,
+            "transparent_key_pixels": 1218566,
+            "edge_fringe_key_pixels": 0,
+            "team_mask_pixels": 5536,
+            "source_slot": 13,
+            "source_crop_box": [
+              52,
+              547,
+              446,
+              941
+            ]
           }
         ],
         "back": [
           {
             "base": "iron_weapons__open_helmet__idle/back/frame_00_base.png",
-            "team_mask": "iron_weapons__open_helmet__idle/back/frame_00_teammask.png"
+            "team_mask": "iron_weapons__open_helmet__idle/back/frame_00_teammask.png",
+            "manual_review": "generated_pike_lance_completion_sheet_20260606_detected_grid_cleaned",
+            "source": "art/tiles/candidates/units/knight/sheets/back_contact_sheet.png",
+            "source_sha256": "a77da306a506f2cac89daaf0c3832ac1f93565b2f5e1d08e077913523846859b",
+            "source_grid_manifest": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/knight_iron_open_square_remaining_detected_grid_manifest.json",
+            "source_slot": 13,
+            "source_slot_crop_box_raw": [
+              20,
+              127,
+              246,
+              601
+            ],
+            "source_cell": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/split/knight_iron_open_square_remaining_detected_cleaned/slot_00_iron_weapons__open_helmet__idle_back_frame_00.png",
+            "source_canvas": {
+              "profile": "sprite_overlay_source",
+              "width_px": 512,
+              "height_px": 512,
+              "target_kind": "pre_crop_generation_slot",
+              "min_longest_side_px": 256,
+              "unit": "px",
+              "source": "realm range-based source-quality contract",
+              "range": {
+                "minimum_longest_side_px_after_crop": 256,
+                "pre_crop_target_px": 512,
+                "maximum_px": null
+              },
+              "visual_envelope": {
+                "w": 2,
+                "h": 2
+              },
+              "pre_crop_target_px_per_visual_tile": 256,
+              "runtime_min_longest_side_px_per_visual_tile": 128,
+              "scope": "per generated actor sheet cell or standalone pre-crop source"
+            },
+            "visual_envelope": {
+              "w": 2,
+              "h": 2
+            },
+            "placement": {
+              "source_size": [
+                512,
+                512
+              ],
+              "anchor": [
+                256,
+                416
+              ],
+              "footprint": [
+                1,
+                1
+              ],
+              "visual_envelope": [
+                2,
+                2
+              ]
+            },
+            "fit_profile": "standing",
+            "source_bbox": {
+              "x": 24,
+              "y": 13,
+              "w": 256,
+              "h": 273
+            },
+            "final_bbox": {
+              "x": 75,
+              "y": 42,
+              "w": 362,
+              "h": 386
+            },
+            "anchor": [
+              256,
+              416
+            ],
+            "anchor_offset": [
+              0,
+              12
+            ],
+            "scale": 1.4140625,
+            "residual_key_pixels": 1,
+            "postprocess_artifact_pixels_cleared": 96,
+            "transparent_key_pixels": 65591,
+            "edge_fringe_key_pixels": 0,
+            "team_mask_pixels": 1618,
+            "source_crop_box": [
+              40,
+              636,
+              345,
+              941
+            ]
           },
           {
             "base": "iron_weapons__open_helmet__idle/back/frame_01_base.png",
-            "team_mask": "iron_weapons__open_helmet__idle/back/frame_01_teammask.png"
+            "team_mask": "iron_weapons__open_helmet__idle/back/frame_01_teammask.png",
+            "manual_review": "generated_pike_lance_completion_sheet_20260606_detected_grid_cleaned",
+            "source": "art/tiles/candidates/units/knight/sheets/back_contact_sheet.png",
+            "source_sha256": "a77da306a506f2cac89daaf0c3832ac1f93565b2f5e1d08e077913523846859b",
+            "source_grid_manifest": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/knight_iron_open_square_remaining_detected_grid_manifest.json",
+            "source_slot": 13,
+            "source_slot_crop_box_raw": [
+              267,
+              127,
+              493,
+              601
+            ],
+            "source_cell": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/split/knight_iron_open_square_remaining_detected_cleaned/slot_01_iron_weapons__open_helmet__idle_back_frame_01.png",
+            "source_canvas": {
+              "profile": "sprite_overlay_source",
+              "width_px": 512,
+              "height_px": 512,
+              "target_kind": "pre_crop_generation_slot",
+              "min_longest_side_px": 256,
+              "unit": "px",
+              "source": "realm range-based source-quality contract",
+              "range": {
+                "minimum_longest_side_px_after_crop": 256,
+                "pre_crop_target_px": 512,
+                "maximum_px": null
+              },
+              "visual_envelope": {
+                "w": 2,
+                "h": 2
+              },
+              "pre_crop_target_px_per_visual_tile": 256,
+              "runtime_min_longest_side_px_per_visual_tile": 128,
+              "scope": "per generated actor sheet cell or standalone pre-crop source"
+            },
+            "visual_envelope": {
+              "w": 2,
+              "h": 2
+            },
+            "placement": {
+              "source_size": [
+                512,
+                512
+              ],
+              "anchor": [
+                256,
+                416
+              ],
+              "footprint": [
+                1,
+                1
+              ],
+              "visual_envelope": [
+                2,
+                2
+              ]
+            },
+            "fit_profile": "standing",
+            "source_bbox": {
+              "x": 24,
+              "y": 13,
+              "w": 256,
+              "h": 273
+            },
+            "final_bbox": {
+              "x": 75,
+              "y": 42,
+              "w": 362,
+              "h": 386
+            },
+            "anchor": [
+              256,
+              416
+            ],
+            "anchor_offset": [
+              0,
+              12
+            ],
+            "scale": 1.4140625,
+            "residual_key_pixels": 2,
+            "postprocess_artifact_pixels_cleared": 106,
+            "transparent_key_pixels": 67054,
+            "edge_fringe_key_pixels": 0,
+            "team_mask_pixels": 1557,
+            "source_crop_box": [
+              40,
+              636,
+              345,
+              941
+            ]
           }
         ]
-      }
+      },
+      "placement": {
+        "source_size": [
+          512,
+          512
+        ],
+        "anchor": [
+          256,
+          416
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          2,
+          2
+        ]
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 512,
+        "height_px": 512,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 256,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 256,
+          "pre_crop_target_px": 512,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 2,
+          "h": 2
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "visual_envelope": {
+        "w": 2,
+        "h": 2
+      },
+      "visual_envelope_note": "Iron Weapons lance is upright or near-upright above a mounted knight; keep horse, rider, and lance inside the slot"
     },
     "iron_weapons__open_helmet__trot": {
       "frame_ms": 250,
       "loop": true,
       "hold_last": false,
-      "description": "Iron Weapons + Open Helmet: trot; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
+      "description": "Iron Weapons + Open Helmet: controlled trot: rider's anatomical right hand carries the spear/lance while the horse moves; shield is strapped to the rider's anatomical left forearm, relaxed on the far side beside or behind the horse neck/shoulder area, about one third to one half visible; the rider's anatomical left hand still holds or gathers the reins, with reins passing naturally near the shield-side hand; horse can be guided by legs, knees, seat, spurs, training, and relaxed reins; Iron Weapons active and Plate Helm inactive; same open-helmet/light-armour package as basic_weapons__open_helmet: open nasal helmet, visible face, simple mail coif, and light shoulder protection; no full plate armour and no plume/crest; no horse armour and no barding; brown leather saddle and dark brown leather girth/belly strap; horse bridle/headstall/face straps and reins use blue #00AFFF; heavy mounted cavalry lance, longer than the default short spear, with wooden shaft, large bright iron lance head, visible iron socket/fittings, and metal butt cap; small practical lance pennant in blue #00AFFF with a white diagonal stripe, pointing/trailing outward away from the rider rather than inward across the rider; pentagonal/kite-style shield with blue #00AFFF face, white diagonal stripe, reinforced iron rim, and iron rivets/fasteners; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
+      "family": "iron_weapons__open_helmet__trot",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "iron_weapons__open_helmet__trot/front/frame_00_base.png",
-            "team_mask": "iron_weapons__open_helmet__trot/front/frame_00_teammask.png"
+            "team_mask": "iron_weapons__open_helmet__trot/front/frame_00_teammask.png",
+            "manual_review": "generated_pike_lance_completion_sheet_20260606_detected_grid_cleaned",
+            "source": "art/tiles/candidates/units/knight/sheets/front_contact_sheet.png",
+            "source_sha256": "a77da306a506f2cac89daaf0c3832ac1f93565b2f5e1d08e077913523846859b",
+            "source_grid_manifest": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/knight_iron_open_square_remaining_detected_grid_manifest.json",
+            "source_slot": 14,
+            "source_slot_crop_box_raw": [
+              514,
+              127,
+              740,
+              601
+            ],
+            "source_cell": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/split/knight_iron_open_square_remaining_detected_cleaned/slot_02_iron_weapons__open_helmet__trot_front_frame_00.png",
+            "source_canvas": {
+              "profile": "sprite_overlay_source",
+              "width_px": 512,
+              "height_px": 512,
+              "target_kind": "pre_crop_generation_slot",
+              "min_longest_side_px": 256,
+              "unit": "px",
+              "source": "realm range-based source-quality contract",
+              "range": {
+                "minimum_longest_side_px_after_crop": 256,
+                "pre_crop_target_px": 512,
+                "maximum_px": null
+              },
+              "visual_envelope": {
+                "w": 2,
+                "h": 2
+              },
+              "pre_crop_target_px_per_visual_tile": 256,
+              "runtime_min_longest_side_px_per_visual_tile": 128,
+              "scope": "per generated actor sheet cell or standalone pre-crop source"
+            },
+            "visual_envelope": {
+              "w": 2,
+              "h": 2
+            },
+            "placement": {
+              "source_size": [
+                512,
+                512
+              ],
+              "anchor": [
+                256,
+                416
+              ],
+              "footprint": [
+                1,
+                1
+              ],
+              "visual_envelope": [
+                2,
+                2
+              ]
+            },
+            "fit_profile": "standing",
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 431,
+              "h": 422
+            },
+            "final_bbox": {
+              "x": 75,
+              "y": 62,
+              "w": 362,
+              "h": 354
+            },
+            "anchor": [
+              256,
+              416
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.839907192575406,
+            "residual_key_pixels": 0,
+            "postprocess_artifact_pixels_cleared": 86,
+            "transparent_key_pixels": 59641,
+            "edge_fringe_key_pixels": 0,
+            "team_mask_pixels": 1769,
+            "source_crop_box": [
+              425,
+              510,
+              856,
+              941
+            ]
           },
           {
             "base": "iron_weapons__open_helmet__trot/front/frame_01_base.png",
-            "team_mask": "iron_weapons__open_helmet__trot/front/frame_01_teammask.png"
+            "team_mask": "iron_weapons__open_helmet__trot/front/frame_01_teammask.png",
+            "manual_review": "generated_pike_lance_completion_sheet_20260606_detected_grid_cleaned",
+            "source": "art/tiles/candidates/units/knight/sheets/front_contact_sheet.png",
+            "source_sha256": "a77da306a506f2cac89daaf0c3832ac1f93565b2f5e1d08e077913523846859b",
+            "source_grid_manifest": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/knight_iron_open_square_remaining_detected_grid_manifest.json",
+            "source_slot": 14,
+            "source_slot_crop_box_raw": [
+              761,
+              127,
+              987,
+              601
+            ],
+            "source_cell": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/split/knight_iron_open_square_remaining_detected_cleaned/slot_03_iron_weapons__open_helmet__trot_front_frame_01.png",
+            "source_canvas": {
+              "profile": "sprite_overlay_source",
+              "width_px": 512,
+              "height_px": 512,
+              "target_kind": "pre_crop_generation_slot",
+              "min_longest_side_px": 256,
+              "unit": "px",
+              "source": "realm range-based source-quality contract",
+              "range": {
+                "minimum_longest_side_px_after_crop": 256,
+                "pre_crop_target_px": 512,
+                "maximum_px": null
+              },
+              "visual_envelope": {
+                "w": 2,
+                "h": 2
+              },
+              "pre_crop_target_px_per_visual_tile": 256,
+              "runtime_min_longest_side_px_per_visual_tile": 128,
+              "scope": "per generated actor sheet cell or standalone pre-crop source"
+            },
+            "visual_envelope": {
+              "w": 2,
+              "h": 2
+            },
+            "placement": {
+              "source_size": [
+                512,
+                512
+              ],
+              "anchor": [
+                256,
+                416
+              ],
+              "footprint": [
+                1,
+                1
+              ],
+              "visual_envelope": [
+                2,
+                2
+              ]
+            },
+            "fit_profile": "standing",
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 431,
+              "h": 422
+            },
+            "final_bbox": {
+              "x": 75,
+              "y": 62,
+              "w": 362,
+              "h": 354
+            },
+            "anchor": [
+              256,
+              416
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.839907192575406,
+            "residual_key_pixels": 2,
+            "postprocess_artifact_pixels_cleared": 111,
+            "transparent_key_pixels": 59640,
+            "edge_fringe_key_pixels": 76,
+            "team_mask_pixels": 1682,
+            "source_crop_box": [
+              425,
+              510,
+              856,
+              941
+            ]
           }
         ],
         "back": [
           {
             "base": "iron_weapons__open_helmet__trot/back/frame_00_base.png",
-            "team_mask": "iron_weapons__open_helmet__trot/back/frame_00_teammask.png"
+            "team_mask": "iron_weapons__open_helmet__trot/back/frame_00_teammask.png",
+            "manual_review": "generated_pike_lance_completion_sheet_20260606_detected_grid_cleaned",
+            "source": "art/tiles/candidates/units/knight/sheets/back_contact_sheet.png",
+            "source_sha256": "a77da306a506f2cac89daaf0c3832ac1f93565b2f5e1d08e077913523846859b",
+            "source_grid_manifest": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/knight_iron_open_square_remaining_detected_grid_manifest.json",
+            "source_slot": 14,
+            "source_slot_crop_box_raw": [
+              1008,
+              127,
+              1234,
+              601
+            ],
+            "source_cell": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/split/knight_iron_open_square_remaining_detected_cleaned/slot_04_iron_weapons__open_helmet__trot_back_frame_00.png",
+            "source_canvas": {
+              "profile": "sprite_overlay_source",
+              "width_px": 512,
+              "height_px": 512,
+              "target_kind": "pre_crop_generation_slot",
+              "min_longest_side_px": 256,
+              "unit": "px",
+              "source": "realm range-based source-quality contract",
+              "range": {
+                "minimum_longest_side_px_after_crop": 256,
+                "pre_crop_target_px": 512,
+                "maximum_px": null
+              },
+              "visual_envelope": {
+                "w": 2,
+                "h": 2
+              },
+              "pre_crop_target_px_per_visual_tile": 256,
+              "runtime_min_longest_side_px_per_visual_tile": 128,
+              "scope": "per generated actor sheet cell or standalone pre-crop source"
+            },
+            "visual_envelope": {
+              "w": 2,
+              "h": 2
+            },
+            "placement": {
+              "source_size": [
+                512,
+                512
+              ],
+              "anchor": [
+                256,
+                416
+              ],
+              "footprint": [
+                1,
+                1
+              ],
+              "visual_envelope": [
+                2,
+                2
+              ]
+            },
+            "fit_profile": "standing",
+            "source_bbox": {
+              "x": 18,
+              "y": 13,
+              "w": 269,
+              "h": 273
+            },
+            "final_bbox": {
+              "x": 75,
+              "y": 49,
+              "w": 362,
+              "h": 367
+            },
+            "anchor": [
+              256,
+              416
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 1.345724907063197,
+            "residual_key_pixels": 3,
+            "postprocess_artifact_pixels_cleared": 89,
+            "transparent_key_pixels": 62317,
+            "edge_fringe_key_pixels": 0,
+            "team_mask_pixels": 1753,
+            "source_crop_box": [
+              433,
+              636,
+              738,
+              941
+            ]
           },
           {
             "base": "iron_weapons__open_helmet__trot/back/frame_01_base.png",
-            "team_mask": "iron_weapons__open_helmet__trot/back/frame_01_teammask.png"
+            "team_mask": "iron_weapons__open_helmet__trot/back/frame_01_teammask.png",
+            "manual_review": "generated_pike_lance_completion_sheet_20260606_detected_grid_cleaned",
+            "source": "art/tiles/candidates/units/knight/sheets/back_contact_sheet.png",
+            "source_sha256": "a77da306a506f2cac89daaf0c3832ac1f93565b2f5e1d08e077913523846859b",
+            "source_grid_manifest": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/knight_iron_open_square_remaining_detected_grid_manifest.json",
+            "source_slot": 14,
+            "source_slot_crop_box_raw": [
+              20,
+              621,
+              246,
+              1095
+            ],
+            "source_cell": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/split/knight_iron_open_square_remaining_detected_cleaned/slot_05_iron_weapons__open_helmet__trot_back_frame_01.png",
+            "source_canvas": {
+              "profile": "sprite_overlay_source",
+              "width_px": 512,
+              "height_px": 512,
+              "target_kind": "pre_crop_generation_slot",
+              "min_longest_side_px": 256,
+              "unit": "px",
+              "source": "realm range-based source-quality contract",
+              "range": {
+                "minimum_longest_side_px_after_crop": 256,
+                "pre_crop_target_px": 512,
+                "maximum_px": null
+              },
+              "visual_envelope": {
+                "w": 2,
+                "h": 2
+              },
+              "pre_crop_target_px_per_visual_tile": 256,
+              "runtime_min_longest_side_px_per_visual_tile": 128,
+              "scope": "per generated actor sheet cell or standalone pre-crop source"
+            },
+            "visual_envelope": {
+              "w": 2,
+              "h": 2
+            },
+            "placement": {
+              "source_size": [
+                512,
+                512
+              ],
+              "anchor": [
+                256,
+                416
+              ],
+              "footprint": [
+                1,
+                1
+              ],
+              "visual_envelope": [
+                2,
+                2
+              ]
+            },
+            "fit_profile": "standing",
+            "source_bbox": {
+              "x": 18,
+              "y": 13,
+              "w": 269,
+              "h": 273
+            },
+            "final_bbox": {
+              "x": 75,
+              "y": 49,
+              "w": 362,
+              "h": 367
+            },
+            "anchor": [
+              256,
+              416
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 1.345724907063197,
+            "residual_key_pixels": 16,
+            "postprocess_artifact_pixels_cleared": 154,
+            "transparent_key_pixels": 60517,
+            "edge_fringe_key_pixels": 0,
+            "team_mask_pixels": 1356,
+            "source_crop_box": [
+              433,
+              636,
+              738,
+              941
+            ]
           }
         ]
-      }
+      },
+      "placement": {
+        "source_size": [
+          512,
+          512
+        ],
+        "anchor": [
+          256,
+          416
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          2,
+          2
+        ]
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 512,
+        "height_px": 512,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 256,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 256,
+          "pre_crop_target_px": 512,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 2,
+          "h": 2
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "visual_envelope": {
+        "w": 2,
+        "h": 2
+      },
+      "visual_envelope_note": "Iron Weapons lance is upright or near-upright above a mounted knight; keep horse, rider, and lance inside the slot"
     },
     "iron_weapons__open_helmet__charge_strike": {
       "frame_ms": 250,
       "loop": true,
       "hold_last": false,
-      "description": "Iron Weapons + Open Helmet: charge/strike; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
+      "description": "Iron Weapons + Open Helmet: charge/strike action with the spear/lance allowed to angle for the attack; shield is strapped to the rider's anatomical left forearm, relaxed on the far side beside or behind the horse neck/shoulder area, about one third to one half visible; the rider's anatomical left hand still holds or gathers the reins, with reins passing naturally near the shield-side hand; keep the shield strapped, not gripped as a whole-hand object; Iron Weapons active and Plate Helm inactive; same open-helmet/light-armour package as basic_weapons__open_helmet: open nasal helmet, visible face, simple mail coif, and light shoulder protection; no full plate armour and no plume/crest; no horse armour and no barding; brown leather saddle and dark brown leather girth/belly strap; horse bridle/headstall/face straps and reins use blue #00AFFF; heavy mounted cavalry lance, longer than the default short spear, with wooden shaft, large bright iron lance head, visible iron socket/fittings, and metal butt cap; small practical lance pennant in blue #00AFFF with a white diagonal stripe, pointing/trailing outward away from the rider rather than inward across the rider; pentagonal/kite-style shield with blue #00AFFF face, white diagonal stripe, reinforced iron rim, and iron rivets/fasteners; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
+      "family": "iron_weapons__open_helmet__charge_strike",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "iron_weapons__open_helmet__charge_strike/front/frame_00_base.png",
-            "team_mask": "iron_weapons__open_helmet__charge_strike/front/frame_00_teammask.png"
+            "team_mask": "iron_weapons__open_helmet__charge_strike/front/frame_00_teammask.png",
+            "manual_review": "targeted_generated_pike_lance_front_20260606",
+            "source": "art/tiles/candidates/units/knight/sheets/front_contact_sheet.png",
+            "source_sha256": "61bdc5f40ae88443243e7bbf30d67a590b33a05d309372abe6679443907e5cb4",
+            "source_canvas": {
+              "profile": "sprite_overlay_source",
+              "width_px": 768,
+              "height_px": 256,
+              "target_kind": "pre_crop_generation_slot",
+              "min_longest_side_px": 384,
+              "unit": "px",
+              "source": "realm range-based source-quality contract",
+              "range": {
+                "minimum_longest_side_px_after_crop": 384,
+                "pre_crop_target_px": 768,
+                "maximum_px": null
+              },
+              "visual_envelope": {
+                "w": 3,
+                "h": 1
+              },
+              "pre_crop_target_px_per_visual_tile": 256,
+              "runtime_min_longest_side_px_per_visual_tile": 128,
+              "scope": "per generated actor sheet cell or standalone pre-crop source"
+            },
+            "visual_envelope": {
+              "w": 3,
+              "h": 1
+            },
+            "placement": {
+              "source_size": [
+                768,
+                256
+              ],
+              "anchor": [
+                384,
+                208
+              ],
+              "footprint": [
+                1,
+                1
+              ],
+              "visual_envelope": [
+                3,
+                1
+              ]
+            },
+            "fit_profile": "standing",
+            "source_bbox": {
+              "x": 110,
+              "y": 0,
+              "w": 572,
+              "h": 227
+            },
+            "final_bbox": {
+              "x": 112,
+              "y": 21,
+              "w": 544,
+              "h": 216
+            },
+            "anchor": [
+              384,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              29
+            ],
+            "scale": 0.951048951048951,
+            "residual_key_pixels": 0,
+            "transparent_key_pixels": 1151866,
+            "edge_fringe_key_pixels": 0,
+            "team_mask_pixels": 4381,
+            "source_slot": 15,
+            "source_crop_box": [
+              704,
+              706,
+              1386,
+              933
+            ]
           },
           {
             "base": "iron_weapons__open_helmet__charge_strike/front/frame_01_base.png",
-            "team_mask": "iron_weapons__open_helmet__charge_strike/front/frame_01_teammask.png"
+            "team_mask": "iron_weapons__open_helmet__charge_strike/front/frame_01_teammask.png",
+            "manual_review": "targeted_generated_pike_lance_front_20260606",
+            "source": "art/tiles/candidates/units/knight/sheets/front_contact_sheet.png",
+            "source_sha256": "61bdc5f40ae88443243e7bbf30d67a590b33a05d309372abe6679443907e5cb4",
+            "source_canvas": {
+              "profile": "sprite_overlay_source",
+              "width_px": 768,
+              "height_px": 256,
+              "target_kind": "pre_crop_generation_slot",
+              "min_longest_side_px": 384,
+              "unit": "px",
+              "source": "realm range-based source-quality contract",
+              "range": {
+                "minimum_longest_side_px_after_crop": 384,
+                "pre_crop_target_px": 768,
+                "maximum_px": null
+              },
+              "visual_envelope": {
+                "w": 3,
+                "h": 1
+              },
+              "pre_crop_target_px_per_visual_tile": 256,
+              "runtime_min_longest_side_px_per_visual_tile": 128,
+              "scope": "per generated actor sheet cell or standalone pre-crop source"
+            },
+            "visual_envelope": {
+              "w": 3,
+              "h": 1
+            },
+            "placement": {
+              "source_size": [
+                768,
+                256
+              ],
+              "anchor": [
+                384,
+                208
+              ],
+              "footprint": [
+                1,
+                1
+              ],
+              "visual_envelope": [
+                3,
+                1
+              ]
+            },
+            "fit_profile": "standing",
+            "source_bbox": {
+              "x": 110,
+              "y": 0,
+              "w": 572,
+              "h": 227
+            },
+            "final_bbox": {
+              "x": 112,
+              "y": 21,
+              "w": 544,
+              "h": 216
+            },
+            "anchor": [
+              384,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              29
+            ],
+            "scale": 0.951048951048951,
+            "residual_key_pixels": 0,
+            "transparent_key_pixels": 1151866,
+            "edge_fringe_key_pixels": 0,
+            "team_mask_pixels": 4381,
+            "source_slot": 15,
+            "source_crop_box": [
+              704,
+              706,
+              1386,
+              933
+            ]
           }
         ],
         "back": [
           {
             "base": "iron_weapons__open_helmet__charge_strike/back/frame_00_base.png",
-            "team_mask": "iron_weapons__open_helmet__charge_strike/back/frame_00_teammask.png"
+            "team_mask": "iron_weapons__open_helmet__charge_strike/back/frame_00_teammask.png",
+            "manual_review": "generated_pike_lance_completion_sheet_20260606_detected_grid_cleaned",
+            "source": "art/tiles/candidates/units/knight/sheets/back_contact_sheet.png",
+            "source_sha256": "580458d15c3cfc00427ad2656df68cdc3fe5c731441853a2ed04399691704970",
+            "source_grid_manifest": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/knight_iron_open_wide_remaining_detected_grid_manifest.json",
+            "source_slot": 15,
+            "source_slot_crop_box_raw": [
+              13,
+              14,
+              1047,
+              190
+            ],
+            "source_cell": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/split/knight_iron_open_wide_remaining_detected_cleaned/slot_00_iron_weapons__open_helmet__charge_strike_back_frame_00.png",
+            "source_canvas": {
+              "profile": "sprite_overlay_source",
+              "width_px": 768,
+              "height_px": 256,
+              "target_kind": "pre_crop_generation_slot",
+              "min_longest_side_px": 384,
+              "unit": "px",
+              "source": "realm range-based source-quality contract",
+              "range": {
+                "minimum_longest_side_px_after_crop": 384,
+                "pre_crop_target_px": 768,
+                "maximum_px": null
+              },
+              "visual_envelope": {
+                "w": 3,
+                "h": 1
+              },
+              "pre_crop_target_px_per_visual_tile": 256,
+              "runtime_min_longest_side_px_per_visual_tile": 128,
+              "scope": "per generated actor sheet cell or standalone pre-crop source"
+            },
+            "visual_envelope": {
+              "w": 3,
+              "h": 1
+            },
+            "placement": {
+              "source_size": [
+                768,
+                256
+              ],
+              "anchor": [
+                384,
+                208
+              ],
+              "footprint": [
+                1,
+                1
+              ],
+              "visual_envelope": [
+                3,
+                1
+              ]
+            },
+            "fit_profile": "standing",
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 649,
+              "h": 216
+            },
+            "final_bbox": {
+              "x": 112,
+              "y": 27,
+              "w": 544,
+              "h": 181
+            },
+            "anchor": [
+              384,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.8382126348228043,
+            "residual_key_pixels": 408,
+            "postprocess_artifact_pixels_cleared": 2604,
+            "transparent_key_pixels": 145014,
+            "edge_fringe_key_pixels": 0,
+            "team_mask_pixels": 2128,
+            "source_crop_box": [
+              690,
+              706,
+              1339,
+              922
+            ]
           },
           {
             "base": "iron_weapons__open_helmet__charge_strike/back/frame_01_base.png",
-            "team_mask": "iron_weapons__open_helmet__charge_strike/back/frame_01_teammask.png"
+            "team_mask": "iron_weapons__open_helmet__charge_strike/back/frame_01_teammask.png",
+            "manual_review": "generated_pike_lance_completion_sheet_20260606_detected_grid_cleaned",
+            "source": "art/tiles/candidates/units/knight/sheets/back_contact_sheet.png",
+            "source_sha256": "580458d15c3cfc00427ad2656df68cdc3fe5c731441853a2ed04399691704970",
+            "source_grid_manifest": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/knight_iron_open_wide_remaining_detected_grid_manifest.json",
+            "source_slot": 15,
+            "source_slot_crop_box_raw": [
+              1066,
+              14,
+              2102,
+              190
+            ],
+            "source_cell": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/split/knight_iron_open_wide_remaining_detected_cleaned/slot_01_iron_weapons__open_helmet__charge_strike_back_frame_01.png",
+            "source_canvas": {
+              "profile": "sprite_overlay_source",
+              "width_px": 768,
+              "height_px": 256,
+              "target_kind": "pre_crop_generation_slot",
+              "min_longest_side_px": 384,
+              "unit": "px",
+              "source": "realm range-based source-quality contract",
+              "range": {
+                "minimum_longest_side_px_after_crop": 384,
+                "pre_crop_target_px": 768,
+                "maximum_px": null
+              },
+              "visual_envelope": {
+                "w": 3,
+                "h": 1
+              },
+              "pre_crop_target_px_per_visual_tile": 256,
+              "runtime_min_longest_side_px_per_visual_tile": 128,
+              "scope": "per generated actor sheet cell or standalone pre-crop source"
+            },
+            "visual_envelope": {
+              "w": 3,
+              "h": 1
+            },
+            "placement": {
+              "source_size": [
+                768,
+                256
+              ],
+              "anchor": [
+                384,
+                208
+              ],
+              "footprint": [
+                1,
+                1
+              ],
+              "visual_envelope": [
+                3,
+                1
+              ]
+            },
+            "fit_profile": "standing",
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 649,
+              "h": 216
+            },
+            "final_bbox": {
+              "x": 112,
+              "y": 27,
+              "w": 544,
+              "h": 181
+            },
+            "anchor": [
+              384,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.8382126348228043,
+            "residual_key_pixels": 1,
+            "postprocess_artifact_pixels_cleared": 1149,
+            "transparent_key_pixels": 146556,
+            "edge_fringe_key_pixels": 0,
+            "team_mask_pixels": 2334,
+            "source_crop_box": [
+              690,
+              706,
+              1339,
+              922
+            ]
           }
         ]
-      }
+      },
+      "placement": {
+        "source_size": [
+          768,
+          256
+        ],
+        "anchor": [
+          384,
+          208
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          3,
+          1
+        ]
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 768,
+        "height_px": 256,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 384,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 384,
+          "pre_crop_target_px": 768,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 3,
+          "h": 1
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "visual_envelope": {
+        "w": 3,
+        "h": 1
+      },
+      "visual_envelope_note": "Iron Weapons lance is couched forward or lying with the mount; keep the full lance inside the wide slot"
     },
     "iron_weapons__open_helmet__hit_alert": {
       "frame_ms": 250,
       "loop": true,
       "hold_last": false,
-      "description": "Iron Weapons + Open Helmet: hit/alert; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
+      "description": "Iron Weapons + Open Helmet: hit/alert mounted pose with the spear/lance still in the rider's anatomical right hand; shield is strapped to the rider's anatomical left forearm, relaxed on the far side beside or behind the horse neck/shoulder area, about one third to one half visible; the rider's anatomical left hand still holds or gathers the reins, with reins passing naturally near the shield-side hand; shield arm remains relaxed rather than actively presenting the shield; Iron Weapons active and Plate Helm inactive; same open-helmet/light-armour package as basic_weapons__open_helmet: open nasal helmet, visible face, simple mail coif, and light shoulder protection; no full plate armour and no plume/crest; no horse armour and no barding; brown leather saddle and dark brown leather girth/belly strap; horse bridle/headstall/face straps and reins use blue #00AFFF; heavy mounted cavalry lance, longer than the default short spear, with wooden shaft, large bright iron lance head, visible iron socket/fittings, and metal butt cap; small practical lance pennant in blue #00AFFF with a white diagonal stripe, pointing/trailing outward away from the rider rather than inward across the rider; pentagonal/kite-style shield with blue #00AFFF face, white diagonal stripe, reinforced iron rim, and iron rivets/fasteners; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
+      "family": "iron_weapons__open_helmet__hit_alert",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "iron_weapons__open_helmet__hit_alert/front/frame_00_base.png",
-            "team_mask": "iron_weapons__open_helmet__hit_alert/front/frame_00_teammask.png"
+            "team_mask": "iron_weapons__open_helmet__hit_alert/front/frame_00_teammask.png",
+            "manual_review": "generated_pike_lance_completion_sheet_20260606_detected_grid_cleaned",
+            "source": "art/tiles/candidates/units/knight/sheets/front_contact_sheet.png",
+            "source_sha256": "a77da306a506f2cac89daaf0c3832ac1f93565b2f5e1d08e077913523846859b",
+            "source_grid_manifest": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/knight_iron_open_square_remaining_detected_grid_manifest.json",
+            "source_slot": 16,
+            "source_slot_crop_box_raw": [
+              267,
+              621,
+              493,
+              1095
+            ],
+            "source_cell": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/split/knight_iron_open_square_remaining_detected_cleaned/slot_06_iron_weapons__open_helmet__hit_alert_front_frame_00.png",
+            "source_canvas": {
+              "profile": "sprite_overlay_source",
+              "width_px": 512,
+              "height_px": 512,
+              "target_kind": "pre_crop_generation_slot",
+              "min_longest_side_px": 256,
+              "unit": "px",
+              "source": "realm range-based source-quality contract",
+              "range": {
+                "minimum_longest_side_px_after_crop": 256,
+                "pre_crop_target_px": 512,
+                "maximum_px": null
+              },
+              "visual_envelope": {
+                "w": 2,
+                "h": 2
+              },
+              "pre_crop_target_px_per_visual_tile": 256,
+              "runtime_min_longest_side_px_per_visual_tile": 128,
+              "scope": "per generated actor sheet cell or standalone pre-crop source"
+            },
+            "visual_envelope": {
+              "w": 2,
+              "h": 2
+            },
+            "placement": {
+              "source_size": [
+                512,
+                512
+              ],
+              "anchor": [
+                256,
+                416
+              ],
+              "footprint": [
+                1,
+                1
+              ],
+              "visual_envelope": [
+                2,
+                2
+              ]
+            },
+            "fit_profile": "standing",
+            "source_bbox": {
+              "x": 9,
+              "y": 0,
+              "w": 307,
+              "h": 320
+            },
+            "final_bbox": {
+              "x": 75,
+              "y": 42,
+              "w": 362,
+              "h": 377
+            },
+            "anchor": [
+              256,
+              416
+            ],
+            "anchor_offset": [
+              0,
+              3
+            ],
+            "scale": 1.1791530944625408,
+            "residual_key_pixels": 4,
+            "postprocess_artifact_pixels_cleared": 136,
+            "transparent_key_pixels": 61836,
+            "edge_fringe_key_pixels": 62,
+            "team_mask_pixels": 1327,
+            "source_crop_box": [
+              1213,
+              616,
+              1538,
+              941
+            ]
           },
           {
             "base": "iron_weapons__open_helmet__hit_alert/front/frame_01_base.png",
-            "team_mask": "iron_weapons__open_helmet__hit_alert/front/frame_01_teammask.png"
+            "team_mask": "iron_weapons__open_helmet__hit_alert/front/frame_01_teammask.png",
+            "manual_review": "generated_pike_lance_completion_sheet_20260606_detected_grid_cleaned",
+            "source": "art/tiles/candidates/units/knight/sheets/front_contact_sheet.png",
+            "source_sha256": "a77da306a506f2cac89daaf0c3832ac1f93565b2f5e1d08e077913523846859b",
+            "source_grid_manifest": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/knight_iron_open_square_remaining_detected_grid_manifest.json",
+            "source_slot": 16,
+            "source_slot_crop_box_raw": [
+              514,
+              621,
+              740,
+              1095
+            ],
+            "source_cell": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/split/knight_iron_open_square_remaining_detected_cleaned/slot_07_iron_weapons__open_helmet__hit_alert_front_frame_01.png",
+            "source_canvas": {
+              "profile": "sprite_overlay_source",
+              "width_px": 512,
+              "height_px": 512,
+              "target_kind": "pre_crop_generation_slot",
+              "min_longest_side_px": 256,
+              "unit": "px",
+              "source": "realm range-based source-quality contract",
+              "range": {
+                "minimum_longest_side_px_after_crop": 256,
+                "pre_crop_target_px": 512,
+                "maximum_px": null
+              },
+              "visual_envelope": {
+                "w": 2,
+                "h": 2
+              },
+              "pre_crop_target_px_per_visual_tile": 256,
+              "runtime_min_longest_side_px_per_visual_tile": 128,
+              "scope": "per generated actor sheet cell or standalone pre-crop source"
+            },
+            "visual_envelope": {
+              "w": 2,
+              "h": 2
+            },
+            "placement": {
+              "source_size": [
+                512,
+                512
+              ],
+              "anchor": [
+                256,
+                416
+              ],
+              "footprint": [
+                1,
+                1
+              ],
+              "visual_envelope": [
+                2,
+                2
+              ]
+            },
+            "fit_profile": "standing",
+            "source_bbox": {
+              "x": 9,
+              "y": 0,
+              "w": 307,
+              "h": 320
+            },
+            "final_bbox": {
+              "x": 75,
+              "y": 42,
+              "w": 362,
+              "h": 377
+            },
+            "anchor": [
+              256,
+              416
+            ],
+            "anchor_offset": [
+              0,
+              3
+            ],
+            "scale": 1.1791530944625408,
+            "residual_key_pixels": 3,
+            "postprocess_artifact_pixels_cleared": 101,
+            "transparent_key_pixels": 58292,
+            "edge_fringe_key_pixels": 22,
+            "team_mask_pixels": 1655,
+            "source_crop_box": [
+              1213,
+              616,
+              1538,
+              941
+            ]
           }
         ],
         "back": [
           {
             "base": "iron_weapons__open_helmet__hit_alert/back/frame_00_base.png",
-            "team_mask": "iron_weapons__open_helmet__hit_alert/back/frame_00_teammask.png"
+            "team_mask": "iron_weapons__open_helmet__hit_alert/back/frame_00_teammask.png",
+            "manual_review": "generated_pike_lance_completion_sheet_20260606_detected_grid_cleaned",
+            "source": "art/tiles/candidates/units/knight/sheets/back_contact_sheet.png",
+            "source_sha256": "a77da306a506f2cac89daaf0c3832ac1f93565b2f5e1d08e077913523846859b",
+            "source_grid_manifest": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/knight_iron_open_square_remaining_detected_grid_manifest.json",
+            "source_slot": 16,
+            "source_slot_crop_box_raw": [
+              761,
+              621,
+              987,
+              1095
+            ],
+            "source_cell": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/split/knight_iron_open_square_remaining_detected_cleaned/slot_08_iron_weapons__open_helmet__hit_alert_back_frame_00.png",
+            "source_canvas": {
+              "profile": "sprite_overlay_source",
+              "width_px": 512,
+              "height_px": 512,
+              "target_kind": "pre_crop_generation_slot",
+              "min_longest_side_px": 256,
+              "unit": "px",
+              "source": "realm range-based source-quality contract",
+              "range": {
+                "minimum_longest_side_px_after_crop": 256,
+                "pre_crop_target_px": 512,
+                "maximum_px": null
+              },
+              "visual_envelope": {
+                "w": 2,
+                "h": 2
+              },
+              "pre_crop_target_px_per_visual_tile": 256,
+              "runtime_min_longest_side_px_per_visual_tile": 128,
+              "scope": "per generated actor sheet cell or standalone pre-crop source"
+            },
+            "visual_envelope": {
+              "w": 2,
+              "h": 2
+            },
+            "placement": {
+              "source_size": [
+                512,
+                512
+              ],
+              "anchor": [
+                256,
+                416
+              ],
+              "footprint": [
+                1,
+                1
+              ],
+              "visual_envelope": [
+                2,
+                2
+              ]
+            },
+            "fit_profile": "standing",
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 313,
+              "h": 295
+            },
+            "final_bbox": {
+              "x": 75,
+              "y": 75,
+              "w": 362,
+              "h": 341
+            },
+            "anchor": [
+              256,
+              416
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 1.156549520766773,
+            "residual_key_pixels": 18,
+            "postprocess_artifact_pixels_cleared": 126,
+            "transparent_key_pixels": 58540,
+            "edge_fringe_key_pixels": 95,
+            "team_mask_pixels": 1951,
+            "source_crop_box": [
+              1286,
+              628,
+              1599,
+              941
+            ]
           },
           {
             "base": "iron_weapons__open_helmet__hit_alert/back/frame_01_base.png",
-            "team_mask": "iron_weapons__open_helmet__hit_alert/back/frame_01_teammask.png"
+            "team_mask": "iron_weapons__open_helmet__hit_alert/back/frame_01_teammask.png",
+            "manual_review": "generated_pike_lance_completion_sheet_20260606_detected_grid_cleaned",
+            "source": "art/tiles/candidates/units/knight/sheets/back_contact_sheet.png",
+            "source_sha256": "a77da306a506f2cac89daaf0c3832ac1f93565b2f5e1d08e077913523846859b",
+            "source_grid_manifest": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/knight_iron_open_square_remaining_detected_grid_manifest.json",
+            "source_slot": 16,
+            "source_slot_crop_box_raw": [
+              1008,
+              621,
+              1234,
+              1095
+            ],
+            "source_cell": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/split/knight_iron_open_square_remaining_detected_cleaned/slot_09_iron_weapons__open_helmet__hit_alert_back_frame_01.png",
+            "source_canvas": {
+              "profile": "sprite_overlay_source",
+              "width_px": 512,
+              "height_px": 512,
+              "target_kind": "pre_crop_generation_slot",
+              "min_longest_side_px": 256,
+              "unit": "px",
+              "source": "realm range-based source-quality contract",
+              "range": {
+                "minimum_longest_side_px_after_crop": 256,
+                "pre_crop_target_px": 512,
+                "maximum_px": null
+              },
+              "visual_envelope": {
+                "w": 2,
+                "h": 2
+              },
+              "pre_crop_target_px_per_visual_tile": 256,
+              "runtime_min_longest_side_px_per_visual_tile": 128,
+              "scope": "per generated actor sheet cell or standalone pre-crop source"
+            },
+            "visual_envelope": {
+              "w": 2,
+              "h": 2
+            },
+            "placement": {
+              "source_size": [
+                512,
+                512
+              ],
+              "anchor": [
+                256,
+                416
+              ],
+              "footprint": [
+                1,
+                1
+              ],
+              "visual_envelope": [
+                2,
+                2
+              ]
+            },
+            "fit_profile": "standing",
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 313,
+              "h": 295
+            },
+            "final_bbox": {
+              "x": 75,
+              "y": 75,
+              "w": 362,
+              "h": 341
+            },
+            "anchor": [
+              256,
+              416
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 1.156549520766773,
+            "residual_key_pixels": 2,
+            "postprocess_artifact_pixels_cleared": 99,
+            "transparent_key_pixels": 62986,
+            "edge_fringe_key_pixels": 0,
+            "team_mask_pixels": 1559,
+            "source_crop_box": [
+              1286,
+              628,
+              1599,
+              941
+            ]
           }
         ]
-      }
+      },
+      "placement": {
+        "source_size": [
+          512,
+          512
+        ],
+        "anchor": [
+          256,
+          416
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          2,
+          2
+        ]
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 512,
+        "height_px": 512,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 256,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 256,
+          "pre_crop_target_px": 512,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 2,
+          "h": 2
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "visual_envelope": {
+        "w": 2,
+        "h": 2
+      },
+      "visual_envelope_note": "Iron Weapons lance is upright or near-upright above a mounted knight; keep horse, rider, and lance inside the slot"
     },
     "iron_weapons__open_helmet__dead": {
       "frame_ms": 250,
       "loop": true,
       "hold_last": false,
-      "description": "Iron Weapons + Open Helmet: dead; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
+      "description": "Iron Weapons + Open Helmet: dead; Iron Weapons active and Plate Helm inactive; same open-helmet/light-armour package as basic_weapons__open_helmet: open nasal helmet, visible face, simple mail coif, and light shoulder protection; no full plate armour and no plume/crest; no horse armour and no barding; brown leather saddle and dark brown leather girth/belly strap; horse bridle/headstall/face straps and reins use blue #00AFFF; heavy mounted cavalry lance, longer than the default short spear, with wooden shaft, large bright iron lance head, visible iron socket/fittings, and metal butt cap; small practical lance pennant in blue #00AFFF with a white diagonal stripe, pointing/trailing outward away from the rider rather than inward across the rider; pentagonal/kite-style shield with blue #00AFFF face, white diagonal stripe, reinforced iron rim, and iron rivets/fasteners; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
+      "family": "iron_weapons__open_helmet__dead",
+      "fit_profile": "standing",
       "directions": {
         "front": [
-          {
-            "base": "iron_weapons__open_helmet__dead/front/frame_00_base.png",
-            "team_mask": "iron_weapons__open_helmet__dead/front/frame_00_teammask.png"
-          },
-          {
-            "base": "iron_weapons__open_helmet__dead/front/frame_01_base.png",
-            "team_mask": "iron_weapons__open_helmet__dead/front/frame_01_teammask.png"
-          }
+          {},
+          {}
         ],
         "back": [
-          {
-            "base": "iron_weapons__open_helmet__dead/back/frame_00_base.png",
-            "team_mask": "iron_weapons__open_helmet__dead/back/frame_00_teammask.png"
-          },
-          {
-            "base": "iron_weapons__open_helmet__dead/back/frame_01_base.png",
-            "team_mask": "iron_weapons__open_helmet__dead/back/frame_01_teammask.png"
-          }
+          {},
+          {}
         ]
-      }
+      },
+      "placement": {
+        "source_size": [
+          768,
+          256
+        ],
+        "anchor": [
+          384,
+          208
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          3,
+          1
+        ]
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 768,
+        "height_px": 256,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 384,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 384,
+          "pre_crop_target_px": 768,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 3,
+          "h": 1
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "visual_envelope": {
+        "w": 3,
+        "h": 1
+      },
+      "visual_envelope_note": "Iron Weapons lance is couched forward or lying with the mount; keep the full lance inside the wide slot"
     },
     "iron_weapons__open_helmet__decayed_skeleton_with_armour_horse_gear_and_weapon": {
       "frame_ms": 250,
       "loop": true,
       "hold_last": false,
-      "description": "Iron Weapons + Open Helmet: decayed skeleton with armour horse gear and weapon; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; starting cavalry armour with an open nasal helmet, visible face, simple mail coif, and lighter shoulder protection",
+      "description": "Iron Weapons + Open Helmet: decayed skeleton with armour horse gear and weapon; Iron Weapons active and Plate Helm inactive; same open-helmet/light-armour package as basic_weapons__open_helmet: open nasal helmet, visible face, simple mail coif, and light shoulder protection; no full plate armour and no plume/crest; no horse armour and no barding; brown leather saddle and dark brown leather girth/belly strap; horse bridle/headstall/face straps and reins use blue #00AFFF; heavy mounted cavalry lance, longer than the default short spear, with wooden shaft, large bright iron lance head, visible iron socket/fittings, and metal butt cap; small practical lance pennant in blue #00AFFF with a white diagonal stripe, pointing/trailing outward away from the rider rather than inward across the rider; pentagonal/kite-style shield with blue #00AFFF face, white diagonal stripe, reinforced iron rim, and iron rivets/fasteners; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
+      "family": "iron_weapons__open_helmet__decayed_skeleton_with_armour_horse_gear_and_weapon",
+      "fit_profile": "standing",
       "directions": {
         "front": [
-          {
-            "base": "iron_weapons__open_helmet__decayed_skeleton_with_armour_horse_gear_and_weapon/front/frame_00_base.png",
-            "team_mask": "iron_weapons__open_helmet__decayed_skeleton_with_armour_horse_gear_and_weapon/front/frame_00_teammask.png"
-          },
-          {
-            "base": "iron_weapons__open_helmet__decayed_skeleton_with_armour_horse_gear_and_weapon/front/frame_01_base.png",
-            "team_mask": "iron_weapons__open_helmet__decayed_skeleton_with_armour_horse_gear_and_weapon/front/frame_01_teammask.png"
-          }
+          {},
+          {}
         ],
         "back": [
-          {
-            "base": "iron_weapons__open_helmet__decayed_skeleton_with_armour_horse_gear_and_weapon/back/frame_00_base.png",
-            "team_mask": "iron_weapons__open_helmet__decayed_skeleton_with_armour_horse_gear_and_weapon/back/frame_00_teammask.png"
-          },
-          {
-            "base": "iron_weapons__open_helmet__decayed_skeleton_with_armour_horse_gear_and_weapon/back/frame_01_base.png",
-            "team_mask": "iron_weapons__open_helmet__decayed_skeleton_with_armour_horse_gear_and_weapon/back/frame_01_teammask.png"
-          }
+          {},
+          {}
         ]
-      }
+      },
+      "placement": {
+        "source_size": [
+          768,
+          256
+        ],
+        "anchor": [
+          384,
+          208
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          3,
+          1
+        ]
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 768,
+        "height_px": 256,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 384,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 384,
+          "pre_crop_target_px": 768,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 3,
+          "h": 1
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "visual_envelope": {
+        "w": 3,
+        "h": 1
+      },
+      "visual_envelope_note": "Iron Weapons lance is couched forward or lying with the mount; keep the full lance inside the wide slot"
     },
     "iron_weapons__plate_helm__idle": {
       "frame_ms": 250,
       "loop": true,
       "hold_last": false,
-      "description": "Iron Weapons + Plate Helm: idle; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+      "description": "Iron Weapons + Plate Helm: idle mounted stance: rider's anatomical right hand carries the spear/lance upright or near-upright; shield is strapped to the rider's anatomical left forearm, relaxed on the far side beside or behind the horse neck/shoulder area, about one third to one half visible; the rider's anatomical left hand still holds or gathers the reins, with reins passing naturally near the shield-side hand; shield is not front-presented; reins are relaxed rather than tense; both Plate Helm and Iron Weapons active; same Plate Helm armour package as basic_weapons__plate_helm: closed plate helm, blue plume/crest, and full plate-style rider armour silhouette; same horse armour/barding package as basic_weapons__plate_helm, with plated head armour/chanfron, neck plates/crinet, and chest/front armour/peytral; saddle/saddle cloth becomes blue #00AFFF; dark brown leather girth/belly strap under the horse remains non-team-colour and must never become blue; horse bridle/headstall/face straps and reins remain blue #00AFFF where visible; heavy mounted cavalry lance, longer than the default short spear, with wooden shaft, large bright iron lance head, visible iron socket/fittings, and metal butt cap; small practical lance pennant in blue #00AFFF with a white diagonal stripe, pointing/trailing outward away from the rider rather than inward across the rider; same pentagonal/kite-style Iron Weapons shield as iron_weapons__open_helmet, with blue #00AFFF face, white diagonal stripe, reinforced iron rim, and iron rivets/fasteners; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
+      "family": "iron_weapons__plate_helm__idle",
+      "fit_profile": "standing",
       "directions": {
         "front": [
-          {
-            "base": "iron_weapons__plate_helm__idle/front/frame_00_base.png",
-            "team_mask": "iron_weapons__plate_helm__idle/front/frame_00_teammask.png"
-          },
-          {
-            "base": "iron_weapons__plate_helm__idle/front/frame_01_base.png",
-            "team_mask": "iron_weapons__plate_helm__idle/front/frame_01_teammask.png"
-          }
+          {},
+          {}
         ],
         "back": [
-          {
-            "base": "iron_weapons__plate_helm__idle/back/frame_00_base.png",
-            "team_mask": "iron_weapons__plate_helm__idle/back/frame_00_teammask.png"
-          },
-          {
-            "base": "iron_weapons__plate_helm__idle/back/frame_01_base.png",
-            "team_mask": "iron_weapons__plate_helm__idle/back/frame_01_teammask.png"
-          }
+          {},
+          {}
         ]
-      }
+      },
+      "placement": {
+        "source_size": [
+          512,
+          512
+        ],
+        "anchor": [
+          256,
+          416
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          2,
+          2
+        ]
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 512,
+        "height_px": 512,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 256,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 256,
+          "pre_crop_target_px": 512,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 2,
+          "h": 2
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "visual_envelope": {
+        "w": 2,
+        "h": 2
+      },
+      "visual_envelope_note": "Iron Weapons lance is upright or near-upright above a mounted knight; keep horse, rider, and lance inside the slot"
     },
     "iron_weapons__plate_helm__trot": {
       "frame_ms": 250,
       "loop": true,
       "hold_last": false,
-      "description": "Iron Weapons + Plate Helm: trot; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+      "description": "Iron Weapons + Plate Helm: controlled trot: rider's anatomical right hand carries the spear/lance while the horse moves; shield is strapped to the rider's anatomical left forearm, relaxed on the far side beside or behind the horse neck/shoulder area, about one third to one half visible; the rider's anatomical left hand still holds or gathers the reins, with reins passing naturally near the shield-side hand; horse can be guided by legs, knees, seat, spurs, training, and relaxed reins; both Plate Helm and Iron Weapons active; same Plate Helm armour package as basic_weapons__plate_helm: closed plate helm, blue plume/crest, and full plate-style rider armour silhouette; same horse armour/barding package as basic_weapons__plate_helm, with plated head armour/chanfron, neck plates/crinet, and chest/front armour/peytral; saddle/saddle cloth becomes blue #00AFFF; dark brown leather girth/belly strap under the horse remains non-team-colour and must never become blue; horse bridle/headstall/face straps and reins remain blue #00AFFF where visible; heavy mounted cavalry lance, longer than the default short spear, with wooden shaft, large bright iron lance head, visible iron socket/fittings, and metal butt cap; small practical lance pennant in blue #00AFFF with a white diagonal stripe, pointing/trailing outward away from the rider rather than inward across the rider; same pentagonal/kite-style Iron Weapons shield as iron_weapons__open_helmet, with blue #00AFFF face, white diagonal stripe, reinforced iron rim, and iron rivets/fasteners; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
+      "family": "iron_weapons__plate_helm__trot",
+      "fit_profile": "standing",
       "directions": {
         "front": [
-          {
-            "base": "iron_weapons__plate_helm__trot/front/frame_00_base.png",
-            "team_mask": "iron_weapons__plate_helm__trot/front/frame_00_teammask.png"
-          },
-          {
-            "base": "iron_weapons__plate_helm__trot/front/frame_01_base.png",
-            "team_mask": "iron_weapons__plate_helm__trot/front/frame_01_teammask.png"
-          }
+          {},
+          {}
         ],
         "back": [
-          {
-            "base": "iron_weapons__plate_helm__trot/back/frame_00_base.png",
-            "team_mask": "iron_weapons__plate_helm__trot/back/frame_00_teammask.png"
-          },
-          {
-            "base": "iron_weapons__plate_helm__trot/back/frame_01_base.png",
-            "team_mask": "iron_weapons__plate_helm__trot/back/frame_01_teammask.png"
-          }
+          {},
+          {}
         ]
-      }
+      },
+      "placement": {
+        "source_size": [
+          512,
+          512
+        ],
+        "anchor": [
+          256,
+          416
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          2,
+          2
+        ]
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 512,
+        "height_px": 512,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 256,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 256,
+          "pre_crop_target_px": 512,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 2,
+          "h": 2
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "visual_envelope": {
+        "w": 2,
+        "h": 2
+      },
+      "visual_envelope_note": "Iron Weapons lance is upright or near-upright above a mounted knight; keep horse, rider, and lance inside the slot"
     },
     "iron_weapons__plate_helm__charge_strike": {
       "frame_ms": 250,
       "loop": true,
       "hold_last": false,
-      "description": "Iron Weapons + Plate Helm: charge/strike; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+      "description": "Iron Weapons + Plate Helm: charge/strike action with the spear/lance allowed to angle for the attack; shield is strapped to the rider's anatomical left forearm, relaxed on the far side beside or behind the horse neck/shoulder area, about one third to one half visible; the rider's anatomical left hand still holds or gathers the reins, with reins passing naturally near the shield-side hand; keep the shield strapped, not gripped as a whole-hand object; both Plate Helm and Iron Weapons active; same Plate Helm armour package as basic_weapons__plate_helm: closed plate helm, blue plume/crest, and full plate-style rider armour silhouette; same horse armour/barding package as basic_weapons__plate_helm, with plated head armour/chanfron, neck plates/crinet, and chest/front armour/peytral; saddle/saddle cloth becomes blue #00AFFF; dark brown leather girth/belly strap under the horse remains non-team-colour and must never become blue; horse bridle/headstall/face straps and reins remain blue #00AFFF where visible; heavy mounted cavalry lance, longer than the default short spear, with wooden shaft, large bright iron lance head, visible iron socket/fittings, and metal butt cap; small practical lance pennant in blue #00AFFF with a white diagonal stripe, pointing/trailing outward away from the rider rather than inward across the rider; same pentagonal/kite-style Iron Weapons shield as iron_weapons__open_helmet, with blue #00AFFF face, white diagonal stripe, reinforced iron rim, and iron rivets/fasteners; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
+      "family": "iron_weapons__plate_helm__charge_strike",
+      "fit_profile": "standing",
       "directions": {
         "front": [
-          {
-            "base": "iron_weapons__plate_helm__charge_strike/front/frame_00_base.png",
-            "team_mask": "iron_weapons__plate_helm__charge_strike/front/frame_00_teammask.png"
-          },
-          {
-            "base": "iron_weapons__plate_helm__charge_strike/front/frame_01_base.png",
-            "team_mask": "iron_weapons__plate_helm__charge_strike/front/frame_01_teammask.png"
-          }
+          {},
+          {}
         ],
         "back": [
-          {
-            "base": "iron_weapons__plate_helm__charge_strike/back/frame_00_base.png",
-            "team_mask": "iron_weapons__plate_helm__charge_strike/back/frame_00_teammask.png"
-          },
-          {
-            "base": "iron_weapons__plate_helm__charge_strike/back/frame_01_base.png",
-            "team_mask": "iron_weapons__plate_helm__charge_strike/back/frame_01_teammask.png"
-          }
+          {},
+          {}
         ]
-      }
+      },
+      "placement": {
+        "source_size": [
+          768,
+          256
+        ],
+        "anchor": [
+          384,
+          208
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          3,
+          1
+        ]
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 768,
+        "height_px": 256,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 384,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 384,
+          "pre_crop_target_px": 768,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 3,
+          "h": 1
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "visual_envelope": {
+        "w": 3,
+        "h": 1
+      },
+      "visual_envelope_note": "Iron Weapons lance is couched forward or lying with the mount; keep the full lance inside the wide slot"
     },
     "iron_weapons__plate_helm__hit_alert": {
       "frame_ms": 250,
       "loop": true,
       "hold_last": false,
-      "description": "Iron Weapons + Plate Helm: hit/alert; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+      "description": "Iron Weapons + Plate Helm: hit/alert mounted pose with the spear/lance still in the rider's anatomical right hand; shield is strapped to the rider's anatomical left forearm, relaxed on the far side beside or behind the horse neck/shoulder area, about one third to one half visible; the rider's anatomical left hand still holds or gathers the reins, with reins passing naturally near the shield-side hand; shield arm remains relaxed rather than actively presenting the shield; both Plate Helm and Iron Weapons active; same Plate Helm armour package as basic_weapons__plate_helm: closed plate helm, blue plume/crest, and full plate-style rider armour silhouette; same horse armour/barding package as basic_weapons__plate_helm, with plated head armour/chanfron, neck plates/crinet, and chest/front armour/peytral; saddle/saddle cloth becomes blue #00AFFF; dark brown leather girth/belly strap under the horse remains non-team-colour and must never become blue; horse bridle/headstall/face straps and reins remain blue #00AFFF where visible; heavy mounted cavalry lance, longer than the default short spear, with wooden shaft, large bright iron lance head, visible iron socket/fittings, and metal butt cap; small practical lance pennant in blue #00AFFF with a white diagonal stripe, pointing/trailing outward away from the rider rather than inward across the rider; same pentagonal/kite-style Iron Weapons shield as iron_weapons__open_helmet, with blue #00AFFF face, white diagonal stripe, reinforced iron rim, and iron rivets/fasteners; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
+      "family": "iron_weapons__plate_helm__hit_alert",
+      "fit_profile": "standing",
       "directions": {
         "front": [
-          {
-            "base": "iron_weapons__plate_helm__hit_alert/front/frame_00_base.png",
-            "team_mask": "iron_weapons__plate_helm__hit_alert/front/frame_00_teammask.png"
-          },
-          {
-            "base": "iron_weapons__plate_helm__hit_alert/front/frame_01_base.png",
-            "team_mask": "iron_weapons__plate_helm__hit_alert/front/frame_01_teammask.png"
-          }
+          {},
+          {}
         ],
         "back": [
-          {
-            "base": "iron_weapons__plate_helm__hit_alert/back/frame_00_base.png",
-            "team_mask": "iron_weapons__plate_helm__hit_alert/back/frame_00_teammask.png"
-          },
-          {
-            "base": "iron_weapons__plate_helm__hit_alert/back/frame_01_base.png",
-            "team_mask": "iron_weapons__plate_helm__hit_alert/back/frame_01_teammask.png"
-          }
+          {},
+          {}
         ]
-      }
+      },
+      "placement": {
+        "source_size": [
+          512,
+          512
+        ],
+        "anchor": [
+          256,
+          416
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          2,
+          2
+        ]
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 512,
+        "height_px": 512,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 256,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 256,
+          "pre_crop_target_px": 512,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 2,
+          "h": 2
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "visual_envelope": {
+        "w": 2,
+        "h": 2
+      },
+      "visual_envelope_note": "Iron Weapons lance is upright or near-upright above a mounted knight; keep horse, rider, and lance inside the slot"
     },
     "iron_weapons__plate_helm__dead": {
       "frame_ms": 250,
       "loop": true,
       "hold_last": false,
-      "description": "Iron Weapons + Plate Helm: dead; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+      "description": "Iron Weapons + Plate Helm: dead; both Plate Helm and Iron Weapons active; same Plate Helm armour package as basic_weapons__plate_helm: closed plate helm, blue plume/crest, and full plate-style rider armour silhouette; same horse armour/barding package as basic_weapons__plate_helm, with plated head armour/chanfron, neck plates/crinet, and chest/front armour/peytral; saddle/saddle cloth becomes blue #00AFFF; dark brown leather girth/belly strap under the horse remains non-team-colour and must never become blue; horse bridle/headstall/face straps and reins remain blue #00AFFF where visible; heavy mounted cavalry lance, longer than the default short spear, with wooden shaft, large bright iron lance head, visible iron socket/fittings, and metal butt cap; small practical lance pennant in blue #00AFFF with a white diagonal stripe, pointing/trailing outward away from the rider rather than inward across the rider; same pentagonal/kite-style Iron Weapons shield as iron_weapons__open_helmet, with blue #00AFFF face, white diagonal stripe, reinforced iron rim, and iron rivets/fasteners; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
+      "family": "iron_weapons__plate_helm__dead",
+      "fit_profile": "standing",
       "directions": {
         "front": [
-          {
-            "base": "iron_weapons__plate_helm__dead/front/frame_00_base.png",
-            "team_mask": "iron_weapons__plate_helm__dead/front/frame_00_teammask.png"
-          },
-          {
-            "base": "iron_weapons__plate_helm__dead/front/frame_01_base.png",
-            "team_mask": "iron_weapons__plate_helm__dead/front/frame_01_teammask.png"
-          }
+          {},
+          {}
         ],
         "back": [
-          {
-            "base": "iron_weapons__plate_helm__dead/back/frame_00_base.png",
-            "team_mask": "iron_weapons__plate_helm__dead/back/frame_00_teammask.png"
-          },
-          {
-            "base": "iron_weapons__plate_helm__dead/back/frame_01_base.png",
-            "team_mask": "iron_weapons__plate_helm__dead/back/frame_01_teammask.png"
-          }
+          {},
+          {}
         ]
-      }
+      },
+      "placement": {
+        "source_size": [
+          768,
+          256
+        ],
+        "anchor": [
+          384,
+          208
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          3,
+          1
+        ]
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 768,
+        "height_px": 256,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 384,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 384,
+          "pre_crop_target_px": 768,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 3,
+          "h": 1
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "visual_envelope": {
+        "w": 3,
+        "h": 1
+      },
+      "visual_envelope_note": "Iron Weapons lance is couched forward or lying with the mount; keep the full lance inside the wide slot"
     },
     "iron_weapons__plate_helm__decayed_skeleton_with_armour_horse_gear_and_weapon": {
       "frame_ms": 250,
       "loop": true,
       "hold_last": false,
-      "description": "Iron Weapons + Plate Helm: decayed skeleton with armour horse gear and weapon; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims; upgraded cavalry armour with a closed plate helm, stronger cheek guards, brighter metal brow, and heavier neck protection",
+      "description": "Iron Weapons + Plate Helm: decayed skeleton with armour horse gear and weapon; both Plate Helm and Iron Weapons active; same Plate Helm armour package as basic_weapons__plate_helm: closed plate helm, blue plume/crest, and full plate-style rider armour silhouette; same horse armour/barding package as basic_weapons__plate_helm, with plated head armour/chanfron, neck plates/crinet, and chest/front armour/peytral; saddle/saddle cloth becomes blue #00AFFF; dark brown leather girth/belly strap under the horse remains non-team-colour and must never become blue; horse bridle/headstall/face straps and reins remain blue #00AFFF where visible; heavy mounted cavalry lance, longer than the default short spear, with wooden shaft, large bright iron lance head, visible iron socket/fittings, and metal butt cap; small practical lance pennant in blue #00AFFF with a white diagonal stripe, pointing/trailing outward away from the rider rather than inward across the rider; same pentagonal/kite-style Iron Weapons shield as iron_weapons__open_helmet, with blue #00AFFF face, white diagonal stripe, reinforced iron rim, and iron rivets/fasteners; shield is strapped to the rider's anatomical left forearm, relaxed on the far side and partly visible; rider's anatomical left hand still holds or gathers the reins",
+      "family": "iron_weapons__plate_helm__decayed_skeleton_with_armour_horse_gear_and_weapon",
+      "fit_profile": "standing",
       "directions": {
         "front": [
-          {
-            "base": "iron_weapons__plate_helm__decayed_skeleton_with_armour_horse_gear_and_weapon/front/frame_00_base.png",
-            "team_mask": "iron_weapons__plate_helm__decayed_skeleton_with_armour_horse_gear_and_weapon/front/frame_00_teammask.png"
-          },
-          {
-            "base": "iron_weapons__plate_helm__decayed_skeleton_with_armour_horse_gear_and_weapon/front/frame_01_base.png",
-            "team_mask": "iron_weapons__plate_helm__decayed_skeleton_with_armour_horse_gear_and_weapon/front/frame_01_teammask.png"
-          }
+          {},
+          {}
         ],
         "back": [
-          {
-            "base": "iron_weapons__plate_helm__decayed_skeleton_with_armour_horse_gear_and_weapon/back/frame_00_base.png",
-            "team_mask": "iron_weapons__plate_helm__decayed_skeleton_with_armour_horse_gear_and_weapon/back/frame_00_teammask.png"
-          },
-          {
-            "base": "iron_weapons__plate_helm__decayed_skeleton_with_armour_horse_gear_and_weapon/back/frame_01_base.png",
-            "team_mask": "iron_weapons__plate_helm__decayed_skeleton_with_armour_horse_gear_and_weapon/back/frame_01_teammask.png"
-          }
+          {},
+          {}
         ]
-      }
-    },
-    "idle": {
-      "frame_ms": 250,
-      "loop": true,
-      "hold_last": false,
-      "description": "Runtime alias for basic_weapons__open_helmet__idle",
-      "directions": {
-        "front": [
-          {
-            "base": "idle/front/frame_00_base.png",
-            "team_mask": "idle/front/frame_00_teammask.png"
-          },
-          {
-            "base": "idle/front/frame_01_base.png",
-            "team_mask": "idle/front/frame_01_teammask.png"
-          }
+      },
+      "placement": {
+        "source_size": [
+          768,
+          256
         ],
-        "back": [
-          {
-            "base": "idle/back/frame_00_base.png",
-            "team_mask": "idle/back/frame_00_teammask.png"
-          },
-          {
-            "base": "idle/back/frame_01_base.png",
-            "team_mask": "idle/back/frame_01_teammask.png"
-          }
-        ]
-      }
-    },
-    "death": {
-      "frame_ms": 250,
-      "loop": false,
-      "hold_last": true,
-      "description": "Runtime alias for basic_weapons__open_helmet__dead",
-      "directions": {
-        "front": [
-          {
-            "base": "death/front/frame_00_base.png",
-            "team_mask": "death/front/frame_00_teammask.png"
-          },
-          {
-            "base": "death/front/frame_01_base.png",
-            "team_mask": "death/front/frame_01_teammask.png"
-          }
+        "anchor": [
+          384,
+          208
         ],
-        "back": [
-          {
-            "base": "death/back/frame_00_base.png",
-            "team_mask": "death/back/frame_00_teammask.png"
-          },
-          {
-            "base": "death/back/frame_01_base.png",
-            "team_mask": "death/back/frame_01_teammask.png"
-          }
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          3,
+          1
         ]
-      }
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 768,
+        "height_px": 256,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 384,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 384,
+          "pre_crop_target_px": 768,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 3,
+          "h": 1
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "visual_envelope": {
+        "w": 3,
+        "h": 1
+      },
+      "visual_envelope_note": "Iron Weapons lance is couched forward or lying with the mount; keep the full lance inside the wide slot"
     }
   },
-  "notes": "Generated knight tileset from two 4x6 image-gen contact sheets. Each authored action has front/back 48x48 base and team-mask frames; frame_01 duplicates frame_00 pending hand-authored animation polish. Runtime idle/death aliases added from closest generated action variants; opaque magenta cleanup applied where needed."
+  "notes": "Restored from accepted 48px candidate frame splits after high-resolution contact-sheet replay proved unsafe for these weapon-overhang sheets. Regenerate or split with an explicit source-slot map before high-res promotion.",
+  "asset_type": "unit",
+  "placement": {
+    "projection": "upright_world",
+    "anchor_kind": "feet",
+    "source_size": [
+      768,
+      512
+    ],
+    "anchor": [
+      384,
+      416
+    ],
+    "scale_policy": "entity_tile_zoom_1_55",
+    "footprint": [
+      1,
+      1
+    ],
+    "visual_envelope": [
+      2,
+      1
+    ],
+    "depth": "entity"
+  },
+  "source_workflow": "contact-sheet-resolution-replay",
+  "source_canvas": {
+    "profile": "sprite_overlay_source",
+    "width_px": 512,
+    "height_px": 256,
+    "target_kind": "pre_crop_generation_slot",
+    "min_longest_side_px": 256,
+    "unit": "px",
+    "source": "realm range-based source-quality contract",
+    "range": {
+      "minimum_longest_side_px_after_crop": 256,
+      "pre_crop_target_px": 512,
+      "maximum_px": null
+    },
+    "visual_envelope": {
+      "w": 2,
+      "h": 1
+    },
+    "pre_crop_target_px_per_visual_tile": 256,
+    "runtime_min_longest_side_px_per_visual_tile": 128,
+    "scope": "per generated actor sheet cell or standalone pre-crop source"
+  }
 }

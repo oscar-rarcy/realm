@@ -85,8 +85,10 @@ Generate the complete state set for each equipment tier below.
 
 ## Output Resolution
 
-- Final accepted standalone source canvas: 512 by 512 px.
-- Use this resolution from the generated JSON spec for every accepted standalone sprite frame; contact-sheet slots may be larger, but each slot must be cleanly crop/downscale-safe to 512 by 512 px.
+- Generation slot target before crop: about 256 by 256 px per accepted sprite frame.
+- Contact sheets may be larger than this overall; divide the sheet by its grid to judge the approximate slot size.
+- Slightly larger slots are fine. Do not downscale accepted art into tiny draw-size runtime proxies during promotion.
+- Cropped runtime source floor: longest side at least 128 px after crop.
 
 ## Image Output Contract
 
@@ -107,26 +109,48 @@ Generate the complete state set for each equipment tier below.
 
 ## States To Generate
 
-Generate **one frame for each state**. There are 14 state(s). Each image may contain at most **16 states** in a **4 by 4** grid.
+Generate **one sprite frame for each listed slot**. There are 28 frame slot(s). Each image may contain at most **16 frame slots** in a **4 by 4** grid.
 
-### Sheet
+### Sheet 1 of 2
 
 Use a **4 by 4** grid for this sheet.
+Slot target for this sheet: about **256 by 256 px** per cell before crop.
 
-- row 1, column 1: `basic_weapons__idle` - Basic weapons: idle; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
-- row 1, column 2: `basic_weapons__walk` - Basic weapons: walk; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
-- row 1, column 3: `basic_weapons__attack_swing_thrust` - Basic weapons: attack swing/thrust; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
-- row 1, column 4: `basic_weapons__hold_position` - Basic weapons: hold-position; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
-- row 2, column 1: `basic_weapons__hit_alert` - Basic weapons: hit/alert; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
-- row 2, column 2: `basic_weapons__dead` - Basic weapons: dead human body lying on the ground with clothing, armour, weapons, and equipment still intact; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
-- row 2, column 3: `basic_weapons__decayed` - Basic weapons: human skeleton remains, with armour, weapons, and equipment still intact and readable; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
-- row 2, column 4: `iron_weapons__idle` - Iron Weapons: idle; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
-- row 3, column 1: `iron_weapons__walk` - Iron Weapons: walk; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
-- row 3, column 2: `iron_weapons__attack_swing_thrust` - Iron Weapons: attack swing/thrust; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
-- row 3, column 3: `iron_weapons__hold_position` - Iron Weapons: hold-position; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
-- row 3, column 4: `iron_weapons__hit_alert` - Iron Weapons: hit/alert; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
-- row 4, column 1: `iron_weapons__dead` - Iron Weapons: dead human body lying on the ground with clothing, armour, weapons, and equipment still intact; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
-- row 4, column 2: `iron_weapons__decayed` - Iron Weapons: human skeleton remains, with armour, weapons, and equipment still intact and readable; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
+- row 1, column 1: `basic_weapons__idle` frame 00 - Basic weapons: idle; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
+- row 1, column 2: `basic_weapons__idle` frame 01 - Basic weapons: idle; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
+- row 1, column 3: `basic_weapons__walk` frame 00 - Basic weapons: walk; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
+- row 1, column 4: `basic_weapons__walk` frame 01 - Basic weapons: walk; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
+- row 2, column 1: `basic_weapons__attack_swing_thrust` frame 00 - Basic weapons: attack swing/thrust; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
+- row 2, column 2: `basic_weapons__attack_swing_thrust` frame 01 - Basic weapons: attack swing/thrust; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
+- row 2, column 3: `basic_weapons__hold_position` frame 00 - Basic weapons: hold-position; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
+- row 2, column 4: `basic_weapons__hold_position` frame 01 - Basic weapons: hold-position; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
+- row 3, column 1: `basic_weapons__hit_alert` frame 00 - Basic weapons: hit/alert; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
+- row 3, column 2: `basic_weapons__hit_alert` frame 01 - Basic weapons: hit/alert; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
+- row 3, column 3: `basic_weapons__dead` frame 00 - Basic weapons: dead human body lying on the ground with clothing, armour, weapons, and equipment still intact; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
+- row 3, column 4: `basic_weapons__dead` frame 01 - Basic weapons: dead human body lying on the ground with clothing, armour, weapons, and equipment still intact; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
+- row 4, column 1: `basic_weapons__decayed` frame 00 - Basic weapons: human skeleton remains, with armour, weapons, and equipment still intact and readable; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
+- row 4, column 2: `basic_weapons__decayed` frame 01 - Basic weapons: human skeleton remains, with armour, weapons, and equipment still intact and readable; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
+- row 4, column 3: `iron_weapons__idle` frame 00 - Iron Weapons: idle; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
+- row 4, column 4: `iron_weapons__idle` frame 01 - Iron Weapons: idle; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
+
+### Sheet 2 of 2
+
+Use a **4 by 3** grid for this sheet.
+Slot target for this sheet: about **256 by 256 px** per cell before crop.
+Leave unused cells empty.
+
+- row 1, column 1: `iron_weapons__walk` frame 00 - Iron Weapons: walk; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
+- row 1, column 2: `iron_weapons__walk` frame 01 - Iron Weapons: walk; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
+- row 1, column 3: `iron_weapons__attack_swing_thrust` frame 00 - Iron Weapons: attack swing/thrust; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
+- row 1, column 4: `iron_weapons__attack_swing_thrust` frame 01 - Iron Weapons: attack swing/thrust; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
+- row 2, column 1: `iron_weapons__hold_position` frame 00 - Iron Weapons: hold-position; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
+- row 2, column 2: `iron_weapons__hold_position` frame 01 - Iron Weapons: hold-position; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
+- row 2, column 3: `iron_weapons__hit_alert` frame 00 - Iron Weapons: hit/alert; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
+- row 2, column 4: `iron_weapons__hit_alert` frame 01 - Iron Weapons: hit/alert; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
+- row 3, column 1: `iron_weapons__dead` frame 00 - Iron Weapons: dead human body lying on the ground with clothing, armour, weapons, and equipment still intact; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
+- row 3, column 2: `iron_weapons__dead` frame 01 - Iron Weapons: dead human body lying on the ground with clothing, armour, weapons, and equipment still intact; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
+- row 3, column 3: `iron_weapons__decayed` frame 00 - Iron Weapons: human skeleton remains, with armour, weapons, and equipment still intact and readable; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
+- row 3, column 4: `iron_weapons__decayed` frame 01 - Iron Weapons: human skeleton remains, with armour, weapons, and equipment still intact and readable; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
 
 ## Production Follow-Up
 
@@ -139,21 +163,36 @@ Use a **4 by 4** grid for this sheet.
 
 ## Prompt
 
-Generate sprites for my Realm Militia. The footprint is 1 by 1 tile(s). Team colour is required and the recommended preview player colour is blue (#00AFFF). Valid directions are front, back. Produce one sheet at a time for the requested direction, using the same state grid for each direction. Create one frame for each of the 14 listed states. Order states left to right and top to bottom within each sheet. Keep the subject consistent across every slot. Final accepted standalone frames use the generated spec resolution: 512 by 512 px. Use a flat pure #ff00ff magenta sheet background and clear gutters between cells. Use clean readable tiny paper-cutout sprite proportions, stable anchor, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork. If unit reference images are supplied, use them only for equipment and silhouette cues, then redraw into stylized Realm sprite art; do not copy their source style or pixels.
+Generate sprites for my Realm Militia. The footprint is 1 by 1 tile(s). Team colour is required and the recommended preview player colour is blue (#00AFFF). Valid directions are front, back. Produce one sheet at a time for the requested direction, using the same state grid for each direction. Create one sprite frame for each of the 28 listed frame slots. Since there are more than 16 frame slots, split them across multiple images, each image using a 4 by 4 grid. Order slots left to right and top to bottom within each sheet. Keep the subject consistent across every slot. Aim for about 256 by 256 px per sheet slot before crop; larger slots are fine if the sheet grid is clean. Keep the accepted runtime crop's longest side at least 128 px. Use a flat pure #ff00ff magenta sheet background and clear gutters between cells. Use clean readable tiny paper-cutout sprite proportions, stable anchor, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork. If unit reference images are supplied, use them only for equipment and silhouette cues, then redraw into stylized Realm sprite art; do not copy their source style or pixels.
 
 Slot order:
-- Grid: 4 by 4
-  - row 1, column 1: Basic weapons: idle; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
-  - row 1, column 2: Basic weapons: walk; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
-  - row 1, column 3: Basic weapons: attack swing/thrust; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
-  - row 1, column 4: Basic weapons: hold-position; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
-  - row 2, column 1: Basic weapons: hit/alert; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
-  - row 2, column 2: Basic weapons: dead human body lying on the ground with clothing, armour, weapons, and equipment still intact; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
-  - row 2, column 3: Basic weapons: human skeleton remains, with armour, weapons, and equipment still intact and readable; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
-  - row 2, column 4: Iron Weapons: idle; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
-  - row 3, column 1: Iron Weapons: walk; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
-  - row 3, column 2: Iron Weapons: attack swing/thrust; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
-  - row 3, column 3: Iron Weapons: hold-position; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
-  - row 3, column 4: Iron Weapons: hit/alert; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
-  - row 4, column 1: Iron Weapons: dead human body lying on the ground with clothing, armour, weapons, and equipment still intact; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
-  - row 4, column 2: Iron Weapons: human skeleton remains, with armour, weapons, and equipment still intact and readable; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
+- Sheet 1 of 2: 4 by 4 grid
+  - row 1, column 1: `basic_weapons__idle` frame 00 - Basic weapons: idle; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
+  - row 1, column 2: `basic_weapons__idle` frame 01 - Basic weapons: idle; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
+  - row 1, column 3: `basic_weapons__walk` frame 00 - Basic weapons: walk; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
+  - row 1, column 4: `basic_weapons__walk` frame 01 - Basic weapons: walk; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
+  - row 2, column 1: `basic_weapons__attack_swing_thrust` frame 00 - Basic weapons: attack swing/thrust; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
+  - row 2, column 2: `basic_weapons__attack_swing_thrust` frame 01 - Basic weapons: attack swing/thrust; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
+  - row 2, column 3: `basic_weapons__hold_position` frame 00 - Basic weapons: hold-position; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
+  - row 2, column 4: `basic_weapons__hold_position` frame 01 - Basic weapons: hold-position; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
+  - row 3, column 1: `basic_weapons__hit_alert` frame 00 - Basic weapons: hit/alert; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
+  - row 3, column 2: `basic_weapons__hit_alert` frame 01 - Basic weapons: hit/alert; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
+  - row 3, column 3: `basic_weapons__dead` frame 00 - Basic weapons: dead human body lying on the ground with clothing, armour, weapons, and equipment still intact; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
+  - row 3, column 4: `basic_weapons__dead` frame 01 - Basic weapons: dead human body lying on the ground with clothing, armour, weapons, and equipment still intact; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
+  - row 4, column 1: `basic_weapons__decayed` frame 00 - Basic weapons: human skeleton remains, with armour, weapons, and equipment still intact and readable; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
+  - row 4, column 2: `basic_weapons__decayed` frame 01 - Basic weapons: human skeleton remains, with armour, weapons, and equipment still intact and readable; starting equipment with wooden hafts, leather grips, dull bronze or scrap-metal blades, and minimal metal reinforcement
+  - row 4, column 3: `iron_weapons__idle` frame 00 - Iron Weapons: idle; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
+  - row 4, column 4: `iron_weapons__idle` frame 01 - Iron Weapons: idle; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
+- Sheet 2 of 2: 4 by 3 grid
+  - row 1, column 1: `iron_weapons__walk` frame 00 - Iron Weapons: walk; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
+  - row 1, column 2: `iron_weapons__walk` frame 01 - Iron Weapons: walk; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
+  - row 1, column 3: `iron_weapons__attack_swing_thrust` frame 00 - Iron Weapons: attack swing/thrust; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
+  - row 1, column 4: `iron_weapons__attack_swing_thrust` frame 01 - Iron Weapons: attack swing/thrust; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
+  - row 2, column 1: `iron_weapons__hold_position` frame 00 - Iron Weapons: hold-position; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
+  - row 2, column 2: `iron_weapons__hold_position` frame 01 - Iron Weapons: hold-position; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
+  - row 2, column 3: `iron_weapons__hit_alert` frame 00 - Iron Weapons: hit/alert; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
+  - row 2, column 4: `iron_weapons__hit_alert` frame 01 - Iron Weapons: hit/alert; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
+  - row 3, column 1: `iron_weapons__dead` frame 00 - Iron Weapons: dead human body lying on the ground with clothing, armour, weapons, and equipment still intact; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
+  - row 3, column 2: `iron_weapons__dead` frame 01 - Iron Weapons: dead human body lying on the ground with clothing, armour, weapons, and equipment still intact; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
+  - row 3, column 3: `iron_weapons__decayed` frame 00 - Iron Weapons: human skeleton remains, with armour, weapons, and equipment still intact and readable; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims
+  - row 3, column 4: `iron_weapons__decayed` frame 01 - Iron Weapons: human skeleton remains, with armour, weapons, and equipment still intact and readable; upgraded equipment with bright iron blades, iron spear or lance tips, iron rivets, and reinforced shield rims

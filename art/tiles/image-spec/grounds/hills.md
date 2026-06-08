@@ -27,8 +27,10 @@ Generate Realm image sheets for **hills ground**.
 
 ## Output Resolution
 
-- Final accepted standalone source canvas: 1024 by 1024 px.
-- Use this resolution from the generated JSON spec for every accepted standalone tile; contact-sheet slots may be larger, but each slot must be cleanly crop/downscale-safe to 1024 by 1024 px.
+- Generation slot target before crop: about 1024 by 1024 px per accepted tile.
+- Contact sheets may be larger than this overall; divide the sheet by its grid to judge the approximate slot size.
+- Slightly larger slots are fine. Do not downscale accepted art into tiny draw-size runtime proxies during promotion.
+- Full-canvas runtime acceptance floor: 512 by 512 px.
 
 ## Image Output Contract
 

@@ -37,6 +37,7 @@ EXPECTED_STYLE_BY_RUNTIME = (
     ("assets/tiles/effects-ui/", "realm_effect_overlay"),
     ("assets/tiles/entities/", "realm_paper_cutout_small_tile"),
     ("assets/tiles/features/", "realm_paper_cutout_small_tile"),
+    ("assets/tiles/grounds/", "realm_ground_slab_small_tile"),
     ("assets/tiles/projectiles/", "realm_projectile_cutout"),
 )
 

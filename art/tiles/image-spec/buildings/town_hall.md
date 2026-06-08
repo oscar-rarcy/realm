@@ -44,8 +44,10 @@ Generate a Realm sprite reference sheet for **Town Hall**.
 
 ## Output Resolution
 
-- Final accepted standalone source canvas: 1536 by 1536 px.
-- Use this resolution from the generated JSON spec for every accepted standalone sprite frame; contact-sheet slots may be larger, but each slot must be cleanly crop/downscale-safe to 1536 by 1536 px.
+- Generation slot target before crop: about 768 by 768 px per accepted sprite frame.
+- Contact sheets may be larger than this overall; divide the sheet by its grid to judge the approximate slot size.
+- Slightly larger slots are fine. Do not downscale accepted art into tiny draw-size runtime proxies during promotion.
+- Cropped runtime source floor: longest side at least 384 px after crop.
 
 ## Image Output Contract
 
@@ -67,7 +69,7 @@ Generate a Realm sprite reference sheet for **Town Hall**.
 
 ## States To Generate
 
-Generate **one frame for each state**. There are 15 state(s). Each image may contain at most **16 states** in a **4 by 4** grid.
+Generate **one sprite frame for each listed slot**. There are 15 frame slot(s). Each image may contain at most **16 frame slots** in a **4 by 4** grid.
 
 Environment states are generated only for the completed building. Do not make a full cross-product of construction, damaged, garrisoned, and weather states.
 Night states should add visible warm light sources; broad nighttime dimming can still be handled by the renderer.
@@ -75,6 +77,7 @@ Night states should add visible warm light sources; broad nighttime dimming can 
 ### Sheet
 
 Use a **4 by 4** grid for this sheet.
+Slot target for this sheet: about **768 by 768 px** per cell before crop.
 
 - row 1, column 1: `complete` - complete
 - row 1, column 2: `under_construction_0_33_66` - under construction 0/33/66%
@@ -102,22 +105,22 @@ Use a **4 by 4** grid for this sheet.
 
 ## Prompt
 
-Generate sprites for my Realm Town Hall. The footprint is 3 by 3 tile(s). Team colour is required and the recommended preview player colour is blue (#00AFFF). Use south direction artwork. Create one frame for each of the 15 listed states. Order states left to right and top to bottom within each sheet. Keep the subject consistent across every slot. Final accepted standalone frames use the generated spec resolution: 1536 by 1536 px. Use transparent background, or a single flat #ff00ff magenta background if transparency is not available. Use clean readable simplified medieval painted-building proportions, stable anchor, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork. 
+Generate sprites for my Realm Town Hall. The footprint is 3 by 3 tile(s). Team colour is required and the recommended preview player colour is blue (#00AFFF). Use south direction artwork. Create one sprite frame for each of the 15 listed frame slots. Order slots left to right and top to bottom within each sheet. Keep the subject consistent across every slot. Aim for about 768 by 768 px per sheet slot before crop; larger slots are fine if the sheet grid is clean. Keep the accepted runtime crop's longest side at least 384 px. Use transparent background, or a single flat #ff00ff magenta background if transparency is not available. Use clean readable simplified medieval painted-building proportions, stable anchor, clear gutters, no text labels, no numbers, no watermark, and no cropped artwork. 
 
 Slot order:
 - Grid: 4 by 4
-  - row 1, column 1: complete
-  - row 1, column 2: under construction 0/33/66%
-  - row 1, column 3: garrisoned
-  - row 1, column 4: damaged
-  - row 2, column 1: ruin footprint
-  - row 2, column 2: 0-33 percent construction: foundation footprint and early site materials
-  - row 2, column 3: 34-66 percent construction: visible frame and scaffolding
-  - row 2, column 4: 67-99 percent construction: nearly complete shell with final work visible
-  - row 3, column 1: building visibly training a peasant
-  - row 3, column 2: building body visibly reacting while its garrison fires
-  - row 3, column 3: completed building at night with warm torch, candle, forge, or window light; keep team colour readable
-  - row 3, column 4: completed building in rain, wet roof/ground and drip or splash detail frame 1
-  - row 4, column 1: completed building in rain, wet roof/ground and drip or splash detail frame 2
-  - row 4, column 2: completed building with light snow on roof edges, ledges, and ground contact
-  - row 4, column 3: completed building with heavy settled snow while silhouette and team colour stay readable
+  - row 1, column 1: `complete` - complete
+  - row 1, column 2: `under_construction_0_33_66` - under construction 0/33/66%
+  - row 1, column 3: `garrisoned` - garrisoned
+  - row 1, column 4: `damaged` - damaged
+  - row 2, column 1: `ruin_footprint` - ruin footprint
+  - row 2, column 2: `construction_0_foundation` - 0-33 percent construction: foundation footprint and early site materials
+  - row 2, column 3: `construction_1_frame` - 34-66 percent construction: visible frame and scaffolding
+  - row 2, column 4: `construction_2_nearly_complete` - 67-99 percent construction: nearly complete shell with final work visible
+  - row 3, column 1: `training_peasant` - building visibly training a peasant
+  - row 3, column 2: `garrison_firing` - building body visibly reacting while its garrison fires
+  - row 3, column 3: `night_lit` - completed building at night with warm torch, candle, forge, or window light; keep team colour readable
+  - row 3, column 4: `rain_frame_1` - completed building in rain, wet roof/ground and drip or splash detail frame 1
+  - row 4, column 1: `rain_frame_2` - completed building in rain, wet roof/ground and drip or splash detail frame 2
+  - row 4, column 2: `snow_light` - completed building with light snow on roof edges, ledges, and ground contact
+  - row 4, column 3: `snow_heavy` - completed building with heavy settled snow while silhouette and team colour stay readable

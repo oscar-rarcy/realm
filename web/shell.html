@@ -23,6 +23,8 @@
       var basePath = '/';
       if (pathParts.length >= 2 && pathParts[0] === 'apps') {
         basePath = '/apps/' + pathParts[1] + '/';
+      } else if (pathParts[0] === 'ascii') {
+        basePath = '/ascii/';
       }
       var search = location.search || '';
       var isEmbed = isRealmEmbedRoute();

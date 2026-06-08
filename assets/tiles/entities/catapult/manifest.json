@@ -1,7 +1,7 @@
 {
   "schema": "realm.entity_tileset.v1",
   "entity": "catapult",
-  "sprite_size": 48,
+  "sprite_size": 256,
   "directions": [
     "front",
     "back"
@@ -12,25 +12,151 @@
       "loop": true,
       "hold_last": false,
       "description": "idle",
+      "family": "idle",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "idle/front/frame_00_base.png",
-            "team_mask": "idle/front/frame_00_teammask.png"
+            "team_mask": "idle/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/catapult/sheets/front_contact_sheet.png",
+            "source_slot": 1,
+            "source_bbox": {
+              "x": 7,
+              "y": 6,
+              "w": 404,
+              "h": 406
+            },
+            "final_bbox": {
+              "x": 49,
+              "y": 59,
+              "w": 156,
+              "h": 124
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -1,
+              -25
+            ],
+            "scale": 0.44801980198019803,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              3,
+              3,
+              421,
+              421
+            ]
           },
           {
             "base": "idle/front/frame_01_base.png",
-            "team_mask": "idle/front/frame_01_teammask.png"
+            "team_mask": "idle/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/catapult/sheets/front_contact_sheet.png",
+            "source_slot": 1,
+            "source_bbox": {
+              "x": 7,
+              "y": 6,
+              "w": 404,
+              "h": 406
+            },
+            "final_bbox": {
+              "x": 49,
+              "y": 59,
+              "w": 156,
+              "h": 124
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -1,
+              -25
+            ],
+            "scale": 0.44801980198019803,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              3,
+              3,
+              421,
+              421
+            ]
           }
         ],
         "back": [
           {
             "base": "idle/back/frame_00_base.png",
-            "team_mask": "idle/back/frame_00_teammask.png"
+            "team_mask": "idle/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/catapult/sheets/back_contact_sheet.png",
+            "source_slot": 1,
+            "source_bbox": {
+              "x": 36,
+              "y": 44,
+              "w": 345,
+              "h": 301
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 51,
+              "w": 181,
+              "h": 157
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.5246376811594203,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              0,
+              0,
+              418,
+              418
+            ]
           },
           {
             "base": "idle/back/frame_01_base.png",
-            "team_mask": "idle/back/frame_01_teammask.png"
+            "team_mask": "idle/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/catapult/sheets/back_contact_sheet.png",
+            "source_slot": 1,
+            "source_bbox": {
+              "x": 36,
+              "y": 44,
+              "w": 345,
+              "h": 301
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 51,
+              "w": 181,
+              "h": 157
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.5246376811594203,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              0,
+              0,
+              418,
+              418
+            ]
           }
         ]
       }
@@ -40,25 +166,151 @@
       "loop": true,
       "hold_last": false,
       "description": "roll",
+      "family": "roll",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "roll/front/frame_00_base.png",
-            "team_mask": "roll/front/frame_00_teammask.png"
+            "team_mask": "roll/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/catapult/sheets/front_contact_sheet.png",
+            "source_slot": 2,
+            "source_bbox": {
+              "x": 7,
+              "y": 6,
+              "w": 403,
+              "h": 406
+            },
+            "final_bbox": {
+              "x": 49,
+              "y": 57,
+              "w": 158,
+              "h": 127
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              -24
+            ],
+            "scale": 0.4491315136476427,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              418,
+              3,
+              836,
+              421
+            ]
           },
           {
             "base": "roll/front/frame_01_base.png",
-            "team_mask": "roll/front/frame_01_teammask.png"
+            "team_mask": "roll/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/catapult/sheets/front_contact_sheet.png",
+            "source_slot": 2,
+            "source_bbox": {
+              "x": 7,
+              "y": 6,
+              "w": 403,
+              "h": 406
+            },
+            "final_bbox": {
+              "x": 49,
+              "y": 57,
+              "w": 158,
+              "h": 127
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              -24
+            ],
+            "scale": 0.4491315136476427,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              418,
+              3,
+              836,
+              421
+            ]
           }
         ],
         "back": [
           {
             "base": "roll/back/frame_00_base.png",
-            "team_mask": "roll/back/frame_00_teammask.png"
+            "team_mask": "roll/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/catapult/sheets/back_contact_sheet.png",
+            "source_slot": 2,
+            "source_bbox": {
+              "x": 6,
+              "y": 6,
+              "w": 406,
+              "h": 406
+            },
+            "final_bbox": {
+              "x": 49,
+              "y": 44,
+              "w": 156,
+              "h": 132
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -1,
+              -32
+            ],
+            "scale": 0.4458128078817734,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              417,
+              2,
+              835,
+              420
+            ]
           },
           {
             "base": "roll/back/frame_01_base.png",
-            "team_mask": "roll/back/frame_01_teammask.png"
+            "team_mask": "roll/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/catapult/sheets/back_contact_sheet.png",
+            "source_slot": 2,
+            "source_bbox": {
+              "x": 6,
+              "y": 6,
+              "w": 406,
+              "h": 406
+            },
+            "final_bbox": {
+              "x": 49,
+              "y": 44,
+              "w": 156,
+              "h": 132
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -1,
+              -32
+            ],
+            "scale": 0.4458128078817734,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              417,
+              2,
+              835,
+              420
+            ]
           }
         ]
       }
@@ -68,25 +320,151 @@
       "loop": true,
       "hold_last": false,
       "description": "load",
+      "family": "load",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "load/front/frame_00_base.png",
-            "team_mask": "load/front/frame_00_teammask.png"
+            "team_mask": "load/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/catapult/sheets/front_contact_sheet.png",
+            "source_slot": 3,
+            "source_bbox": {
+              "x": 7,
+              "y": 6,
+              "w": 405,
+              "h": 406
+            },
+            "final_bbox": {
+              "x": 44,
+              "y": 59,
+              "w": 160,
+              "h": 128
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -4,
+              -21
+            ],
+            "scale": 0.4469135802469136,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              832,
+              3,
+              1250,
+              421
+            ]
           },
           {
             "base": "load/front/frame_01_base.png",
-            "team_mask": "load/front/frame_01_teammask.png"
+            "team_mask": "load/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/catapult/sheets/front_contact_sheet.png",
+            "source_slot": 3,
+            "source_bbox": {
+              "x": 7,
+              "y": 6,
+              "w": 405,
+              "h": 406
+            },
+            "final_bbox": {
+              "x": 44,
+              "y": 59,
+              "w": 160,
+              "h": 128
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -4,
+              -21
+            ],
+            "scale": 0.4469135802469136,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              832,
+              3,
+              1250,
+              421
+            ]
           }
         ],
         "back": [
           {
             "base": "load/back/frame_00_base.png",
-            "team_mask": "load/back/frame_00_teammask.png"
+            "team_mask": "load/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/catapult/sheets/back_contact_sheet.png",
+            "source_slot": 3,
+            "source_bbox": {
+              "x": 6,
+              "y": 6,
+              "w": 406,
+              "h": 406
+            },
+            "final_bbox": {
+              "x": 54,
+              "y": 43,
+              "w": 149,
+              "h": 136
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              -29
+            ],
+            "scale": 0.4458128078817734,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              833,
+              2,
+              1251,
+              420
+            ]
           },
           {
             "base": "load/back/frame_01_base.png",
-            "team_mask": "load/back/frame_01_teammask.png"
+            "team_mask": "load/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/catapult/sheets/back_contact_sheet.png",
+            "source_slot": 3,
+            "source_bbox": {
+              "x": 6,
+              "y": 6,
+              "w": 406,
+              "h": 406
+            },
+            "final_bbox": {
+              "x": 54,
+              "y": 43,
+              "w": 149,
+              "h": 136
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              -29
+            ],
+            "scale": 0.4458128078817734,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              833,
+              2,
+              1251,
+              420
+            ]
           }
         ]
       }
@@ -96,25 +474,151 @@
       "loop": true,
       "hold_last": false,
       "description": "fire",
+      "family": "fire",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "fire/front/frame_00_base.png",
-            "team_mask": "fire/front/frame_00_teammask.png"
+            "team_mask": "fire/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/catapult/sheets/front_contact_sheet.png",
+            "source_slot": 4,
+            "source_bbox": {
+              "x": 7,
+              "y": 8,
+              "w": 404,
+              "h": 403
+            },
+            "final_bbox": {
+              "x": 46,
+              "y": 56,
+              "w": 168,
+              "h": 133
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              2,
+              -19
+            ],
+            "scale": 0.44801980198019803,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              3,
+              418,
+              421,
+              836
+            ]
           },
           {
             "base": "fire/front/frame_01_base.png",
-            "team_mask": "fire/front/frame_01_teammask.png"
+            "team_mask": "fire/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/catapult/sheets/front_contact_sheet.png",
+            "source_slot": 4,
+            "source_bbox": {
+              "x": 7,
+              "y": 8,
+              "w": 404,
+              "h": 403
+            },
+            "final_bbox": {
+              "x": 46,
+              "y": 56,
+              "w": 168,
+              "h": 133
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              2,
+              -19
+            ],
+            "scale": 0.44801980198019803,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              3,
+              418,
+              421,
+              836
+            ]
           }
         ],
         "back": [
           {
             "base": "fire/back/frame_00_base.png",
-            "team_mask": "fire/back/frame_00_teammask.png"
+            "team_mask": "fire/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/catapult/sheets/back_contact_sheet.png",
+            "source_slot": 4,
+            "source_bbox": {
+              "x": 6,
+              "y": 6,
+              "w": 405,
+              "h": 406
+            },
+            "final_bbox": {
+              "x": 55,
+              "y": 42,
+              "w": 152,
+              "h": 135
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              3,
+              -31
+            ],
+            "scale": 0.4469135802469136,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              2,
+              418,
+              420,
+              836
+            ]
           },
           {
             "base": "fire/back/frame_01_base.png",
-            "team_mask": "fire/back/frame_01_teammask.png"
+            "team_mask": "fire/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/catapult/sheets/back_contact_sheet.png",
+            "source_slot": 4,
+            "source_bbox": {
+              "x": 6,
+              "y": 6,
+              "w": 405,
+              "h": 406
+            },
+            "final_bbox": {
+              "x": 55,
+              "y": 42,
+              "w": 152,
+              "h": 135
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              3,
+              -31
+            ],
+            "scale": 0.4469135802469136,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              2,
+              418,
+              420,
+              836
+            ]
           }
         ]
       }
@@ -124,25 +628,151 @@
       "loop": true,
       "hold_last": false,
       "description": "recoil",
+      "family": "recoil",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "recoil/front/frame_00_base.png",
-            "team_mask": "recoil/front/frame_00_teammask.png"
+            "team_mask": "recoil/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/catapult/sheets/front_contact_sheet.png",
+            "source_slot": 5,
+            "source_bbox": {
+              "x": 7,
+              "y": 8,
+              "w": 403,
+              "h": 364
+            },
+            "final_bbox": {
+              "x": 47,
+              "y": 73,
+              "w": 162,
+              "h": 135
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.4491315136476427,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              418,
+              418,
+              836,
+              836
+            ]
           },
           {
             "base": "recoil/front/frame_01_base.png",
-            "team_mask": "recoil/front/frame_01_teammask.png"
+            "team_mask": "recoil/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/catapult/sheets/front_contact_sheet.png",
+            "source_slot": 5,
+            "source_bbox": {
+              "x": 7,
+              "y": 8,
+              "w": 403,
+              "h": 364
+            },
+            "final_bbox": {
+              "x": 47,
+              "y": 73,
+              "w": 162,
+              "h": 135
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.4491315136476427,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              418,
+              418,
+              836,
+              836
+            ]
           }
         ],
         "back": [
           {
             "base": "recoil/back/frame_00_base.png",
-            "team_mask": "recoil/back/frame_00_teammask.png"
+            "team_mask": "recoil/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/catapult/sheets/back_contact_sheet.png",
+            "source_slot": 5,
+            "source_bbox": {
+              "x": 6,
+              "y": 6,
+              "w": 406,
+              "h": 406
+            },
+            "final_bbox": {
+              "x": 49,
+              "y": 43,
+              "w": 159,
+              "h": 134
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              -31
+            ],
+            "scale": 0.4458128078817734,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              417,
+              418,
+              835,
+              836
+            ]
           },
           {
             "base": "recoil/back/frame_01_base.png",
-            "team_mask": "recoil/back/frame_01_teammask.png"
+            "team_mask": "recoil/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/catapult/sheets/back_contact_sheet.png",
+            "source_slot": 5,
+            "source_bbox": {
+              "x": 6,
+              "y": 6,
+              "w": 406,
+              "h": 406
+            },
+            "final_bbox": {
+              "x": 49,
+              "y": 43,
+              "w": 159,
+              "h": 134
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              -31
+            ],
+            "scale": 0.4458128078817734,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              417,
+              418,
+              835,
+              836
+            ]
           }
         ]
       }
@@ -152,25 +782,151 @@
       "loop": true,
       "hold_last": false,
       "description": "damaged/alert",
+      "family": "damaged_alert",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "damaged_alert/front/frame_00_base.png",
-            "team_mask": "damaged_alert/front/frame_00_teammask.png"
+            "team_mask": "damaged_alert/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/catapult/sheets/front_contact_sheet.png",
+            "source_slot": 6,
+            "source_bbox": {
+              "x": 7,
+              "y": 8,
+              "w": 405,
+              "h": 403
+            },
+            "final_bbox": {
+              "x": 47,
+              "y": 80,
+              "w": 160,
+              "h": 104
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -1,
+              -24
+            ],
+            "scale": 0.4469135802469136,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              832,
+              418,
+              1250,
+              836
+            ]
           },
           {
             "base": "damaged_alert/front/frame_01_base.png",
-            "team_mask": "damaged_alert/front/frame_01_teammask.png"
+            "team_mask": "damaged_alert/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/catapult/sheets/front_contact_sheet.png",
+            "source_slot": 6,
+            "source_bbox": {
+              "x": 7,
+              "y": 8,
+              "w": 405,
+              "h": 403
+            },
+            "final_bbox": {
+              "x": 47,
+              "y": 80,
+              "w": 160,
+              "h": 104
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -1,
+              -24
+            ],
+            "scale": 0.4469135802469136,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              832,
+              418,
+              1250,
+              836
+            ]
           }
         ],
         "back": [
           {
             "base": "damaged_alert/back/frame_00_base.png",
-            "team_mask": "damaged_alert/back/frame_00_teammask.png"
+            "team_mask": "damaged_alert/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/catapult/sheets/back_contact_sheet.png",
+            "source_slot": 6,
+            "source_bbox": {
+              "x": 6,
+              "y": 6,
+              "w": 406,
+              "h": 406
+            },
+            "final_bbox": {
+              "x": 52,
+              "y": 37,
+              "w": 151,
+              "h": 146
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              -25
+            ],
+            "scale": 0.4458128078817734,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              833,
+              418,
+              1251,
+              836
+            ]
           },
           {
             "base": "damaged_alert/back/frame_01_base.png",
-            "team_mask": "damaged_alert/back/frame_01_teammask.png"
+            "team_mask": "damaged_alert/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/catapult/sheets/back_contact_sheet.png",
+            "source_slot": 6,
+            "source_bbox": {
+              "x": 6,
+              "y": 6,
+              "w": 406,
+              "h": 406
+            },
+            "final_bbox": {
+              "x": 52,
+              "y": 37,
+              "w": 151,
+              "h": 146
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              -25
+            ],
+            "scale": 0.4458128078817734,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              833,
+              418,
+              1251,
+              836
+            ]
           }
         ]
       }
@@ -180,25 +936,151 @@
       "loop": true,
       "hold_last": false,
       "description": "destroyed wreck",
+      "family": "destroyed_wreck",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "destroyed_wreck/front/frame_00_base.png",
-            "team_mask": "destroyed_wreck/front/frame_00_teammask.png"
+            "team_mask": "destroyed_wreck/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/catapult/sheets/front_contact_sheet.png",
+            "source_slot": 7,
+            "source_bbox": {
+              "x": 7,
+              "y": 7,
+              "w": 404,
+              "h": 404
+            },
+            "final_bbox": {
+              "x": 45,
+              "y": 74,
+              "w": 165,
+              "h": 100
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              -34
+            ],
+            "scale": 0.44801980198019803,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              3,
+              833,
+              421,
+              1251
+            ]
           },
           {
             "base": "destroyed_wreck/front/frame_01_base.png",
-            "team_mask": "destroyed_wreck/front/frame_01_teammask.png"
+            "team_mask": "destroyed_wreck/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/catapult/sheets/front_contact_sheet.png",
+            "source_slot": 7,
+            "source_bbox": {
+              "x": 7,
+              "y": 7,
+              "w": 404,
+              "h": 404
+            },
+            "final_bbox": {
+              "x": 45,
+              "y": 74,
+              "w": 165,
+              "h": 100
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              -34
+            ],
+            "scale": 0.44801980198019803,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              3,
+              833,
+              421,
+              1251
+            ]
           }
         ],
         "back": [
           {
             "base": "destroyed_wreck/back/frame_00_base.png",
-            "team_mask": "destroyed_wreck/back/frame_00_teammask.png"
+            "team_mask": "destroyed_wreck/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/catapult/sheets/back_contact_sheet.png",
+            "source_slot": 7,
+            "source_bbox": {
+              "x": 11,
+              "y": 6,
+              "w": 399,
+              "h": 406
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 55,
+              "w": 164,
+              "h": 111
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -8,
+              -42
+            ],
+            "scale": 0.45363408521303256,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              14,
+              834,
+              432,
+              1252
+            ]
           },
           {
             "base": "destroyed_wreck/back/frame_01_base.png",
-            "team_mask": "destroyed_wreck/back/frame_01_teammask.png"
+            "team_mask": "destroyed_wreck/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/catapult/sheets/back_contact_sheet.png",
+            "source_slot": 7,
+            "source_bbox": {
+              "x": 11,
+              "y": 6,
+              "w": 399,
+              "h": 406
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 55,
+              "w": 164,
+              "h": 111
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -8,
+              -42
+            ],
+            "scale": 0.45363408521303256,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              14,
+              834,
+              432,
+              1252
+            ]
           }
         ]
       }
@@ -208,29 +1090,200 @@
       "loop": true,
       "hold_last": false,
       "description": "decayed wreckage",
+      "family": "decayed_wreckage",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "decayed_wreckage/front/frame_00_base.png",
-            "team_mask": "decayed_wreckage/front/frame_00_teammask.png"
+            "team_mask": "decayed_wreckage/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/catapult/sheets/front_contact_sheet.png",
+            "source_slot": 8,
+            "source_bbox": {
+              "x": 7,
+              "y": 101,
+              "w": 403,
+              "h": 307
+            },
+            "final_bbox": {
+              "x": 44,
+              "y": 71,
+              "w": 167,
+              "h": 104
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              -33
+            ],
+            "scale": 0.4491315136476427,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              418,
+              836,
+              836,
+              1254
+            ]
           },
           {
             "base": "decayed_wreckage/front/frame_01_base.png",
-            "team_mask": "decayed_wreckage/front/frame_01_teammask.png"
+            "team_mask": "decayed_wreckage/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/catapult/sheets/front_contact_sheet.png",
+            "source_slot": 8,
+            "source_bbox": {
+              "x": 7,
+              "y": 101,
+              "w": 403,
+              "h": 307
+            },
+            "final_bbox": {
+              "x": 44,
+              "y": 71,
+              "w": 167,
+              "h": 104
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              -33
+            ],
+            "scale": 0.4491315136476427,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              418,
+              836,
+              836,
+              1254
+            ]
           }
         ],
         "back": [
           {
             "base": "decayed_wreckage/back/frame_00_base.png",
-            "team_mask": "decayed_wreckage/back/frame_00_teammask.png"
+            "team_mask": "decayed_wreckage/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/units/catapult/sheets/back_contact_sheet.png",
+            "source_slot": 8,
+            "source_bbox": {
+              "x": 6,
+              "y": 6,
+              "w": 406,
+              "h": 406
+            },
+            "final_bbox": {
+              "x": 50,
+              "y": 55,
+              "w": 157,
+              "h": 116
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              -37
+            ],
+            "scale": 0.4458128078817734,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              417,
+              834,
+              835,
+              1252
+            ]
           },
           {
             "base": "decayed_wreckage/back/frame_01_base.png",
-            "team_mask": "decayed_wreckage/back/frame_01_teammask.png"
+            "team_mask": "decayed_wreckage/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/units/catapult/sheets/back_contact_sheet.png",
+            "source_slot": 8,
+            "source_bbox": {
+              "x": 6,
+              "y": 6,
+              "w": 406,
+              "h": 406
+            },
+            "final_bbox": {
+              "x": 50,
+              "y": 55,
+              "w": 157,
+              "h": 116
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              -37
+            ],
+            "scale": 0.4458128078817734,
+            "fit_profile": "standing",
+            "manual_review": "pending",
+            "source_crop_box": [
+              417,
+              834,
+              835,
+              1252
+            ]
           }
         ]
       }
     }
   },
-  "notes": "Generated catapult tileset from image-gen contact sheets. Placeholder flags removed after runtime frames were promoted; frame_01 duplicates frame_00 pending hand-authored animation polish."
+  "notes": "Generated catapult tileset from image-gen contact sheets. Placeholder flags removed after runtime frames were promoted; frame_01 duplicates frame_00 pending hand-authored animation polish.",
+  "asset_type": "unit",
+  "source_canvas": {
+    "profile": "sprite_overlay_source",
+    "width_px": 256,
+    "height_px": 256,
+    "target_kind": "pre_crop_generation_slot",
+    "min_longest_side_px": 128,
+    "unit": "px",
+    "source": "realm range-based source-quality contract",
+    "range": {
+      "minimum_longest_side_px_after_crop": 128,
+      "pre_crop_target_px": 256,
+      "maximum_px": null
+    },
+    "visual_envelope": {
+      "w": 1,
+      "h": 1
+    },
+    "pre_crop_target_px_per_visual_tile": 256,
+    "runtime_min_longest_side_px_per_visual_tile": 128,
+    "scope": "per generated actor sheet cell or standalone pre-crop source"
+  },
+  "placement": {
+    "projection": "upright_world",
+    "anchor_kind": "feet",
+    "source_size": [
+      256,
+      256
+    ],
+    "anchor": [
+      128,
+      208
+    ],
+    "scale_policy": "entity_tile_zoom_1_55",
+    "footprint": [
+      1,
+      1
+    ],
+    "visual_envelope": [
+      1,
+      1
+    ],
+    "depth": "entity"
+  },
+  "source_workflow": "contact-sheet-resolution-replay"
 }

@@ -1,6 +1,7 @@
 #include "realm.h"
 #include "view_state.h"
 #include "input_keys.h"
+#include "render/ascii_portraits.h"
 
 void renderUI(const WorldIndex& world) {
     int maxY, maxX; getmaxyx(stdscr, maxY, maxX);
@@ -39,22 +40,6 @@ void renderUI(const WorldIndex& world) {
     const char* wn = (g.weather == W_STORM) ? "Storm" : (g.weather == W_RAIN) ? "Rain " : (g.weather == W_SNOW) ? "Snow " : "Clear";
     mvprintw(0, iconX+1, " %-5s %-6s %s", getTimeName(g), getSeasonName(g), wn);
     attroff(COLOR_PAIR(CP_UI_BAR));
-
-    // Terrain info bar
-    attron(COLOR_PAIR(CP_UI_DIM)); mvhline(1, 0, '-', view.viewW); attroff(COLOR_PAIR(CP_UI_DIM));
-    if (inBounds(view.cursorX, view.cursorY) && g.map[view.cursorY][view.cursorX].explored[0]) {
-        Tile& ct = g.map[view.cursorY][view.cursorX];
-        const char* bn[] = {"Temperate","Desert","Tundra","Swamp","Woodland","Volcanic","Ocean"};
-        const char* tn[] = {"Grassland","Tall Grass","Wildflowers","Meadow","Oak Forest","Pine Forest",
-            "Palm Grove","Dead Tree","Mountain","Rolling Hills","Stone","Deep Water","Shallows",
-            "Marshland","Reed Bed","Gold Deposit","Sandy Ground","Sand Dunes","Snow Cover","Frozen Ice",
-            "Bare Earth","Stone Road","Mud","Wheat Field","Berry Bush","Fish Shoal","Ancient Ruins","Gravel",
-            "Lava Fissure","Volcanic Ash",
-            "Castle Wall","Castle Floor","Castle Gate"};
-        attron(COLOR_PAIR(CP_UI_TEXT)); mvprintw(1, 1, "%-16s", tn[ct.terrain]); attroff(COLOR_PAIR(CP_UI_TEXT));
-        attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(1, 18, "[%s]", bn[ct.biome]); attroff(COLOR_PAIR(CP_UI_DIM));
-        if (ct.resources > 0) { attron(COLOR_PAIR(CP_UI_HIGH)); mvprintw(1, 30, "Res:%d", ct.resources); attroff(COLOR_PAIR(CP_UI_HIGH)); }
-    }
 
     // Panel separator
     for (int y = 0; y < maxY; y++) { attron(COLOR_PAIR(CP_UI_DIM)); mvaddch(y, panelX-1, '|'); attroff(COLOR_PAIR(CP_UI_DIM)); }
@@ -106,8 +91,17 @@ void renderUI(const WorldIndex& world) {
         attron(COLOR_PAIR(CP_UI_TEXT));
         mvprintw(iy++, panelX+1, "Tile: %.14s", terrainName(ct.terrain));
         mvprintw(iy++, panelX+1, "Biome: %.13s", biomeName(ct.biome));
-        if (ct.resources > 0) mvprintw(iy++, panelX+1, "Resource: %d", ct.resources);
-        int stack = 0;
+        attroff(COLOR_PAIR(CP_UI_TEXT));
+        if (ct.resources > 0) {
+            attron(COLOR_PAIR(CP_UI_HIGH));
+            mvprintw(iy++, panelX+1, "Resource: %d", ct.resources);
+            attroff(COLOR_PAIR(CP_UI_HIGH));
+        } else {
+            attron(COLOR_PAIR(CP_UI_DIM));
+            mvprintw(iy++, panelX+1, "Resource: --");
+            attroff(COLOR_PAIR(CP_UI_DIM));
+        }
+        std::vector<const char*> stackNames;
         for (auto& e : g.entities) {
             if (!e.alive || e.state == S_GARRISONED) continue;
             auto& st = STATS[e.type];
@@ -115,13 +109,26 @@ void renderUI(const WorldIndex& world) {
                 ? (view.cursorX>=e.x && view.cursorX<e.x+st.sizeW && view.cursorY>=e.y && view.cursorY<e.y+st.sizeH)
                 : (view.cursorX==e.x && view.cursorY==e.y);
             if (!covers) continue;
-            if (stack == 0) mvprintw(iy++, panelX+1, "Stack:");
-            if (stack < 3) mvprintw(iy++, panelX+2, "%.16s", st.name);
-            stack++;
+            stackNames.push_back(st.name);
         }
-        if (stack == 0) mvprintw(iy++, panelX+1, "Stack: empty");
-        else if (stack > 3) mvprintw(iy++, panelX+2, "+%d more", stack - 3);
-        attroff(COLOR_PAIR(CP_UI_TEXT));
+        if (stackNames.empty()) {
+            attron(COLOR_PAIR(CP_UI_DIM));
+            mvprintw(iy++, panelX+1, "Stack: empty");
+            mvprintw(iy++, panelX+1, "Stack+: --");
+            attroff(COLOR_PAIR(CP_UI_DIM));
+        } else {
+            attron(COLOR_PAIR(CP_UI_TEXT));
+            mvprintw(iy++, panelX+1, "Stack: %.15s", stackNames.front());
+            if (stackNames.size() > 1) {
+                mvprintw(iy++, panelX+1, "Stack+: +%d more", (int)stackNames.size() - 1);
+                attroff(COLOR_PAIR(CP_UI_TEXT));
+            } else {
+                attroff(COLOR_PAIR(CP_UI_TEXT));
+                attron(COLOR_PAIR(CP_UI_DIM));
+                mvprintw(iy++, panelX+1, "Stack+: --");
+                attroff(COLOR_PAIR(CP_UI_DIM));
+            }
+        }
         if (g.local.diagnostics) {
             attron(COLOR_PAIR(CP_UI_HIGH));
             mvprintw(iy++, panelX+1, "Diag T%d M:%s", g.tick, modeName(g.mode));
@@ -129,8 +136,16 @@ void renderUI(const WorldIndex& world) {
             mvprintw(iy++, panelX+1, "Seed:%u AI:%d", g.seed, g.startupAIs);
             attroff(COLOR_PAIR(CP_UI_HIGH));
         }
-        iy++;
+    } else {
+        attron(COLOR_PAIR(CP_UI_DIM));
+        mvprintw(iy++, panelX+1, "Tile: unknown");
+        mvprintw(iy++, panelX+1, "Biome: unknown");
+        mvprintw(iy++, panelX+1, "Resource: --");
+        mvprintw(iy++, panelX+1, "Stack: --");
+        mvprintw(iy++, panelX+1, "Stack+: --");
+        attroff(COLOR_PAIR(CP_UI_DIM));
     }
+    attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(iy++, panelX+1, "-- Selection --"); attroff(COLOR_PAIR(CP_UI_DIM));
 
     if (g.local.selectedIds.size() > 1) {
         // Multi-unit group summary
@@ -170,6 +185,10 @@ void renderUI(const WorldIndex& world) {
         if (sel) {
             auto& st = STATS[sel->type];
             int nc = (sel->owner == 0) ? CP_PLAYER : CP_ENEMY;
+            ascii_hud::Portrait portrait = ascii_hud::entityPortrait(sel->type);
+            attron(COLOR_PAIR(nc));
+            for (const char* row : portrait) mvprintw(iy++, panelX+1, "%s", row);
+            attroff(COLOR_PAIR(nc));
             attron(COLOR_PAIR(nc)|A_BOLD); mvprintw(iy++, panelX+1, "%-20s", st.name); attroff(COLOR_PAIR(nc)|A_BOLD);
             int barW = panelW-4, filled = sel->hp * barW / std::max(1, sel->maxHp);
             int pct = sel->hp * 100 / std::max(1, sel->maxHp);
@@ -306,7 +325,7 @@ void renderUI(const WorldIndex& world) {
             }
         } else {
             attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(iy, panelX+1, "No selection"); attroff(COLOR_PAIR(CP_UI_DIM));
-            iy += 2;
+            iy++;
             if (displayMode == DM_ASCII) {
                 attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(iy++, panelX+1, "-- Legend (ASCII) --"); attroff(COLOR_PAIR(CP_UI_DIM));
                 attron(COLOR_PAIR(CP_UI_TEXT));

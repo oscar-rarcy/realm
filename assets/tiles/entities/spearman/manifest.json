@@ -1,7 +1,7 @@
 {
   "schema": "realm.entity_tileset.v1",
   "entity": "spearman",
-  "sprite_size": 48,
+  "sprite_size": 768,
   "directions": [
     "front",
     "back"
@@ -12,27 +12,196 @@
       "loop": true,
       "hold_last": false,
       "description": "Short Spear: idle; starting spear equipment with a medium wooden spear and small iron or bronze spearhead",
+      "family": "short_spear__idle",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "short_spear__idle/front/frame_00_base.png",
-            "team_mask": "short_spear__idle/front/frame_00_teammask.png"
+            "team_mask": "short_spear__idle/front/frame_00_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/spearman/sheets/front_contact_sheet.png",
+            "source_slot": 1,
+            "source_crop_box": [
+              228,
+              0,
+              401,
+              146
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 18,
+              "w": 173,
+              "h": 128
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 282,
+              "w": 181,
+              "h": 134
+            },
+            "anchor": [
+              128,
+              416
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 1.046242774566474,
+            "fit_profile": "standing"
           },
           {
             "base": "short_spear__idle/front/frame_01_base.png",
-            "team_mask": "short_spear__idle/front/frame_01_teammask.png"
+            "team_mask": "short_spear__idle/front/frame_01_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/spearman/sheets/front_contact_sheet.png",
+            "source_slot": 1,
+            "source_crop_box": [
+              228,
+              0,
+              401,
+              146
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 18,
+              "w": 173,
+              "h": 128
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 282,
+              "w": 181,
+              "h": 134
+            },
+            "anchor": [
+              128,
+              416
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 1.046242774566474,
+            "fit_profile": "standing"
           }
         ],
         "back": [
           {
             "base": "short_spear__idle/back/frame_00_base.png",
-            "team_mask": "short_spear__idle/back/frame_00_teammask.png"
+            "team_mask": "short_spear__idle/back/frame_00_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/spearman/sheets/back_contact_sheet.png",
+            "source_slot": 1,
+            "source_crop_box": [
+              403,
+              0,
+              533,
+              134
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 24,
+              "w": 130,
+              "h": 110
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 263,
+              "w": 181,
+              "h": 153
+            },
+            "anchor": [
+              128,
+              416
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 1.3923076923076922,
+            "fit_profile": "standing"
           },
           {
             "base": "short_spear__idle/back/frame_01_base.png",
-            "team_mask": "short_spear__idle/back/frame_01_teammask.png"
+            "team_mask": "short_spear__idle/back/frame_01_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/spearman/sheets/back_contact_sheet.png",
+            "source_slot": 1,
+            "source_crop_box": [
+              403,
+              0,
+              533,
+              134
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 24,
+              "w": 130,
+              "h": 110
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 263,
+              "w": 181,
+              "h": 153
+            },
+            "anchor": [
+              128,
+              416
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 1.3923076923076922,
+            "fit_profile": "standing"
           }
         ]
+      },
+      "placement": {
+        "source_size": [
+          256,
+          512
+        ],
+        "anchor": [
+          128,
+          416
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          1,
+          2
+        ]
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 256,
+        "height_px": 512,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 256,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 256,
+          "pre_crop_target_px": 512,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 1,
+          "h": 2
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "visual_envelope": {
+        "w": 1,
+        "h": 2
       }
     },
     "short_spear__walk": {
@@ -40,27 +209,196 @@
       "loop": true,
       "hold_last": false,
       "description": "Short Spear: walk; starting spear equipment with a medium wooden spear and small iron or bronze spearhead",
+      "family": "short_spear__walk",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "short_spear__walk/front/frame_00_base.png",
-            "team_mask": "short_spear__walk/front/frame_00_teammask.png"
+            "team_mask": "short_spear__walk/front/frame_00_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/spearman/sheets/front_contact_sheet.png",
+            "source_slot": 3,
+            "source_crop_box": [
+              232,
+              146,
+              402,
+              293
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 170,
+              "h": 147
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 259,
+              "w": 181,
+              "h": 157
+            },
+            "anchor": [
+              128,
+              416
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 1.0647058823529412,
+            "fit_profile": "standing"
           },
           {
             "base": "short_spear__walk/front/frame_01_base.png",
-            "team_mask": "short_spear__walk/front/frame_01_teammask.png"
+            "team_mask": "short_spear__walk/front/frame_01_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/spearman/sheets/front_contact_sheet.png",
+            "source_slot": 3,
+            "source_crop_box": [
+              232,
+              146,
+              402,
+              293
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 170,
+              "h": 147
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 259,
+              "w": 181,
+              "h": 157
+            },
+            "anchor": [
+              128,
+              416
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 1.0647058823529412,
+            "fit_profile": "standing"
           }
         ],
         "back": [
           {
             "base": "short_spear__walk/back/frame_00_base.png",
-            "team_mask": "short_spear__walk/back/frame_00_teammask.png"
+            "team_mask": "short_spear__walk/back/frame_00_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/spearman/sheets/back_contact_sheet.png",
+            "source_slot": 3,
+            "source_crop_box": [
+              376,
+              134,
+              572,
+              269
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 196,
+              "h": 135
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 291,
+              "w": 181,
+              "h": 125
+            },
+            "anchor": [
+              128,
+              416
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.923469387755102,
+            "fit_profile": "standing"
           },
           {
             "base": "short_spear__walk/back/frame_01_base.png",
-            "team_mask": "short_spear__walk/back/frame_01_teammask.png"
+            "team_mask": "short_spear__walk/back/frame_01_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/spearman/sheets/back_contact_sheet.png",
+            "source_slot": 3,
+            "source_crop_box": [
+              376,
+              134,
+              572,
+              269
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 196,
+              "h": 135
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 291,
+              "w": 181,
+              "h": 125
+            },
+            "anchor": [
+              128,
+              416
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.923469387755102,
+            "fit_profile": "standing"
           }
         ]
+      },
+      "placement": {
+        "source_size": [
+          256,
+          512
+        ],
+        "anchor": [
+          128,
+          416
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          1,
+          2
+        ]
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 256,
+        "height_px": 512,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 256,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 256,
+          "pre_crop_target_px": 512,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 1,
+          "h": 2
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "visual_envelope": {
+        "w": 1,
+        "h": 2
       }
     },
     "short_spear__spear_thrust": {
@@ -68,83 +406,592 @@
       "loop": true,
       "hold_last": false,
       "description": "Short Spear: spear thrust; starting spear equipment with a medium wooden spear and small iron or bronze spearhead",
+      "family": "short_spear__spear_thrust",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "short_spear__spear_thrust/front/frame_00_base.png",
-            "team_mask": "short_spear__spear_thrust/front/frame_00_teammask.png"
+            "team_mask": "short_spear__spear_thrust/front/frame_00_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/spearman/sheets/front_contact_sheet.png",
+            "source_slot": 5,
+            "source_crop_box": [
+              171,
+              293,
+              768,
+              439
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 597,
+              "h": 146
+            },
+            "final_bbox": {
+              "x": 75,
+              "y": 119,
+              "w": 362,
+              "h": 89
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.6063651591289783,
+            "fit_profile": "standing"
           },
           {
             "base": "short_spear__spear_thrust/front/frame_01_base.png",
-            "team_mask": "short_spear__spear_thrust/front/frame_01_teammask.png"
+            "team_mask": "short_spear__spear_thrust/front/frame_01_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/spearman/sheets/front_contact_sheet.png",
+            "source_slot": 5,
+            "source_crop_box": [
+              171,
+              293,
+              768,
+              439
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 597,
+              "h": 146
+            },
+            "final_bbox": {
+              "x": 75,
+              "y": 119,
+              "w": 362,
+              "h": 89
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.6063651591289783,
+            "fit_profile": "standing"
           }
         ],
         "back": [
           {
             "base": "short_spear__spear_thrust/back/frame_00_base.png",
-            "team_mask": "short_spear__spear_thrust/back/frame_00_teammask.png"
+            "team_mask": "short_spear__spear_thrust/back/frame_00_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/spearman/sheets/back_contact_sheet.png",
+            "source_slot": 5,
+            "source_crop_box": [
+              376,
+              269,
+              635,
+              403
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 259,
+              "h": 134
+            },
+            "final_bbox": {
+              "x": 75,
+              "y": 21,
+              "w": 362,
+              "h": 187
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 1.3976833976833978,
+            "fit_profile": "standing"
           },
           {
             "base": "short_spear__spear_thrust/back/frame_01_base.png",
-            "team_mask": "short_spear__spear_thrust/back/frame_01_teammask.png"
+            "team_mask": "short_spear__spear_thrust/back/frame_01_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/spearman/sheets/back_contact_sheet.png",
+            "source_slot": 5,
+            "source_crop_box": [
+              376,
+              269,
+              635,
+              403
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 259,
+              "h": 134
+            },
+            "final_bbox": {
+              "x": 75,
+              "y": 21,
+              "w": 362,
+              "h": 187
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 1.3976833976833978,
+            "fit_profile": "standing"
           }
         ]
-      }
+      },
+      "placement": {
+        "source_size": [
+          512,
+          256
+        ],
+        "anchor": [
+          256,
+          208
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          2,
+          1
+        ]
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 512,
+        "height_px": 256,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 256,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 256,
+          "pre_crop_target_px": 512,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 2,
+          "h": 1
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "visual_envelope": {
+        "w": 2,
+        "h": 1
+      },
+      "visual_envelope_note": "short spear projects forward or lies on the ground; keep the full weapon inside the wide slot"
     },
     "short_spear__brace_hold_position": {
       "frame_ms": 250,
       "loop": true,
       "hold_last": false,
       "description": "Short Spear: brace/hold-position; starting spear equipment with a medium wooden spear and small iron or bronze spearhead",
+      "family": "short_spear__brace_hold_position",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "short_spear__brace_hold_position/front/frame_00_base.png",
-            "team_mask": "short_spear__brace_hold_position/front/frame_00_teammask.png"
+            "team_mask": "short_spear__brace_hold_position/front/frame_00_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/spearman/sheets/front_contact_sheet.png",
+            "source_slot": 7,
+            "source_crop_box": [
+              235,
+              439,
+              768,
+              585
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 533,
+              "h": 146
+            },
+            "final_bbox": {
+              "x": 75,
+              "y": 109,
+              "w": 362,
+              "h": 99
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.6791744840525328,
+            "fit_profile": "standing"
           },
           {
             "base": "short_spear__brace_hold_position/front/frame_01_base.png",
-            "team_mask": "short_spear__brace_hold_position/front/frame_01_teammask.png"
+            "team_mask": "short_spear__brace_hold_position/front/frame_01_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/spearman/sheets/front_contact_sheet.png",
+            "source_slot": 7,
+            "source_crop_box": [
+              235,
+              439,
+              768,
+              585
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 533,
+              "h": 146
+            },
+            "final_bbox": {
+              "x": 75,
+              "y": 109,
+              "w": 362,
+              "h": 99
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.6791744840525328,
+            "fit_profile": "standing"
           }
         ],
         "back": [
           {
             "base": "short_spear__brace_hold_position/back/frame_00_base.png",
-            "team_mask": "short_spear__brace_hold_position/back/frame_00_teammask.png"
+            "team_mask": "short_spear__brace_hold_position/back/frame_00_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/spearman/sheets/back_contact_sheet.png",
+            "source_slot": 7,
+            "source_crop_box": [
+              367,
+              403,
+              501,
+              538
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 134,
+              "h": 135
+            },
+            "final_bbox": {
+              "x": 145,
+              "y": 21,
+              "w": 222,
+              "h": 224
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 1.6592592592592592,
+            "fit_profile": "standing"
           },
           {
             "base": "short_spear__brace_hold_position/back/frame_01_base.png",
-            "team_mask": "short_spear__brace_hold_position/back/frame_01_teammask.png"
+            "team_mask": "short_spear__brace_hold_position/back/frame_01_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/spearman/sheets/back_contact_sheet.png",
+            "source_slot": 7,
+            "source_crop_box": [
+              367,
+              403,
+              501,
+              538
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 134,
+              "h": 135
+            },
+            "final_bbox": {
+              "x": 145,
+              "y": 21,
+              "w": 222,
+              "h": 224
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 1.6592592592592592,
+            "fit_profile": "standing"
           }
         ]
-      }
+      },
+      "placement": {
+        "source_size": [
+          512,
+          256
+        ],
+        "anchor": [
+          256,
+          208
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          2,
+          1
+        ]
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 512,
+        "height_px": 256,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 256,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 256,
+          "pre_crop_target_px": 512,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 2,
+          "h": 1
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "visual_envelope": {
+        "w": 2,
+        "h": 1
+      },
+      "visual_envelope_note": "short spear projects forward or lies on the ground; keep the full weapon inside the wide slot"
     },
     "short_spear__hit_alert": {
       "frame_ms": 250,
       "loop": true,
       "hold_last": false,
       "description": "Short Spear: hit/alert; starting spear equipment with a medium wooden spear and small iron or bronze spearhead",
+      "family": "short_spear__hit_alert",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "short_spear__hit_alert/front/frame_00_base.png",
-            "team_mask": "short_spear__hit_alert/front/frame_00_teammask.png"
+            "team_mask": "short_spear__hit_alert/front/frame_00_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/spearman/sheets/front_contact_sheet.png",
+            "source_slot": 9,
+            "source_crop_box": [
+              244,
+              585,
+              384,
+              731
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 140,
+              "h": 140
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 235,
+              "w": 181,
+              "h": 181
+            },
+            "anchor": [
+              128,
+              416
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 1.292857142857143,
+            "fit_profile": "standing"
           },
           {
             "base": "short_spear__hit_alert/front/frame_01_base.png",
-            "team_mask": "short_spear__hit_alert/front/frame_01_teammask.png"
+            "team_mask": "short_spear__hit_alert/front/frame_01_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/spearman/sheets/front_contact_sheet.png",
+            "source_slot": 9,
+            "source_crop_box": [
+              244,
+              585,
+              384,
+              731
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 140,
+              "h": 140
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 235,
+              "w": 181,
+              "h": 181
+            },
+            "anchor": [
+              128,
+              416
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 1.292857142857143,
+            "fit_profile": "standing"
           }
         ],
         "back": [
           {
             "base": "short_spear__hit_alert/back/frame_00_base.png",
-            "team_mask": "short_spear__hit_alert/back/frame_00_teammask.png"
+            "team_mask": "short_spear__hit_alert/back/frame_00_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/spearman/sheets/back_contact_sheet.png",
+            "source_slot": 9,
+            "source_crop_box": [
+              365,
+              538,
+              498,
+              672
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 133,
+              "h": 134
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 234,
+              "w": 181,
+              "h": 182
+            },
+            "anchor": [
+              128,
+              416
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 1.3609022556390977,
+            "fit_profile": "standing"
           },
           {
             "base": "short_spear__hit_alert/back/frame_01_base.png",
-            "team_mask": "short_spear__hit_alert/back/frame_01_teammask.png"
+            "team_mask": "short_spear__hit_alert/back/frame_01_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/spearman/sheets/back_contact_sheet.png",
+            "source_slot": 9,
+            "source_crop_box": [
+              365,
+              538,
+              498,
+              672
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 133,
+              "h": 134
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 234,
+              "w": 181,
+              "h": 182
+            },
+            "anchor": [
+              128,
+              416
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 1.3609022556390977,
+            "fit_profile": "standing"
           }
         ]
+      },
+      "placement": {
+        "source_size": [
+          256,
+          512
+        ],
+        "anchor": [
+          128,
+          416
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          1,
+          2
+        ]
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 256,
+        "height_px": 512,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 256,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 256,
+          "pre_crop_target_px": 512,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 1,
+          "h": 2
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "visual_envelope": {
+        "w": 1,
+        "h": 2
       }
     },
     "short_spear__dead": {
@@ -152,309 +999,3380 @@
       "loop": true,
       "hold_last": false,
       "description": "Short Spear: dead; starting spear equipment with a medium wooden spear and small iron or bronze spearhead",
+      "family": "short_spear__dead",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "short_spear__dead/front/frame_00_base.png",
-            "team_mask": "short_spear__dead/front/frame_00_teammask.png"
+            "team_mask": "short_spear__dead/front/frame_00_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/spearman/sheets/front_contact_sheet.png",
+            "source_slot": 11,
+            "source_crop_box": [
+              164,
+              731,
+              768,
+              878
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 19,
+              "w": 604,
+              "h": 128
+            },
+            "final_bbox": {
+              "x": 75,
+              "y": 131,
+              "w": 362,
+              "h": 77
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.5993377483443708,
+            "fit_profile": "standing"
           },
           {
             "base": "short_spear__dead/front/frame_01_base.png",
-            "team_mask": "short_spear__dead/front/frame_01_teammask.png"
+            "team_mask": "short_spear__dead/front/frame_01_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/spearman/sheets/front_contact_sheet.png",
+            "source_slot": 11,
+            "source_crop_box": [
+              164,
+              731,
+              768,
+              878
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 19,
+              "w": 604,
+              "h": 128
+            },
+            "final_bbox": {
+              "x": 75,
+              "y": 131,
+              "w": 362,
+              "h": 77
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.5993377483443708,
+            "fit_profile": "standing"
           }
         ],
         "back": [
           {
             "base": "short_spear__dead/back/frame_00_base.png",
-            "team_mask": "short_spear__dead/back/frame_00_teammask.png"
+            "team_mask": "short_spear__dead/back/frame_00_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/spearman/sheets/back_contact_sheet.png",
+            "source_slot": 11,
+            "source_crop_box": [
+              350,
+              672,
+              614,
+              807
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 264,
+              "h": 117
+            },
+            "final_bbox": {
+              "x": 75,
+              "y": 48,
+              "w": 362,
+              "h": 160
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 1.371212121212121,
+            "fit_profile": "standing"
           },
           {
             "base": "short_spear__dead/back/frame_01_base.png",
-            "team_mask": "short_spear__dead/back/frame_01_teammask.png"
+            "team_mask": "short_spear__dead/back/frame_01_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/spearman/sheets/back_contact_sheet.png",
+            "source_slot": 11,
+            "source_crop_box": [
+              350,
+              672,
+              614,
+              807
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 264,
+              "h": 117
+            },
+            "final_bbox": {
+              "x": 75,
+              "y": 48,
+              "w": 362,
+              "h": 160
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 1.371212121212121,
+            "fit_profile": "standing"
           }
         ]
-      }
+      },
+      "placement": {
+        "source_size": [
+          512,
+          256
+        ],
+        "anchor": [
+          256,
+          208
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          2,
+          1
+        ]
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 512,
+        "height_px": 256,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 256,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 256,
+          "pre_crop_target_px": 512,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 2,
+          "h": 1
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "visual_envelope": {
+        "w": 2,
+        "h": 1
+      },
+      "visual_envelope_note": "short spear projects forward or lies on the ground; keep the full weapon inside the wide slot"
     },
     "short_spear__decayed_skeleton_with_spear_and_shield": {
       "frame_ms": 250,
       "loop": true,
       "hold_last": false,
       "description": "Short Spear: decayed skeleton with spear and shield; starting spear equipment with a medium wooden spear and small iron or bronze spearhead",
+      "family": "short_spear__decayed_skeleton_with_spear_and_shield",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "short_spear__decayed_skeleton_with_spear_and_shield/front/frame_00_base.png",
-            "team_mask": "short_spear__decayed_skeleton_with_spear_and_shield/front/frame_00_teammask.png"
+            "team_mask": "short_spear__decayed_skeleton_with_spear_and_shield/front/frame_00_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/spearman/sheets/front_contact_sheet.png",
+            "source_slot": 13,
+            "source_crop_box": [
+              142,
+              878,
+              768,
+              1024
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 626,
+              "h": 117
+            },
+            "final_bbox": {
+              "x": 75,
+              "y": 140,
+              "w": 362,
+              "h": 68
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.5782747603833865,
+            "fit_profile": "standing"
           },
           {
             "base": "short_spear__decayed_skeleton_with_spear_and_shield/front/frame_01_base.png",
-            "team_mask": "short_spear__decayed_skeleton_with_spear_and_shield/front/frame_01_teammask.png"
+            "team_mask": "short_spear__decayed_skeleton_with_spear_and_shield/front/frame_01_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/spearman/sheets/front_contact_sheet.png",
+            "source_slot": 13,
+            "source_crop_box": [
+              142,
+              878,
+              768,
+              1024
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 626,
+              "h": 117
+            },
+            "final_bbox": {
+              "x": 75,
+              "y": 140,
+              "w": 362,
+              "h": 68
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.5782747603833865,
+            "fit_profile": "standing"
           }
         ],
         "back": [
           {
             "base": "short_spear__decayed_skeleton_with_spear_and_shield/back/frame_00_base.png",
-            "team_mask": "short_spear__decayed_skeleton_with_spear_and_shield/back/frame_00_teammask.png"
+            "team_mask": "short_spear__decayed_skeleton_with_spear_and_shield/back/frame_00_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/spearman/sheets/back_contact_sheet.png",
+            "source_slot": 13,
+            "source_crop_box": [
+              332,
+              807,
+              633,
+              941
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 21,
+              "w": 301,
+              "h": 89
+            },
+            "final_bbox": {
+              "x": 75,
+              "y": 101,
+              "w": 362,
+              "h": 107
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 1.2026578073089702,
+            "fit_profile": "standing"
           },
           {
             "base": "short_spear__decayed_skeleton_with_spear_and_shield/back/frame_01_base.png",
-            "team_mask": "short_spear__decayed_skeleton_with_spear_and_shield/back/frame_01_teammask.png"
+            "team_mask": "short_spear__decayed_skeleton_with_spear_and_shield/back/frame_01_teammask.png",
+            "manual_review": "legacy_accepted_48px",
+            "source": "art/tiles/candidates/units/spearman/sheets/back_contact_sheet.png",
+            "source_slot": 13,
+            "source_crop_box": [
+              332,
+              807,
+              633,
+              941
+            ],
+            "source_bbox": {
+              "x": 0,
+              "y": 21,
+              "w": 301,
+              "h": 89
+            },
+            "final_bbox": {
+              "x": 75,
+              "y": 101,
+              "w": 362,
+              "h": 107
+            },
+            "anchor": [
+              256,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 1.2026578073089702,
+            "fit_profile": "standing"
           }
         ]
-      }
+      },
+      "placement": {
+        "source_size": [
+          512,
+          256
+        ],
+        "anchor": [
+          256,
+          208
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          2,
+          1
+        ]
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 512,
+        "height_px": 256,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 256,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 256,
+          "pre_crop_target_px": 512,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 2,
+          "h": 1
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "visual_envelope": {
+        "w": 2,
+        "h": 1
+      },
+      "visual_envelope_note": "short spear projects forward or lies on the ground; keep the full weapon inside the wide slot"
     },
     "pike__idle": {
       "frame_ms": 250,
       "loop": true,
       "hold_last": false,
       "description": "Pikes: idle; upgraded spear equipment with a much longer pike shaft, larger iron pike head, and stronger bracing pose",
+      "family": "pike__idle",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "pike__idle/front/frame_00_base.png",
-            "team_mask": "pike__idle/front/frame_00_teammask.png"
+            "team_mask": "pike__idle/front/frame_00_teammask.png",
+            "manual_review": "targeted_generated_pike_lance_front_20260606",
+            "source": "art/tiles/candidates/units/spearman/sheets/front_contact_sheet.png",
+            "source_sha256": "e2339eebbc248fd57035b6ab67a5d7c36df3bd738cf86d4aa36f3594f89562c1",
+            "source_canvas": {
+              "profile": "sprite_overlay_source",
+              "width_px": 256,
+              "height_px": 768,
+              "target_kind": "pre_crop_generation_slot",
+              "min_longest_side_px": 384,
+              "unit": "px",
+              "source": "realm range-based source-quality contract",
+              "range": {
+                "minimum_longest_side_px_after_crop": 384,
+                "pre_crop_target_px": 768,
+                "maximum_px": null
+              },
+              "visual_envelope": {
+                "w": 1,
+                "h": 3
+              },
+              "pre_crop_target_px_per_visual_tile": 256,
+              "runtime_min_longest_side_px_per_visual_tile": 128,
+              "scope": "per generated actor sheet cell or standalone pre-crop source"
+            },
+            "visual_envelope": {
+              "w": 1,
+              "h": 3
+            },
+            "placement": {
+              "source_size": [
+                256,
+                768
+              ],
+              "anchor": [
+                128,
+                624
+              ],
+              "footprint": [
+                1,
+                1
+              ],
+              "visual_envelope": [
+                1,
+                3
+              ]
+            },
+            "fit_profile": "standing",
+            "source_bbox": {
+              "x": 0,
+              "y": 18,
+              "w": 378,
+              "h": 128
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 563,
+              "w": 181,
+              "h": 61
+            },
+            "anchor": [
+              128,
+              624
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.47883597883597884,
+            "residual_key_pixels": 0,
+            "transparent_key_pixels": 1198496,
+            "edge_fringe_key_pixels": 0,
+            "team_mask_pixels": 6802,
+            "source_slot": 2,
+            "source_crop_box": [
+              768,
+              0,
+              1146,
+              146
+            ]
           },
           {
             "base": "pike__idle/front/frame_01_base.png",
-            "team_mask": "pike__idle/front/frame_01_teammask.png"
+            "team_mask": "pike__idle/front/frame_01_teammask.png",
+            "manual_review": "targeted_generated_pike_lance_front_20260606",
+            "source": "art/tiles/candidates/units/spearman/sheets/front_contact_sheet.png",
+            "source_sha256": "e2339eebbc248fd57035b6ab67a5d7c36df3bd738cf86d4aa36f3594f89562c1",
+            "source_canvas": {
+              "profile": "sprite_overlay_source",
+              "width_px": 256,
+              "height_px": 768,
+              "target_kind": "pre_crop_generation_slot",
+              "min_longest_side_px": 384,
+              "unit": "px",
+              "source": "realm range-based source-quality contract",
+              "range": {
+                "minimum_longest_side_px_after_crop": 384,
+                "pre_crop_target_px": 768,
+                "maximum_px": null
+              },
+              "visual_envelope": {
+                "w": 1,
+                "h": 3
+              },
+              "pre_crop_target_px_per_visual_tile": 256,
+              "runtime_min_longest_side_px_per_visual_tile": 128,
+              "scope": "per generated actor sheet cell or standalone pre-crop source"
+            },
+            "visual_envelope": {
+              "w": 1,
+              "h": 3
+            },
+            "placement": {
+              "source_size": [
+                256,
+                768
+              ],
+              "anchor": [
+                128,
+                624
+              ],
+              "footprint": [
+                1,
+                1
+              ],
+              "visual_envelope": [
+                1,
+                3
+              ]
+            },
+            "fit_profile": "standing",
+            "source_bbox": {
+              "x": 0,
+              "y": 18,
+              "w": 378,
+              "h": 128
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 563,
+              "w": 181,
+              "h": 61
+            },
+            "anchor": [
+              128,
+              624
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.47883597883597884,
+            "residual_key_pixels": 0,
+            "transparent_key_pixels": 1198496,
+            "edge_fringe_key_pixels": 0,
+            "team_mask_pixels": 6802,
+            "source_slot": 2,
+            "source_crop_box": [
+              768,
+              0,
+              1146,
+              146
+            ]
           }
         ],
         "back": [
           {
             "base": "pike__idle/back/frame_00_base.png",
-            "team_mask": "pike__idle/back/frame_00_teammask.png"
+            "team_mask": "pike__idle/back/frame_00_teammask.png",
+            "manual_review": "generated_pike_lance_completion_sheet_20260606_cleaned",
+            "source": "art/tiles/candidates/units/spearman/sheets/back_contact_sheet.png",
+            "source_sha256": "13931ed8ba1514b0cbc3e5e1ee0d40d3451ae125ee8481676dc326f62832fb10",
+            "source_grid_manifest": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/spearman_pike_tall_remaining_grid_manifest.json",
+            "source_slot": 2,
+            "source_slot_crop_box_raw": [
+              20,
+              20,
+              203,
+              599
+            ],
+            "source_cell": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/split/spearman_pike_tall_remaining_cleaned/slot_00_pike__idle_back_frame_00.png",
+            "source_canvas": {
+              "profile": "sprite_overlay_source",
+              "width_px": 256,
+              "height_px": 768,
+              "target_kind": "pre_crop_generation_slot",
+              "min_longest_side_px": 384,
+              "unit": "px",
+              "source": "realm range-based source-quality contract",
+              "range": {
+                "minimum_longest_side_px_after_crop": 384,
+                "pre_crop_target_px": 768,
+                "maximum_px": null
+              },
+              "visual_envelope": {
+                "w": 1,
+                "h": 3
+              },
+              "pre_crop_target_px_per_visual_tile": 256,
+              "runtime_min_longest_side_px_per_visual_tile": 128,
+              "scope": "per generated actor sheet cell or standalone pre-crop source"
+            },
+            "visual_envelope": {
+              "w": 1,
+              "h": 3
+            },
+            "placement": {
+              "source_size": [
+                256,
+                768
+              ],
+              "anchor": [
+                128,
+                624
+              ],
+              "footprint": [
+                1,
+                1
+              ],
+              "visual_envelope": [
+                1,
+                3
+              ]
+            },
+            "fit_profile": "standing",
+            "source_bbox": {
+              "x": 0,
+              "y": 18,
+              "w": 348,
+              "h": 116
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 564,
+              "w": 181,
+              "h": 60
+            },
+            "anchor": [
+              128,
+              624
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.5201149425287356,
+            "residual_key_pixels": 7,
+            "transparent_key_pixels": 69053,
+            "edge_fringe_key_pixels": 26,
+            "team_mask_pixels": 3199,
+            "source_crop_box": [
+              924,
+              0,
+              1272,
+              134
+            ]
           },
           {
             "base": "pike__idle/back/frame_01_base.png",
-            "team_mask": "pike__idle/back/frame_01_teammask.png"
+            "team_mask": "pike__idle/back/frame_01_teammask.png",
+            "manual_review": "generated_pike_lance_completion_sheet_20260606_cleaned",
+            "source": "art/tiles/candidates/units/spearman/sheets/back_contact_sheet.png",
+            "source_sha256": "13931ed8ba1514b0cbc3e5e1ee0d40d3451ae125ee8481676dc326f62832fb10",
+            "source_grid_manifest": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/spearman_pike_tall_remaining_grid_manifest.json",
+            "source_slot": 2,
+            "source_slot_crop_box_raw": [
+              232,
+              20,
+              415,
+              599
+            ],
+            "source_cell": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/split/spearman_pike_tall_remaining_cleaned/slot_01_pike__idle_back_frame_01.png",
+            "source_canvas": {
+              "profile": "sprite_overlay_source",
+              "width_px": 256,
+              "height_px": 768,
+              "target_kind": "pre_crop_generation_slot",
+              "min_longest_side_px": 384,
+              "unit": "px",
+              "source": "realm range-based source-quality contract",
+              "range": {
+                "minimum_longest_side_px_after_crop": 384,
+                "pre_crop_target_px": 768,
+                "maximum_px": null
+              },
+              "visual_envelope": {
+                "w": 1,
+                "h": 3
+              },
+              "pre_crop_target_px_per_visual_tile": 256,
+              "runtime_min_longest_side_px_per_visual_tile": 128,
+              "scope": "per generated actor sheet cell or standalone pre-crop source"
+            },
+            "visual_envelope": {
+              "w": 1,
+              "h": 3
+            },
+            "placement": {
+              "source_size": [
+                256,
+                768
+              ],
+              "anchor": [
+                128,
+                624
+              ],
+              "footprint": [
+                1,
+                1
+              ],
+              "visual_envelope": [
+                1,
+                3
+              ]
+            },
+            "fit_profile": "standing",
+            "source_bbox": {
+              "x": 0,
+              "y": 18,
+              "w": 348,
+              "h": 116
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 564,
+              "w": 181,
+              "h": 60
+            },
+            "anchor": [
+              128,
+              624
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.5201149425287356,
+            "residual_key_pixels": 0,
+            "transparent_key_pixels": 67862,
+            "edge_fringe_key_pixels": 0,
+            "team_mask_pixels": 5038,
+            "source_crop_box": [
+              924,
+              0,
+              1272,
+              134
+            ]
           }
         ]
-      }
+      },
+      "placement": {
+        "source_size": [
+          256,
+          768
+        ],
+        "anchor": [
+          128,
+          624
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          1,
+          3
+        ]
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 256,
+        "height_px": 768,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 384,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 384,
+          "pre_crop_target_px": 768,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 1,
+          "h": 3
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "visual_envelope": {
+        "w": 1,
+        "h": 3
+      },
+      "visual_envelope_note": "upgraded pike is carried upright or near-upright; keep the full shaft and head inside the tall slot"
     },
     "pike__walk": {
       "frame_ms": 250,
       "loop": true,
       "hold_last": false,
       "description": "Pikes: walk; upgraded spear equipment with a much longer pike shaft, larger iron pike head, and stronger bracing pose",
+      "family": "pike__walk",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "pike__walk/front/frame_00_base.png",
-            "team_mask": "pike__walk/front/frame_00_teammask.png"
+            "team_mask": "pike__walk/front/frame_00_teammask.png",
+            "manual_review": "generated_pike_lance_completion_sheet_20260606_cleaned",
+            "source": "art/tiles/candidates/units/spearman/sheets/front_contact_sheet.png",
+            "source_sha256": "13931ed8ba1514b0cbc3e5e1ee0d40d3451ae125ee8481676dc326f62832fb10",
+            "source_grid_manifest": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/spearman_pike_tall_remaining_grid_manifest.json",
+            "source_slot": 4,
+            "source_slot_crop_box_raw": [
+              443,
+              20,
+              626,
+              599
+            ],
+            "source_cell": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/split/spearman_pike_tall_remaining_cleaned/slot_02_pike__walk_front_frame_00.png",
+            "source_canvas": {
+              "profile": "sprite_overlay_source",
+              "width_px": 256,
+              "height_px": 768,
+              "target_kind": "pre_crop_generation_slot",
+              "min_longest_side_px": 384,
+              "unit": "px",
+              "source": "realm range-based source-quality contract",
+              "range": {
+                "minimum_longest_side_px_after_crop": 384,
+                "pre_crop_target_px": 768,
+                "maximum_px": null
+              },
+              "visual_envelope": {
+                "w": 1,
+                "h": 3
+              },
+              "pre_crop_target_px_per_visual_tile": 256,
+              "runtime_min_longest_side_px_per_visual_tile": 128,
+              "scope": "per generated actor sheet cell or standalone pre-crop source"
+            },
+            "visual_envelope": {
+              "w": 1,
+              "h": 3
+            },
+            "placement": {
+              "source_size": [
+                256,
+                768
+              ],
+              "anchor": [
+                128,
+                624
+              ],
+              "footprint": [
+                1,
+                1
+              ],
+              "visual_envelope": [
+                1,
+                3
+              ]
+            },
+            "fit_profile": "standing",
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 378,
+              "h": 147
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 554,
+              "w": 181,
+              "h": 70
+            },
+            "anchor": [
+              128,
+              624
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.47883597883597884,
+            "residual_key_pixels": 0,
+            "transparent_key_pixels": 66802,
+            "edge_fringe_key_pixels": 0,
+            "team_mask_pixels": 4113,
+            "source_crop_box": [
+              777,
+              146,
+              1155,
+              293
+            ]
           },
           {
             "base": "pike__walk/front/frame_01_base.png",
-            "team_mask": "pike__walk/front/frame_01_teammask.png"
+            "team_mask": "pike__walk/front/frame_01_teammask.png",
+            "manual_review": "generated_pike_lance_completion_sheet_20260606_cleaned",
+            "source": "art/tiles/candidates/units/spearman/sheets/front_contact_sheet.png",
+            "source_sha256": "13931ed8ba1514b0cbc3e5e1ee0d40d3451ae125ee8481676dc326f62832fb10",
+            "source_grid_manifest": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/spearman_pike_tall_remaining_grid_manifest.json",
+            "source_slot": 4,
+            "source_slot_crop_box_raw": [
+              655,
+              20,
+              838,
+              599
+            ],
+            "source_cell": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/split/spearman_pike_tall_remaining_cleaned/slot_03_pike__walk_front_frame_01.png",
+            "source_canvas": {
+              "profile": "sprite_overlay_source",
+              "width_px": 256,
+              "height_px": 768,
+              "target_kind": "pre_crop_generation_slot",
+              "min_longest_side_px": 384,
+              "unit": "px",
+              "source": "realm range-based source-quality contract",
+              "range": {
+                "minimum_longest_side_px_after_crop": 384,
+                "pre_crop_target_px": 768,
+                "maximum_px": null
+              },
+              "visual_envelope": {
+                "w": 1,
+                "h": 3
+              },
+              "pre_crop_target_px_per_visual_tile": 256,
+              "runtime_min_longest_side_px_per_visual_tile": 128,
+              "scope": "per generated actor sheet cell or standalone pre-crop source"
+            },
+            "visual_envelope": {
+              "w": 1,
+              "h": 3
+            },
+            "placement": {
+              "source_size": [
+                256,
+                768
+              ],
+              "anchor": [
+                128,
+                624
+              ],
+              "footprint": [
+                1,
+                1
+              ],
+              "visual_envelope": [
+                1,
+                3
+              ]
+            },
+            "fit_profile": "standing",
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 378,
+              "h": 147
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 554,
+              "w": 181,
+              "h": 70
+            },
+            "anchor": [
+              128,
+              624
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.47883597883597884,
+            "residual_key_pixels": 10,
+            "transparent_key_pixels": 66871,
+            "edge_fringe_key_pixels": 0,
+            "team_mask_pixels": 4531,
+            "source_crop_box": [
+              777,
+              146,
+              1155,
+              293
+            ]
           }
         ],
         "back": [
           {
             "base": "pike__walk/back/frame_00_base.png",
-            "team_mask": "pike__walk/back/frame_00_teammask.png"
+            "team_mask": "pike__walk/back/frame_00_teammask.png",
+            "manual_review": "generated_pike_lance_completion_sheet_20260606_cleaned",
+            "source": "art/tiles/candidates/units/spearman/sheets/back_contact_sheet.png",
+            "source_sha256": "13931ed8ba1514b0cbc3e5e1ee0d40d3451ae125ee8481676dc326f62832fb10",
+            "source_grid_manifest": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/spearman_pike_tall_remaining_grid_manifest.json",
+            "source_slot": 4,
+            "source_slot_crop_box_raw": [
+              20,
+              628,
+              203,
+              1206
+            ],
+            "source_cell": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/split/spearman_pike_tall_remaining_cleaned/slot_04_pike__walk_back_frame_00.png",
+            "source_canvas": {
+              "profile": "sprite_overlay_source",
+              "width_px": 256,
+              "height_px": 768,
+              "target_kind": "pre_crop_generation_slot",
+              "min_longest_side_px": 384,
+              "unit": "px",
+              "source": "realm range-based source-quality contract",
+              "range": {
+                "minimum_longest_side_px_after_crop": 384,
+                "pre_crop_target_px": 768,
+                "maximum_px": null
+              },
+              "visual_envelope": {
+                "w": 1,
+                "h": 3
+              },
+              "pre_crop_target_px_per_visual_tile": 256,
+              "runtime_min_longest_side_px_per_visual_tile": 128,
+              "scope": "per generated actor sheet cell or standalone pre-crop source"
+            },
+            "visual_envelope": {
+              "w": 1,
+              "h": 3
+            },
+            "placement": {
+              "source_size": [
+                256,
+                768
+              ],
+              "anchor": [
+                128,
+                624
+              ],
+              "footprint": [
+                1,
+                1
+              ],
+              "visual_envelope": [
+                1,
+                3
+              ]
+            },
+            "fit_profile": "standing",
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 354,
+              "h": 135
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 555,
+              "w": 181,
+              "h": 69
+            },
+            "anchor": [
+              128,
+              624
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.5112994350282486,
+            "residual_key_pixels": 1,
+            "transparent_key_pixels": 69942,
+            "edge_fringe_key_pixels": 0,
+            "team_mask_pixels": 4285,
+            "source_crop_box": [
+              916,
+              134,
+              1270,
+              269
+            ]
           },
           {
             "base": "pike__walk/back/frame_01_base.png",
-            "team_mask": "pike__walk/back/frame_01_teammask.png"
+            "team_mask": "pike__walk/back/frame_01_teammask.png",
+            "manual_review": "generated_pike_lance_completion_sheet_20260606_cleaned",
+            "source": "art/tiles/candidates/units/spearman/sheets/back_contact_sheet.png",
+            "source_sha256": "13931ed8ba1514b0cbc3e5e1ee0d40d3451ae125ee8481676dc326f62832fb10",
+            "source_grid_manifest": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/spearman_pike_tall_remaining_grid_manifest.json",
+            "source_slot": 4,
+            "source_slot_crop_box_raw": [
+              232,
+              628,
+              415,
+              1206
+            ],
+            "source_cell": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/split/spearman_pike_tall_remaining_cleaned/slot_05_pike__walk_back_frame_01.png",
+            "source_canvas": {
+              "profile": "sprite_overlay_source",
+              "width_px": 256,
+              "height_px": 768,
+              "target_kind": "pre_crop_generation_slot",
+              "min_longest_side_px": 384,
+              "unit": "px",
+              "source": "realm range-based source-quality contract",
+              "range": {
+                "minimum_longest_side_px_after_crop": 384,
+                "pre_crop_target_px": 768,
+                "maximum_px": null
+              },
+              "visual_envelope": {
+                "w": 1,
+                "h": 3
+              },
+              "pre_crop_target_px_per_visual_tile": 256,
+              "runtime_min_longest_side_px_per_visual_tile": 128,
+              "scope": "per generated actor sheet cell or standalone pre-crop source"
+            },
+            "visual_envelope": {
+              "w": 1,
+              "h": 3
+            },
+            "placement": {
+              "source_size": [
+                256,
+                768
+              ],
+              "anchor": [
+                128,
+                624
+              ],
+              "footprint": [
+                1,
+                1
+              ],
+              "visual_envelope": [
+                1,
+                3
+              ]
+            },
+            "fit_profile": "standing",
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 354,
+              "h": 135
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 555,
+              "w": 181,
+              "h": 69
+            },
+            "anchor": [
+              128,
+              624
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.5112994350282486,
+            "residual_key_pixels": 0,
+            "transparent_key_pixels": 68411,
+            "edge_fringe_key_pixels": 0,
+            "team_mask_pixels": 3702,
+            "source_crop_box": [
+              916,
+              134,
+              1270,
+              269
+            ]
           }
         ]
-      }
+      },
+      "placement": {
+        "source_size": [
+          256,
+          768
+        ],
+        "anchor": [
+          128,
+          624
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          1,
+          3
+        ]
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 256,
+        "height_px": 768,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 384,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 384,
+          "pre_crop_target_px": 768,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 1,
+          "h": 3
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "visual_envelope": {
+        "w": 1,
+        "h": 3
+      },
+      "visual_envelope_note": "upgraded pike is carried upright or near-upright; keep the full shaft and head inside the tall slot"
     },
     "pike__spear_thrust": {
       "frame_ms": 250,
       "loop": true,
       "hold_last": false,
       "description": "Pikes: spear thrust; upgraded spear equipment with a much longer pike shaft, larger iron pike head, and stronger bracing pose",
+      "family": "pike__spear_thrust",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "pike__spear_thrust/front/frame_00_base.png",
-            "team_mask": "pike__spear_thrust/front/frame_00_teammask.png"
+            "team_mask": "pike__spear_thrust/front/frame_00_teammask.png",
+            "manual_review": "targeted_generated_pike_lance_front_20260606",
+            "source": "art/tiles/candidates/units/spearman/sheets/front_contact_sheet.png",
+            "source_sha256": "e9640d014db66146460cd70d9afaa8fd18bac8e18ab7206bf45ebb1162d53417",
+            "source_canvas": {
+              "profile": "sprite_overlay_source",
+              "width_px": 768,
+              "height_px": 256,
+              "target_kind": "pre_crop_generation_slot",
+              "min_longest_side_px": 384,
+              "unit": "px",
+              "source": "realm range-based source-quality contract",
+              "range": {
+                "minimum_longest_side_px_after_crop": 384,
+                "pre_crop_target_px": 768,
+                "maximum_px": null
+              },
+              "visual_envelope": {
+                "w": 3,
+                "h": 1
+              },
+              "pre_crop_target_px_per_visual_tile": 256,
+              "runtime_min_longest_side_px_per_visual_tile": 128,
+              "scope": "per generated actor sheet cell or standalone pre-crop source"
+            },
+            "visual_envelope": {
+              "w": 3,
+              "h": 1
+            },
+            "placement": {
+              "source_size": [
+                768,
+                256
+              ],
+              "anchor": [
+                384,
+                208
+              ],
+              "footprint": [
+                1,
+                1
+              ],
+              "visual_envelope": [
+                3,
+                1
+              ]
+            },
+            "fit_profile": "standing",
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 417,
+              "h": 142
+            },
+            "final_bbox": {
+              "x": 112,
+              "y": 23,
+              "w": 544,
+              "h": 185
+            },
+            "anchor": [
+              384,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 1.3045563549160673,
+            "residual_key_pixels": 0,
+            "transparent_key_pixels": 1287935,
+            "edge_fringe_key_pixels": 0,
+            "team_mask_pixels": 3400,
+            "source_slot": 6,
+            "source_crop_box": [
+              768,
+              293,
+              1185,
+              439
+            ]
           },
           {
             "base": "pike__spear_thrust/front/frame_01_base.png",
-            "team_mask": "pike__spear_thrust/front/frame_01_teammask.png"
+            "team_mask": "pike__spear_thrust/front/frame_01_teammask.png",
+            "manual_review": "targeted_generated_pike_lance_front_20260606",
+            "source": "art/tiles/candidates/units/spearman/sheets/front_contact_sheet.png",
+            "source_sha256": "e9640d014db66146460cd70d9afaa8fd18bac8e18ab7206bf45ebb1162d53417",
+            "source_canvas": {
+              "profile": "sprite_overlay_source",
+              "width_px": 768,
+              "height_px": 256,
+              "target_kind": "pre_crop_generation_slot",
+              "min_longest_side_px": 384,
+              "unit": "px",
+              "source": "realm range-based source-quality contract",
+              "range": {
+                "minimum_longest_side_px_after_crop": 384,
+                "pre_crop_target_px": 768,
+                "maximum_px": null
+              },
+              "visual_envelope": {
+                "w": 3,
+                "h": 1
+              },
+              "pre_crop_target_px_per_visual_tile": 256,
+              "runtime_min_longest_side_px_per_visual_tile": 128,
+              "scope": "per generated actor sheet cell or standalone pre-crop source"
+            },
+            "visual_envelope": {
+              "w": 3,
+              "h": 1
+            },
+            "placement": {
+              "source_size": [
+                768,
+                256
+              ],
+              "anchor": [
+                384,
+                208
+              ],
+              "footprint": [
+                1,
+                1
+              ],
+              "visual_envelope": [
+                3,
+                1
+              ]
+            },
+            "fit_profile": "standing",
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 417,
+              "h": 142
+            },
+            "final_bbox": {
+              "x": 112,
+              "y": 23,
+              "w": 544,
+              "h": 185
+            },
+            "anchor": [
+              384,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 1.3045563549160673,
+            "residual_key_pixels": 0,
+            "transparent_key_pixels": 1287935,
+            "edge_fringe_key_pixels": 0,
+            "team_mask_pixels": 3400,
+            "source_slot": 6,
+            "source_crop_box": [
+              768,
+              293,
+              1185,
+              439
+            ]
           }
         ],
         "back": [
           {
             "base": "pike__spear_thrust/back/frame_00_base.png",
-            "team_mask": "pike__spear_thrust/back/frame_00_teammask.png"
+            "team_mask": "pike__spear_thrust/back/frame_00_teammask.png",
+            "manual_review": "generated_pike_lance_completion_sheet_20260606_cleaned",
+            "source": "art/tiles/candidates/units/spearman/sheets/back_contact_sheet.png",
+            "source_sha256": "a2121f41c79bb817bf9c1736f0730406a87473c82ffab9252502fe68366fa616",
+            "source_grid_manifest": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/spearman_pike_wide_remaining_grid_manifest.json",
+            "source_slot": 6,
+            "source_slot_crop_box_raw": [
+              17,
+              17,
+              521,
+              177
+            ],
+            "source_cell": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/split/spearman_pike_wide_remaining_cleaned/slot_00_pike__spear_thrust_back_frame_00.png",
+            "source_canvas": {
+              "profile": "sprite_overlay_source",
+              "width_px": 768,
+              "height_px": 256,
+              "target_kind": "pre_crop_generation_slot",
+              "min_longest_side_px": 384,
+              "unit": "px",
+              "source": "realm range-based source-quality contract",
+              "range": {
+                "minimum_longest_side_px_after_crop": 384,
+                "pre_crop_target_px": 768,
+                "maximum_px": null
+              },
+              "visual_envelope": {
+                "w": 3,
+                "h": 1
+              },
+              "pre_crop_target_px_per_visual_tile": 256,
+              "runtime_min_longest_side_px_per_visual_tile": 128,
+              "scope": "per generated actor sheet cell or standalone pre-crop source"
+            },
+            "visual_envelope": {
+              "w": 3,
+              "h": 1
+            },
+            "placement": {
+              "source_size": [
+                768,
+                256
+              ],
+              "anchor": [
+                384,
+                208
+              ],
+              "footprint": [
+                1,
+                1
+              ],
+              "visual_envelope": [
+                3,
+                1
+              ]
+            },
+            "fit_profile": "standing",
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 443,
+              "h": 134
+            },
+            "final_bbox": {
+              "x": 112,
+              "y": 43,
+              "w": 544,
+              "h": 165
+            },
+            "anchor": [
+              384,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 1.2279909706546275,
+            "residual_key_pixels": 0,
+            "postprocess_magenta_pixels_cleared": 43,
+            "transparent_key_pixels": 63819,
+            "edge_fringe_key_pixels": 0,
+            "team_mask_pixels": 2308,
+            "source_crop_box": [
+              939,
+              269,
+              1382,
+              403
+            ]
           },
           {
             "base": "pike__spear_thrust/back/frame_01_base.png",
-            "team_mask": "pike__spear_thrust/back/frame_01_teammask.png"
+            "team_mask": "pike__spear_thrust/back/frame_01_teammask.png",
+            "manual_review": "generated_pike_lance_completion_sheet_20260606_cleaned",
+            "source": "art/tiles/candidates/units/spearman/sheets/back_contact_sheet.png",
+            "source_sha256": "a2121f41c79bb817bf9c1736f0730406a87473c82ffab9252502fe68366fa616",
+            "source_grid_manifest": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/spearman_pike_wide_remaining_grid_manifest.json",
+            "source_slot": 6,
+            "source_slot_crop_box_raw": [
+              544,
+              17,
+              1049,
+              177
+            ],
+            "source_cell": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/split/spearman_pike_wide_remaining_cleaned/slot_01_pike__spear_thrust_back_frame_01.png",
+            "source_canvas": {
+              "profile": "sprite_overlay_source",
+              "width_px": 768,
+              "height_px": 256,
+              "target_kind": "pre_crop_generation_slot",
+              "min_longest_side_px": 384,
+              "unit": "px",
+              "source": "realm range-based source-quality contract",
+              "range": {
+                "minimum_longest_side_px_after_crop": 384,
+                "pre_crop_target_px": 768,
+                "maximum_px": null
+              },
+              "visual_envelope": {
+                "w": 3,
+                "h": 1
+              },
+              "pre_crop_target_px_per_visual_tile": 256,
+              "runtime_min_longest_side_px_per_visual_tile": 128,
+              "scope": "per generated actor sheet cell or standalone pre-crop source"
+            },
+            "visual_envelope": {
+              "w": 3,
+              "h": 1
+            },
+            "placement": {
+              "source_size": [
+                768,
+                256
+              ],
+              "anchor": [
+                384,
+                208
+              ],
+              "footprint": [
+                1,
+                1
+              ],
+              "visual_envelope": [
+                3,
+                1
+              ]
+            },
+            "fit_profile": "standing",
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 443,
+              "h": 134
+            },
+            "final_bbox": {
+              "x": 112,
+              "y": 43,
+              "w": 544,
+              "h": 165
+            },
+            "anchor": [
+              384,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 1.2279909706546275,
+            "residual_key_pixels": 0,
+            "postprocess_magenta_pixels_cleared": 28,
+            "transparent_key_pixels": 64315,
+            "edge_fringe_key_pixels": 0,
+            "team_mask_pixels": 2402,
+            "source_crop_box": [
+              939,
+              269,
+              1382,
+              403
+            ]
           }
         ]
-      }
+      },
+      "placement": {
+        "source_size": [
+          768,
+          256
+        ],
+        "anchor": [
+          384,
+          208
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          3,
+          1
+        ]
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 768,
+        "height_px": 256,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 384,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 384,
+          "pre_crop_target_px": 768,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 3,
+          "h": 1
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "visual_envelope": {
+        "w": 3,
+        "h": 1
+      },
+      "visual_envelope_note": "long spear or pike is thrust forward or lying horizontally; keep the full weapon inside the slot"
     },
     "pike__brace_hold_position": {
       "frame_ms": 250,
       "loop": true,
       "hold_last": false,
       "description": "Pikes: brace/hold-position; upgraded spear equipment with a much longer pike shaft, larger iron pike head, and stronger bracing pose",
+      "family": "pike__brace_hold_position",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "pike__brace_hold_position/front/frame_00_base.png",
-            "team_mask": "pike__brace_hold_position/front/frame_00_teammask.png"
+            "team_mask": "pike__brace_hold_position/front/frame_00_teammask.png",
+            "manual_review": "generated_pike_lance_completion_sheet_20260606_cleaned",
+            "source": "art/tiles/candidates/units/spearman/sheets/front_contact_sheet.png",
+            "source_sha256": "a2121f41c79bb817bf9c1736f0730406a87473c82ffab9252502fe68366fa616",
+            "source_grid_manifest": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/spearman_pike_wide_remaining_grid_manifest.json",
+            "source_slot": 8,
+            "source_slot_crop_box_raw": [
+              1071,
+              17,
+              1576,
+              177
+            ],
+            "source_cell": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/split/spearman_pike_wide_remaining_cleaned/slot_02_pike__brace_hold_position_front_frame_00.png",
+            "source_canvas": {
+              "profile": "sprite_overlay_source",
+              "width_px": 768,
+              "height_px": 256,
+              "target_kind": "pre_crop_generation_slot",
+              "min_longest_side_px": 384,
+              "unit": "px",
+              "source": "realm range-based source-quality contract",
+              "range": {
+                "minimum_longest_side_px_after_crop": 384,
+                "pre_crop_target_px": 768,
+                "maximum_px": null
+              },
+              "visual_envelope": {
+                "w": 3,
+                "h": 1
+              },
+              "pre_crop_target_px_per_visual_tile": 256,
+              "runtime_min_longest_side_px_per_visual_tile": 128,
+              "scope": "per generated actor sheet cell or standalone pre-crop source"
+            },
+            "visual_envelope": {
+              "w": 3,
+              "h": 1
+            },
+            "placement": {
+              "source_size": [
+                768,
+                256
+              ],
+              "anchor": [
+                384,
+                208
+              ],
+              "footprint": [
+                1,
+                1
+              ],
+              "visual_envelope": [
+                3,
+                1
+              ]
+            },
+            "fit_profile": "standing",
+            "source_bbox": {
+              "x": 0,
+              "y": 5,
+              "w": 413,
+              "h": 141
+            },
+            "final_bbox": {
+              "x": 112,
+              "y": 22,
+              "w": 544,
+              "h": 186
+            },
+            "anchor": [
+              384,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 1.3171912832929782,
+            "residual_key_pixels": 0,
+            "postprocess_magenta_pixels_cleared": 40,
+            "transparent_key_pixels": 65173,
+            "edge_fringe_key_pixels": 0,
+            "team_mask_pixels": 1583,
+            "source_crop_box": [
+              768,
+              439,
+              1181,
+              585
+            ]
           },
           {
             "base": "pike__brace_hold_position/front/frame_01_base.png",
-            "team_mask": "pike__brace_hold_position/front/frame_01_teammask.png"
+            "team_mask": "pike__brace_hold_position/front/frame_01_teammask.png",
+            "manual_review": "generated_pike_lance_completion_sheet_20260606_cleaned",
+            "source": "art/tiles/candidates/units/spearman/sheets/front_contact_sheet.png",
+            "source_sha256": "a2121f41c79bb817bf9c1736f0730406a87473c82ffab9252502fe68366fa616",
+            "source_grid_manifest": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/spearman_pike_wide_remaining_grid_manifest.json",
+            "source_slot": 8,
+            "source_slot_crop_box_raw": [
+              1599,
+              17,
+              2103,
+              177
+            ],
+            "source_cell": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/split/spearman_pike_wide_remaining_cleaned/slot_03_pike__brace_hold_position_front_frame_01.png",
+            "source_canvas": {
+              "profile": "sprite_overlay_source",
+              "width_px": 768,
+              "height_px": 256,
+              "target_kind": "pre_crop_generation_slot",
+              "min_longest_side_px": 384,
+              "unit": "px",
+              "source": "realm range-based source-quality contract",
+              "range": {
+                "minimum_longest_side_px_after_crop": 384,
+                "pre_crop_target_px": 768,
+                "maximum_px": null
+              },
+              "visual_envelope": {
+                "w": 3,
+                "h": 1
+              },
+              "pre_crop_target_px_per_visual_tile": 256,
+              "runtime_min_longest_side_px_per_visual_tile": 128,
+              "scope": "per generated actor sheet cell or standalone pre-crop source"
+            },
+            "visual_envelope": {
+              "w": 3,
+              "h": 1
+            },
+            "placement": {
+              "source_size": [
+                768,
+                256
+              ],
+              "anchor": [
+                384,
+                208
+              ],
+              "footprint": [
+                1,
+                1
+              ],
+              "visual_envelope": [
+                3,
+                1
+              ]
+            },
+            "fit_profile": "standing",
+            "source_bbox": {
+              "x": 0,
+              "y": 5,
+              "w": 413,
+              "h": 141
+            },
+            "final_bbox": {
+              "x": 112,
+              "y": 22,
+              "w": 544,
+              "h": 186
+            },
+            "anchor": [
+              384,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 1.3171912832929782,
+            "residual_key_pixels": 0,
+            "postprocess_magenta_pixels_cleared": 33,
+            "transparent_key_pixels": 65383,
+            "edge_fringe_key_pixels": 0,
+            "team_mask_pixels": 1431,
+            "source_crop_box": [
+              768,
+              439,
+              1181,
+              585
+            ]
           }
         ],
         "back": [
           {
             "base": "pike__brace_hold_position/back/frame_00_base.png",
-            "team_mask": "pike__brace_hold_position/back/frame_00_teammask.png"
+            "team_mask": "pike__brace_hold_position/back/frame_00_teammask.png",
+            "manual_review": "generated_pike_lance_completion_sheet_20260606_cleaned",
+            "source": "art/tiles/candidates/units/spearman/sheets/back_contact_sheet.png",
+            "source_sha256": "a2121f41c79bb817bf9c1736f0730406a87473c82ffab9252502fe68366fa616",
+            "source_grid_manifest": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/spearman_pike_wide_remaining_grid_manifest.json",
+            "source_slot": 8,
+            "source_slot_crop_box_raw": [
+              17,
+              200,
+              521,
+              360
+            ],
+            "source_cell": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/split/spearman_pike_wide_remaining_cleaned/slot_04_pike__brace_hold_position_back_frame_00.png",
+            "source_canvas": {
+              "profile": "sprite_overlay_source",
+              "width_px": 768,
+              "height_px": 256,
+              "target_kind": "pre_crop_generation_slot",
+              "min_longest_side_px": 384,
+              "unit": "px",
+              "source": "realm range-based source-quality contract",
+              "range": {
+                "minimum_longest_side_px_after_crop": 384,
+                "pre_crop_target_px": 768,
+                "maximum_px": null
+              },
+              "visual_envelope": {
+                "w": 3,
+                "h": 1
+              },
+              "pre_crop_target_px_per_visual_tile": 256,
+              "runtime_min_longest_side_px_per_visual_tile": 128,
+              "scope": "per generated actor sheet cell or standalone pre-crop source"
+            },
+            "visual_envelope": {
+              "w": 3,
+              "h": 1
+            },
+            "placement": {
+              "source_size": [
+                768,
+                256
+              ],
+              "anchor": [
+                384,
+                208
+              ],
+              "footprint": [
+                1,
+                1
+              ],
+              "visual_envelope": [
+                3,
+                1
+              ]
+            },
+            "fit_profile": "standing",
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 230,
+              "h": 135
+            },
+            "final_bbox": {
+              "x": 193,
+              "y": 21,
+              "w": 382,
+              "h": 224
+            },
+            "anchor": [
+              384,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 1.6592592592592592,
+            "residual_key_pixels": 1,
+            "postprocess_magenta_pixels_cleared": 24,
+            "transparent_key_pixels": 66313,
+            "edge_fringe_key_pixels": 0,
+            "team_mask_pixels": 804,
+            "source_crop_box": [
+              922,
+              403,
+              1152,
+              538
+            ]
           },
           {
             "base": "pike__brace_hold_position/back/frame_01_base.png",
-            "team_mask": "pike__brace_hold_position/back/frame_01_teammask.png"
+            "team_mask": "pike__brace_hold_position/back/frame_01_teammask.png",
+            "manual_review": "generated_pike_lance_completion_sheet_20260606_cleaned",
+            "source": "art/tiles/candidates/units/spearman/sheets/back_contact_sheet.png",
+            "source_sha256": "a2121f41c79bb817bf9c1736f0730406a87473c82ffab9252502fe68366fa616",
+            "source_grid_manifest": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/spearman_pike_wide_remaining_grid_manifest.json",
+            "source_slot": 8,
+            "source_slot_crop_box_raw": [
+              544,
+              200,
+              1049,
+              360
+            ],
+            "source_cell": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/split/spearman_pike_wide_remaining_cleaned/slot_05_pike__brace_hold_position_back_frame_01.png",
+            "source_canvas": {
+              "profile": "sprite_overlay_source",
+              "width_px": 768,
+              "height_px": 256,
+              "target_kind": "pre_crop_generation_slot",
+              "min_longest_side_px": 384,
+              "unit": "px",
+              "source": "realm range-based source-quality contract",
+              "range": {
+                "minimum_longest_side_px_after_crop": 384,
+                "pre_crop_target_px": 768,
+                "maximum_px": null
+              },
+              "visual_envelope": {
+                "w": 3,
+                "h": 1
+              },
+              "pre_crop_target_px_per_visual_tile": 256,
+              "runtime_min_longest_side_px_per_visual_tile": 128,
+              "scope": "per generated actor sheet cell or standalone pre-crop source"
+            },
+            "visual_envelope": {
+              "w": 3,
+              "h": 1
+            },
+            "placement": {
+              "source_size": [
+                768,
+                256
+              ],
+              "anchor": [
+                384,
+                208
+              ],
+              "footprint": [
+                1,
+                1
+              ],
+              "visual_envelope": [
+                3,
+                1
+              ]
+            },
+            "fit_profile": "standing",
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 230,
+              "h": 135
+            },
+            "final_bbox": {
+              "x": 193,
+              "y": 21,
+              "w": 382,
+              "h": 224
+            },
+            "anchor": [
+              384,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              37
+            ],
+            "scale": 1.6592592592592592,
+            "residual_key_pixels": 0,
+            "postprocess_magenta_pixels_cleared": 723,
+            "transparent_key_pixels": 66270,
+            "edge_fringe_key_pixels": 0,
+            "team_mask_pixels": 802,
+            "source_crop_box": [
+              922,
+              403,
+              1152,
+              538
+            ]
           }
         ]
-      }
+      },
+      "placement": {
+        "source_size": [
+          768,
+          256
+        ],
+        "anchor": [
+          384,
+          208
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          3,
+          1
+        ]
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 768,
+        "height_px": 256,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 384,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 384,
+          "pre_crop_target_px": 768,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 3,
+          "h": 1
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "visual_envelope": {
+        "w": 3,
+        "h": 1
+      },
+      "visual_envelope_note": "long spear or pike is thrust forward or lying horizontally; keep the full weapon inside the slot"
     },
     "pike__hit_alert": {
       "frame_ms": 250,
       "loop": true,
       "hold_last": false,
       "description": "Pikes: hit/alert; upgraded spear equipment with a much longer pike shaft, larger iron pike head, and stronger bracing pose",
+      "family": "pike__hit_alert",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "pike__hit_alert/front/frame_00_base.png",
-            "team_mask": "pike__hit_alert/front/frame_00_teammask.png"
+            "team_mask": "pike__hit_alert/front/frame_00_teammask.png",
+            "manual_review": "generated_pike_lance_completion_sheet_20260606_cleaned",
+            "source": "art/tiles/candidates/units/spearman/sheets/front_contact_sheet.png",
+            "source_sha256": "13931ed8ba1514b0cbc3e5e1ee0d40d3451ae125ee8481676dc326f62832fb10",
+            "source_grid_manifest": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/spearman_pike_tall_remaining_grid_manifest.json",
+            "source_slot": 10,
+            "source_slot_crop_box_raw": [
+              443,
+              628,
+              626,
+              1206
+            ],
+            "source_cell": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/split/spearman_pike_tall_remaining_cleaned/slot_06_pike__hit_alert_front_frame_00.png",
+            "source_canvas": {
+              "profile": "sprite_overlay_source",
+              "width_px": 256,
+              "height_px": 768,
+              "target_kind": "pre_crop_generation_slot",
+              "min_longest_side_px": 384,
+              "unit": "px",
+              "source": "realm range-based source-quality contract",
+              "range": {
+                "minimum_longest_side_px_after_crop": 384,
+                "pre_crop_target_px": 768,
+                "maximum_px": null
+              },
+              "visual_envelope": {
+                "w": 1,
+                "h": 3
+              },
+              "pre_crop_target_px_per_visual_tile": 256,
+              "runtime_min_longest_side_px_per_visual_tile": 128,
+              "scope": "per generated actor sheet cell or standalone pre-crop source"
+            },
+            "visual_envelope": {
+              "w": 1,
+              "h": 3
+            },
+            "placement": {
+              "source_size": [
+                256,
+                768
+              ],
+              "anchor": [
+                128,
+                624
+              ],
+              "footprint": [
+                1,
+                1
+              ],
+              "visual_envelope": [
+                1,
+                3
+              ]
+            },
+            "fit_profile": "standing",
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 376,
+              "h": 140
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 557,
+              "w": 181,
+              "h": 67
+            },
+            "anchor": [
+              128,
+              624
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.48138297872340424,
+            "residual_key_pixels": 6,
+            "transparent_key_pixels": 64702,
+            "edge_fringe_key_pixels": 30,
+            "team_mask_pixels": 4620,
+            "source_crop_box": [
+              781,
+              585,
+              1157,
+              731
+            ]
           },
           {
             "base": "pike__hit_alert/front/frame_01_base.png",
-            "team_mask": "pike__hit_alert/front/frame_01_teammask.png"
+            "team_mask": "pike__hit_alert/front/frame_01_teammask.png",
+            "manual_review": "generated_pike_lance_completion_sheet_20260606_cleaned",
+            "source": "art/tiles/candidates/units/spearman/sheets/front_contact_sheet.png",
+            "source_sha256": "13931ed8ba1514b0cbc3e5e1ee0d40d3451ae125ee8481676dc326f62832fb10",
+            "source_grid_manifest": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/spearman_pike_tall_remaining_grid_manifest.json",
+            "source_slot": 10,
+            "source_slot_crop_box_raw": [
+              655,
+              628,
+              838,
+              1206
+            ],
+            "source_cell": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/split/spearman_pike_tall_remaining_cleaned/slot_07_pike__hit_alert_front_frame_01.png",
+            "source_canvas": {
+              "profile": "sprite_overlay_source",
+              "width_px": 256,
+              "height_px": 768,
+              "target_kind": "pre_crop_generation_slot",
+              "min_longest_side_px": 384,
+              "unit": "px",
+              "source": "realm range-based source-quality contract",
+              "range": {
+                "minimum_longest_side_px_after_crop": 384,
+                "pre_crop_target_px": 768,
+                "maximum_px": null
+              },
+              "visual_envelope": {
+                "w": 1,
+                "h": 3
+              },
+              "pre_crop_target_px_per_visual_tile": 256,
+              "runtime_min_longest_side_px_per_visual_tile": 128,
+              "scope": "per generated actor sheet cell or standalone pre-crop source"
+            },
+            "visual_envelope": {
+              "w": 1,
+              "h": 3
+            },
+            "placement": {
+              "source_size": [
+                256,
+                768
+              ],
+              "anchor": [
+                128,
+                624
+              ],
+              "footprint": [
+                1,
+                1
+              ],
+              "visual_envelope": [
+                1,
+                3
+              ]
+            },
+            "fit_profile": "standing",
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 376,
+              "h": 140
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 557,
+              "w": 181,
+              "h": 67
+            },
+            "anchor": [
+              128,
+              624
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.48138297872340424,
+            "residual_key_pixels": 5,
+            "transparent_key_pixels": 64620,
+            "edge_fringe_key_pixels": 24,
+            "team_mask_pixels": 4943,
+            "source_crop_box": [
+              781,
+              585,
+              1157,
+              731
+            ]
           }
         ],
         "back": [
           {
             "base": "pike__hit_alert/back/frame_00_base.png",
-            "team_mask": "pike__hit_alert/back/frame_00_teammask.png"
+            "team_mask": "pike__hit_alert/back/frame_00_teammask.png",
+            "manual_review": "generated_pike_lance_completion_sheet_20260606_cleaned",
+            "source": "art/tiles/candidates/units/spearman/sheets/back_contact_sheet.png",
+            "source_sha256": "13931ed8ba1514b0cbc3e5e1ee0d40d3451ae125ee8481676dc326f62832fb10",
+            "source_grid_manifest": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/spearman_pike_tall_remaining_grid_manifest.json",
+            "source_slot": 10,
+            "source_slot_crop_box_raw": [
+              20,
+              1235,
+              203,
+              1814
+            ],
+            "source_cell": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/split/spearman_pike_tall_remaining_cleaned/slot_08_pike__hit_alert_back_frame_00.png",
+            "source_canvas": {
+              "profile": "sprite_overlay_source",
+              "width_px": 256,
+              "height_px": 768,
+              "target_kind": "pre_crop_generation_slot",
+              "min_longest_side_px": 384,
+              "unit": "px",
+              "source": "realm range-based source-quality contract",
+              "range": {
+                "minimum_longest_side_px_after_crop": 384,
+                "pre_crop_target_px": 768,
+                "maximum_px": null
+              },
+              "visual_envelope": {
+                "w": 1,
+                "h": 3
+              },
+              "pre_crop_target_px_per_visual_tile": 256,
+              "runtime_min_longest_side_px_per_visual_tile": 128,
+              "scope": "per generated actor sheet cell or standalone pre-crop source"
+            },
+            "visual_envelope": {
+              "w": 1,
+              "h": 3
+            },
+            "placement": {
+              "source_size": [
+                256,
+                768
+              ],
+              "anchor": [
+                128,
+                624
+              ],
+              "footprint": [
+                1,
+                1
+              ],
+              "visual_envelope": [
+                1,
+                3
+              ]
+            },
+            "fit_profile": "standing",
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 326,
+              "h": 134
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 550,
+              "w": 181,
+              "h": 74
+            },
+            "anchor": [
+              128,
+              624
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.5552147239263804,
+            "residual_key_pixels": 0,
+            "transparent_key_pixels": 68032,
+            "edge_fringe_key_pixels": 0,
+            "team_mask_pixels": 4841,
+            "source_crop_box": [
+              919,
+              538,
+              1245,
+              672
+            ]
           },
           {
             "base": "pike__hit_alert/back/frame_01_base.png",
-            "team_mask": "pike__hit_alert/back/frame_01_teammask.png"
+            "team_mask": "pike__hit_alert/back/frame_01_teammask.png",
+            "manual_review": "generated_pike_lance_completion_sheet_20260606_cleaned",
+            "source": "art/tiles/candidates/units/spearman/sheets/back_contact_sheet.png",
+            "source_sha256": "13931ed8ba1514b0cbc3e5e1ee0d40d3451ae125ee8481676dc326f62832fb10",
+            "source_grid_manifest": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/spearman_pike_tall_remaining_grid_manifest.json",
+            "source_slot": 10,
+            "source_slot_crop_box_raw": [
+              232,
+              1235,
+              415,
+              1814
+            ],
+            "source_cell": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/split/spearman_pike_tall_remaining_cleaned/slot_09_pike__hit_alert_back_frame_01.png",
+            "source_canvas": {
+              "profile": "sprite_overlay_source",
+              "width_px": 256,
+              "height_px": 768,
+              "target_kind": "pre_crop_generation_slot",
+              "min_longest_side_px": 384,
+              "unit": "px",
+              "source": "realm range-based source-quality contract",
+              "range": {
+                "minimum_longest_side_px_after_crop": 384,
+                "pre_crop_target_px": 768,
+                "maximum_px": null
+              },
+              "visual_envelope": {
+                "w": 1,
+                "h": 3
+              },
+              "pre_crop_target_px_per_visual_tile": 256,
+              "runtime_min_longest_side_px_per_visual_tile": 128,
+              "scope": "per generated actor sheet cell or standalone pre-crop source"
+            },
+            "visual_envelope": {
+              "w": 1,
+              "h": 3
+            },
+            "placement": {
+              "source_size": [
+                256,
+                768
+              ],
+              "anchor": [
+                128,
+                624
+              ],
+              "footprint": [
+                1,
+                1
+              ],
+              "visual_envelope": [
+                1,
+                3
+              ]
+            },
+            "fit_profile": "standing",
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 326,
+              "h": 134
+            },
+            "final_bbox": {
+              "x": 38,
+              "y": 550,
+              "w": 181,
+              "h": 74
+            },
+            "anchor": [
+              128,
+              624
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.5552147239263804,
+            "residual_key_pixels": 2,
+            "transparent_key_pixels": 67502,
+            "edge_fringe_key_pixels": 14,
+            "team_mask_pixels": 6280,
+            "source_crop_box": [
+              919,
+              538,
+              1245,
+              672
+            ]
           }
         ]
-      }
+      },
+      "placement": {
+        "source_size": [
+          256,
+          768
+        ],
+        "anchor": [
+          128,
+          624
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          1,
+          3
+        ]
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 256,
+        "height_px": 768,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 384,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 384,
+          "pre_crop_target_px": 768,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 1,
+          "h": 3
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "visual_envelope": {
+        "w": 1,
+        "h": 3
+      },
+      "visual_envelope_note": "upgraded pike is carried upright or near-upright; keep the full shaft and head inside the tall slot"
     },
     "pike__dead": {
       "frame_ms": 250,
       "loop": true,
       "hold_last": false,
       "description": "Pikes: dead; upgraded spear equipment with a much longer pike shaft, larger iron pike head, and stronger bracing pose",
+      "family": "pike__dead",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "pike__dead/front/frame_00_base.png",
-            "team_mask": "pike__dead/front/frame_00_teammask.png"
+            "team_mask": "pike__dead/front/frame_00_teammask.png",
+            "manual_review": "generated_pike_lance_completion_sheet_20260606_cleaned_dead_front_copied_from_lying_back",
+            "source": "art/tiles/candidates/units/spearman/sheets/front_contact_sheet.png",
+            "source_sha256": "a2121f41c79bb817bf9c1736f0730406a87473c82ffab9252502fe68366fa616",
+            "source_grid_manifest": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/spearman_pike_wide_remaining_grid_manifest.json",
+            "source_slot": 12,
+            "source_slot_crop_box_raw": [
+              1071,
+              200,
+              1576,
+              360
+            ],
+            "source_cell": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/split/spearman_pike_wide_remaining_cleaned/slot_06_pike__dead_front_frame_00.png",
+            "source_canvas": {
+              "profile": "sprite_overlay_source",
+              "width_px": 768,
+              "height_px": 256,
+              "target_kind": "pre_crop_generation_slot",
+              "min_longest_side_px": 384,
+              "unit": "px",
+              "source": "realm range-based source-quality contract",
+              "range": {
+                "minimum_longest_side_px_after_crop": 384,
+                "pre_crop_target_px": 768,
+                "maximum_px": null
+              },
+              "visual_envelope": {
+                "w": 3,
+                "h": 1
+              },
+              "pre_crop_target_px_per_visual_tile": 256,
+              "runtime_min_longest_side_px_per_visual_tile": 128,
+              "scope": "per generated actor sheet cell or standalone pre-crop source"
+            },
+            "visual_envelope": {
+              "w": 3,
+              "h": 1
+            },
+            "placement": {
+              "source_size": [
+                768,
+                256
+              ],
+              "anchor": [
+                384,
+                208
+              ],
+              "footprint": [
+                1,
+                1
+              ],
+              "visual_envelope": [
+                3,
+                1
+              ]
+            },
+            "fit_profile": "standing",
+            "source_bbox": {
+              "x": 0,
+              "y": 23,
+              "w": 365,
+              "h": 124
+            },
+            "final_bbox": {
+              "x": 112,
+              "y": 23,
+              "w": 544,
+              "h": 185
+            },
+            "anchor": [
+              384,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 1.4904109589041097,
+            "residual_key_pixels": 0,
+            "postprocess_magenta_pixels_cleared": 25,
+            "transparent_key_pixels": 65317,
+            "edge_fringe_key_pixels": 0,
+            "team_mask_pixels": 1580,
+            "source_note": "front generated sheet cell was rejected because it was standing; copied from generated lying dead back frame for temporary high-res death coverage",
+            "source_crop_box": [
+              768,
+              731,
+              1133,
+              878
+            ]
           },
           {
             "base": "pike__dead/front/frame_01_base.png",
-            "team_mask": "pike__dead/front/frame_01_teammask.png"
+            "team_mask": "pike__dead/front/frame_01_teammask.png",
+            "manual_review": "generated_pike_lance_completion_sheet_20260606_cleaned_dead_front_copied_from_lying_back",
+            "source": "art/tiles/candidates/units/spearman/sheets/front_contact_sheet.png",
+            "source_sha256": "a2121f41c79bb817bf9c1736f0730406a87473c82ffab9252502fe68366fa616",
+            "source_grid_manifest": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/spearman_pike_wide_remaining_grid_manifest.json",
+            "source_slot": 12,
+            "source_slot_crop_box_raw": [
+              1599,
+              200,
+              2103,
+              360
+            ],
+            "source_cell": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/split/spearman_pike_wide_remaining_cleaned/slot_07_pike__dead_front_frame_01.png",
+            "source_canvas": {
+              "profile": "sprite_overlay_source",
+              "width_px": 768,
+              "height_px": 256,
+              "target_kind": "pre_crop_generation_slot",
+              "min_longest_side_px": 384,
+              "unit": "px",
+              "source": "realm range-based source-quality contract",
+              "range": {
+                "minimum_longest_side_px_after_crop": 384,
+                "pre_crop_target_px": 768,
+                "maximum_px": null
+              },
+              "visual_envelope": {
+                "w": 3,
+                "h": 1
+              },
+              "pre_crop_target_px_per_visual_tile": 256,
+              "runtime_min_longest_side_px_per_visual_tile": 128,
+              "scope": "per generated actor sheet cell or standalone pre-crop source"
+            },
+            "visual_envelope": {
+              "w": 3,
+              "h": 1
+            },
+            "placement": {
+              "source_size": [
+                768,
+                256
+              ],
+              "anchor": [
+                384,
+                208
+              ],
+              "footprint": [
+                1,
+                1
+              ],
+              "visual_envelope": [
+                3,
+                1
+              ]
+            },
+            "fit_profile": "standing",
+            "source_bbox": {
+              "x": 0,
+              "y": 23,
+              "w": 365,
+              "h": 124
+            },
+            "final_bbox": {
+              "x": 112,
+              "y": 23,
+              "w": 544,
+              "h": 185
+            },
+            "anchor": [
+              384,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 1.4904109589041097,
+            "residual_key_pixels": 0,
+            "postprocess_magenta_pixels_cleared": 20,
+            "transparent_key_pixels": 64837,
+            "edge_fringe_key_pixels": 0,
+            "team_mask_pixels": 1285,
+            "source_note": "front generated sheet cell was rejected because it was standing; copied from generated lying dead back frame for temporary high-res death coverage",
+            "source_crop_box": [
+              768,
+              731,
+              1133,
+              878
+            ]
           }
         ],
         "back": [
           {
             "base": "pike__dead/back/frame_00_base.png",
-            "team_mask": "pike__dead/back/frame_00_teammask.png"
+            "team_mask": "pike__dead/back/frame_00_teammask.png",
+            "manual_review": "generated_pike_lance_completion_sheet_20260606_cleaned",
+            "source": "art/tiles/candidates/units/spearman/sheets/back_contact_sheet.png",
+            "source_sha256": "a2121f41c79bb817bf9c1736f0730406a87473c82ffab9252502fe68366fa616",
+            "source_grid_manifest": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/spearman_pike_wide_remaining_grid_manifest.json",
+            "source_slot": 12,
+            "source_slot_crop_box_raw": [
+              17,
+              382,
+              521,
+              542
+            ],
+            "source_cell": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/split/spearman_pike_wide_remaining_cleaned/slot_08_pike__dead_back_frame_00.png",
+            "source_canvas": {
+              "profile": "sprite_overlay_source",
+              "width_px": 768,
+              "height_px": 256,
+              "target_kind": "pre_crop_generation_slot",
+              "min_longest_side_px": 384,
+              "unit": "px",
+              "source": "realm range-based source-quality contract",
+              "range": {
+                "minimum_longest_side_px_after_crop": 384,
+                "pre_crop_target_px": 768,
+                "maximum_px": null
+              },
+              "visual_envelope": {
+                "w": 3,
+                "h": 1
+              },
+              "pre_crop_target_px_per_visual_tile": 256,
+              "runtime_min_longest_side_px_per_visual_tile": 128,
+              "scope": "per generated actor sheet cell or standalone pre-crop source"
+            },
+            "visual_envelope": {
+              "w": 3,
+              "h": 1
+            },
+            "placement": {
+              "source_size": [
+                768,
+                256
+              ],
+              "anchor": [
+                384,
+                208
+              ],
+              "footprint": [
+                1,
+                1
+              ],
+              "visual_envelope": [
+                3,
+                1
+              ]
+            },
+            "fit_profile": "standing",
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 448,
+              "h": 118
+            },
+            "final_bbox": {
+              "x": 112,
+              "y": 65,
+              "w": 544,
+              "h": 143
+            },
+            "anchor": [
+              384,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 1.2142857142857142,
+            "residual_key_pixels": 32,
+            "postprocess_magenta_pixels_cleared": 512,
+            "transparent_key_pixels": 63061,
+            "edge_fringe_key_pixels": 10,
+            "team_mask_pixels": 1597,
+            "source_crop_box": [
+              865,
+              672,
+              1313,
+              807
+            ]
           },
           {
             "base": "pike__dead/back/frame_01_base.png",
-            "team_mask": "pike__dead/back/frame_01_teammask.png"
+            "team_mask": "pike__dead/back/frame_01_teammask.png",
+            "manual_review": "generated_pike_lance_completion_sheet_20260606_cleaned",
+            "source": "art/tiles/candidates/units/spearman/sheets/back_contact_sheet.png",
+            "source_sha256": "a2121f41c79bb817bf9c1736f0730406a87473c82ffab9252502fe68366fa616",
+            "source_grid_manifest": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/spearman_pike_wide_remaining_grid_manifest.json",
+            "source_slot": 12,
+            "source_slot_crop_box_raw": [
+              544,
+              382,
+              1049,
+              542
+            ],
+            "source_cell": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/split/spearman_pike_wide_remaining_cleaned/slot_09_pike__dead_back_frame_01.png",
+            "source_canvas": {
+              "profile": "sprite_overlay_source",
+              "width_px": 768,
+              "height_px": 256,
+              "target_kind": "pre_crop_generation_slot",
+              "min_longest_side_px": 384,
+              "unit": "px",
+              "source": "realm range-based source-quality contract",
+              "range": {
+                "minimum_longest_side_px_after_crop": 384,
+                "pre_crop_target_px": 768,
+                "maximum_px": null
+              },
+              "visual_envelope": {
+                "w": 3,
+                "h": 1
+              },
+              "pre_crop_target_px_per_visual_tile": 256,
+              "runtime_min_longest_side_px_per_visual_tile": 128,
+              "scope": "per generated actor sheet cell or standalone pre-crop source"
+            },
+            "visual_envelope": {
+              "w": 3,
+              "h": 1
+            },
+            "placement": {
+              "source_size": [
+                768,
+                256
+              ],
+              "anchor": [
+                384,
+                208
+              ],
+              "footprint": [
+                1,
+                1
+              ],
+              "visual_envelope": [
+                3,
+                1
+              ]
+            },
+            "fit_profile": "standing",
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 448,
+              "h": 118
+            },
+            "final_bbox": {
+              "x": 112,
+              "y": 65,
+              "w": 544,
+              "h": 143
+            },
+            "anchor": [
+              384,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 1.2142857142857142,
+            "residual_key_pixels": 15,
+            "postprocess_magenta_pixels_cleared": 549,
+            "transparent_key_pixels": 63958,
+            "edge_fringe_key_pixels": 13,
+            "team_mask_pixels": 1529,
+            "source_crop_box": [
+              865,
+              672,
+              1313,
+              807
+            ]
           }
         ]
-      }
+      },
+      "placement": {
+        "source_size": [
+          768,
+          256
+        ],
+        "anchor": [
+          384,
+          208
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          3,
+          1
+        ]
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 768,
+        "height_px": 256,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 384,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 384,
+          "pre_crop_target_px": 768,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 3,
+          "h": 1
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "visual_envelope": {
+        "w": 3,
+        "h": 1
+      },
+      "visual_envelope_note": "long spear or pike is thrust forward or lying horizontally; keep the full weapon inside the slot"
     },
     "pike__decayed_skeleton_with_spear_and_shield": {
       "frame_ms": 250,
       "loop": true,
       "hold_last": false,
       "description": "Pikes: decayed skeleton with spear and shield; upgraded spear equipment with a much longer pike shaft, larger iron pike head, and stronger bracing pose",
+      "family": "pike__decayed_skeleton_with_spear_and_shield",
+      "fit_profile": "standing",
       "directions": {
         "front": [
           {
             "base": "pike__decayed_skeleton_with_spear_and_shield/front/frame_00_base.png",
-            "team_mask": "pike__decayed_skeleton_with_spear_and_shield/front/frame_00_teammask.png"
+            "team_mask": "pike__decayed_skeleton_with_spear_and_shield/front/frame_00_teammask.png",
+            "manual_review": "generated_pike_lance_completion_sheet_20260606_cleaned",
+            "source": "art/tiles/candidates/units/spearman/sheets/front_contact_sheet.png",
+            "source_sha256": "a2121f41c79bb817bf9c1736f0730406a87473c82ffab9252502fe68366fa616",
+            "source_grid_manifest": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/spearman_pike_wide_remaining_grid_manifest.json",
+            "source_slot": 14,
+            "source_slot_crop_box_raw": [
+              1071,
+              382,
+              1576,
+              542
+            ],
+            "source_cell": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/split/spearman_pike_wide_remaining_cleaned/slot_10_pike__decayed_skeleton_with_spear_and_shield_front_frame_00.png",
+            "source_canvas": {
+              "profile": "sprite_overlay_source",
+              "width_px": 768,
+              "height_px": 256,
+              "target_kind": "pre_crop_generation_slot",
+              "min_longest_side_px": 384,
+              "unit": "px",
+              "source": "realm range-based source-quality contract",
+              "range": {
+                "minimum_longest_side_px_after_crop": 384,
+                "pre_crop_target_px": 768,
+                "maximum_px": null
+              },
+              "visual_envelope": {
+                "w": 3,
+                "h": 1
+              },
+              "pre_crop_target_px_per_visual_tile": 256,
+              "runtime_min_longest_side_px_per_visual_tile": 128,
+              "scope": "per generated actor sheet cell or standalone pre-crop source"
+            },
+            "visual_envelope": {
+              "w": 3,
+              "h": 1
+            },
+            "placement": {
+              "source_size": [
+                768,
+                256
+              ],
+              "anchor": [
+                384,
+                208
+              ],
+              "footprint": [
+                1,
+                1
+              ],
+              "visual_envelope": [
+                3,
+                1
+              ]
+            },
+            "fit_profile": "standing",
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 362,
+              "h": 122
+            },
+            "final_bbox": {
+              "x": 112,
+              "y": 25,
+              "w": 544,
+              "h": 183
+            },
+            "anchor": [
+              384,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 1.5027624309392265,
+            "residual_key_pixels": 0,
+            "postprocess_magenta_pixels_cleared": 397,
+            "transparent_key_pixels": 64925,
+            "edge_fringe_key_pixels": 9,
+            "team_mask_pixels": 1638,
+            "source_crop_box": [
+              768,
+              878,
+              1130,
+              1024
+            ]
           },
           {
             "base": "pike__decayed_skeleton_with_spear_and_shield/front/frame_01_base.png",
-            "team_mask": "pike__decayed_skeleton_with_spear_and_shield/front/frame_01_teammask.png"
+            "team_mask": "pike__decayed_skeleton_with_spear_and_shield/front/frame_01_teammask.png",
+            "manual_review": "generated_pike_lance_completion_sheet_20260606_cleaned",
+            "source": "art/tiles/candidates/units/spearman/sheets/front_contact_sheet.png",
+            "source_sha256": "a2121f41c79bb817bf9c1736f0730406a87473c82ffab9252502fe68366fa616",
+            "source_grid_manifest": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/spearman_pike_wide_remaining_grid_manifest.json",
+            "source_slot": 14,
+            "source_slot_crop_box_raw": [
+              1599,
+              382,
+              2103,
+              542
+            ],
+            "source_cell": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/split/spearman_pike_wide_remaining_cleaned/slot_11_pike__decayed_skeleton_with_spear_and_shield_front_frame_01.png",
+            "source_canvas": {
+              "profile": "sprite_overlay_source",
+              "width_px": 768,
+              "height_px": 256,
+              "target_kind": "pre_crop_generation_slot",
+              "min_longest_side_px": 384,
+              "unit": "px",
+              "source": "realm range-based source-quality contract",
+              "range": {
+                "minimum_longest_side_px_after_crop": 384,
+                "pre_crop_target_px": 768,
+                "maximum_px": null
+              },
+              "visual_envelope": {
+                "w": 3,
+                "h": 1
+              },
+              "pre_crop_target_px_per_visual_tile": 256,
+              "runtime_min_longest_side_px_per_visual_tile": 128,
+              "scope": "per generated actor sheet cell or standalone pre-crop source"
+            },
+            "visual_envelope": {
+              "w": 3,
+              "h": 1
+            },
+            "placement": {
+              "source_size": [
+                768,
+                256
+              ],
+              "anchor": [
+                384,
+                208
+              ],
+              "footprint": [
+                1,
+                1
+              ],
+              "visual_envelope": [
+                3,
+                1
+              ]
+            },
+            "fit_profile": "standing",
+            "source_bbox": {
+              "x": 0,
+              "y": 0,
+              "w": 362,
+              "h": 122
+            },
+            "final_bbox": {
+              "x": 112,
+              "y": 25,
+              "w": 544,
+              "h": 183
+            },
+            "anchor": [
+              384,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 1.5027624309392265,
+            "residual_key_pixels": 9,
+            "postprocess_magenta_pixels_cleared": 499,
+            "transparent_key_pixels": 64799,
+            "edge_fringe_key_pixels": 20,
+            "team_mask_pixels": 1425,
+            "source_crop_box": [
+              768,
+              878,
+              1130,
+              1024
+            ]
           }
         ],
         "back": [
           {
             "base": "pike__decayed_skeleton_with_spear_and_shield/back/frame_00_base.png",
-            "team_mask": "pike__decayed_skeleton_with_spear_and_shield/back/frame_00_teammask.png"
+            "team_mask": "pike__decayed_skeleton_with_spear_and_shield/back/frame_00_teammask.png",
+            "manual_review": "generated_pike_lance_completion_sheet_20260606_cleaned",
+            "source": "art/tiles/candidates/units/spearman/sheets/back_contact_sheet.png",
+            "source_sha256": "a2121f41c79bb817bf9c1736f0730406a87473c82ffab9252502fe68366fa616",
+            "source_grid_manifest": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/spearman_pike_wide_remaining_grid_manifest.json",
+            "source_slot": 14,
+            "source_slot_crop_box_raw": [
+              17,
+              565,
+              521,
+              725
+            ],
+            "source_cell": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/split/spearman_pike_wide_remaining_cleaned/slot_12_pike__decayed_skeleton_with_spear_and_shield_back_frame_00.png",
+            "source_canvas": {
+              "profile": "sprite_overlay_source",
+              "width_px": 768,
+              "height_px": 256,
+              "target_kind": "pre_crop_generation_slot",
+              "min_longest_side_px": 384,
+              "unit": "px",
+              "source": "realm range-based source-quality contract",
+              "range": {
+                "minimum_longest_side_px_after_crop": 384,
+                "pre_crop_target_px": 768,
+                "maximum_px": null
+              },
+              "visual_envelope": {
+                "w": 3,
+                "h": 1
+              },
+              "pre_crop_target_px_per_visual_tile": 256,
+              "runtime_min_longest_side_px_per_visual_tile": 128,
+              "scope": "per generated actor sheet cell or standalone pre-crop source"
+            },
+            "visual_envelope": {
+              "w": 3,
+              "h": 1
+            },
+            "placement": {
+              "source_size": [
+                768,
+                256
+              ],
+              "anchor": [
+                384,
+                208
+              ],
+              "footprint": [
+                1,
+                1
+              ],
+              "visual_envelope": [
+                3,
+                1
+              ]
+            },
+            "fit_profile": "standing",
+            "source_bbox": {
+              "x": 0,
+              "y": 24,
+              "w": 476,
+              "h": 87
+            },
+            "final_bbox": {
+              "x": 112,
+              "y": 109,
+              "w": 544,
+              "h": 99
+            },
+            "anchor": [
+              384,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 1.1428571428571428,
+            "residual_key_pixels": 100,
+            "postprocess_magenta_pixels_cleared": 1251,
+            "transparent_key_pixels": 64024,
+            "edge_fringe_key_pixels": 43,
+            "team_mask_pixels": 1942,
+            "source_crop_box": [
+              856,
+              807,
+              1332,
+              941
+            ]
           },
           {
             "base": "pike__decayed_skeleton_with_spear_and_shield/back/frame_01_base.png",
-            "team_mask": "pike__decayed_skeleton_with_spear_and_shield/back/frame_01_teammask.png"
+            "team_mask": "pike__decayed_skeleton_with_spear_and_shield/back/frame_01_teammask.png",
+            "manual_review": "generated_pike_lance_completion_sheet_20260606_cleaned",
+            "source": "art/tiles/candidates/units/spearman/sheets/back_contact_sheet.png",
+            "source_sha256": "a2121f41c79bb817bf9c1736f0730406a87473c82ffab9252502fe68366fa616",
+            "source_grid_manifest": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/spearman_pike_wide_remaining_grid_manifest.json",
+            "source_slot": 14,
+            "source_slot_crop_box_raw": [
+              544,
+              565,
+              1049,
+              725
+            ],
+            "source_cell": "art/tiles/candidates/units/_pike_lance_completion_20260606_v001/split/spearman_pike_wide_remaining_cleaned/slot_13_pike__decayed_skeleton_with_spear_and_shield_back_frame_01.png",
+            "source_canvas": {
+              "profile": "sprite_overlay_source",
+              "width_px": 768,
+              "height_px": 256,
+              "target_kind": "pre_crop_generation_slot",
+              "min_longest_side_px": 384,
+              "unit": "px",
+              "source": "realm range-based source-quality contract",
+              "range": {
+                "minimum_longest_side_px_after_crop": 384,
+                "pre_crop_target_px": 768,
+                "maximum_px": null
+              },
+              "visual_envelope": {
+                "w": 3,
+                "h": 1
+              },
+              "pre_crop_target_px_per_visual_tile": 256,
+              "runtime_min_longest_side_px_per_visual_tile": 128,
+              "scope": "per generated actor sheet cell or standalone pre-crop source"
+            },
+            "visual_envelope": {
+              "w": 3,
+              "h": 1
+            },
+            "placement": {
+              "source_size": [
+                768,
+                256
+              ],
+              "anchor": [
+                384,
+                208
+              ],
+              "footprint": [
+                1,
+                1
+              ],
+              "visual_envelope": [
+                3,
+                1
+              ]
+            },
+            "fit_profile": "standing",
+            "source_bbox": {
+              "x": 0,
+              "y": 24,
+              "w": 476,
+              "h": 87
+            },
+            "final_bbox": {
+              "x": 112,
+              "y": 109,
+              "w": 544,
+              "h": 99
+            },
+            "anchor": [
+              384,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 1.1428571428571428,
+            "residual_key_pixels": 141,
+            "postprocess_magenta_pixels_cleared": 1266,
+            "transparent_key_pixels": 64522,
+            "edge_fringe_key_pixels": 32,
+            "team_mask_pixels": 1771,
+            "source_crop_box": [
+              856,
+              807,
+              1332,
+              941
+            ]
           }
         ]
-      }
-    },
-    "idle": {
-      "frame_ms": 250,
-      "loop": true,
-      "hold_last": false,
-      "description": "Runtime alias for short_spear__idle",
-      "directions": {
-        "front": [
-          {
-            "base": "idle/front/frame_00_base.png",
-            "team_mask": "idle/front/frame_00_teammask.png"
-          },
-          {
-            "base": "idle/front/frame_01_base.png",
-            "team_mask": "idle/front/frame_01_teammask.png"
-          }
+      },
+      "placement": {
+        "source_size": [
+          768,
+          256
         ],
-        "back": [
-          {
-            "base": "idle/back/frame_00_base.png",
-            "team_mask": "idle/back/frame_00_teammask.png"
-          },
-          {
-            "base": "idle/back/frame_01_base.png",
-            "team_mask": "idle/back/frame_01_teammask.png"
-          }
-        ]
-      }
-    },
-    "death": {
-      "frame_ms": 250,
-      "loop": false,
-      "hold_last": true,
-      "description": "Runtime alias for short_spear__dead",
-      "directions": {
-        "front": [
-          {
-            "base": "death/front/frame_00_base.png",
-            "team_mask": "death/front/frame_00_teammask.png"
-          },
-          {
-            "base": "death/front/frame_01_base.png",
-            "team_mask": "death/front/frame_01_teammask.png"
-          }
+        "anchor": [
+          384,
+          208
         ],
-        "back": [
-          {
-            "base": "death/back/frame_00_base.png",
-            "team_mask": "death/back/frame_00_teammask.png"
-          },
-          {
-            "base": "death/back/frame_01_base.png",
-            "team_mask": "death/back/frame_01_teammask.png"
-          }
+        "footprint": [
+          1,
+          1
+        ],
+        "visual_envelope": [
+          3,
+          1
         ]
-      }
+      },
+      "source_canvas": {
+        "profile": "sprite_overlay_source",
+        "width_px": 768,
+        "height_px": 256,
+        "target_kind": "pre_crop_generation_slot",
+        "min_longest_side_px": 384,
+        "unit": "px",
+        "source": "realm range-based source-quality contract",
+        "range": {
+          "minimum_longest_side_px_after_crop": 384,
+          "pre_crop_target_px": 768,
+          "maximum_px": null
+        },
+        "visual_envelope": {
+          "w": 3,
+          "h": 1
+        },
+        "pre_crop_target_px_per_visual_tile": 256,
+        "runtime_min_longest_side_px_per_visual_tile": 128,
+        "scope": "per generated actor sheet cell or standalone pre-crop source"
+      },
+      "visual_envelope": {
+        "w": 3,
+        "h": 1
+      },
+      "visual_envelope_note": "long spear or pike is thrust forward or lying horizontally; keep the full weapon inside the slot"
     }
   },
-  "notes": "Generated spearman tileset from two 2x7 image-gen contact sheets. Each authored action has front/back 48x48 base and team-mask frames; frame_01 duplicates frame_00 pending hand-authored animation polish. Runtime idle/death aliases added from closest generated action variants; opaque magenta cleanup applied where needed."
+  "notes": "Restored from accepted 48px candidate frame splits after high-resolution contact-sheet replay proved unsafe for these weapon-overhang sheets. Regenerate or split with an explicit source-slot map before high-res promotion.",
+  "asset_type": "unit",
+  "placement": {
+    "projection": "upright_world",
+    "anchor_kind": "feet",
+    "source_size": [
+      768,
+      768
+    ],
+    "anchor": [
+      384,
+      624
+    ],
+    "scale_policy": "entity_tile_zoom_1_55",
+    "footprint": [
+      1,
+      1
+    ],
+    "visual_envelope": [
+      1,
+      2
+    ],
+    "depth": "entity"
+  },
+  "source_workflow": "contact-sheet-resolution-replay",
+  "source_canvas": {
+    "profile": "sprite_overlay_source",
+    "width_px": 256,
+    "height_px": 512,
+    "target_kind": "pre_crop_generation_slot",
+    "min_longest_side_px": 256,
+    "unit": "px",
+    "source": "realm range-based source-quality contract",
+    "range": {
+      "minimum_longest_side_px_after_crop": 256,
+      "pre_crop_target_px": 512,
+      "maximum_px": null
+    },
+    "visual_envelope": {
+      "w": 1,
+      "h": 2
+    },
+    "pre_crop_target_px_per_visual_tile": 256,
+    "runtime_min_longest_side_px_per_visual_tile": 128,
+    "scope": "per generated actor sheet cell or standalone pre-crop source"
+  }
 }

@@ -53,6 +53,12 @@ ASCII-only and hides the visual-mode selector. Use `.env.local` with
 `REALM_VISUAL_MODE=tileset-menu` for a personal tileset-first build that still
 keeps ASCII available in the menu.
 
+`dist/netlify/ascii/` is always compiled as a separate stripped ASCII-only app.
+That build defines `REALM_ENABLE_TILESET=0`, uses the disabled tileset stubs,
+does not compile the tileset PNG loader or tileset HUD renderer, and does not
+preload `assets/tiles`. It still bundles the two fonts needed by the SDL canvas
+text renderer.
+
 ## Local run
 
 ```sh
@@ -99,7 +105,7 @@ Current pass:
 
 ```text
 edward branch Netlify site -> playable Realm web build
-edward branch Netlify site /ascii -> ASCII-only Realm web build
+edward branch Netlify site /ascii -> separate stripped ASCII-only Realm web build
 edwardcoventry.com/apps/realm -> proxy to the Realm Netlify site
 edwardcoventry.com/apps/realm-ascii -> proxy to the Realm Netlify site /ascii surface
 ```

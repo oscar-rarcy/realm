@@ -8,7 +8,9 @@
 #include "commands/command_runner.h"
 #include "core/game_events.h"
 #include "platform/fixed_timestep.h"
+#include "render/sdl/sdl_hud.h"
 #include "render/sdl/sdl_profiler.h"
+#include "render/sdl/sdl_viewport.h"
 
 #include <SDL.h>
 
@@ -52,6 +54,30 @@ static bool envFlagLocal(const char* name, bool fallback = false) {
     });
     if (text == "0" || text == "false" || text == "no" || text == "off") return false;
     return true;
+}
+
+static std::string jsonEscapeLocal(const std::string& value) {
+    std::string out;
+    out.reserve(value.size() + 8);
+    for (char c : value) {
+        switch (c) {
+            case '\\': out += "\\\\"; break;
+            case '"': out += "\\\""; break;
+            case '\n': out += "\\n"; break;
+            case '\r': out += "\\r"; break;
+            case '\t': out += "\\t"; break;
+            default: out.push_back(c); break;
+        }
+    }
+    return out;
+}
+
+static std::string rendererNameForProfile() {
+    SDL_RendererInfo info{};
+    if (s.ren && SDL_GetRendererInfo(s.ren, &info) == 0 && info.name) {
+        return info.name;
+    }
+    return "unknown";
 }
 
 static bool tilesetTestMapEnabled() {
@@ -126,6 +152,30 @@ static bool captureUiFrame(const std::string& path) {
     gfxDelay(40);
     std::cerr << "realm: ui screenshot " << (ok ? "ok " : "failed ") << path << "\n";
     return ok;
+}
+
+static bool captureUiFrameWithMouse(const std::string& path, int mouseX, int mouseY) {
+    int oldX = s.mouseX;
+    int oldY = s.mouseY;
+    SDL_WarpMouseInWindow(s.win, mouseX, mouseY);
+    SDL_PumpEvents();
+    bool ok = captureUiFrame(path);
+    SDL_WarpMouseInWindow(s.win, oldX, oldY);
+    SDL_PumpEvents();
+    return ok;
+}
+
+static bool firstTilesetHudClickablePointFrom(int startY, int& outX, int& outY) {
+    SDL_Rect overlay = tilesetHudOverlayRect();
+    for (int y = std::max(overlay.y, startY); y < overlay.y + overlay.h; y += 4) {
+        for (int x = overlay.x; x < overlay.x + overlay.w; x += 4) {
+            if (!tilesetHudClickableAt(x, y)) continue;
+            outX = x;
+            outY = y;
+            return true;
+        }
+    }
+    return false;
 }
 
 static bool setupNightLightView(int zoom) {
@@ -244,6 +294,84 @@ static int runAsciiCompareMode() {
     return ok ? 0 : 1;
 }
 
+static const char* seasonFileSlug(Season season) {
+    switch (season) {
+        case SPRING: return "spring";
+        case SUMMER: return "summer";
+        case AUTUMN: return "autumn";
+        case WINTER: return "winter";
+    }
+    return "unknown";
+}
+
+static void prepareSeasonVisualScene(Season season) {
+    applyTilesetTestMap();
+    g.tick = 600;
+    g.dayPhase = 0.25f;
+    g.weather = W_CLEAR;
+    g.weatherTimer = 999;
+    g.seasonPhase = (float)season + 0.75f;
+    g.prevSeason = season;
+    if (season == WINTER) {
+        g.prevSeason = AUTUMN;
+        tickSeasons(g, gameEvents());
+    }
+    updateFog(g);
+    view.cursorX = MAP_W / 2;
+    view.cursorY = MAP_H / 2;
+    view.viewX = std::max(0, view.cursorX - 18);
+    view.viewY = std::max(0, view.cursorY - 14);
+    g.local.selectedId = -1;
+    g.local.selectedIds.clear();
+    g.local.diagnostics = false;
+    g.local.helpOverlay = false;
+    ui.statusTimer = 0;
+    ui.actionMarkers.clear();
+}
+
+static int runSeasonVisualTestMode() {
+    std::filesystem::path outDir = "build/season-visuals";
+    if (const char* env = std::getenv("REALM_SEASON_VISUAL_TEST_DIR")) {
+        if (*env) outDir = env;
+    }
+    std::filesystem::create_directories(outDir);
+
+    gfxSetWindowSizeForTest(envIntLocal("REALM_UI_TEST_WIDTH", 1074),
+                            envIntLocal("REALM_UI_TEST_HEIGHT", 827));
+    g.biomeChoice = envIntLocal("REALM_BIOME", B_TEMPERATE);
+    initGameWithSeed(0, (unsigned)envIntLocal("REALM_SEED", 2468),
+                     envIntLocal("REALM_HUMAN_CORNER", 1));
+
+    bool ok = true;
+    for (Season season : {SPRING, SUMMER, AUTUMN, WINTER}) {
+        prepareSeasonVisualScene(season);
+        displayMode = DM_ASCII;
+        gfxSetAsciiOnly(true);
+        gfxSetProjection(false);
+        gfxOnNewGame();
+        std::string name = std::string("ascii-") + seasonFileSlug(season);
+        ok = captureAsciiComparePair(outDir, name) && ok;
+    }
+
+    displayMode = DM_EMOJI;
+    gfxSetAsciiOnly(false);
+    gfxSetZoomForTest(envIntLocal("REALM_UI_TEST_ZOOM", 24));
+    for (Season season : {SPRING, SUMMER, AUTUMN, WINTER}) {
+        prepareSeasonVisualScene(season);
+        std::string slug = seasonFileSlug(season);
+        gfxSetProjection(false);
+        gfxOnNewGame();
+        ok = captureUiFrame((outDir / ("tileset-" + slug + "-topdown.bmp")).string()) && ok;
+        gfxSetProjection(true);
+        gfxOnNewGame();
+        ok = captureUiFrame((outDir / ("tileset-" + slug + "-isometric.bmp")).string()) && ok;
+    }
+
+    std::cerr << "realm: season visual test " << (ok ? "complete" : "failed")
+              << " dir=" << outDir.string() << "\n";
+    return ok ? 0 : 1;
+}
+
 static int runUiTestMode() {
     std::filesystem::path outDir = "build/ui-screenshots";
     if (const char* env = std::getenv("REALM_UI_TEST_DIR")) {
@@ -281,6 +409,25 @@ static int runUiTestMode() {
         view.cursorY = peasant->y;
         emitUiStatusEvent(-1, "UI test: peasant selected");
         ok = captureUiFrame((outDir / "03-selected-peasant.bmp").string()) && ok;
+        {
+            SDL_Rect overlay = tilesetHudOverlayRect();
+            int hudMx = overlay.x + 24;
+            int hudMy = height / 2;
+            int mapX = -1, mapY = -1;
+            if (tilesetHudConsumesPointer(hudMx, hudMy) && gfxMapTileAtScreenForTest(hudMx, hudMy, mapX, mapY)) {
+                std::cerr << "realm: tileset HUD pointer leaked to map tile "
+                          << mapX << "," << mapY << " at " << hudMx << "," << hudMy << "\n";
+                ok = false;
+            }
+            int hoverX = 0, hoverY = 0;
+            SDL_Rect mini = tilesetHudMiniMapRect();
+            if (firstTilesetHudClickablePointFrom(mini.y + mini.h + 1, hoverX, hoverY)) {
+                ok = captureUiFrameWithMouse((outDir / "03f-selected-peasant-hover-action.bmp").string(), hoverX, hoverY) && ok;
+            } else {
+                std::cerr << "realm: tileset HUD action hover target not found\n";
+                ok = false;
+            }
+        }
 
         peasant->state = S_IDLE;
         peasant->targetId = -1;
@@ -310,6 +457,18 @@ static int runUiTestMode() {
         g.mode = M_BUILD_SELECT;
         ui.statusTimer = 0;
         ok = captureUiFrame((outDir / "04-build-menu.bmp").string()) && ok;
+        {
+            SDL_Rect overlay = tilesetHudOverlayRect();
+            int hoverX = overlay.x + overlay.w / 2;
+            int hoverY = std::max(232, std::min(274, height / 3)) + 24;
+            if (!tilesetHudClickableAt(hoverX, hoverY)
+                    && !firstTilesetHudClickablePointFrom(std::max(200, height / 4), hoverX, hoverY)) {
+                std::cerr << "realm: tileset HUD build hover target not found\n";
+                ok = false;
+            } else {
+                ok = captureUiFrameWithMouse((outDir / "04a-build-menu-hover-card.bmp").string(), hoverX, hoverY) && ok;
+            }
+        }
         g.mode = M_NORMAL;
     }
 
@@ -526,6 +685,53 @@ static int runUiTestMode() {
     ok = verifyZoomAnchor(false) && ok;
     ok = verifyZoomAnchor(true) && ok;
 
+    {
+        DisplayMode previousMode = displayMode;
+        displayMode = DM_ASCII;
+        gfxSetWindowSizeForTest(894, 916);
+        gfxSetViewportOnly(true);
+        gfxSetProjection(true);
+        gfxSetZoomForTest(24);
+        view.cursorX = MAP_W / 2;
+        view.cursorY = MAP_H / 2;
+        gfxOnNewGame();
+
+        int topLeftX = -1, topLeftY = -1;
+        if (!gfxMapTileAtScreenForTest(2, 2, topLeftX, topLeftY)) {
+            std::cerr << "realm: ascii viewport-only top-left hit test failed\n";
+            ok = false;
+        } else {
+            int px = -1, py = -1;
+            if (!gfxScreenCenterForMapTileForTest(topLeftX, topLeftY, px, py)
+                    || px < 0 || py < 0 || px > 40 || py > 40) {
+                std::cerr << "realm: ascii viewport-only screen center mismatch"
+                          << " tile=" << topLeftX << ',' << topLeftY
+                          << " screen=" << px << ',' << py << "\n";
+                ok = false;
+            }
+        }
+
+        int centerTileX = view.viewX + std::min(13, std::max(0, view.viewW - 1));
+        int centerTileY = view.viewY + std::min(13, std::max(0, view.viewH - 1));
+        int centerPx = -1, centerPy = -1, roundTripX = -1, roundTripY = -1;
+        if (!gfxScreenCenterForMapTileForTest(centerTileX, centerTileY, centerPx, centerPy)
+                || !gfxMapTileAtScreenForTest(centerPx, centerPy, roundTripX, roundTripY)
+                || roundTripX != centerTileX || roundTripY != centerTileY) {
+            std::cerr << "realm: ascii viewport-only round-trip mismatch"
+                      << " tile=" << centerTileX << ',' << centerTileY
+                      << " screen=" << centerPx << ',' << centerPy
+                      << " roundTrip=" << roundTripX << ',' << roundTripY << "\n";
+            ok = false;
+        }
+
+        gfxSetViewportOnly(false);
+        displayMode = previousMode;
+        gfxSetProjection(true);
+        gfxSetWindowSizeForTest(width, height);
+        gfxSetZoomForTest(envIntLocal("REALM_UI_TEST_ZOOM", 20));
+        gfxOnNewGame();
+    }
+
     if (Entity* townHall = firstOwned(E_TOWNHALL, 0)) {
         g.local.selectedId = townHall->id;
         g.local.selectedIds.clear();
@@ -592,6 +798,7 @@ static int runTilesetProfileMode() {
     const int ais = std::max(0, std::min(3, envIntLocal("REALM_PROFILE_AIS", 3)));
     const unsigned seed = (unsigned)envIntLocal("REALM_PROFILE_SEED", 2468);
     const int humanCorner = envIntLocal("REALM_PROFILE_HUMAN_CORNER", 1);
+    const bool presentFrames = envFlagLocal("REALM_PROFILE_PRESENT", true);
 
     gfxSetWindowSizeForTest(width, height);
     displayMode = DM_EMOJI;
@@ -603,6 +810,9 @@ static int runTilesetProfileMode() {
     initGameWithSeed(ais, seed, humanCorner);
     if (tilesetTestMapEnabled()) applyTilesetTestMap();
     gfxOnNewGame();
+    if (envFlagLocal("REALM_PROFILE_VIEWPORT_ONLY", false)) {
+        gfxSetViewportOnly(true);
+    }
     ui.statusTimer = 0;
     updateFog(g);
 
@@ -611,7 +821,8 @@ static int runTilesetProfileMode() {
               << " tick_every=" << tickEvery
               << " window=" << width << "x" << height
               << " zoom=" << zoom
-              << " ais=" << ais << "\n";
+              << " ais=" << ais
+              << " present=" << (presentFrames ? 1 : 0) << "\n";
 
     realmProfilerSetEnabled(false);
     for (int i = 0; i < warmupFrames; ++i) {
@@ -620,7 +831,8 @@ static int runTilesetProfileMode() {
             tickSimulationOnce(g, gameEvents(), true);
             tickUiState(ui);
         }
-        gfxRender();
+        if (presentFrames) gfxRender();
+        else gfxRenderNoPresentForTest();
     }
 
     realmProfilerReset();
@@ -633,12 +845,16 @@ static int runTilesetProfileMode() {
             tickSimulationOnce(g, gameEvents(), true);
             tickUiState(ui);
         }
-        gfxRender();
+        if (presentFrames) gfxRender();
+        else gfxRenderNoPresentForTest();
     }
     double elapsedMs = std::max(0.001, steadyNowMs() - startMs);
     realmProfilerSetEnabled(false);
 
     const double fps = frames * 1000.0 / elapsedMs;
+    int actualWidth = 0;
+    int actualHeight = 0;
+    if (s.win) SDL_GetWindowSize(s.win, &actualWidth, &actualHeight);
     std::filesystem::path jsonPath = outDir / "tileset-profile-sections.json";
     std::filesystem::path csvPath = outDir / "tileset-profile-sections.csv";
     realmProfilerSetEnabled(true);
@@ -659,10 +875,17 @@ static int runTilesetProfileMode() {
         out << "  \"min_acceptable_fps\": 60.0,\n";
         out << "  \"width\": " << width << ",\n";
         out << "  \"height\": " << height << ",\n";
+        out << "  \"actual_width\": " << actualWidth << ",\n";
+        out << "  \"actual_height\": " << actualHeight << ",\n";
         out << "  \"zoom\": " << zoom << ",\n";
         out << "  \"ais\": " << ais << ",\n";
         out << "  \"seed\": " << seed << ",\n";
-        out << "  \"tick_every\": " << tickEvery << "\n";
+        out << "  \"tick_every\": " << tickEvery << ",\n";
+        out << "  \"present\": " << (presentFrames ? "true" : "false") << ",\n";
+        out << "  \"mobile_gui\": " << (isMobileGui() ? "true" : "false") << ",\n";
+        out << "  \"viewport_only\": " << (s.viewportOnly ? "true" : "false") << ",\n";
+        out << "  \"tileset_hud_enabled\": " << (tilesetHudEnabled() ? "true" : "false") << ",\n";
+        out << "  \"renderer\": \"" << jsonEscapeLocal(rendererNameForProfile()) << "\"\n";
         out << "}\n";
     }
 
@@ -717,6 +940,12 @@ int main(int argc, char** argv) {
 
     if (std::getenv("REALM_ASCII_COMPARE")) {
         int code = runAsciiCompareMode();
+        gfxShutdown();
+        return code;
+    }
+
+    if (std::getenv("REALM_SEASON_VISUAL_TEST")) {
+        int code = runSeasonVisualTestMode();
         gfxShutdown();
         return code;
     }
@@ -785,7 +1014,7 @@ int main(int argc, char** argv) {
 
             (void)ticked;
             gfxRender();
-            gfxDelay(8);
+            gfxDelay(displayMode == DM_EMOJI ? 0 : 8);
         }
     }
 

@@ -1,6 +1,7 @@
 #include "world_index.h"
 #include "realm.h"
 
+#include <algorithm>
 #include <cstring>
 
 #ifdef REALM_ENABLE_WORLD_INDEX_STATS
@@ -69,8 +70,8 @@ WorldIndex buildWorldIndex(const Game& game) {
         bool building = isBuilding(entity.type);
         bool blocksOccupancy = !(entity.type == E_GATE && entity.gateOpen && building);
         const EntityStats& stats = STATS[entity.type];
-        int w = building ? stats.sizeW : 1;
-        int h = building ? stats.sizeH : 1;
+        int w = std::max(1, stats.sizeW);
+        int h = std::max(1, stats.sizeH);
         for (int dy = 0; dy < h; dy++)
             for (int dx = 0; dx < w; dx++)
                 indexEntityTile(world, entity, building, blocksOccupancy, entity.x + dx, entity.y + dy);

@@ -1,7 +1,7 @@
 {
   "schema": "realm.entity_tileset.v1",
   "entity": "deer",
-  "sprite_size": 48,
+  "sprite_size": 256,
   "directions": [
     "front",
     "back"
@@ -16,21 +16,121 @@
         "front": [
           {
             "base": "idle_graze/front/frame_00_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "idle_graze/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/animals/deer/sheets/front_contact_sheet.png",
+            "source_slot": 1,
+            "source_bbox": {
+              "x": 10,
+              "y": 10,
+              "w": 302,
+              "h": 304
+            },
+            "final_bbox": {
+              "x": 64,
+              "y": 125,
+              "w": 139,
+              "h": 83
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              6,
+              0
+            ],
+            "scale": 0.5993377483443708,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "idle_graze/front/frame_01_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "idle_graze/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/animals/deer/sheets/front_contact_sheet.png",
+            "source_slot": 2,
+            "source_bbox": {
+              "x": 7,
+              "y": 9,
+              "w": 301,
+              "h": 304
+            },
+            "final_bbox": {
+              "x": 57,
+              "y": 115,
+              "w": 141,
+              "h": 93
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.6013289036544851,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ],
         "back": [
           {
             "base": "idle_graze/back/frame_00_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "idle_graze/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/animals/deer/sheets/back_contact_sheet.png",
+            "source_slot": 1,
+            "source_bbox": {
+              "x": 11,
+              "y": 10,
+              "w": 299,
+              "h": 304
+            },
+            "final_bbox": {
+              "x": 62,
+              "y": 99,
+              "w": 142,
+              "h": 109
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              5,
+              0
+            ],
+            "scale": 0.6053511705685619,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "idle_graze/back/frame_01_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "idle_graze/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/animals/deer/sheets/back_contact_sheet.png",
+            "source_slot": 2,
+            "source_bbox": {
+              "x": 7,
+              "y": 9,
+              "w": 300,
+              "h": 304
+            },
+            "final_bbox": {
+              "x": 63,
+              "y": 99,
+              "w": 140,
+              "h": 109
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              5,
+              0
+            ],
+            "scale": 0.6033333333333334,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ]
       }
@@ -44,21 +144,121 @@
         "front": [
           {
             "base": "walk/front/frame_00_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "walk/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/animals/deer/sheets/front_contact_sheet.png",
+            "source_slot": 3,
+            "source_bbox": {
+              "x": 4,
+              "y": 9,
+              "w": 302,
+              "h": 304
+            },
+            "final_bbox": {
+              "x": 55,
+              "y": 64,
+              "w": 122,
+              "h": 144
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -12,
+              0
+            ],
+            "scale": 0.5993377483443708,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "walk/front/frame_01_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "walk/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/animals/deer/sheets/front_contact_sheet.png",
+            "source_slot": 4,
+            "source_bbox": {
+              "x": 0,
+              "y": 10,
+              "w": 304,
+              "h": 304
+            },
+            "final_bbox": {
+              "x": 58,
+              "y": 63,
+              "w": 123,
+              "h": 145
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -8,
+              0
+            ],
+            "scale": 0.5953947368421053,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ],
         "back": [
           {
             "base": "walk/back/frame_00_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "walk/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/animals/deer/sheets/back_contact_sheet.png",
+            "source_slot": 3,
+            "source_bbox": {
+              "x": 5,
+              "y": 9,
+              "w": 300,
+              "h": 304
+            },
+            "final_bbox": {
+              "x": 65,
+              "y": 56,
+              "w": 115,
+              "h": 152
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -6,
+              0
+            ],
+            "scale": 0.6033333333333334,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "walk/back/frame_01_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "walk/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/animals/deer/sheets/back_contact_sheet.png",
+            "source_slot": 4,
+            "source_bbox": {
+              "x": 3,
+              "y": 10,
+              "w": 300,
+              "h": 304
+            },
+            "final_bbox": {
+              "x": 68,
+              "y": 58,
+              "w": 111,
+              "h": 150
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -4,
+              0
+            ],
+            "scale": 0.6033333333333334,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ]
       }
@@ -72,21 +272,121 @@
         "front": [
           {
             "base": "flee/front/frame_00_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "flee/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/animals/deer/sheets/front_contact_sheet.png",
+            "source_slot": 5,
+            "source_bbox": {
+              "x": 9,
+              "y": 0,
+              "w": 302,
+              "h": 313
+            },
+            "final_bbox": {
+              "x": 61,
+              "y": 21,
+              "w": 131,
+              "h": 188
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -2,
+              1
+            ],
+            "scale": 0.5993377483443708,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "flee/front/frame_01_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "flee/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/animals/deer/sheets/front_contact_sheet.png",
+            "source_slot": 6,
+            "source_bbox": {
+              "x": 7,
+              "y": 0,
+              "w": 301,
+              "h": 313
+            },
+            "final_bbox": {
+              "x": 54,
+              "y": 21,
+              "w": 136,
+              "h": 188
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -6,
+              1
+            ],
+            "scale": 0.6013289036544851,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ],
         "back": [
           {
             "base": "flee/back/frame_00_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "flee/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/animals/deer/sheets/back_contact_sheet.png",
+            "source_slot": 5,
+            "source_bbox": {
+              "x": 10,
+              "y": 0,
+              "w": 299,
+              "h": 313
+            },
+            "final_bbox": {
+              "x": 61,
+              "y": 21,
+              "w": 136,
+              "h": 189
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              1,
+              2
+            ],
+            "scale": 0.6053511705685619,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "flee/back/frame_01_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "flee/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/animals/deer/sheets/back_contact_sheet.png",
+            "source_slot": 6,
+            "source_bbox": {
+              "x": 7,
+              "y": 0,
+              "w": 300,
+              "h": 313
+            },
+            "final_bbox": {
+              "x": 62,
+              "y": 21,
+              "w": 128,
+              "h": 189
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -2,
+              2
+            ],
+            "scale": 0.6033333333333334,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           }
         ]
       }
@@ -100,21 +400,121 @@
         "front": [
           {
             "base": "dead/front/frame_00_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "dead/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/animals/deer/sheets/front_contact_sheet.png",
+            "source_slot": 7,
+            "source_bbox": {
+              "x": 4,
+              "y": 0,
+              "w": 302,
+              "h": 313
+            },
+            "final_bbox": {
+              "x": 74,
+              "y": 91,
+              "w": 76,
+              "h": 23
+            },
+            "anchor": [
+              128,
+              224
+            ],
+            "anchor_offset": [
+              -16,
+              -110
+            ],
+            "scale": 0.4249201277955272,
+            "fit_profile": "lying",
+            "manual_review": "pending"
           },
           {
             "base": "dead/front/frame_01_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "dead/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/animals/deer/sheets/front_contact_sheet.png",
+            "source_slot": 8,
+            "source_bbox": {
+              "x": 1,
+              "y": 0,
+              "w": 302,
+              "h": 313
+            },
+            "final_bbox": {
+              "x": 74,
+              "y": 91,
+              "w": 83,
+              "h": 25
+            },
+            "anchor": [
+              128,
+              224
+            ],
+            "anchor_offset": [
+              -12,
+              -108
+            ],
+            "scale": 0.4249201277955272,
+            "fit_profile": "lying",
+            "manual_review": "pending"
           }
         ],
         "back": [
           {
             "base": "dead/back/frame_00_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "dead/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/animals/deer/sheets/back_contact_sheet.png",
+            "source_slot": 7,
+            "source_bbox": {
+              "x": 5,
+              "y": 0,
+              "w": 300,
+              "h": 313
+            },
+            "final_bbox": {
+              "x": 81,
+              "y": 91,
+              "w": 68,
+              "h": 22
+            },
+            "anchor": [
+              128,
+              224
+            ],
+            "anchor_offset": [
+              -13,
+              -111
+            ],
+            "scale": 0.4249201277955272,
+            "fit_profile": "lying",
+            "manual_review": "pending"
           },
           {
             "base": "dead/back/frame_01_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "dead/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/animals/deer/sheets/back_contact_sheet.png",
+            "source_slot": 8,
+            "source_bbox": {
+              "x": 2,
+              "y": 0,
+              "w": 300,
+              "h": 313
+            },
+            "final_bbox": {
+              "x": 84,
+              "y": 91,
+              "w": 76,
+              "h": 23
+            },
+            "anchor": [
+              128,
+              224
+            ],
+            "anchor_offset": [
+              -6,
+              -110
+            ],
+            "scale": 0.4249201277955272,
+            "fit_profile": "lying",
+            "manual_review": "pending"
           }
         ]
       }
@@ -128,21 +528,121 @@
         "front": [
           {
             "base": "decayed_skeleton/front/frame_00_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "decayed_skeleton/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/animals/deer/sheets/front_contact_sheet.png",
+            "source_slot": 9,
+            "source_bbox": {
+              "x": 9,
+              "y": 0,
+              "w": 302,
+              "h": 313
+            },
+            "final_bbox": {
+              "x": 71,
+              "y": 91,
+              "w": 97,
+              "h": 57
+            },
+            "anchor": [
+              128,
+              224
+            ],
+            "anchor_offset": [
+              -8,
+              -76
+            ],
+            "scale": 0.4249201277955272,
+            "fit_profile": "lying",
+            "manual_review": "pending"
           },
           {
             "base": "decayed_skeleton/front/frame_01_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "decayed_skeleton/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/animals/deer/sheets/front_contact_sheet.png",
+            "source_slot": 10,
+            "source_bbox": {
+              "x": 7,
+              "y": 0,
+              "w": 301,
+              "h": 313
+            },
+            "final_bbox": {
+              "x": 69,
+              "y": 91,
+              "w": 113,
+              "h": 48
+            },
+            "anchor": [
+              128,
+              224
+            ],
+            "anchor_offset": [
+              -2,
+              -85
+            ],
+            "scale": 0.4249201277955272,
+            "fit_profile": "lying",
+            "manual_review": "pending"
           }
         ],
         "back": [
           {
             "base": "decayed_skeleton/back/frame_00_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "decayed_skeleton/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/animals/deer/sheets/back_contact_sheet.png",
+            "source_slot": 9,
+            "source_bbox": {
+              "x": 10,
+              "y": 0,
+              "w": 299,
+              "h": 313
+            },
+            "final_bbox": {
+              "x": 78,
+              "y": 91,
+              "w": 91,
+              "h": 61
+            },
+            "anchor": [
+              128,
+              224
+            ],
+            "anchor_offset": [
+              -4,
+              -72
+            ],
+            "scale": 0.4249201277955272,
+            "fit_profile": "lying",
+            "manual_review": "pending"
           },
           {
             "base": "decayed_skeleton/back/frame_01_base.png",
-            "team_mask": "placeholder/transparent_teammask.png"
+            "team_mask": "decayed_skeleton/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/animals/deer/sheets/back_contact_sheet.png",
+            "source_slot": 10,
+            "source_bbox": {
+              "x": 7,
+              "y": 0,
+              "w": 300,
+              "h": 313
+            },
+            "final_bbox": {
+              "x": 73,
+              "y": 91,
+              "w": 109,
+              "h": 59
+            },
+            "anchor": [
+              128,
+              224
+            ],
+            "anchor_offset": [
+              0,
+              -74
+            ],
+            "scale": 0.4249201277955272,
+            "fit_profile": "lying",
+            "manual_review": "pending"
           }
         ]
       }
@@ -151,26 +651,242 @@
       "frame_ms": 30000,
       "loop": false,
       "hold_last": true,
-      "description": "Runtime-compatible death placeholder frames.",
+      "description": "runtime animal death sequence: frame 00 freshly dead, frame 01 partly harvested, frame 02 mostly harvested, frame 03 clean depleted skeleton remains",
       "directions": {
         "front": [
           {
             "base": "death/front/frame_00_base.png",
-            "team_mask": "death/front/frame_00_teammask.png"
+            "team_mask": "death/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/animals/deer/sheets/front_contact_sheet.png",
+            "source_slot": 11,
+            "source_bbox": {
+              "x": 4,
+              "y": 0,
+              "w": 302,
+              "h": 313
+            },
+            "final_bbox": {
+              "x": 43,
+              "y": 22,
+              "w": 172,
+              "h": 87
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              1,
+              -99
+            ],
+            "scale": 0.5993377483443708,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "death/front/frame_01_base.png",
-            "team_mask": "death/front/frame_01_teammask.png"
+            "team_mask": "death/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/animals/deer/sheets/front_contact_sheet.png",
+            "source_slot": 12,
+            "source_bbox": {
+              "x": 1,
+              "y": 0,
+              "w": 302,
+              "h": 313
+            },
+            "final_bbox": {
+              "x": 43,
+              "y": 26,
+              "w": 172,
+              "h": 85
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              1,
+              -97
+            ],
+            "scale": 0.5993377483443708,
+            "fit_profile": "standing",
+            "manual_review": "pending"
+          },
+          {
+            "base": "death/front/frame_02_base.png",
+            "team_mask": "death/front/frame_02_teammask.png",
+            "source": "art/tiles/candidates/animals/deer/sheets/front_contact_sheet.png",
+            "source_slot": 13,
+            "source_bbox": {
+              "x": 10,
+              "y": 0,
+              "w": 302,
+              "h": 304
+            },
+            "final_bbox": {
+              "x": 39,
+              "y": 65,
+              "w": 178,
+              "h": 143
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.5993377483443708,
+            "fit_profile": "standing",
+            "manual_review": "accepted as canonical death phase reuse from existing generated alias art"
+          },
+          {
+            "base": "death/front/frame_03_base.png",
+            "team_mask": "death/front/frame_03_teammask.png",
+            "source": "art/tiles/candidates/animals/deer/sheets/front_contact_sheet.png",
+            "source_slot": 14,
+            "source_bbox": {
+              "x": 7,
+              "y": 0,
+              "w": 301,
+              "h": 303
+            },
+            "final_bbox": {
+              "x": 44,
+              "y": 61,
+              "w": 165,
+              "h": 106
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -2,
+              -41
+            ],
+            "scale": 0.6013289036544851,
+            "fit_profile": "standing",
+            "manual_review": "accepted as canonical death phase reuse from existing generated alias art"
           }
         ],
         "back": [
           {
             "base": "death/back/frame_00_base.png",
-            "team_mask": "death/back/frame_00_teammask.png"
+            "team_mask": "death/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/animals/deer/sheets/back_contact_sheet.png",
+            "source_slot": 11,
+            "source_bbox": {
+              "x": 5,
+              "y": 0,
+              "w": 300,
+              "h": 313
+            },
+            "final_bbox": {
+              "x": 43,
+              "y": 21,
+              "w": 168,
+              "h": 96
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -1,
+              -91
+            ],
+            "scale": 0.6033333333333334,
+            "fit_profile": "standing",
+            "manual_review": "pending"
           },
           {
             "base": "death/back/frame_01_base.png",
-            "team_mask": "death/back/frame_01_teammask.png"
+            "team_mask": "death/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/animals/deer/sheets/back_contact_sheet.png",
+            "source_slot": 12,
+            "source_bbox": {
+              "x": 2,
+              "y": 0,
+              "w": 293,
+              "h": 313
+            },
+            "final_bbox": {
+              "x": 43,
+              "y": 24,
+              "w": 176,
+              "h": 94
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              3,
+              -90
+            ],
+            "scale": 0.6177474402730375,
+            "fit_profile": "standing",
+            "manual_review": "pending"
+          },
+          {
+            "base": "death/back/frame_02_base.png",
+            "team_mask": "death/back/frame_02_teammask.png",
+            "source": "art/tiles/candidates/animals/deer/sheets/back_contact_sheet.png",
+            "source_slot": 13,
+            "source_bbox": {
+              "x": 11,
+              "y": 0,
+              "w": 299,
+              "h": 306
+            },
+            "final_bbox": {
+              "x": 42,
+              "y": 83,
+              "w": 171,
+              "h": 87
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              -38
+            ],
+            "scale": 0.6053511705685619,
+            "fit_profile": "standing",
+            "manual_review": "accepted as canonical death phase reuse from existing generated alias art"
+          },
+          {
+            "base": "death/back/frame_03_base.png",
+            "team_mask": "death/back/frame_03_teammask.png",
+            "source": "art/tiles/candidates/animals/deer/sheets/back_contact_sheet.png",
+            "source_slot": 14,
+            "source_bbox": {
+              "x": 7,
+              "y": 0,
+              "w": 300,
+              "h": 305
+            },
+            "final_bbox": {
+              "x": 42,
+              "y": 78,
+              "w": 166,
+              "h": 92
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              -3,
+              -38
+            ],
+            "scale": 0.6033333333333334,
+            "fit_profile": "standing",
+            "manual_review": "accepted as canonical death phase reuse from existing generated alias art"
           }
         ]
       }
@@ -184,25 +900,160 @@
         "front": [
           {
             "base": "idle/front/frame_00_base.png",
-            "team_mask": "idle/front/frame_00_teammask.png"
+            "team_mask": "idle/front/frame_00_teammask.png",
+            "source": "art/tiles/candidates/animals/deer/sheets/front_contact_sheet.png",
+            "source_slot": 1,
+            "source_bbox": {
+              "x": 10,
+              "y": 10,
+              "w": 302,
+              "h": 304
+            },
+            "final_bbox": {
+              "x": 64,
+              "y": 125,
+              "w": 139,
+              "h": 83
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              6,
+              0
+            ],
+            "scale": 0.5993377483443708,
+            "fit_profile": "standing",
+            "manual_review": "pending alias review; copied from canonical idle_graze frame"
           },
           {
             "base": "idle/front/frame_01_base.png",
-            "team_mask": "idle/front/frame_01_teammask.png"
+            "team_mask": "idle/front/frame_01_teammask.png",
+            "source": "art/tiles/candidates/animals/deer/sheets/front_contact_sheet.png",
+            "source_slot": 2,
+            "source_bbox": {
+              "x": 7,
+              "y": 9,
+              "w": 301,
+              "h": 304
+            },
+            "final_bbox": {
+              "x": 57,
+              "y": 115,
+              "w": 141,
+              "h": 93
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              0,
+              0
+            ],
+            "scale": 0.6013289036544851,
+            "fit_profile": "standing",
+            "manual_review": "pending alias review; copied from canonical idle_graze frame"
           }
         ],
         "back": [
           {
             "base": "idle/back/frame_00_base.png",
-            "team_mask": "idle/back/frame_00_teammask.png"
+            "team_mask": "idle/back/frame_00_teammask.png",
+            "source": "art/tiles/candidates/animals/deer/sheets/back_contact_sheet.png",
+            "source_slot": 1,
+            "source_bbox": {
+              "x": 11,
+              "y": 10,
+              "w": 299,
+              "h": 304
+            },
+            "final_bbox": {
+              "x": 62,
+              "y": 99,
+              "w": 142,
+              "h": 109
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              5,
+              0
+            ],
+            "scale": 0.6053511705685619,
+            "fit_profile": "standing",
+            "manual_review": "pending alias review; copied from canonical idle_graze frame"
           },
           {
             "base": "idle/back/frame_01_base.png",
-            "team_mask": "idle/back/frame_01_teammask.png"
+            "team_mask": "idle/back/frame_01_teammask.png",
+            "source": "art/tiles/candidates/animals/deer/sheets/back_contact_sheet.png",
+            "source_slot": 2,
+            "source_bbox": {
+              "x": 7,
+              "y": 9,
+              "w": 300,
+              "h": 304
+            },
+            "final_bbox": {
+              "x": 63,
+              "y": 99,
+              "w": 140,
+              "h": 109
+            },
+            "anchor": [
+              128,
+              208
+            ],
+            "anchor_offset": [
+              5,
+              0
+            ],
+            "scale": 0.6033333333333334,
+            "fit_profile": "standing",
+            "manual_review": "pending alias review; copied from canonical idle_graze frame"
           }
         ]
       }
     }
   },
-  "notes": "Generated from accepted deer contact sheets under art/tiles/candidates/animals/deer/sheets. Runtime idle/death aliases added from closest generated action variants; opaque magenta cleanup applied where needed."
+  "notes": "Generated from accepted deer contact sheets under art/tiles/candidates/animals/deer/sheets. Runtime idle/death aliases added from closest generated action variants; opaque magenta cleanup applied where needed.",
+  "asset_type": "animal",
+  "source_canvas": {
+    "profile": "sprite_overlay_source",
+    "width_px": 256,
+    "height_px": 256,
+    "target_kind": "pre_crop_generation_slot",
+    "min_longest_side_px": 128,
+    "unit": "px",
+    "source": "realm range-based source-quality contract",
+    "range": {
+      "minimum_longest_side_px_after_crop": 128,
+      "pre_crop_target_px": 256,
+      "maximum_px": null
+    },
+    "scope": "per generated actor sheet cell or standalone pre-crop source"
+  },
+  "placement": {
+    "projection": "upright_world",
+    "anchor_kind": "feet",
+    "source_size": [
+      256,
+      256
+    ],
+    "anchor": [
+      128,
+      208
+    ],
+    "scale_policy": "entity_tile_zoom_1_55",
+    "footprint": [
+      1,
+      1
+    ],
+    "depth": "entity"
+  },
+  "source_workflow": "contact-sheet-resolution-replay"
 }
