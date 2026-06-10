@@ -258,7 +258,7 @@ std::vector<std::pair<int,int>> findPath(int sx, int sy, int tx, int ty, int /*m
     }
 
     // Pre-scan buildings into a flat bool map — O(1) lookup vs O(N) entityAt per step.
-    // Boats also block each other since they occupy water tiles.
+    // Only buildings block paths; units (incl. boats) share tiles, see moveAlongPath.
     static bool bldMap[MAP_H][MAP_W];
     memset(bldMap, 0, sizeof(bldMap));
     for (auto& e : g.entities) {

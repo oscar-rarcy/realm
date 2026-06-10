@@ -292,8 +292,10 @@ void    aiGather(int owner);
 void    aiBuildSpot(int owner,EntityType bt,int& ox,int& oy);
 void    tickAI();
 
-// render.cpp
+// render.cpp — world/terrain; ui.cpp — HUD, panel, minimap, menus
 void initColors();
+void renderMap();
+void renderUI();
 void render();
 
 // input.cpp

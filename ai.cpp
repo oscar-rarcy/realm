@@ -30,16 +30,21 @@ static Entity* aiIdlePeasant(int o) {
 }
 
 void aiGather(int o) {
+    // Collect resource tiles once, then match peasants against the list —
+    // avoids a full map scan per idle peasant.
+    std::vector<std::pair<int,int>> spots;
+    for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
+        Terrain t = g.map[y][x].terrain;
+        bool isR = (t==T_GOLD||t==T_FOREST||t==T_PINE||t==T_PALM||t==T_DEAD_TREE||t==T_BERRY);
+        if (isR && g.map[y][x].resources > 0) spots.push_back({x, y});
+    }
+    if (spots.empty()) return;
     for (auto& e : g.entities) {
         if (!e.alive || e.owner!=o || e.type!=E_PEASANT || e.state!=S_IDLE) continue;
         int bestD = 9999, bx = -1, by = -1;
-        for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
-            Terrain t = g.map[y][x].terrain;
-            bool isR = (t==T_GOLD||t==T_FOREST||t==T_PINE||t==T_PALM||t==T_DEAD_TREE||t==T_BERRY);
-            if (isR && g.map[y][x].resources > 0) {
-                int d = mdist(e.x, e.y, x, y);
-                if (d < bestD) { bestD=d; bx=x; by=y; }
-            }
+        for (auto& [x, y] : spots) {
+            int d = mdist(e.x, e.y, x, y);
+            if (d < bestD) { bestD=d; bx=x; by=y; }
         }
         if (bx >= 0) orderGather(e, bx, by);
     }
@@ -137,22 +142,23 @@ static bool findShoreTileNear(int cx, int cy, int searchR, int& ox, int& oy) {
 //   empty -> sail to home shore -> load idle military -> sail to enemy shore
 //   -> eject troops -> empty -> repeat.
 static void aiTickTransports(int o) {
-    // Pick assault target: nearest enemy TC/Castle.
-    Entity* target = nullptr;
-    int bestD = 99999;
-    for (auto& e : g.entities) {
-        if (!e.alive || e.owner == o || e.owner == OWNER_NATURE) continue;
-        if (e.type != E_TOWNHALL && e.type != E_CASTLE) continue;
-        int d = mdist(0, 0, e.x, e.y);
-        if (d < bestD) { bestD = d; target = &e; }
-    }
     Entity* home = nullptr;
     for (auto& e : g.entities) {
         if (!e.alive || e.owner != o) continue;
         if (e.type != E_TOWNHALL && e.type != E_CASTLE) continue;
         home = &e; break;
     }
-    if (!target || !home) return;
+    if (!home) return;
+    // Pick assault target: enemy TC/Castle nearest our own base.
+    Entity* target = nullptr;
+    int bestD = 99999;
+    for (auto& e : g.entities) {
+        if (!e.alive || e.owner == o || e.owner == OWNER_NATURE) continue;
+        if (e.type != E_TOWNHALL && e.type != E_CASTLE) continue;
+        int d = mdist(home->x, home->y, e.x, e.y);
+        if (d < bestD) { bestD = d; target = &e; }
+    }
+    if (!target) return;
 
     int enemyShoreX = -1, enemyShoreY = -1;
     if (!findShoreTileNear(target->x, target->y, 18, enemyShoreX, enemyShoreY)) return;

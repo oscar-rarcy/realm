@@ -379,6 +379,11 @@ int main() {
             if (Clock::now() >= nextTick) {
                 nextTick += Ms(TICK_MS);
                 if (g.mode != M_PAUSED && g.mode != M_GAME_OVER) {
+                    // Keep capacity headroom so mid-tick spawnEntity never
+                    // reallocates under a live Entity& held by tickEntity.
+                    // Growing here, between ticks, is the only safe point.
+                    if (g.entities.size() + 256 > g.entities.capacity())
+                        g.entities.reserve(g.entities.capacity() * 2);
                     g.tick++;
                     g.dayPhase += 1.0f / DAY_LENGTH;
                     if (g.dayPhase >= 1.0f) g.dayPhase -= 1.0f;
