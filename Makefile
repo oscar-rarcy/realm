@@ -18,7 +18,24 @@ $(TARGET): $(OBJS)
 %.o: %.cpp realm.h
 	$(CXX) $(CXXFLAGS) $(NCURSES_CFLAGS) -c -o $@ $<
 
-clean:
-	rm -f $(OBJS) $(TARGET)
+# --- Standalone GUI build: same sources, SDL shim backend ---
+GUI_TARGET := realm-gui
+GUI_OBJS   := $(addprefix gui/,$(OBJS)) gui/sdl_shim.o
+SDL_CFLAGS := $(shell $(PKG_CONFIG) --cflags sdl2 SDL2_ttf 2>/dev/null)
+SDL_LIBS   := $(shell $(PKG_CONFIG) --libs sdl2 SDL2_ttf 2>/dev/null)
 
-.PHONY: all clean
+gui-build: $(GUI_TARGET)
+
+$(GUI_TARGET): $(GUI_OBJS)
+	$(CXX) $(CXXFLAGS) -o $@ $(GUI_OBJS) $(SDL_LIBS)
+
+gui/%.o: %.cpp realm.h sdl_shim.h | gui
+	$(CXX) $(CXXFLAGS) -DUSE_SDL_SHIM $(SDL_CFLAGS) -c -o $@ $<
+
+gui:
+	mkdir -p gui
+
+clean:
+	rm -f $(OBJS) $(TARGET) $(GUI_OBJS) $(GUI_TARGET)
+
+.PHONY: all clean gui-build

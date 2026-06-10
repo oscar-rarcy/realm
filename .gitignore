@@ -109,3 +109,4 @@ scratch/
 # Save games
 *.sav
 *.sav.tmp
+gui/

@@ -1,5 +1,12 @@
 #pragma once
+// Backend switch: the game speaks a small ncurses-shaped API. The default
+// build uses real ncurses (terminal); -DUSE_SDL_SHIM swaps in the SDL2
+// implementation (standalone window, vector-font glyphs, native mouse).
+#ifdef USE_SDL_SHIM
+#include "sdl_shim.h"
+#else
 #include <ncurses.h>
+#endif
 #include <vector>
 #include <queue>
 #include <algorithm>
