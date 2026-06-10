@@ -235,7 +235,7 @@ int     spawnEntity(EntityType type,int owner,int x,int y,bool built=true);
 // entity.cpp — projectiles / pathfinding
 void spawnProjectile(int sx,int sy,int tx,int ty,char gl,int col);
 void tickProjectiles();
-std::vector<std::pair<int,int>> findPath(int sx,int sy,int tx,int ty,int maxSteps=300,bool naval=false);
+std::vector<std::pair<int,int>> findPath(int sx,int sy,int tx,int ty,int maxSteps=300,bool naval=false,bool avoidUnits=false);
 inline std::vector<std::pair<int,int>> findPathFor(Entity& e, int tx, int ty) {
     return findPath(e.x, e.y, tx, ty, 300, isNaval(e.type));
 }
@@ -262,6 +262,7 @@ int  damageVs(EntityType attacker, EntityType target, int rawDmg, int targetOwne
 
 // entity.cpp — movement / state
 void moveAlongPath(Entity& e);
+void rebuildUnitGrid();
 void resetDetectMapCache();
 void spendPlayerFood(int owner, int amount);
 

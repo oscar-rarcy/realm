@@ -389,6 +389,7 @@ int main() {
                     if (g.dayPhase >= 1.0f) g.dayPhase -= 1.0f;
                     g.seasonPhase += 1.0f / SEASON_LENGTH;
                     if (g.seasonPhase >= 4.0f) g.seasonPhase -= 4.0f;
+                    rebuildUnitGrid();
                     for (int i = 0; i < (int)g.entities.size(); i++) tickEntity(g.entities[i]);
                     tickSeasons(); tickThaw(); tickWinter();
                     tickWeather(); tickPaving();

@@ -243,7 +243,7 @@ void tickProjectiles() {
 // so a click always produces motion toward the destination.
 // findPathFor() lives inline in realm.h since combat.cpp and entity.cpp both need it.
 // ============================================================
-std::vector<std::pair<int,int>> findPath(int sx, int sy, int tx, int ty, int /*maxSteps*/, bool naval) {
+std::vector<std::pair<int,int>> findPath(int sx, int sy, int tx, int ty, int /*maxSteps*/, bool naval, bool avoidUnits) {
     if (sx == tx && sy == ty) return {};
     auto pass = [&](int x, int y) { return naval ? isPassableWater(x,y) : isPassable(x,y); };
     // If target tile is blocked, retarget to its nearest passable neighbor.
@@ -270,6 +270,18 @@ std::vector<std::pair<int,int>> findPath(int sx, int sy, int tx, int ty, int /*m
                 int bx = e.x+dx2, by = e.y+dy2;
                 if (inBounds(bx,by)) bldMap[by][bx] = true;
             }
+        }
+    }
+    // Jam repaths only: stamp *nearby* units as blocked so the path flows
+    // around the local crowd. Distant positions are stale by arrival time,
+    // so stamping the whole map would just cause spurious detours.
+    if (avoidUnits) {
+        for (auto& u : g.entities) {
+            if (!u.alive || !isUnit(u.type) || u.owner >= OWNER_NATURE) continue;
+            if (u.state == S_GARRISONED || u.state == S_GATHERING) continue;
+            if (mdist(sx, sy, u.x, u.y) > 12) continue;
+            if (u.x == sx && u.y == sy) continue;
+            if (inBounds(u.x, u.y)) bldMap[u.y][u.x] = true;
         }
     }
     bldMap[ty][tx] = false; // always allow reaching the destination
@@ -399,6 +411,79 @@ void updateFog() {
 
 
 // ============================================================
+// UNIT OCCUPANCY — units no longer share tiles (collision prototype).
+// Planning stays unit-blind: A* ignores units (positions go stale long
+// before arrival) and collisions are resolved locally here, per tick.
+// The grid is rebuilt once per tick and patched as units step, so any
+// missed position write self-heals within one tick (80ms).
+// Exempt — neither block nor get blocked: nature animals, garrisoned
+// units, and gatherers (S_GATHERING covers the walk to the node too),
+// so the economy keeps stacking freedom while armies collide.
+// ============================================================
+static int  unitGrid[MAP_H][MAP_W];
+static bool unitGridReady = false;
+
+static bool occupiesTile(const Entity& e) {
+    if (!e.alive || !isUnit(e.type)) return false;
+    if (e.owner >= OWNER_NATURE) return false;
+    if (e.state == S_GARRISONED || e.state == S_GATHERING) return false;
+    return true;
+}
+
+void rebuildUnitGrid() {
+    for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) unitGrid[y][x] = -1;
+    for (auto& e : g.entities)
+        if (occupiesTile(e) && inBounds(e.x, e.y) && unitGrid[e.y][e.x] < 0)
+            unitGrid[e.y][e.x] = e.id;
+    unitGridReady = true;
+}
+
+static Entity* unitOccupant(int x, int y) {
+    if (!unitGridReady || !inBounds(x, y)) return nullptr;
+    int id = unitGrid[y][x];
+    return id < 0 ? nullptr : findEntity(id);
+}
+
+// Move e to (nx,ny), keeping the grid honest. Only clears/claims cells that
+// actually belong to e, so a swap can pre-stage the vacated tile for the
+// other unit without this call stomping it.
+static void gridMove(Entity& e, int nx, int ny) {
+    if (inBounds(e.x, e.y) && unitGrid[e.y][e.x] == e.id) unitGrid[e.y][e.x] = -1;
+    e.x = nx; e.y = ny;
+    if (occupiesTile(e) && inBounds(nx, ny) && unitGrid[ny][nx] < 0) unitGrid[ny][nx] = e.id;
+}
+
+static bool tilePushable(const Entity& occ, int qx, int qy) {
+    if (!inBounds(qx, qy)) return false;
+    if (isNaval(occ.type) ? !isPassableWater(qx, qy) : !isPassable(qx, qy)) return false;
+    if (unitGrid[qy][qx] >= 0) return false;
+    Entity* b = entityAt(qx, qy);
+    if (b && isBuilding(b->type) && !(b->type == E_GATE && b->gateOpen)) return false;
+    return true;
+}
+
+// Shove an idle friendly one tile aside so a mover can pass. Prefers tiles
+// perpendicular to the mover's heading so corridors drain sideways instead
+// of dominoing units forward along the traffic lane.
+static bool pushAside(Entity& mover, Entity& occ, int nx, int ny) {
+    int hx = nx - mover.x, hy = ny - mover.y;
+    int bestScore = -1, bx = -1, by = -1;
+    for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
+        if (!dx && !dy) continue;
+        int qx = occ.x + dx, qy = occ.y + dy;
+        if (!tilePushable(occ, qx, qy)) continue;
+        if (qx == mover.x && qy == mover.y) continue;
+        int dot = dx*hx + dy*hy;
+        int score = (dot == 0) ? 3 : (dot < 0) ? 2 : 1; // perpendicular > back > forward
+        if (score > bestScore) { bestScore = score; bx = qx; by = qy; }
+    }
+    if (bestScore < 0) return false;
+    gridMove(occ, bx, by);
+    occ.moveCd = std::max(occ.moveCd, STATS[occ.type].speed);
+    return true;
+}
+
+// ============================================================
 // MOVEMENT
 // ============================================================
 void moveAlongPath(Entity& e) {
@@ -443,7 +528,68 @@ void moveAlongPath(Entity& e) {
             return;
         }
     }
-    e.x = nx; e.y = ny; e.pathIdx++;
+    // Unit collision: resolve an occupant of the next tile locally.
+    // Order: head-on swap -> push idle friendly -> sidestep -> wait -> repath
+    // around the local crowd. Gatherers/animals are exempt via occupiesTile.
+    if (occupiesTile(e)) {
+        Entity* occ = unitOccupant(nx, ny);
+        if (occ && occ->id != e.id && occupiesTile(*occ)) {
+            bool resolved = false;
+            bool occMoving = !occ->path.empty() && occ->pathIdx < (int)occ->path.size();
+
+            // Head-on friendly swap: occ's next step is our tile — pass through
+            // each other. The classic deadlock breaker for gates and bridges.
+            if (occMoving && occ->owner == e.owner
+                && occ->path[occ->pathIdx].first == e.x
+                && occ->path[occ->pathIdx].second == e.y) {
+                int ex = e.x, ey = e.y;
+                if (unitGrid[ey][ex] == e.id) unitGrid[ey][ex] = -1; // vacate for occ
+                gridMove(*occ, ex, ey);
+                occ->pathIdx++; occ->stuckTicks = 0;
+                occ->moveCd = std::max(occ->moveCd, STATS[occ->type].speed);
+                resolved = true; // fall through: e takes (nx,ny) as normal
+            }
+            // Idle friendly in the way: shove it one tile aside and walk on.
+            else if (!occMoving && occ->owner == e.owner && occ->state == S_IDLE
+                     && pushAside(e, *occ, nx, ny)) {
+                resolved = true;
+            }
+
+            if (!resolved) {
+                // Sidestep: detour to a free neighbor that is still adjacent to
+                // the node after the contested one, skipping the blocked tile.
+                // Adjacency to the follow-up node is required — path steps are
+                // applied verbatim, so a gap would teleport the unit.
+                if (e.pathIdx + 1 < (int)e.path.size()) {
+                    auto [fx, fy] = e.path[e.pathIdx + 1];
+                    for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
+                        if (!dx && !dy) continue;
+                        int qx = e.x + dx, qy = e.y + dy;
+                        if (std::abs(qx - fx) > 1 || std::abs(qy - fy) > 1) continue;
+                        if (qx == nx && qy == ny) continue;
+                        if (!tilePushable(e, qx, qy)) continue;
+                        gridMove(e, qx, qy);
+                        e.pathIdx++;            // contested node is bypassed
+                        e.stuckTicks = 0;
+                        e.moveCd = STATS[e.type].speed + 1; // detours cost a beat
+                        return;
+                    }
+                }
+                // Wait, then repath around the local crowd. Slightly laxer
+                // threshold than the building case: traffic usually clears.
+                e.stuckTicks++;
+                if (e.stuckTicks >= 3 + (e.id % 4)) {
+                    e.stuckTicks = 0;
+                    int gx = e.path.back().first, gy = e.path.back().second;
+                    e.path = findPath(e.x, e.y, gx, gy, 300, isNaval(e.type), true);
+                    e.pathIdx = 0;
+                }
+                return;
+            }
+        }
+    }
+
+    gridMove(e, nx, ny); e.pathIdx++;
     e.stuckTicks = 0;
     Terrain ter = g.map[ny][nx].terrain;
     int spd = STATS[e.type].speed;
