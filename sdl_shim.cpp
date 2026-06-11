@@ -287,12 +287,34 @@ void handleEvent(const SDL_Event& e) {
 
 // ---- optional instrumentation (env vars; zero cost when unset) ----
 // REALM_DUMP_GRID=/path  : write the cell grid every refresh (debug/CI)
+// REALM_DUMP_BMP=/path   : save the rendered framebuffer as BMP every ~2s.
+//                          Reads back our own renderer, so it works without
+//                          macOS Screen Recording permission.
 // REALM_SELFTEST=1       : scripted input — start a duel, then perform a
 //                          slow box-select drag and exit. Combined with
 //                          the grid dump this proves the whole pipeline
 //                          (events -> cells -> drag box render) headlessly.
 const char* dumpPath = nullptr;
+const char* dumpBmp  = nullptr;
 bool selfTest = false;
+
+void maybeDumpFrame() {
+    if (!dumpBmp) return;
+    static Uint32 last = 0; static int n = 0;
+    Uint32 now = SDL_GetTicks();
+    if (now - last < 2000) return;
+    last = now;
+    int pw, ph;
+    SDL_GetRendererOutputSize(ren, &pw, &ph);
+    SDL_Surface* s = SDL_CreateRGBSurfaceWithFormat(0, pw, ph, 32, SDL_PIXELFORMAT_ARGB8888);
+    if (!s) return;
+    if (SDL_RenderReadPixels(ren, nullptr, SDL_PIXELFORMAT_ARGB8888, s->pixels, s->pitch) == 0) {
+        char path[256];
+        snprintf(path, sizeof path, "%s.%d.bmp", dumpBmp, ++n);
+        SDL_SaveBMP(s, path);
+    }
+    SDL_FreeSurface(s);
+}
 
 void injectMotion(int x, int y) {
     SDL_Event e{}; e.type = SDL_MOUSEMOTION; e.motion.x = x; e.motion.y = y; handleEvent(e);
@@ -394,6 +416,7 @@ WINDOW* initscr() {
     TTF_Init();
     mouseDebug = getenv("REALM_MOUSE_DEBUG") != nullptr;
     dumpPath   = getenv("REALM_DUMP_GRID");
+    dumpBmp    = getenv("REALM_DUMP_BMP");
     selfTest   = getenv("REALM_SELFTEST") != nullptr;
     win = SDL_CreateWindow("REALM", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                            1440, 860,
@@ -533,6 +556,7 @@ int refresh() {
             }
         }
     }
+    maybeDumpFrame();   // before present: read back the frame we just composed
     SDL_RenderPresent(ren);
     if (dumpPath) {
         static int frame = 0;
