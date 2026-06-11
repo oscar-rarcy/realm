@@ -137,6 +137,14 @@ static void cmdAtTileGroup(int x, int y) {
 
 void handleInput(int ch) {
     if (ch == ERR) return;
+    // Who owns the cursor decides whether render may auto-pan to it
+    // (keyboard: yes; mouse: never — see renderMap). One place, all modes.
+    if (ch == KEY_MOUSE) g.cursorByMouse = true;
+    else if (ch == KEY_UP || ch == KEY_DOWN || ch == KEY_LEFT || ch == KEY_RIGHT
+          || ch == KEY_SR || ch == KEY_SF || ch == KEY_SLEFT || ch == KEY_SRIGHT
+          || ch == KEY_PPAGE || ch == KEY_NPAGE || ch == KEY_HOME || ch == KEY_END
+          || ch == '\t' || ch == 'h' || ch == '.' || ch == ',')
+        g.cursorByMouse = false;
     if (ch == 'q' || ch == 'Q') {
         if (g.mode == M_GAME_OVER) { g.returnToMenu = true; return; }
         // Mid-game quit needs a confirming second press — one stray key

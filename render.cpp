@@ -797,10 +797,17 @@ void renderMap() {
     if (g.viewW < 30) g.viewW = maxX / tileW; if (g.viewH < 10) g.viewH = maxY - 2;
     g.viewW = std::max(1, std::min(g.viewW, MAP_W)); g.viewH = std::min(g.viewH, MAP_H);
 
-    if (g.cursorX < g.viewX+3)            g.viewX = g.cursorX - 3;
-    if (g.cursorX > g.viewX+g.viewW-4)    g.viewX = g.cursorX - g.viewW + 4;
-    if (g.cursorY < g.viewY+2)            g.viewY = g.cursorY - 2;
-    if (g.cursorY > g.viewY+g.viewH-3)    g.viewY = g.cursorY - g.viewH + 3;
+    // Keyboard cursor: pan the view to keep it inside the margins.
+    // Mouse cursor: never — the pointer pins a screen cell, and panning here
+    // would change which map tile that cell shows, yanking the cursor tile
+    // out from under a stationary pointer (and feeding back into another
+    // pan). Mouse view movement is edge-scroll + minimap only.
+    if (!g.cursorByMouse) {
+        if (g.cursorX < g.viewX+3)            g.viewX = g.cursorX - 3;
+        if (g.cursorX > g.viewX+g.viewW-4)    g.viewX = g.cursorX - g.viewW + 4;
+        if (g.cursorY < g.viewY+2)            g.viewY = g.cursorY - 2;
+        if (g.cursorY > g.viewY+g.viewH-3)    g.viewY = g.cursorY - g.viewH + 3;
+    }
     g.viewX = std::max(0, std::min(g.viewX, MAP_W - g.viewW));
     g.viewY = std::max(0, std::min(g.viewY, MAP_H - g.viewH));
 

@@ -244,6 +244,11 @@ struct Game {
     int weatherTimer;     // ticks until next weather change roll
     int biomeChoice;      // -1 = random, else Biome enum value forced on whole map
     bool returnToMenu;    // set on game-over to break back to splash screen
+    bool cursorByMouse;   // last cursor move came from the mouse: render must
+                          // NOT auto-pan the view to chase it (that pan changes
+                          // which tile is under a stationary pointer — feedback
+                          // loop that desyncs pointer and cursor tile). Mouse
+                          // scrolling is edge-scroll/minimap only.
     unsigned long long rngState; // sim RNG state — part of game state, saved/loaded
     unsigned long long simSeed;  // seed this match started from (replay header)
     std::vector<Command> pendingCmds; // local player's queued commands; applied at tick start

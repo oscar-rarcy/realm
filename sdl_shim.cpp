@@ -274,7 +274,11 @@ void handleEvent(const SDL_Event& e) {
             }
             break;
         case SDL_MOUSEWHEEL:
-            zoomFont(e.wheel.y > 0 ? 1 : e.wheel.y < 0 ? -1 : 0);
+            // Zoom only with Cmd/Ctrl held. Trackpads stream wheel events
+            // (two-finger scroll, momentum); bare-wheel zoom resized the
+            // whole grid every flick.
+            if (SDL_GetModState() & (KMOD_GUI | KMOD_CTRL))
+                zoomFont(e.wheel.y > 0 ? 1 : e.wheel.y < 0 ? -1 : 0);
             break;
         case SDL_WINDOWEVENT:
             if (e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
@@ -385,15 +389,20 @@ void putCells(int y, int x, const char* s) {
 const char* findFont() {
     const char* env = getenv("REALM_FONT");
     if (env && *env) return env;
+    // Monospace only: the renderer is a strict cell grid, and the grid pitch
+    // comes from one glyph's advance — a proportional face (Helvetica) makes
+    // wide glyphs collide and narrow ones float, which reads as bad kerning.
+    // Helvetica stays solely as a nothing-else-exists fallback.
     static const char* candidates[] = {
-        "/System/Library/Fonts/Helvetica.ttc",
         "/System/Library/Fonts/Menlo.ttc",
+        "/System/Library/Fonts/SFNSMono.ttf",
         "/System/Library/Fonts/Monaco.ttf",
         "/Library/Fonts/Andale Mono.ttf",
         "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
         "/usr/share/fonts/TTF/DejaVuSansMono.ttf",
-        "C:\\Windows\\Fonts\\arial.ttf",
         "C:\\Windows\\Fonts\\consola.ttf",
+        "C:\\Windows\\Fonts\\lucon.ttf",
+        "/System/Library/Fonts/Helvetica.ttc",
         nullptr
     };
     for (int i = 0; candidates[i]; i++) {
