@@ -133,10 +133,13 @@ static int showSplash() {
     return numAIs;
 }
 
-void initGame(int numAIs) {
-    // Seed the deterministic sim RNG. In a future multiplayer lobby this
-    // seed is what the host shares with every client.
-    seedSimRng((unsigned long long)time(nullptr) * 2654435761ull + 1);
+void initGame(int numAIs, unsigned long long seed) {
+    // Seed the deterministic sim RNG. Replays pass the recorded seed; a
+    // future multiplayer lobby shares the host's seed with every client.
+    if (seed == 0) seed = (unsigned long long)time(nullptr) * 2654435761ull + 1;
+    g.simSeed = seed;
+    seedSimRng(seed);
+    g.pendingCmds.clear();
     // Critical: wipe every piece of per-match state so a new game can't see
     // entities, projectiles, IDs, or cached fog from the previous match.
     g.entities.clear();
@@ -338,15 +341,150 @@ void initGame(int numAIs) {
     updateFog();
 }
 
-int main() {
+// One deterministic sim step. Everything that advances game state lives
+// here and ONLY here — the interactive loop, replay playback, and --verify
+// all call this same function, so a replay can never tick differently
+// from the game that recorded it.
+void simTick() {
+    // Keep capacity headroom so mid-tick spawnEntity never reallocates
+    // under a live Entity& held by tickEntity. Growing here, between
+    // ticks, is the only safe point.
+    if (g.entities.size() + 256 > g.entities.capacity())
+        g.entities.reserve(g.entities.capacity() * 2);
+    g.tick++;
+    g.dayPhase += 1.0f / DAY_LENGTH;
+    if (g.dayPhase >= 1.0f) g.dayPhase -= 1.0f;
+    g.seasonPhase += 1.0f / SEASON_LENGTH;
+    if (g.seasonPhase >= 4.0f) g.seasonPhase -= 4.0f;
+    replayInjectCommands();    // playback: queue this tick's recorded commands
+    applyPendingCommands();    // drain the queue (records to replay when live)
+    for (int i = 0; i < (int)g.entities.size(); i++) tickEntity(g.entities[i]);
+    tickSeasons(); tickThaw(); tickWinter();
+    tickWeather(); tickPaving();
+    tickTowers(); tickGates(); tickProjectiles(); tickFarms(); tickMarkets();
+    tickChurches(); tickAnimals(); tickAI(); updateFog();
+    // Prune dead IDs from selection + control groups so UI counts
+    // ("Group: N units") stay honest as casualties pile up.
+    auto pruneDead = [](std::vector<int>& v) {
+        v.erase(std::remove_if(v.begin(), v.end(),
+            [](int id){ return findEntity(id) == nullptr; }), v.end());
+    };
+    pruneDead(g.selectedIds);
+    for (int i = 0; i < 9; i++) pruneDead(g.controlGroups[i]);
+    if (g.selectedId >= 0 && !findEntity(g.selectedId)) g.selectedId = -1;
+    if (g.tick % 100 == 0) {
+        g.entities.erase(std::remove_if(g.entities.begin(), g.entities.end(),
+            [](const Entity& e){ return !e.alive && e.state==S_DEAD; }), g.entities.end());
+        // Defensive: rebuild supply totals so any kill path that
+        // missed updateSupply gets reconciled within ~8 seconds.
+        for (int p = 0; p < MAX_PLAYERS; p++) updateSupply(p);
+        checkWin();
+    }
+    simHashTick();   // REALM_HASH=1: desync-detector log
+}
+
+// Interactive match loop (normal play and replay playback).
+static void runMatch() {
+    using Clock = std::chrono::steady_clock;
+    using Ms    = std::chrono::milliseconds;
+
+    auto nextTick = Clock::now() + Ms(TICK_MS);
+    int lastCx = g.cursorX, lastCy = g.cursorY;
+    bool lastDrag = g.dragging;
+
+    while (!g.returnToMenu) {
+        // Block only as long as needed to reach the next game tick
+        int wait = (int)std::chrono::duration_cast<Ms>(nextTick - Clock::now()).count();
+        timeout(std::max(0, wait));
+        int ch = getch();
+        handleInput(ch);
+
+        // Drain any events that piled up (mouse moves, key repeats) without
+        // running game logic for each one — keeps the cursor smooth
+        timeout(0);
+        int extra;
+        while ((extra = getch()) != ERR) handleInput(extra);
+
+        // Tick and render at fixed rate regardless of input volume
+        bool ticked = false;
+        if (Clock::now() >= nextTick) {
+            nextTick += Ms(TICK_MS);
+            if (g.mode != M_PAUSED && g.mode != M_GAME_OVER) simTick();
+            render();
+            ticked = true;
+        }
+        // Snappy cursor: redraw between ticks when the mouse moved or a drag updated.
+        bool cursorMoved = (g.cursorX != lastCx || g.cursorY != lastCy || g.dragging != lastDrag);
+        if (!ticked && cursorMoved) render();
+        lastCx = g.cursorX; lastCy = g.cursorY; lastDrag = g.dragging;
+    }
+}
+
+// Headless determinism check: run N ticks from a fixed seed with no human
+// commands and print the final state hash. Run it twice; identical hashes
+// mean the sim is reproducible — the property lockstep multiplayer needs.
+static int runVerify(unsigned long long seed, int ticks, int numAIs) {
+    g.biomeChoice = 0;   // fixed biome: the check must not depend on a menu
+    initGame(numAIs, seed);
+    for (int i = 0; i < ticks; i++) simTick();
+    printf("seed=%llu ticks=%d ais=%d hash=%016llx\n",
+           seed, ticks, numAIs, simStateHash());
+    return 0;
+}
+
+int main(int argc, char** argv) {
     forceUtf8Locale();
+
+    // --verify runs fully headless: no curses, no renderer, just the sim.
+    if (argc >= 2 && strcmp(argv[1], "--verify") == 0) {
+        unsigned long long seed = (argc >= 3) ? strtoull(argv[2], nullptr, 10) : 12345;
+        int ticks  = (argc >= 4) ? atoi(argv[3]) : 5000;
+        int numAIs = (argc >= 5) ? atoi(argv[4]) : 3;
+        return runVerify(seed, std::max(1, ticks), std::max(1, std::min(3, numAIs)));
+    }
+
+    // --verify-replay: headless playback of a recorded match. Run it twice
+    // and compare hashes — a recorded game that replays identically is the
+    // end-to-end proof the funnel + sim are deterministic.
+    if (argc >= 3 && strcmp(argv[1], "--verify-replay") == 0) {
+        unsigned long long seed; int ais, biome;
+        if (!replayLoadFile(argv[2], seed, ais, biome)) {
+            fprintf(stderr, "Can't read replay '%s'.\n", argv[2]);
+            return 1;
+        }
+        g.biomeChoice = biome;
+        initGame(ais, seed);
+        int ticks = (argc >= 4) ? std::max(1, atoi(argv[3])) : 5000;
+        for (int i = 0; i < ticks; i++) simTick();
+        printf("replay=%s ticks=%d hash=%016llx\n", argv[2], ticks, simStateHash());
+        return 0;
+    }
+
+    // --replay: load header before touching the screen so a bad file can
+    // fail to stderr instead of into a half-initialised terminal.
+    bool replay = false;
+    unsigned long long repSeed = 0; int repAIs = 1, repBiome = -1;
+    if (argc >= 3 && strcmp(argv[1], "--replay") == 0) {
+        if (!replayLoadFile(argv[2], repSeed, repAIs, repBiome)) {
+            fprintf(stderr, "Can't read replay '%s' (missing, wrong version, or corrupt).\n", argv[2]);
+            return 1;
+        }
+        replay = true;
+    }
+
     initscr(); cbreak(); noecho(); keypad(stdscr, TRUE); curs_set(0);
     // REPORT_MOUSE_POSITION gives continuous hover events for live cursor tracking
     mousemask(ALL_MOUSE_EVENTS | REPORT_MOUSE_POSITION, NULL);
     initColors();
 
-    using Clock = std::chrono::steady_clock;
-    using Ms    = std::chrono::milliseconds;
+    if (replay) {
+        g.biomeChoice = repBiome;
+        initGame(repAIs, repSeed);
+        setStatus("REPLAY — commands come from the recording. Camera/selection are yours; [Q][Q] to quit.");
+        runMatch();
+        endwin();
+        return 0;
+    }
 
     while (true) {
         int numAIs = showSplash();
@@ -357,71 +495,11 @@ int main() {
         initColors();
 
         initGame(numAIs);
+        replayStartRecording(numAIs);   // every match is recorded; replays/ dir
         setStatus("Dawn breaks over the realm. Select peasants [Space] and gather [Enter]. [A]=select all military.");
 
-        auto nextTick = Clock::now() + Ms(TICK_MS);
-        int lastCx = g.cursorX, lastCy = g.cursorY;
-        bool lastDrag = g.dragging;
-
-        while (!g.returnToMenu) {
-            // Block only as long as needed to reach the next game tick
-            int wait = (int)std::chrono::duration_cast<Ms>(nextTick - Clock::now()).count();
-            timeout(std::max(0, wait));
-            int ch = getch();
-            handleInput(ch);
-
-            // Drain any events that piled up (mouse moves, key repeats) without
-            // running game logic for each one — keeps the cursor smooth
-            timeout(0);
-            int extra;
-            while ((extra = getch()) != ERR) handleInput(extra);
-
-            // Tick and render at fixed rate regardless of input volume
-            bool ticked = false;
-            if (Clock::now() >= nextTick) {
-                nextTick += Ms(TICK_MS);
-                if (g.mode != M_PAUSED && g.mode != M_GAME_OVER) {
-                    // Keep capacity headroom so mid-tick spawnEntity never
-                    // reallocates under a live Entity& held by tickEntity.
-                    // Growing here, between ticks, is the only safe point.
-                    if (g.entities.size() + 256 > g.entities.capacity())
-                        g.entities.reserve(g.entities.capacity() * 2);
-                    g.tick++;
-                    g.dayPhase += 1.0f / DAY_LENGTH;
-                    if (g.dayPhase >= 1.0f) g.dayPhase -= 1.0f;
-                    g.seasonPhase += 1.0f / SEASON_LENGTH;
-                    if (g.seasonPhase >= 4.0f) g.seasonPhase -= 4.0f;
-                    for (int i = 0; i < (int)g.entities.size(); i++) tickEntity(g.entities[i]);
-                    tickSeasons(); tickThaw(); tickWinter();
-                    tickWeather(); tickPaving();
-                    tickTowers(); tickGates(); tickProjectiles(); tickFarms(); tickMarkets();
-                    tickChurches(); tickAnimals(); tickAI(); updateFog();
-                    // Prune dead IDs from selection + control groups so UI counts
-                    // ("Group: N units") stay honest as casualties pile up.
-                    auto pruneDead = [](std::vector<int>& v) {
-                        v.erase(std::remove_if(v.begin(), v.end(),
-                            [](int id){ return findEntity(id) == nullptr; }), v.end());
-                    };
-                    pruneDead(g.selectedIds);
-                    for (int i = 0; i < 9; i++) pruneDead(g.controlGroups[i]);
-                    if (g.selectedId >= 0 && !findEntity(g.selectedId)) g.selectedId = -1;
-                    if (g.tick % 100 == 0) {
-                        g.entities.erase(std::remove_if(g.entities.begin(), g.entities.end(),
-                            [](const Entity& e){ return !e.alive && e.state==S_DEAD; }), g.entities.end());
-                        // Defensive: rebuild supply totals so any kill path that
-                        // missed updateSupply gets reconciled within ~8 seconds.
-                        for (int p = 0; p < MAX_PLAYERS; p++) updateSupply(p);
-                        checkWin();
-                    }
-                }
-                render();
-                ticked = true;
-            }
-            // Snappy cursor: redraw between ticks when the mouse moved or a drag updated.
-            bool cursorMoved = (g.cursorX != lastCx || g.cursorY != lastCy || g.dragging != lastDrag);
-            if (!ticked && cursorMoved) render();
-            lastCx = g.cursorX; lastCy = g.cursorY; lastDrag = g.dragging;
-        }
+        runMatch();
+        replayStopRecording();
         // returnToMenu set — loop back to splash.
     }
     endwin();

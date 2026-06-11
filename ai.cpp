@@ -3,6 +3,22 @@
 // ============================================================
 // AI — economy + military build-out, target picking, wave dispatch
 // ============================================================
+
+// All AI *orders* flow through the same command funnel as player input:
+// one validation path, and the sim sees identical machinery whoever issued
+// the order. Applied immediately — the AI runs inside the sim, so there is
+// nothing to queue and nothing to record (replays re-derive AI behaviour
+// from the seed). Direct field writes below (research cheats, trebuchet
+// pack micro-state, attack rhythm) are sim-internal behaviour, not orders.
+static void aiCmd(Command c, int o)                        { c.player = o; applyCommand(c); }
+static void aiMove(int o, Entity& u, int x, int y)         { Command c; c.type=CMD_MOVE;     c.units={u.id}; c.x=x; c.y=y; aiCmd(c,o); }
+static void aiAttackCmd(int o, Entity& u, int tid, bool am){ Command c; c.type=CMD_ATTACK;   c.units={u.id}; c.target=tid; c.arg=am?1:0; aiCmd(c,o); }
+static void aiGatherAt(int o, Entity& u, int x, int y)     { Command c; c.type=CMD_GATHER;   c.units={u.id}; c.x=x; c.y=y; aiCmd(c,o); }
+static void aiBuildAt(int o, Entity& u, EntityType bt, int x, int y) { Command c; c.type=CMD_BUILD; c.units={u.id}; c.x=x; c.y=y; c.arg=bt; aiCmd(c,o); }
+static void aiTrain(int o, Entity& b, EntityType ut)       { Command c; c.type=CMD_TRAIN;    c.target=b.id; c.arg=ut; aiCmd(c,o); }
+static void aiHelp(int o, Entity& u, int bid)              { Command c; c.type=CMD_HELP;     c.units={u.id}; c.target=bid; aiCmd(c,o); }
+static void aiGarrisonIn(int o, Entity& u, int bid)        { Command c; c.type=CMD_GARRISON; c.units={u.id}; c.target=bid; aiCmd(c,o); }
+static void aiEject(int o, Entity& t)                      { Command c; c.type=CMD_UNGARRISON; c.target=t.id; aiCmd(c,o); }
 int     aiCount(int o, EntityType t)    { int c=0; for(auto& e:g.entities) if(e.alive&&e.owner==o&&e.type==t&&!e.underConstruction)c++; return c; }
 int     aiCountAll(int o, EntityType t) { int c=0; for(auto& e:g.entities) if(e.alive&&e.owner==o&&e.type==t)c++;                    return c; }
 Entity* aiIdle(int o, EntityType t)     { for(auto& e:g.entities) if(e.alive&&e.owner==o&&e.type==t&&e.state==S_IDLE&&!e.underConstruction)return &e; return nullptr; }
@@ -46,7 +62,7 @@ void aiGather(int o) {
             int d = mdist(e.x, e.y, x, y);
             if (d < bestD) { bestD=d; bx=x; by=y; }
         }
-        if (bx >= 0) orderGather(e, bx, by);
+        if (bx >= 0) aiGatherAt(o, e, bx, by);
     }
 }
 
@@ -195,7 +211,7 @@ static void aiTickTransports(int o) {
                         if (d > 12) continue;
                         if (d < bestPD) { bestPD = d; nearestPeas = &u; }
                     }
-                    if (nearestPeas) { orderGarrison(*nearestPeas, t.id); free--; }
+                    if (nearestPeas) { aiGarrisonIn(o, *nearestPeas, t.id); free--; }
                 }
                 // Then load nearby idle military.
                 for (auto& u : g.entities) {
@@ -206,18 +222,18 @@ static void aiTickTransports(int o) {
                     if (isNaval(u.type)) continue;
                     if (u.state != S_IDLE) continue;
                     if (mdist(u.x, u.y, t.x, t.y) > 12) continue;
-                    orderGarrison(u, t.id);
+                    aiGarrisonIn(o, u, t.id);
                     free--;
                 }
             } else if (t.state == S_IDLE || t.path.empty()) {
-                orderMove(t, homeShoreX, homeShoreY);
+                aiMove(o, t, homeShoreX, homeShoreY);
             }
         } else {
             // Loaded: sail to enemy shore and disembark.
             if (atEnemyShore) {
-                ejectGarrison(t);
+                aiEject(o, t);
             } else if (t.state == S_IDLE || t.path.empty()) {
-                orderMove(t, enemyShoreX, enemyShoreY);
+                aiMove(o, t, enemyShoreX, enemyShoreY);
             }
         }
     }
@@ -249,7 +265,7 @@ static void aiTickTrebuchets(int o) {
                 int gy = t.y + (int)(dy * (1.0f - stopAt / L));
                 gx = std::max(0, std::min(MAP_W-1, gx));
                 gy = std::max(0, std::min(MAP_H-1, gy));
-                orderMove(t, gx, gy);
+                aiMove(o, t, gx, gy);
             }
         } else {
             // Deployed: find a target in range to attack. If under heavy fire, pack and run.
@@ -265,7 +281,7 @@ static void aiTickTrebuchets(int o) {
                 continue;
             }
             if (t.state == S_IDLE || t.targetId != tgt->id) {
-                orderAttack(t, tgt->id);
+                aiAttackCmd(o, t, tgt->id, false);
             }
         }
     }
@@ -354,7 +370,7 @@ static void tickAIForOwner(int o) {
             if (!th.alive || th.owner != o || th.underConstruction) continue;
             if (th.type != E_TOWNHALL && th.type != E_CASTLE) continue;
             if (th.producing != E_NONE) continue;
-            if (p.gold >= 50) { orderTrain(th, E_PEASANT); break; }
+            if (p.gold >= 50) { aiTrain(o, th, E_PEASANT); break; }
         }
     }
 
@@ -362,7 +378,7 @@ static void tickAIForOwner(int o) {
     // Use wide placement so houses sprawl outside the dense inner base cluster.
     if (p.supply + 4 >= p.supplyMax && hous < 16 && p.wood >= 50) {
         Entity* b = aiWorker(o);
-        if (b) { int bx=-1,by=-1; aiBuildSpotWide(o,E_HOUSE,bx,by); if(bx>=0) orderBuild(*b,E_HOUSE,bx,by); }
+        if (b) { int bx=-1,by=-1; aiBuildSpotWide(o,E_HOUSE,bx,by); if(bx>=0) aiBuildAt(o,*b,E_HOUSE,bx,by); }
     }
 
     // === LATE-GAME UPGRADE: Castle ===
@@ -370,26 +386,26 @@ static void tickAIForOwner(int o) {
     // and gives the AI a hardened anchor for late-game sieges.
     if (aiCountAll(o,E_CASTLE) == 0 && mil + kni >= 8 && p.gold >= 100 && p.wood >= 250) {
         Entity* b = aiWorker(o);
-        if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_CASTLE,bx,by); if(bx>=0) orderBuild(*b,E_CASTLE,bx,by); }
+        if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_CASTLE,bx,by); if(bx>=0) aiBuildAt(o,*b,E_CASTLE,bx,by); }
     }
 
     // === MILITARY BUILDINGS ===
     if (bar == 0 && p.wood >= 150 && peas >= 2) {
         Entity* b = aiWorker(o);
-        if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_BARRACKS,bx,by); if(bx>=0) orderBuild(*b,E_BARRACKS,bx,by); }
+        if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_BARRACKS,bx,by); if(bx>=0) aiBuildAt(o,*b,E_BARRACKS,bx,by); }
     }
     if (bar == 1 && peas >= 6 && p.wood >= 150 && p.gold >= 100) {
         // Second barracks doubles training throughput.
         Entity* b = aiWorker(o);
-        if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_BARRACKS,bx,by); if(bx>=0) orderBuild(*b,E_BARRACKS,bx,by); }
+        if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_BARRACKS,bx,by); if(bx>=0) aiBuildAt(o,*b,E_BARRACKS,bx,by); }
     }
     if (aiCount(o,E_BLACKSMITH) == 0 && bar > 0 && p.wood >= 120) {
         Entity* b = aiWorker(o);
-        if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_BLACKSMITH,bx,by); if(bx>=0) orderBuild(*b,E_BLACKSMITH,bx,by); }
+        if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_BLACKSMITH,bx,by); if(bx>=0) aiBuildAt(o,*b,E_BLACKSMITH,bx,by); }
     }
     if (stb == 0 && mil >= 3 && p.wood >= 200) {
         Entity* b = aiWorker(o);
-        if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_STABLE,bx,by); if(bx>=0) orderBuild(*b,E_STABLE,bx,by); }
+        if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_STABLE,bx,by); if(bx>=0) aiBuildAt(o,*b,E_STABLE,bx,by); }
     }
 
     // === RESEARCH: queue at blacksmith once it's built ===
@@ -410,21 +426,21 @@ static void tickAIForOwner(int o) {
     for (auto& br : g.entities) {
         if (!br.alive || br.owner != o || br.type != E_BARRACKS || br.underConstruction) continue;
         if (br.producing != E_NONE) continue;
-        if (needSiege && cat < 3 && p.gold >= 150 && p.wood >= 40 && p.food >= 30) { orderTrain(br, E_CATAPULT); continue; }
+        if (needSiege && cat < 3 && p.gold >= 150 && p.wood >= 40 && p.food >= 30) { aiTrain(o, br, E_CATAPULT); continue; }
         // Spearmen counter the player's cavalry — train them in response to knights.
         int sprCap = std::max(4, intel.playerArmy/3 + 2);
         bool needSpears = (spr < sprCap && p.gold >= 40 && p.food >= 20);
-        if (needSpears && spr < arch) { orderTrain(br, E_SPEARMAN); continue; }
+        if (needSpears && spr < arch) { aiTrain(o, br, E_SPEARMAN); continue; }
         // Alternate militia and archers for a balanced field force.
-        if (arch < mil && arch < archCap && p.gold >= 70 && p.food >= 20) { orderTrain(br, E_ARCHER);  continue; }
-        if (mil < milCap               && p.gold >= 60 && p.food >= 20) { orderTrain(br, E_MILITIA); continue; }
-        if (needSpears                                                  ) { orderTrain(br, E_SPEARMAN); continue; }
-        if (arch < archCap             && p.gold >= 70 && p.food >= 20) { orderTrain(br, E_ARCHER);  continue; }
+        if (arch < mil && arch < archCap && p.gold >= 70 && p.food >= 20) { aiTrain(o, br, E_ARCHER);  continue; }
+        if (mil < milCap               && p.gold >= 60 && p.food >= 20) { aiTrain(o, br, E_MILITIA); continue; }
+        if (needSpears                                                  ) { aiTrain(o, br, E_SPEARMAN); continue; }
+        if (arch < archCap             && p.gold >= 70 && p.food >= 20) { aiTrain(o, br, E_ARCHER);  continue; }
     }
     for (auto& st : g.entities) {
         if (!st.alive || st.owner != o || st.type != E_STABLE || st.underConstruction) continue;
         if (st.producing != E_NONE) continue;
-        if (kni < kniCap && p.gold >= 120 && p.food >= 40) orderTrain(st, E_KNIGHT);
+        if (kni < kniCap && p.gold >= 120 && p.food >= 40) aiTrain(o, st, E_KNIGHT);
     }
     // Castles produce trebuchets — siege specialists, 1-2 max, only when sieging.
     bool wantTreb = (intel.playerCastles > 0 || intel.playerWalls > 8 || (intel.playerArmy >= 10));
@@ -432,24 +448,24 @@ static void tickAIForOwner(int o) {
         if (!cs.alive || cs.owner != o || cs.type != E_CASTLE || cs.underConstruction) continue;
         if (cs.producing != E_NONE) continue;
         if (wantTreb && treb < 2 && p.gold >= 200 && p.wood >= 250 && p.food >= 40)
-            orderTrain(cs, E_TREBUCHET);
+            aiTrain(o, cs, E_TREBUCHET);
     }
 
     // === DEFENSE: towers scaled to threat ===
     if (aiCountAll(o,E_TOWER) < towerCap && mil >= 2 && p.wood >= 100 && p.gold >= 50) {
         Entity* b = aiWorker(o);
-        if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_TOWER,bx,by); if(bx>=0) orderBuild(*b,E_TOWER,bx,by); }
+        if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_TOWER,bx,by); if(bx>=0) aiBuildAt(o,*b,E_TOWER,bx,by); }
     }
 
     // === FOOD: mill + farms scale up; tend untended farms ===
     if (aiCountAll(o,E_MILL) == 0 && p.wood >= 100) {
         Entity* b = aiWorker(o);
-        if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_MILL,bx,by); if(bx>=0) orderBuild(*b,E_MILL,bx,by); }
+        if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_MILL,bx,by); if(bx>=0) aiBuildAt(o,*b,E_MILL,bx,by); }
     }
     int wantFarms = (getSeason() == AUTUMN) ? 8 : (getSeason() == WINTER ? 0 : 5);
     if (aiCountAll(o,E_MILL) > 0 && aiCountAll(o,E_FARM) < wantFarms && getSeason() != WINTER) {
         Entity* b = aiWorker(o);
-        if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_FARM,bx,by); if(bx>=0) orderBuild(*b,E_FARM,bx,by); }
+        if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_FARM,bx,by); if(bx>=0) aiBuildAt(o,*b,E_FARM,bx,by); }
     }
     // Assign idle peasants to tend any untended farm (one assignment per tick).
     for (auto& farm : g.entities) {
@@ -461,7 +477,7 @@ static void tickAIForOwner(int o) {
         }
         if (!tended) {
             Entity* tend = aiIdlePeasant(o);
-            if (tend) { orderHelp(*tend, farm.id); break; }
+            if (tend) { aiHelp(o, *tend, farm.id); break; }
         }
     }
 
@@ -472,19 +488,19 @@ static void tickAIForOwner(int o) {
             int bx=-1,by=-1; aiBuildSpotNear(o, E_DOCK, th->x, th->y, bx, by);
             if (bx >= 0) {
                 Entity* b = aiWorker(o);
-                if (b) orderBuild(*b, E_DOCK, bx, by);
+                if (b) aiBuildAt(o, *b, E_DOCK, bx, by);
             }
         }
     }
     for (auto& dk : g.entities) {
         if (!dk.alive || dk.owner != o || dk.type != E_DOCK || dk.underConstruction) continue;
         if (dk.producing != E_NONE) continue;
-        if (aiCount(o,E_FISHING_BOAT) < 3 && p.gold >= 80 && p.wood >= 50) { orderTrain(dk, E_FISHING_BOAT); continue; }
-        if (aiCount(o,E_WARSHIP) < 2 && p.gold >= 150 && p.wood >= 80 && p.food >= 20) { orderTrain(dk, E_WARSHIP); continue; }
+        if (aiCount(o,E_FISHING_BOAT) < 3 && p.gold >= 80 && p.wood >= 50) { aiTrain(o, dk, E_FISHING_BOAT); continue; }
+        if (aiCount(o,E_WARSHIP) < 2 && p.gold >= 150 && p.wood >= 80 && p.food >= 20) { aiTrain(o, dk, E_WARSHIP); continue; }
         // Coastal maps: build a transport for amphibious assault on enemies on other islands.
         if (g.biomeChoice == B_OCEAN && aiCount(o,E_TRANSPORT) < 1
                 && p.gold >= 80 && p.wood >= 40 && p.food >= 10) {
-            orderTrain(dk, E_TRANSPORT); continue;
+            aiTrain(o, dk, E_TRANSPORT); continue;
         }
     }
 
@@ -499,7 +515,7 @@ static void tickAIForOwner(int o) {
             int bx=-1, by=-1; aiBuildSpotNear(o, E_TOWNHALL, fx, fy, bx, by);
             if (bx >= 0) {
                 Entity* b = aiWorker(o);
-                if (b) orderBuild(*b, E_TOWNHALL, bx, by);
+                if (b) aiBuildAt(o, *b, E_TOWNHALL, bx, by);
             }
         }
     }
@@ -527,7 +543,7 @@ static void tickAIForOwner(int o) {
                 int bx=-1, by=-1; aiBuildSpotNear(o, E_CASTLE, fx, fy, bx, by);
                 if (bx >= 0) {
                     Entity* b = aiWorker(o);
-                    if (b) orderBuild(*b, E_CASTLE, bx, by);
+                    if (b) aiBuildAt(o, *b, E_CASTLE, bx, by);
                 }
             }
             // Forward Barracks beside an existing forward anchor.
@@ -541,7 +557,7 @@ static void tickAIForOwner(int o) {
                     int bx=-1, by=-1; aiBuildSpotNear(o, E_BARRACKS, fwdAnchor->x, fwdAnchor->y, bx, by);
                     if (bx >= 0) {
                         Entity* b = aiWorker(o);
-                        if (b) orderBuild(*b, E_BARRACKS, bx, by);
+                        if (b) aiBuildAt(o, *b, E_BARRACKS, bx, by);
                     }
                 }
             }
@@ -556,7 +572,7 @@ static void tickAIForOwner(int o) {
                     int bx=-1, by=-1; aiBuildSpotNear(o, E_TOWER, fwdAnchor->x, fwdAnchor->y, bx, by);
                     if (bx >= 0) {
                         Entity* b = aiWorker(o);
-                        if (b) orderBuild(*b, E_TOWER, bx, by);
+                        if (b) aiBuildAt(o, *b, E_TOWER, bx, by);
                     }
                 }
             }
@@ -586,7 +602,7 @@ static void tickAIForOwner(int o) {
             }
             if (hasFwd) continue;
             int bx=-1, by=-1; aiBuildSpotNear(o, E_CASTLE, u.x, u.y, bx, by);
-            if (bx >= 0) { orderBuild(u, E_CASTLE, bx, by); break; }
+            if (bx >= 0) { aiBuildAt(o, u, E_CASTLE, bx, by); break; }
         }
     }
 
@@ -608,7 +624,7 @@ static void tickAIForOwner(int o) {
             int d = mdist(u.x, u.y, bld.x, bld.y);
             if (d < bestD) { bestD = d; archer = &u; }
         }
-        if (archer) orderGarrison(*archer, bld.id);
+        if (archer) aiGarrisonIn(o, *archer, bld.id);
     }
 
     // === ATTACK RHYTHM ===
@@ -649,8 +665,7 @@ static void tickAIForOwner(int o) {
                 if (!isUnit(e.type) || e.type == E_PEASANT || e.type == E_FISHING_BOAT || e.type == E_TREBUCHET) continue;
                 if (e.state == S_IDLE) {
                     int myTarget = (e.type == E_CATAPULT && siegeId >= 0) ? siegeId : tid;
-                    e.attackMove = 1;
-                    orderAttack(e, myTarget);
+                    aiAttackCmd(o, e, myTarget, true);
                 }
             }
             p.aiWaveCd = waveCooldown;
@@ -668,7 +683,7 @@ static void tickAIForOwner(int o) {
                 for (auto& d : g.entities) {
                     if (!d.alive || d.owner != o) continue;
                     if (!isUnit(d.type) || d.type == E_PEASANT || d.type == E_FISHING_BOAT) continue;
-                    if (d.state == S_IDLE) { d.attackMove = 1; orderAttack(d, en.id); }
+                    if (d.state == S_IDLE) aiAttackCmd(o, d, en.id, true);
                 }
                 break;
             }
@@ -695,7 +710,7 @@ static void tickAIForOwner(int o) {
             int d = mdist(en.x, en.y, worker.x, worker.y);
             if (d < threatD) { threatD = d; threat = &en; }
         }
-        if (guard && threat) { guard->attackMove = 1; orderAttack(*guard, threat->id); }
+        if (guard && threat) aiAttackCmd(o, *guard, threat->id, true);
         break; // one escort response per AI tick
     }
 

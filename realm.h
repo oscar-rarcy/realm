@@ -178,6 +178,50 @@ struct Player {
     int aiWaveCd;     // per-AI rate-limit for wave dispatch
 };
 
+// ============================================================
+// COMMANDS — the only way player intent reaches the sim.
+// Input resolves a click/key into a Command and queues it; the tick
+// applies the queue. The AI issues Commands too (applied immediately,
+// inside the sim). In lockstep multiplayer this struct is what goes
+// over the wire; in replays it's what goes to disk. UI-only state
+// (selection, camera, cursor) never appears here — a Command must be
+// meaningful on a machine that has no idea what the issuer had selected.
+// ============================================================
+enum CmdType {
+    CMD_NONE = 0,
+    CMD_MOVE,        // units → (x,y); >1 unit = formation move
+    CMD_ATTACK,      // units → entity `target`; arg!=0 = attack-move stance
+    CMD_ATTACK_MOVE, // units → (x,y), engaging en route
+    CMD_GATHER,      // units → resource tile (x,y)
+    CMD_BUILD,       // units[0] places building `arg` at (x,y)
+    CMD_BUILD_WALL,  // units[0] builds wall line (x,y)..(x2,y2)
+    CMD_SOW_FARM,    // units[0] sows a farm on wheat at (x,y)
+    CMD_TRAIN,       // building `target` trains unit type `arg`
+    CMD_HELP,        // units[0] helps construct / tends building `target`
+    CMD_GARRISON,    // units enter building/transport `target`
+    CMD_UNGARRISON,  // building/transport `target` ejects all
+    CMD_STOP,        // units halt, keep auto-aggro
+    CMD_HOLD,        // units halt, suppress auto-aggro
+    CMD_PATROL,      // units bounce between current pos and (x,y)
+    CMD_WAYPOINT,    // units append (x,y) to waypoint queue
+    CMD_RALLY,       // building `target` rally point = (x,y)
+    CMD_GATE,        // gate `target` cycles auto/open/closed
+    CMD_PACK,        // trebuchet units[0] toggles pack/deploy
+    CMD_RESEARCH,    // blacksmith `target` starts research bit `arg`
+    CMD_TRADE,       // market `target` trade: arg 0=g→w 1=w→g 2=g→f 3=f→g
+    CMD_REVEAL,      // debug: reveal map for issuing player
+};
+
+struct Command {
+    int type   = CMD_NONE;
+    int player = -1;          // issuer; apply rejects units/buildings not owned by them
+    int x = 0, y = 0;         // primary tile
+    int x2 = 0, y2 = 0;       // secondary tile (wall line end)
+    int target = -1;          // target entity id
+    int arg    = 0;           // EntityType / research bit / trade index / flags
+    std::vector<int> units;   // acting unit ids
+};
+
 struct Game {
     Tile map[MAP_H][MAP_W];
     std::vector<Entity> entities;
@@ -201,6 +245,8 @@ struct Game {
     int biomeChoice;      // -1 = random, else Biome enum value forced on whole map
     bool returnToMenu;    // set on game-over to break back to splash screen
     unsigned long long rngState; // sim RNG state — part of game state, saved/loaded
+    unsigned long long simSeed;  // seed this match started from (replay header)
+    std::vector<Command> pendingCmds; // local player's queued commands; applied at tick start
 };
 extern Game g;
 
@@ -265,9 +311,9 @@ void orderAttack(Entity& e,int tid);
 void orderGather(Entity& e,int tx,int ty);
 void orderBuild(Entity& e,EntityType bt,int bx,int by);
 void orderTrain(Entity& bld,EntityType ut);
-void orderGroupMove(int tx,int ty);
-void orderGroupAttack(int tid);
-void orderGroupAttackMove(int tx,int ty);
+void orderGroupMove(const std::vector<int>& unitIds,int tx,int ty);
+void orderGroupAttack(const std::vector<int>& unitIds,int tid);
+void orderGroupAttackMove(const std::vector<int>& unitIds,int tx,int ty);
 void orderHelp(Entity& e,int buildingId);
 void orderGarrison(Entity& e,int buildingId);
 bool canGarrisonIn(EntityType bt);
@@ -319,9 +365,26 @@ void render();
 // input.cpp
 void handleInput(int ch);
 
+// commands.cpp — the command funnel
+void pushCommand(const Command& c);   // queue from local input (dropped during replay playback)
+void applyCommand(const Command& c);  // validate + dispatch one command (AI calls this directly)
+void applyPendingCommands();          // drain g.pendingCmds at tick start; records to replay
+
+// commands.cpp — replays (seed + command stream)
+bool replayStartRecording(int numAIs);          // uses g.simSeed/g.biomeChoice; new file per match
+void replayStopRecording();
+bool replayLoadFile(const char* path, unsigned long long& seed, int& numAIs, int& biomeChoice);
+void replayInjectCommands();          // playback: queue recorded commands for the current tick
+bool replayPlaying();
+
+// commands.cpp — desync detector
+unsigned long long simStateHash();    // FNV-1a over entities + players + RNG state
+void simHashTick();                   // REALM_HASH=1: append tick/hash to realm-hash.log every 100 ticks
+
 // save.cpp
 bool saveGame(const char* path);
 bool loadGame(const char* path);
 
 // main.cpp
-void initGame(int numAIs);
+void initGame(int numAIs, unsigned long long seed = 0); // seed 0 = derive from clock
+void simTick();   // one deterministic sim step — shared by game loop, replay, --verify

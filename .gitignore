@@ -111,3 +111,5 @@ scratch/
 *.sav.tmp
 gui/
 /realm-gui
+replays/
+*.rep

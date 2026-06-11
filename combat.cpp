@@ -237,11 +237,13 @@ static int rolePriority(EntityType t) {
 // Group move with role-aware formation:
 // melee occupy the rows facing the target, ranged hang back.
 // If attackMove is true, all units engage opportunistically en route.
-static void groupMoveCore(int tx, int ty, bool attackMove) {
+// Takes explicit unit ids — selection is UI state and never reaches the sim
+// (the command funnel resolves "what's selected" before a Command is issued).
+static void groupMoveCore(const std::vector<int>& unitIds, int tx, int ty, bool attackMove) {
     std::vector<Entity*> units;
-    for (int id : g.selectedIds) {
+    for (int id : unitIds) {
         Entity* e = findEntity(id);
-        if (e && e->alive && e->owner == 0 && isUnit(e->type))
+        if (e && e->alive && isUnit(e->type))
             units.push_back(e);
     }
     if (units.empty()) return;
@@ -280,19 +282,23 @@ static void groupMoveCore(int tx, int ty, bool attackMove) {
         if (attackMove) orderAttackMove(*units[i], slots[i].first, slots[i].second);
         else            orderMove(*units[i], slots[i].first, slots[i].second);
     }
-    setStatus(attackMove ? "Attack-move in formation!" : "Group moving in formation...");
+    if (units[0]->owner == 0)
+        setStatus(attackMove ? "Attack-move in formation!" : "Group moving in formation...");
 }
 
-void orderGroupMove(int tx, int ty)        { groupMoveCore(tx, ty, false); }
-void orderGroupAttackMove(int tx, int ty)  { groupMoveCore(tx, ty, true); }
+void orderGroupMove(const std::vector<int>& unitIds, int tx, int ty)       { groupMoveCore(unitIds, tx, ty, false); }
+void orderGroupAttackMove(const std::vector<int>& unitIds, int tx, int ty) { groupMoveCore(unitIds, tx, ty, true); }
 
-void orderGroupAttack(int tid) {
-    for (int id : g.selectedIds) {
+void orderGroupAttack(const std::vector<int>& unitIds, int tid) {
+    bool any0 = false;
+    for (int id : unitIds) {
         Entity* e = findEntity(id);
-        if (e && e->alive && e->owner == 0 && isUnit(e->type))
+        if (e && e->alive && isUnit(e->type)) {
             orderAttack(*e, tid);
+            if (e->owner == 0) any0 = true;
+        }
     }
-    setStatus("Group attacking!");
+    if (any0) setStatus("Group attacking!");
 }
 
 // ============================================================

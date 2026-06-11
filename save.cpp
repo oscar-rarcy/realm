@@ -121,6 +121,9 @@ bool loadGame(const char* path) {
     rd(f, g.biomeChoice);
     rd(f, g.winner); rd(f, g.aiTimer); rd(f, g.farmTimer);
     rd(f, g.rngState);
+    // Commands queued against the pre-load world would mis-target ids in
+    // the loaded one. The queue is transient, never saved — just drop it.
+    g.pendingCmds.clear();
 
     // ----- PLAYERS, MAP -----
     if (!rdBlock(f, g.players, sizeof(g.players))) { fclose(f); return false; }

@@ -40,6 +40,34 @@ static void removeFromSelection(int id) {
     }
 }
 
+// ============================================================
+// COMMAND EMISSION — input never mutates the sim directly. Every verb
+// below resolves into a Command pushed onto the queue; the tick applies
+// it (commands.cpp). Selection/camera stay local — a Command carries
+// the explicit unit ids it acts on.
+// ============================================================
+static void pushCmd(int type, std::vector<int> units, int x = 0, int y = 0,
+                    int target = -1, int arg = 0, int x2 = 0, int y2 = 0) {
+    Command c;
+    c.type = type; c.player = 0;
+    c.units = std::move(units);
+    c.x = x; c.y = y; c.x2 = x2; c.y2 = y2;
+    c.target = target; c.arg = arg;
+    pushCommand(c);
+}
+
+// Current selection as a unit-id list (own live units only).
+static std::vector<int> selectedUnitIds() {
+    std::vector<int> ids;
+    auto add = [&](int id) {
+        Entity* u = findEntity(id);
+        if (u && u->alive && u->owner == 0 && isUnit(u->type)) ids.push_back(id);
+    };
+    if (!g.selectedIds.empty()) for (int id : g.selectedIds) add(id);
+    else if (g.selectedId >= 0) add(g.selectedId);
+    return ids;
+}
+
 // Single right-click / Enter command from a selected player unit onto (x,y).
 // Picks the right verb based on what's at the tile: help-build / tend-farm /
 // garrison / attack / gather / sow-farm / fish / move. Used by both the
@@ -51,64 +79,60 @@ static void cmdAtTileSingle(Entity* sel, int x, int y) {
     bool visible = g.map[y][x].visible[0];
 
     if (tgt && tgt->alive && tgt->owner == 0 && tgt->underConstruction && sel->type == E_PEASANT) {
-        orderHelp(*sel, tgt->id); setStatus("Helping build..."); return;
+        pushCmd(CMD_HELP, {sel->id}, 0, 0, tgt->id); setStatus("Helping build..."); return;
     }
     if (tgt && tgt->alive && tgt->owner == 0 && tgt->type == E_FARM
         && !tgt->underConstruction && sel->type == E_PEASANT) {
-        orderHelp(*sel, tgt->id); setStatus("Tending farm..."); return;
+        pushCmd(CMD_HELP, {sel->id}, 0, 0, tgt->id); setStatus("Tending farm..."); return;
     }
     if (tgt && tgt->alive && tgt->owner == 0 && !tgt->underConstruction
         && canGarrisonIn(tgt->type) && sel->type != E_CATAPULT) {
-        orderGarrison(*sel, tgt->id); return;
+        pushCmd(CMD_GARRISON, {sel->id}, 0, 0, tgt->id); return;
     }
     if (tgt && tgt->alive && tgt->owner != 0 && visible) {
-        orderAttack(*sel, tgt->id); setStatus("Attacking!"); return;
+        pushCmd(CMD_ATTACK, {sel->id}, 0, 0, tgt->id); setStatus("Attacking!"); return;
     }
     if (sel->type == E_PEASANT) {
         Terrain ter = g.map[y][x].terrain;
         bool isW = (ter==T_FOREST||ter==T_PINE||ter==T_PALM||ter==T_DEAD_TREE);
         if ((ter==T_GOLD||isW||ter==T_BERRY) && g.map[y][x].resources > 0) {
-            orderGather(*sel, x, y);
+            pushCmd(CMD_GATHER, {sel->id}, x, y);
             setStatus(ter==T_GOLD ? "Mining gold..."
                     : ter==T_BERRY ? "Picking berries..." : "Chopping wood...");
             return;
         }
         if (ter == T_WHEAT && !tgt && canPlace(E_FARM, x, y, 0)) {
-            int fid = spawnEntity(E_FARM, 0, x, y, true);
-            orderHelp(*sel, fid); setStatus("Working wheat field...");
+            pushCmd(CMD_SOW_FARM, {sel->id}, x, y);
+            setStatus("Working wheat field...");
             return;
         }
-        orderMove(*sel, x, y); setStatus("Moving..."); return;
+        pushCmd(CMD_MOVE, {sel->id}, x, y); setStatus("Moving..."); return;
     }
     if (sel->type == E_FISHING_BOAT) {
         Terrain ter = g.map[y][x].terrain;
         if (ter == T_FISH && g.map[y][x].resources > 0) {
-            orderGather(*sel, x, y); setStatus("Fishing..."); return;
+            pushCmd(CMD_GATHER, {sel->id}, x, y); setStatus("Fishing..."); return;
         }
-        orderMove(*sel, x, y); setStatus("Moving..."); return;
+        pushCmd(CMD_MOVE, {sel->id}, x, y); setStatus("Moving..."); return;
     }
-    orderMove(*sel, x, y); setStatus("Moving...");
+    pushCmd(CMD_MOVE, {sel->id}, x, y); setStatus("Moving...");
 }
 
-// Group right-click / Enter command — applies to every entity in
-// g.selectedIds. Same path for keyboard and mouse.
+// Group right-click / Enter command — applies to the whole selection.
+// Same path for keyboard and mouse.
 static void cmdAtTileGroup(int x, int y) {
     Entity* tgt = entityAt(x, y);
     bool visible = g.map[y][x].visible[0];
     if (tgt && tgt->alive && tgt->owner == 0
         && !tgt->underConstruction && canGarrisonIn(tgt->type)) {
-        for (int id : g.selectedIds) {
-            Entity* u = findEntity(id);
-            if (u && u->alive && u->owner == 0 && isUnit(u->type) && u->type != E_CATAPULT)
-                orderGarrison(*u, tgt->id);
-        }
+        pushCmd(CMD_GARRISON, selectedUnitIds(), 0, 0, tgt->id);
         setStatus("Garrisoning...");
         return;
     }
     if (tgt && tgt->alive && tgt->owner != 0 && visible) {
-        orderGroupAttack(tgt->id); return;
+        pushCmd(CMD_ATTACK, selectedUnitIds(), 0, 0, tgt->id); return;
     }
-    orderGroupMove(x, y);
+    pushCmd(CMD_MOVE, selectedUnitIds(), x, y);
 }
 
 void handleInput(int ch) {
@@ -191,10 +215,9 @@ void handleInput(int ch) {
         if (ch == KEY_LEFT)  { g.cursorX--; goto clamp; }
         if (ch == KEY_RIGHT) { g.cursorX++; goto clamp; }
         if (ch == ' ' || ch == '\n' || ch == '\r' || ch == KEY_ENTER) {
-            EntityType bt = g.buildPending;
-            orderBuild(*sel, bt, g.cursorX, g.cursorY);
-            // orderBuild leaves state at S_BUILDING on success; failure paths
-            // set a status and don't change peasant state. Either way, exit place mode.
+            // Emit the build command; the tick validates cost/placement and
+            // sets any failure status. Either way, exit place mode.
+            pushCmd(CMD_BUILD, {sel->id}, g.cursorX, g.cursorY, -1, g.buildPending);
             g.mode = M_NORMAL; g.buildPending = E_NONE;
             return;
         }
@@ -210,8 +233,7 @@ void handleInput(int ch) {
             if (inMap) { g.cursorX = mapX; g.cursorY = mapY; }
             if (me.bstate & (BUTTON1_CLICKED | BUTTON1_RELEASED)) {
                 if (inMap) {
-                    EntityType bt = g.buildPending;
-                    orderBuild(*sel, bt, mapX, mapY);
+                    pushCmd(CMD_BUILD, {sel->id}, mapX, mapY, -1, g.buildPending);
                     g.mode = M_NORMAL; g.buildPending = E_NONE;
                 }
             } else if (me.bstate & (BUTTON3_CLICKED | BUTTON3_PRESSED)) {
@@ -250,29 +272,16 @@ void handleInput(int ch) {
         } else return;
 
         if (tx < 0 || ty < 0) goto clamp;
-        int started = 0;
-        auto setupPatrol = [&](Entity& u){
-            if (u.x == tx && u.y == ty) return; // no-op patrol
-            u.waypoints.clear();
-            u.patrolMode = true;
-            u.waypoints.push_back({tx, ty});       // first leg: out
-            u.waypoints.push_back({u.x, u.y});     // second leg: home
-            u.holdPosition = 0; u.retreating = 0;
-            // Pop the first waypoint and start moving now; patrolMode will re-queue it.
-            auto wp = u.waypoints.front(); u.waypoints.erase(u.waypoints.begin());
-            u.waypoints.push_back(wp);
-            orderMove(u, wp.first, wp.second);
-            started++;
-        };
-        if (!g.selectedIds.empty()) {
-            for (int id : g.selectedIds) { Entity* u = findEntity(id); if (u && u->alive && u->owner==0 && isUnit(u->type) && !isNaval(u->type)) setupPatrol(*u); }
-        } else if (g.selectedId >= 0) {
-            Entity* u = findEntity(g.selectedId);
-            if (u && u->alive && u->owner==0 && isUnit(u->type) && !isNaval(u->type)) setupPatrol(*u);
+        {
+            std::vector<int> ids = selectedUnitIds();
+            // Land units only — count for the status, the sim re-filters anyway.
+            int started = 0;
+            for (int id : ids) { Entity* u = findEntity(id); if (u && !isNaval(u->type) && !(u->x==tx && u->y==ty)) started++; }
+            pushCmd(CMD_PATROL, std::move(ids), tx, ty);
+            g.mode = M_NORMAL;
+            if (started > 0) setStatus(std::to_string(started) + " unit(s) on patrol");
+            else             setStatus("No valid units for patrol.");
         }
-        g.mode = M_NORMAL;
-        if (started > 0) setStatus(std::to_string(started) + " unit(s) on patrol");
-        else             setStatus("No valid units for patrol.");
         return;
     }
 
@@ -296,7 +305,7 @@ void handleInput(int ch) {
             else if (ch=='w'||ch=='W') tt = E_WARSHIP;
             else if (ch=='t'||ch=='T') tt = E_TRANSPORT;
         }
-        if (tt != E_NONE) { orderTrain(*sel, tt); g.mode = M_NORMAL; }
+        if (tt != E_NONE) { pushCmd(CMD_TRAIN, {}, 0, 0, sel->id, tt); g.mode = M_NORMAL; }
         if (ch == 27) g.mode = M_NORMAL;
         return;
     }
@@ -317,24 +326,9 @@ void handleInput(int ch) {
                 setStatus("Wall start set — move cursor then press Space/Enter to place");
             } else {
                 Entity* sel = findEntity(g.selectedId);
-                if (sel && sel->alive && sel->owner==0 && sel->type==E_PEASANT) {
-                    int x0=g.wallDragX, y0=g.wallDragY, x1=g.cursorX, y1=g.cursorY;
-                    int dx=std::abs(x1-x0), sx2=x0<x1?1:-1;
-                    int dy=-std::abs(y1-y0), sy2=y0<y1?1:-1;
-                    int err=dx+dy; int firstId=-1;
-                    while (true) {
-                        if (canPlace(E_WALL,x0,y0,0) && g.players[0].wood>=20) {
-                            g.players[0].wood -= 20;
-                            int wid = spawnEntity(E_WALL, 0, x0, y0, false);
-                            if (firstId < 0) firstId = wid;
-                        }
-                        if (x0==x1 && y0==y1) break;
-                        int e2=2*err;
-                        if (e2>=dy){err+=dy; x0+=sx2;}
-                        if (e2<=dx){err+=dx; y0+=sy2;}
-                    }
-                    if (firstId >= 0) { orderHelp(*sel, firstId); setStatus("Building walls..."); }
-                }
+                if (sel && sel->alive && sel->owner==0 && sel->type==E_PEASANT)
+                    pushCmd(CMD_BUILD_WALL, {sel->id}, g.wallDragX, g.wallDragY,
+                            -1, 0, g.cursorX, g.cursorY);
                 g.dragging = false; g.mode = M_NORMAL;
             }
             goto clamp;
@@ -356,24 +350,9 @@ void handleInput(int ch) {
             } else if (me.bstate & (BUTTON1_RELEASED | BUTTON1_CLICKED)) {
                 if (g.dragging || (me.bstate & BUTTON1_CLICKED)) {
                     Entity* sel = findEntity(g.selectedId);
-                    if (sel && sel->alive && sel->owner==0 && sel->type==E_PEASANT) {
-                        int x0=g.wallDragX, y0=g.wallDragY, x1=mapX, y1=mapY;
-                        int dx=std::abs(x1-x0), sx2=x0<x1?1:-1;
-                        int dy=-std::abs(y1-y0), sy2=y0<y1?1:-1;
-                        int err=dx+dy; int firstId=-1;
-                        while (true) {
-                            if (canPlace(E_WALL,x0,y0,0) && g.players[0].wood>=20) {
-                                g.players[0].wood -= 20;
-                                int wid = spawnEntity(E_WALL, 0, x0, y0, false);
-                                if (firstId < 0) firstId = wid;
-                            }
-                            if (x0==x1 && y0==y1) break;
-                            int e2=2*err;
-                            if (e2>=dy){err+=dy; x0+=sx2;}
-                            if (e2<=dx){err+=dx; y0+=sy2;}
-                        }
-                        if (firstId >= 0) { orderHelp(*sel, firstId); setStatus("Building walls..."); }
-                    }
+                    if (sel && sel->alive && sel->owner==0 && sel->type==E_PEASANT)
+                        pushCmd(CMD_BUILD_WALL, {sel->id}, g.wallDragX, g.wallDragY,
+                                -1, 0, mapX, mapY);
                 }
                 g.dragging = false;
                 g.mode = M_NORMAL;
@@ -391,10 +370,8 @@ void handleInput(int ch) {
         if (ch == KEY_RIGHT) { g.cursorX++; goto clamp; }
         auto commit = [](int tx, int ty) {
             Entity* sel = findEntity(g.selectedId);
-            if (sel && sel->alive && sel->owner == 0) {
-                sel->rallyX = tx; sel->rallyY = ty; sel->rallySet = 1;
-                setStatus("Rally point set.");
-            }
+            if (sel && sel->alive && sel->owner == 0)
+                pushCmd(CMD_RALLY, {}, tx, ty, sel->id);
             g.mode = M_NORMAL;
         };
         if (ch == '\n' || ch == '\r' || ch == KEY_ENTER) { commit(g.cursorX, g.cursorY); goto clamp; }
@@ -420,14 +397,11 @@ void handleInput(int ch) {
         if (ch == KEY_LEFT)  { g.cursorX--; goto clamp; }
         if (ch == KEY_RIGHT) { g.cursorX++; goto clamp; }
         auto commit = [](int tx, int ty) {
-            if (g.selectedIds.size() > 1) {
-                orderGroupAttackMove(tx, ty);
-            } else {
-                Entity* sel = findEntity(g.selectedId);
-                if (sel && sel->alive && sel->owner == 0 && isUnit(sel->type)) {
-                    orderMove(*sel, tx, ty); sel->attackMove = 1;
-                    setStatus("Attack-moving.");
-                }
+            std::vector<int> ids = selectedUnitIds();
+            if (!ids.empty()) {
+                bool group = ids.size() > 1;
+                pushCmd(CMD_ATTACK_MOVE, std::move(ids), tx, ty);
+                if (!group) setStatus("Attack-moving.");
             }
             g.mode = M_NORMAL;
         };
@@ -451,47 +425,31 @@ void handleInput(int ch) {
         if (ch == 27) { g.mode = M_NORMAL; return; }
         Entity* mkt = findEntity(g.selectedId);
         if (!mkt || mkt->type != E_MARKET || mkt->underConstruction) { g.mode = M_NORMAL; return; }
-        Player& pl = g.players[0];
-        auto trade = [&](int costGold, int costWood, int costFood,
-                         int gainGold, int gainWood, int gainFood,
-                         const char* msg) {
-            if (pl.gold < costGold || pl.wood < costWood || pl.food < costFood) {
-                setStatus("Not enough resources!"); return;
-            }
-            pl.gold += gainGold - costGold;
-            pl.wood += gainWood - costWood;
-            pl.food += gainFood - costFood;
-            setStatus(msg);
-        };
-        if      (ch == 'g' || ch == 'G') trade(40, 0, 0,  0, 30,  0, "Traded gold for wood.");
-        else if (ch == 'w' || ch == 'W') trade( 0,40, 0, 30,  0,  0, "Traded wood for gold.");
-        else if (ch == 'f' || ch == 'F') trade(50, 0, 0,  0,  0, 30, "Traded gold for food.");
-        else if (ch == 'v' || ch == 'V') trade( 0, 0,40, 30,  0,  0, "Traded food for gold.");
+        // Rates + statuses live in the CMD_TRADE table in commands.cpp.
+        int tradeIdx = -1;
+        if      (ch == 'g' || ch == 'G') tradeIdx = 0;
+        else if (ch == 'w' || ch == 'W') tradeIdx = 1;
+        else if (ch == 'f' || ch == 'F') tradeIdx = 2;
+        else if (ch == 'v' || ch == 'V') tradeIdx = 3;
+        if (tradeIdx >= 0) pushCmd(CMD_TRADE, {}, 0, 0, mkt->id, tradeIdx);
         return;
     }
 
     // Research selection from the blacksmith.
     if (g.mode == M_RESEARCH_SELECT) {
         if (ch == 27) { g.mode = M_NORMAL; return; }
-        Player& pl = g.players[0];
         Entity* bs = findEntity(g.selectedId);
         if (!bs || bs->type != E_BLACKSMITH || bs->underConstruction) {
             g.mode = M_NORMAL; return;
         }
-        auto startResearch = [&](int bit, int gold, int wood, int ticks, const char* startMsg) {
-            if (pl.research & bit) { setStatus("Already researched."); return; }
-            if (bs->researching != 0) { setStatus("Already researching."); return; }
-            if (pl.gold < gold || pl.wood < wood) { setStatus("Not enough resources!"); return; }
-            pl.gold -= gold; pl.wood -= wood;
-            bs->researching = bit; bs->prodProgress = 0; bs->prodTime = ticks;
-            setStatus(startMsg);
-        };
-        // ~75 sec at 80 ms tick = 940 ticks.
-        if (ch == 'i' || ch == 'I') { startResearch(R_IRON_WEAPONS, 100, 100, 940, "Researching Iron Weapons..."); g.mode = M_NORMAL; }
-        else if (ch == 'c' || ch == 'C') { startResearch(R_CROSSBOWS, 80, 80, 820, "Researching Crossbows..."); g.mode = M_NORMAL; }
-        else if (ch == 'p' || ch == 'P') { startResearch(R_PIKES, 100, 100, 900, "Researching Pikes..."); g.mode = M_NORMAL; }
-        else if (ch == 'w' || ch == 'W') { startResearch(R_COUNTERWEIGHT, 120, 150, 1000, "Researching Counterweight..."); g.mode = M_NORMAL; }
-        else if (ch == 'h' || ch == 'H') { startResearch(R_PLATE_HELM, 120, 100, 1000, "Researching Plate Helm..."); g.mode = M_NORMAL; }
+        // Costs/durations + statuses live in the CMD_RESEARCH table in commands.cpp.
+        int bit = 0;
+        if      (ch == 'i' || ch == 'I') bit = R_IRON_WEAPONS;
+        else if (ch == 'c' || ch == 'C') bit = R_CROSSBOWS;
+        else if (ch == 'p' || ch == 'P') bit = R_PIKES;
+        else if (ch == 'w' || ch == 'W') bit = R_COUNTERWEIGHT;
+        else if (ch == 'h' || ch == 'H') bit = R_PLATE_HELM;
+        if (bit) { pushCmd(CMD_RESEARCH, {}, 0, 0, bs->id, bit); g.mode = M_NORMAL; }
         return;
     }
 
@@ -506,10 +464,16 @@ void handleInput(int ch) {
         break;
     }
     case KEY_F(9): case KEY_F(10): case KEY_F(11): case KEY_F(12): {
+        if (replayPlaying()) { setStatus("Can't load a save during replay playback."); break; }
         int slot = (ch - KEY_F(9)) + 1;
         char path[64]; snprintf(path, sizeof(path), "realm-slot%d.sav", slot);
-        if (loadGame(path)) setStatus(std::string("Loaded slot ") + std::to_string(slot) + ".");
-        else                setStatus("Load failed — no save, wrong version, or corrupt.");
+        if (loadGame(path)) {
+            // The recording's command stream no longer reproduces this state
+            // from the seed — stop rather than write a lying replay.
+            replayStopRecording();
+            setStatus(std::string("Loaded slot ") + std::to_string(slot) + ".");
+        }
+        else setStatus("Load failed — no save, wrong version, or corrupt.");
         break;
     }
 
@@ -550,10 +514,8 @@ void handleInput(int ch) {
     }
 
     case '\n': case '\r': case KEY_ENTER: {
-        // Keyboard has no shift modifier here, so always cancel waypoints/patrol.
-        auto clearQ = [](int id){ Entity* u = findEntity(id); if (u && u->alive && u->owner==0) { u->waypoints.clear(); u->patrolMode = false; } };
-        if (!g.selectedIds.empty()) { for (int id : g.selectedIds) clearQ(id); }
-        else if (g.selectedId >= 0) clearQ(g.selectedId);
+        // A direct command cancels waypoints/patrol — the sim does that when
+        // it applies the command, so nothing to clear here.
         if (g.selectedIds.size() > 1) cmdAtTileGroup(g.cursorX, g.cursorY);
         else                          cmdAtTileSingle(findEntity(g.selectedId), g.cursorX, g.cursorY);
         break;
@@ -594,21 +556,9 @@ void handleInput(int ch) {
     // Trebuchet pack / deploy toggle
     case 'D': case 'd': {
         Entity* sel = findEntity(g.selectedId);
-        if (sel && sel->alive && sel->owner == 0 && sel->type == E_TREBUCHET) {
-            if (sel->packTicks > 0) { setStatus("Already transitioning."); break; }
-            int pT = (g.players[0].research & R_COUNTERWEIGHT) ? 25 : 40;
-            if (sel->packed == 1) {
-                // Begin deploying.
-                sel->packed = 0; sel->packTicks = pT;
-                sel->state = S_IDLE; sel->path.clear(); sel->pathIdx = 0;
-                setStatus("Deploying trebuchet...");
-            } else {
-                // Begin packing.
-                sel->packed = 1; sel->packTicks = pT;
-                sel->state = S_IDLE; sel->targetId = -1;
-                setStatus("Packing trebuchet...");
-            }
-        } else setStatus("Select a trebuchet to pack/deploy.");
+        if (sel && sel->alive && sel->owner == 0 && sel->type == E_TREBUCHET)
+            pushCmd(CMD_PACK, {sel->id});   // statuses set on apply
+        else setStatus("Select a trebuchet to pack/deploy.");
         break;
     }
 
@@ -617,7 +567,7 @@ void handleInput(int ch) {
         Entity* sel = findEntity(g.selectedId);
         if (sel && sel->alive && sel->owner == 0 && canGarrisonIn(sel->type)) {
             int n = (int)sel->garrison.size();
-            if (n > 0) { ejectGarrison(*sel); setStatus(std::to_string(n) + " unit(s) ejected"); }
+            if (n > 0) { pushCmd(CMD_UNGARRISON, {}, 0, 0, sel->id); setStatus(std::to_string(n) + " unit(s) ejected"); }
             else setStatus("No garrison to eject");
         }
         break;
@@ -669,28 +619,15 @@ void handleInput(int ch) {
     // Gate toggle: cycle auto -> locked-open -> locked-closed -> auto
     case 'O': {
         Entity* sel = findEntity(g.selectedId);
-        if (sel && sel->alive && sel->owner==0 && sel->type==E_GATE && !sel->underConstruction) {
-            if (!sel->gateLocked) {
-                sel->gateLocked = true; sel->gateOpen = true;
-                setStatus("Gate locked open");
-            } else if (sel->gateOpen) {
-                sel->gateOpen = false;
-                setStatus("Gate locked closed");
-            } else {
-                sel->gateLocked = false;
-                setStatus("Gate auto");
-            }
-        }
+        if (sel && sel->alive && sel->owner==0 && sel->type==E_GATE && !sel->underConstruction)
+            pushCmd(CMD_GATE, {}, 0, 0, sel->id);   // status reflects the new state, set on apply
         break;
     }
 
-    // Debug: reveal entire map (Shift+S)
+    // Debug: reveal entire map (Shift+S). Goes through the funnel because
+    // explored[] feeds sim decisions — a local poke would desync replays.
     case 'S': {
-        for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
-            g.map[y][x].visible[0]  = true;
-            g.map[y][x].explored[0] = true;
-        }
-        setStatus("Debug: map revealed");
+        pushCmd(CMD_REVEAL, {});
         break;
     }
 
@@ -698,19 +635,8 @@ void handleInput(int ch) {
     // position ('x'), auto-aggro stays on — the StarCraft/AoE 'S' stop.
     // (Capital 'S' remains the debug map reveal.)
     case 's': {
-        auto stop = [](Entity* u) {
-            if (!u || !u->alive || u->owner != 0 || !isUnit(u->type)) return;
-            u->state = S_IDLE; u->path.clear(); u->pathIdx = 0;
-            u->targetId = -1; u->attackMove = 0;
-            u->waypoints.clear(); u->patrolMode = false;
-        };
-        int n = 0;
-        if (!g.selectedIds.empty()) {
-            for (int id : g.selectedIds) { stop(findEntity(id)); n++; }
-        } else if (g.selectedId >= 0) {
-            stop(findEntity(g.selectedId)); n = 1;
-        }
-        if (n > 0) setStatus("Stop.");
+        std::vector<int> ids = selectedUnitIds();
+        if (!ids.empty()) { pushCmd(CMD_STOP, std::move(ids)); setStatus("Stop."); }
         break;
     }
 
@@ -750,18 +676,8 @@ void handleInput(int ch) {
 
     // Hold position — stop and ignore auto-aggro until explicitly ordered.
     case 'X': case 'x': {
-        auto hold = [](Entity* e) {
-            if (!e || !e->alive || e->owner != 0 || !isUnit(e->type)) return;
-            e->state = S_IDLE; e->path.clear(); e->pathIdx = 0;
-            e->attackMove = 0; e->holdPosition = 1; e->targetId = -1;
-        };
-        int n = 0;
-        if (!g.selectedIds.empty()) {
-            for (int id : g.selectedIds) { hold(findEntity(id)); n++; }
-        } else if (g.selectedId >= 0) {
-            hold(findEntity(g.selectedId)); n = 1;
-        }
-        if (n > 0) setStatus("Hold position.");
+        std::vector<int> ids = selectedUnitIds();
+        if (!ids.empty()) { pushCmd(CMD_HOLD, std::move(ids)); setStatus("Hold position."); }
         break;
     }
 
@@ -998,20 +914,14 @@ void handleInput(int ch) {
             // without disturbing their current order; a plain RClick clears any
             // existing waypoints/patrol so the new command is honoured immediately.
             g.dragging = false;
-            auto forEachSelectedUnit = [&](auto fn){
-                if (!g.selectedIds.empty()) {
-                    for (int id : g.selectedIds) { Entity* u = findEntity(id); if (u && u->alive && u->owner==0 && isUnit(u->type)) fn(*u); }
-                } else if (g.selectedId >= 0) {
-                    Entity* u = findEntity(g.selectedId);
-                    if (u && u->alive && u->owner==0 && isUnit(u->type)) fn(*u);
-                }
-            };
             if (shift) {
-                int added = 0;
-                forEachSelectedUnit([&](Entity& u){ u.waypoints.push_back({mapX, mapY}); added++; });
-                if (added > 0) setStatus("Waypoint queued (" + std::to_string(added) + " units)");
+                std::vector<int> ids = selectedUnitIds();
+                if (!ids.empty()) {
+                    setStatus("Waypoint queued (" + std::to_string(ids.size()) + " units)");
+                    pushCmd(CMD_WAYPOINT, std::move(ids), mapX, mapY);
+                }
             } else {
-                forEachSelectedUnit([&](Entity& u){ u.waypoints.clear(); u.patrolMode = false; });
+                // Plain right-click: the applied command clears waypoints/patrol.
                 if (g.selectedIds.size() > 1) cmdAtTileGroup(mapX, mapY);
                 else                          cmdAtTileSingle(findEntity(g.selectedId), mapX, mapY);
             }
