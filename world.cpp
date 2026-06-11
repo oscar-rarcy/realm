@@ -219,7 +219,7 @@ static void applyWinter() {
     for (auto& e : g.entities) {
         if (!e.alive || e.owner != OWNER_NATURE) continue;
         if (e.type != E_DEER && e.type != E_SHEEP && e.type != E_BOAR) continue;
-        if (rand() % 100 < 35) killEntity(e);
+        if (simRand() % 100 < 35) killEntity(e);
     }
     if (g.players[0].alive) setStatus("Winter falls. The land freezes over.");
 }
@@ -346,7 +346,7 @@ void tickPaving() {
                 t.terrain = T_DIRT; t.preWinterTerrain = T_DIRT;
             }
             // Dirt slowly regrows — patches of grass return after long disuse
-            if (t.wear == 0 && t.terrain == T_DIRT && (rand() % 500) == 0) {
+            if (t.wear == 0 && t.terrain == T_DIRT && (simRand() % 500) == 0) {
                 t.terrain = T_GRASS; t.preWinterTerrain = T_GRASS;
             }
         }
@@ -365,7 +365,7 @@ void tickWeather() {
         if (g.weather == W_RAIN || g.weather == W_STORM) {
             int hits = (g.weather == W_STORM) ? 60 : 30;
             for (int i = 0; i < hits; i++) {
-                int x = rand() % MAP_W, y = rand() % MAP_H;
+                int x = simRand() % MAP_W, y = simRand() % MAP_H;
                 Tile& t = g.map[y][x];
                 if (t.terrain == T_GRASS || t.terrain == T_MEADOW
                  || t.terrain == T_DIRT  || t.terrain == T_TALL_GRASS) {
@@ -375,7 +375,7 @@ void tickWeather() {
         } else {
             // Drying — mud reverts to dirt once skies clear (or freeze over).
             for (int i = 0; i < 40; i++) {
-                int x = rand() % MAP_W, y = rand() % MAP_H;
+                int x = simRand() % MAP_W, y = simRand() % MAP_H;
                 Tile& t = g.map[y][x];
                 if (t.terrain == T_MUD) t.terrain = T_DIRT;
             }
@@ -399,16 +399,16 @@ void tickWeather() {
 
     if (g.weatherTimer > 0) { g.weatherTimer--; return; }
 
-    int roll = rand() % 100;
+    int roll = simRand() % 100;
 
     if (s == WINTER) {
         // Winter: only clear or snow.
         if (g.weather == W_CLEAR) {
-            if (roll < 40) { g.weather = W_SNOW; g.weatherTimer = 500 + rand() % 900; }
-            else             g.weatherTimer = 300 + rand() % 500;
+            if (roll < 40) { g.weather = W_SNOW; g.weatherTimer = 500 + simRand() % 900; }
+            else             g.weatherTimer = 300 + simRand() % 500;
         } else { // W_SNOW
             if (roll < 50) g.weather = W_CLEAR;
-            g.weatherTimer = 300 + rand() % 600;
+            g.weatherTimer = 300 + simRand() % 600;
         }
     } else if (lateAutumn) {
         // Late autumn: rain fades, first snows begin. Progress 0.5→1 maps to 0→1 of this range.
@@ -420,13 +420,13 @@ void tickWeather() {
             if      (roll < stormBias)              g.weather = W_STORM;
             else if (roll < rainBias)               g.weather = W_RAIN;
             else if (roll < rainBias + snowBias)    g.weather = W_SNOW;
-            g.weatherTimer = 400 + rand() % 800;
+            g.weatherTimer = 400 + simRand() % 800;
         } else {
             if (roll < 60) g.weather = W_CLEAR;
             else if (g.weather == W_RAIN  && roll < 75) g.weather = W_STORM;
             else if (g.weather == W_STORM && roll < 80) g.weather = W_RAIN;
             // snow just clears, doesn't escalate
-            g.weatherTimer = 300 + rand() % 600;
+            g.weatherTimer = 300 + simRand() % 600;
         }
     } else {
         // Spring / summer / early autumn: rain and storms only.
@@ -435,12 +435,12 @@ void tickWeather() {
         if (g.weather == W_CLEAR) {
             if (roll < stormBias)     g.weather = W_STORM;
             else if (roll < rainBias) g.weather = W_RAIN;
-            g.weatherTimer = 400 + rand() % 800;
+            g.weatherTimer = 400 + simRand() % 800;
         } else {
             if (roll < 60) g.weather = W_CLEAR;
             else if (g.weather == W_RAIN  && roll < 75) g.weather = W_STORM;
             else if (g.weather == W_STORM && roll < 80) g.weather = W_RAIN;
-            g.weatherTimer = 300 + rand() % 600;
+            g.weatherTimer = 300 + simRand() % 600;
         }
     }
 
@@ -548,7 +548,7 @@ void tickAnimals() {
 
         // Random wander when idle
         if (e.state == S_IDLE && atick % (35 + (e.id%25)) == 0) {
-            int wx = e.x + (rand()%9)-4, wy = e.y + (rand()%9)-4;
+            int wx = e.x + (simRand()%9)-4, wy = e.y + (simRand()%9)-4;
             wx = std::max(1, std::min(wx, MAP_W-2));
             wy = std::max(1, std::min(wy, MAP_H-2));
             if (isPassable(wx, wy)) orderMove(e, wx, wy);

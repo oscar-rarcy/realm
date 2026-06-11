@@ -61,7 +61,7 @@ static void aiBuildSpotNear(int o, EntityType bt, int cx, int cy, int& ox, int& 
     }
     // First pass: spaced placement — skip tiles within 3 of any owned building.
     for (int r = 4; r < 22; r++) for (int a = 0; a < 28; a++) {
-        int bx = cx + (rand()%(r*2+1)) - r, by = cy + (rand()%(r*2+1)) - r;
+        int bx = cx + (simRand()%(r*2+1)) - r, by = cy + (simRand()%(r*2+1)) - r;
         if (!canPlace(bt, bx, by, o)) continue;
         bool tooClose = false;
         for (auto& e : g.entities) {
@@ -72,7 +72,7 @@ static void aiBuildSpotNear(int o, EntityType bt, int cx, int cy, int& ox, int& 
     }
     // Fallback: accept any valid spot if spacing can't be maintained.
     for (int r = 2; r < 22; r++) for (int a = 0; a < 28; a++) {
-        int bx = cx + (rand()%(r*2+1)) - r, by = cy + (rand()%(r*2+1)) - r;
+        int bx = cx + (simRand()%(r*2+1)) - r, by = cy + (simRand()%(r*2+1)) - r;
         if (canPlace(bt, bx, by, o)) { ox = bx; oy = by; return; }
     }
 }
@@ -85,7 +85,7 @@ static void aiBuildSpotWide(int o, EntityType bt, int& ox, int& oy) {
     if (!th) th = aiBldg(o, E_CASTLE);
     if (!th) return;
     for (int r = 5; r < 28; r++) for (int a = 0; a < 32; a++) {
-        int bx = th->x + (rand()%(r*2+1)) - r, by = th->y + (rand()%(r*2+1)) - r;
+        int bx = th->x + (simRand()%(r*2+1)) - r, by = th->y + (simRand()%(r*2+1)) - r;
         if (canPlace(bt, bx, by, o)) { ox = bx; oy = by; return; }
     }
 }

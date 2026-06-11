@@ -5,7 +5,7 @@ static float noiseGrid[32][32];
 static void initNoise() {
     for (int y = 0; y < 32; y++)
         for (int x = 0; x < 32; x++)
-            noiseGrid[y][x] = (float)(rand() % 1000) / 1000.0f;
+            noiseGrid[y][x] = (float)(simRand() % 1000) / 1000.0f;
 }
 
 static float lerp(float a, float b, float t) { return a + t * (b - a); }
@@ -27,10 +27,10 @@ void clearStartArea(int cx, int cy, int radius) {
 
 void placeGoldCluster(int cx, int cy, int count) {
     for (int i = 0; i < count; i++) {
-        int gx = cx + (rand()%7)-3, gy = cy + (rand()%5)-2;
+        int gx = cx + (simRand()%7)-3, gy = cy + (simRand()%5)-2;
         if (inBounds(gx,gy) && g.map[gy][gx].terrain != T_WATER
             && g.map[gy][gx].terrain != T_MOUNTAIN && g.map[gy][gx].terrain != T_SHALLOWS)
-            { g.map[gy][gx].terrain = T_GOLD; g.map[gy][gx].resources = 300 + rand() % 300; }
+            { g.map[gy][gx].terrain = T_GOLD; g.map[gy][gx].resources = 300 + simRand() % 300; }
     }
 }
 
@@ -42,7 +42,7 @@ static void placeCastleRuin(int cx, int cy, int size) {
         bool isCorner = (dx == 0 || dx == size-1) && (dy == 0 || dy == size-1);
         bool isGate   = !isCorner && isEdge && (dx == size/2 || dy == size/2);
         if (isGate)       g.map[y][x].terrain = T_CASTLE_GATE;
-        else if (isEdge)  g.map[y][x].terrain = (rand() % 4 != 0) ? T_CASTLE_WALL : T_RUINS;
+        else if (isEdge)  g.map[y][x].terrain = (simRand() % 4 != 0) ? T_CASTLE_WALL : T_RUINS;
         else              g.map[y][x].terrain = T_CASTLE_FLOOR;
         g.map[y][x].resources = 0;
     }
@@ -61,9 +61,9 @@ static float edist(int x1, int y1, int x2, int y2) {
 // small islands in between. Replaces the noise-soup archipelago.
 static void generateContinentMap() {
     // Pick continent seeds, spread evenly across the map.
-    int n = 2 + (rand() % 2);                       // 2 or 3 continents
+    int n = 2 + (simRand() % 2);                       // 2 or 3 continents
     std::vector<std::pair<int,int>> seeds;
-    auto jitter = [](int v, int amt) { return v + (rand() % (2*amt + 1)) - amt; };
+    auto jitter = [](int v, int amt) { return v + (simRand() % (2*amt + 1)) - amt; };
     if (n == 2) {
         seeds.push_back({jitter(MAP_W*1/4, 10), jitter(MAP_H/2, MAP_H/6)});
         seeds.push_back({jitter(MAP_W*3/4, 10), jitter(MAP_H/2, MAP_H/6)});
@@ -89,7 +89,7 @@ static void generateContinentMap() {
 
         Biome b; Terrain t;
         if      (adjD < contR - 6) { b = B_TEMPERATE; t = T_GRASS;    }
-        else if (adjD < contR - 3) { b = B_TEMPERATE; t = (rand()%3==0) ? T_SAND : T_GRASS; }
+        else if (adjD < contR - 3) { b = B_TEMPERATE; t = (simRand()%3==0) ? T_SAND : T_GRASS; }
         else if (adjD < contR)     { b = B_TEMPERATE; t = T_SAND;     }    // beach
         else if (adjD < contR + 3) { b = B_OCEAN;     t = T_SHALLOWS; }
         else                       { b = B_OCEAN;     t = T_WATER;    }
@@ -99,8 +99,8 @@ static void generateContinentMap() {
     // Inland variety: scatter forest/meadow/tall grass on grass tiles.
     for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
         if (g.map[y][x].biome != B_TEMPERATE || g.map[y][x].terrain != T_GRASS) continue;
-        int r = rand() % 100;
-        if      (r < 12) { g.map[y][x].terrain = T_FOREST; g.map[y][x].resources = 100 + rand()%100; }
+        int r = simRand() % 100;
+        if      (r < 12) { g.map[y][x].terrain = T_FOREST; g.map[y][x].resources = 100 + simRand()%100; }
         else if (r < 16) g.map[y][x].terrain = T_TALL_GRASS;
         else if (r < 19) g.map[y][x].terrain = T_FLOWERS;
         else if (r < 21) g.map[y][x].terrain = T_MEADOW;
@@ -108,18 +108,18 @@ static void generateContinentMap() {
 
     // A few small islands scattered between continents — strategic stepping stones.
     for (int i = 0; i < 9; i++) {
-        int ix = 15 + rand()%(MAP_W-30), iy = 15 + rand()%(MAP_H-30);
+        int ix = 15 + simRand()%(MAP_W-30), iy = 15 + simRand()%(MAP_H-30);
         if (g.map[iy][ix].terrain != T_WATER) continue;
-        int sz = 1 + rand() % 2;
+        int sz = 1 + simRand() % 2;
         for (int dy = -sz-1; dy <= sz+1; dy++) for (int dx = -sz-1; dx <= sz+1; dx++) {
             int nx = ix+dx, ny = iy+dy;
             if (!inBounds(nx,ny)) continue;
             int r2 = dx*dx + dy*dy;
             if      (r2 <= sz*sz) {
-                Terrain isle = (rand()%3==0) ? T_FOREST : T_GRASS;
+                Terrain isle = (simRand()%3==0) ? T_FOREST : T_GRASS;
                 g.map[ny][nx].terrain = isle;
                 g.map[ny][nx].biome = B_TEMPERATE;
-                if (isle == T_FOREST) g.map[ny][nx].resources = 80 + rand()%60;
+                if (isle == T_FOREST) g.map[ny][nx].resources = 80 + simRand()%60;
             }
             else if (r2 <= (sz+1)*(sz+1)) {
                 if (g.map[ny][nx].terrain == T_WATER) g.map[ny][nx].terrain = T_SHALLOWS;
@@ -130,48 +130,48 @@ static void generateContinentMap() {
     // Fish in water (slightly denser than the standard map — more naval food).
     for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
         Terrain t = g.map[y][x].terrain;
-        if ((t == T_WATER || t == T_SHALLOWS) && rand() % 22 == 0) {
+        if ((t == T_WATER || t == T_SHALLOWS) && simRand() % 22 == 0) {
             g.map[y][x].terrain = T_FISH;
-            g.map[y][x].resources = 80 + rand() % 70;
+            g.map[y][x].resources = 80 + simRand() % 70;
         }
     }
 
     // Gold clusters on land only.
     for (int i = 0; i < 14; i++) {
-        int gx = 15 + rand()%(MAP_W-30), gy = 15 + rand()%(MAP_H-30);
-        if (g.map[gy][gx].biome == B_TEMPERATE) placeGoldCluster(gx, gy, 3 + rand()%3);
+        int gx = 15 + simRand()%(MAP_W-30), gy = 15 + simRand()%(MAP_H-30);
+        if (g.map[gy][gx].biome == B_TEMPERATE) placeGoldCluster(gx, gy, 3 + simRand()%3);
     }
 
     // Berry, wheat, ruins on land.
     for (int i = 0; i < 16; i++) {
-        int bx = 10 + rand()%(MAP_W-20), by = 10 + rand()%(MAP_H-20);
+        int bx = 10 + simRand()%(MAP_W-20), by = 10 + simRand()%(MAP_H-20);
         if (g.map[by][bx].biome != B_TEMPERATE) continue;
-        int sz = 1 + rand() % 2;
+        int sz = 1 + simRand() % 2;
         for (int dy = -sz; dy <= sz; dy++) for (int dx = -sz; dx <= sz; dx++) {
             int nx = bx+dx, ny = by+dy;
             if (!inBounds(nx,ny)) continue;
             Terrain o = g.map[ny][nx].terrain;
-            if ((o==T_GRASS||o==T_TALL_GRASS||o==T_MEADOW) && rand()%3 != 0) {
+            if ((o==T_GRASS||o==T_TALL_GRASS||o==T_MEADOW) && simRand()%3 != 0) {
                 g.map[ny][nx].terrain = T_BERRY;
-                g.map[ny][nx].resources = 50 + rand() % 40;
+                g.map[ny][nx].resources = 50 + simRand() % 40;
             }
         }
     }
     for (int i = 0; i < 12; i++) {
-        int wx = 10 + rand()%(MAP_W-20), wy = 10 + rand()%(MAP_H-20);
+        int wx = 10 + simRand()%(MAP_W-20), wy = 10 + simRand()%(MAP_H-20);
         if (g.map[wy][wx].biome != B_TEMPERATE) continue;
-        int sz = 2 + rand() % 3;
+        int sz = 2 + simRand() % 3;
         for (int dy = -sz; dy <= sz; dy++) for (int dx = -sz; dx <= sz; dx++) {
             int nx = wx+dx, ny = wy+dy;
-            if (inBounds(nx,ny) && g.map[ny][nx].terrain == T_GRASS && rand()%2==0)
+            if (inBounds(nx,ny) && g.map[ny][nx].terrain == T_GRASS && simRand()%2==0)
                 g.map[ny][nx].terrain = T_WHEAT;
         }
     }
     for (int i = 0; i < 15; i++) {
-        int rx = 10 + rand()%(MAP_W-20), ry = 10 + rand()%(MAP_H-20);
+        int rx = 10 + simRand()%(MAP_W-20), ry = 10 + simRand()%(MAP_H-20);
         if (g.map[ry][rx].biome != B_TEMPERATE) continue;
-        for (int j = 0; j < 3+rand()%4; j++) {
-            int nx = rx + rand()%5-2, ny = ry + rand()%5-2;
+        for (int j = 0; j < 3+simRand()%4; j++) {
+            int nx = rx + simRand()%5-2, ny = ry + simRand()%5-2;
             if (inBounds(nx,ny) && g.map[ny][nx].terrain == T_GRASS) g.map[ny][nx].terrain = T_RUINS;
         }
     }
@@ -225,25 +225,25 @@ void generateMap() {
         g.map[y][x] = {T_GRASS, 0, {}, {}, b, T_GRASS, 0};
     }
     for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
-        Tile& t = g.map[y][x]; int r = rand() % 100;
+        Tile& t = g.map[y][x]; int r = simRand() % 100;
         switch (t.biome) {
         case B_TEMPERATE:
             if (r<5)       t.terrain = T_TALL_GRASS;
             else if (r<8)  t.terrain = T_FLOWERS;
             else if (r<10) t.terrain = T_MEADOW;
-            else if (r<14) { t.terrain = T_FOREST; t.resources = 100 + rand() % 100; }
+            else if (r<14) { t.terrain = T_FOREST; t.resources = 100 + simRand() % 100; }
             else           t.terrain = T_GRASS;
             break;
         case B_DESERT:
             if (r<60)      t.terrain = T_SAND;
             else if (r<75) t.terrain = T_DUNES;
             else if (r<80) t.terrain = T_GRAVEL;
-            else if (r<85) { t.terrain = T_PALM; t.resources = 60 + rand() % 40; }
+            else if (r<85) { t.terrain = T_PALM; t.resources = 60 + simRand() % 40; }
             else           t.terrain = T_SAND;
             break;
         case B_SNOW:
             if (r<60)      t.terrain = T_SNOW;
-            else if (r<75) { t.terrain = T_PINE; t.resources = 80 + rand() % 60; }
+            else if (r<75) { t.terrain = T_PINE; t.resources = 80 + simRand() % 60; }
             else if (r<80) t.terrain = T_STONE;
             else           t.terrain = T_SNOW;
             break;
@@ -251,13 +251,13 @@ void generateMap() {
             if (r<30)      t.terrain = T_MARSH;
             else if (r<45) t.terrain = T_REEDS;
             else if (r<55) t.terrain = T_SHALLOWS;
-            else if (r<65) { t.terrain = T_DEAD_TREE; t.resources = 40 + rand() % 30; }
+            else if (r<65) { t.terrain = T_DEAD_TREE; t.resources = 40 + simRand() % 30; }
             else           t.terrain = T_TALL_GRASS;
             break;
         case B_FOREST:
-            if (r<40)      { t.terrain = T_FOREST; t.resources = 100 + rand() % 100; }
-            else if (r<55) { t.terrain = T_PINE;   t.resources = 80  + rand() % 60;  }
-            else if (r<60) { t.terrain = T_BERRY;  t.resources = 50  + rand() % 40;  }
+            if (r<40)      { t.terrain = T_FOREST; t.resources = 100 + simRand() % 100; }
+            else if (r<55) { t.terrain = T_PINE;   t.resources = 80  + simRand() % 60;  }
+            else if (r<60) { t.terrain = T_BERRY;  t.resources = 50  + simRand() % 40;  }
             else if (r<65) t.terrain = T_TALL_GRASS;
             else           t.terrain = T_GRASS;
             break;
@@ -274,7 +274,7 @@ void generateMap() {
             else if (r<73) t.terrain = T_REEDS;
             else if (r<80) t.terrain = T_GRASS;
             else if (r<87) t.terrain = T_TALL_GRASS;
-            else if (r<93) { t.terrain = T_FOREST; t.resources = 80 + rand()%60; }
+            else if (r<93) { t.terrain = T_FOREST; t.resources = 80 + simRand()%60; }
             else           t.terrain = T_GRASS;
             break;
         }
@@ -284,33 +284,33 @@ void generateMap() {
         float n = sampleNoise(x*0.12f+5, y*0.12f+5);
         if (n > 0.78f) { g.map[y][x].terrain = T_MOUNTAIN; g.map[y][x].resources = 0; }
         else if (n > 0.72f && g.map[y][x].biome != B_DESERT)
-            if (rand() % 3 == 0) g.map[y][x].terrain = T_HILLS;
+            if (simRand() % 3 == 0) g.map[y][x].terrain = T_HILLS;
     }
     // Rivers — scaled to the larger map (5 instead of 4)
     for (int r = 0; r < 5; r++) {
         int rx, ry;
-        if (r % 2 == 0) { rx = rand() % MAP_W; ry = 0; }
-        else             { rx = 0; ry = rand() % MAP_H; }
-        int len = 80 + rand() % 50;
-        float angle = (rand() % 628) / 100.0f;
+        if (r % 2 == 0) { rx = simRand() % MAP_W; ry = 0; }
+        else             { rx = 0; ry = simRand() % MAP_H; }
+        int len = 80 + simRand() % 50;
+        float angle = (simRand() % 628) / 100.0f;
         // Track river path so we can guarantee at least one fordable crossing.
         std::vector<std::pair<int,int>> path;
         for (int i = 0; i < len; i++) {
             int wx = rx + (int)(cos(angle)*i), wy = ry + (int)(sin(angle)*i);
-            angle += ((rand() % 100) - 50) / 200.0f;
+            angle += ((simRand() % 100) - 50) / 200.0f;
             path.push_back({wx, wy});
             for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
                 int nx = wx+dx, ny = wy+dy;
                 if (inBounds(nx,ny) && g.map[ny][nx].terrain != T_MOUNTAIN) {
                     if (dx==0 && dy==0) g.map[ny][nx].terrain = T_WATER;
-                    else if (rand() % 3 == 0) g.map[ny][nx].terrain = T_SHALLOWS;
+                    else if (simRand() % 3 == 0) g.map[ny][nx].terrain = T_SHALLOWS;
                 }
             }
         }
         // Guaranteed ford: pick one point along the river and clear a 2-tile-wide
         // strip of shallows — gives armies a crossable choke point.
         if ((int)path.size() > 8) {
-            auto& p = path[path.size()/2 + (rand() % (path.size()/4)) - (int)path.size()/8];
+            auto& p = path[path.size()/2 + (simRand() % (path.size()/4)) - (int)path.size()/8];
             for (int dy = -2; dy <= 2; dy++) for (int dx = -1; dx <= 1; dx++) {
                 int nx = p.first+dx, ny = p.second+dy;
                 if (inBounds(nx,ny) && g.map[ny][nx].terrain == T_WATER)
@@ -320,22 +320,22 @@ void generateMap() {
     }
     // Lakes — bumped to 9 for the larger map
     for (int l = 0; l < 9; l++) {
-        int cx = 20 + rand() % (MAP_W-40), cy = 20 + rand() % (MAP_H-40), sz = 3 + rand() % 4;
+        int cx = 20 + simRand() % (MAP_W-40), cy = 20 + simRand() % (MAP_H-40), sz = 3 + simRand() % 4;
         for (int dy = -sz; dy <= sz; dy++) for (int dx = -sz; dx <= sz; dx++) {
             if (dx*dx + dy*dy > sz*sz) continue;
             int nx = cx+dx, ny = cy+dy;
             if (inBounds(nx,ny) && g.map[ny][nx].terrain != T_MOUNTAIN) {
                 if (dx*dx + dy*dy < (sz-1)*(sz-1)) g.map[ny][nx].terrain = T_WATER;
-                else if (rand() % 2 == 0) g.map[ny][nx].terrain = T_SHALLOWS;
+                else if (simRand() % 2 == 0) g.map[ny][nx].terrain = T_SHALLOWS;
                 else g.map[ny][nx].terrain = T_REEDS;
             }
         }
     }
     // Open inland seas — bumped to 3 for the larger map.
     for (int s = 0; s < 3; s++) {
-        int cx = 30 + rand() % (MAP_W - 60);
-        int cy = 25 + rand() % (MAP_H - 50);
-        int sz = 7 + rand() % 4;
+        int cx = 30 + simRand() % (MAP_W - 60);
+        int cy = 25 + simRand() % (MAP_H - 50);
+        int sz = 7 + simRand() % 4;
         for (int dy = -sz; dy <= sz; dy++) for (int dx = -sz; dx <= sz; dx++) {
             int r2 = dx*dx + dy*dy;
             if (r2 > sz*sz) continue;
@@ -344,28 +344,28 @@ void generateMap() {
             Terrain o = g.map[ny][nx].terrain;
             if (o == T_MOUNTAIN || o == T_GOLD) continue;
             if (r2 < (sz-2)*(sz-2))      g.map[ny][nx].terrain = T_WATER;
-            else if (r2 < (sz-1)*(sz-1)) g.map[ny][nx].terrain = (rand()%4==0) ? T_SHALLOWS : T_WATER;
-            else                         g.map[ny][nx].terrain = (rand()%2==0) ? T_SHALLOWS : T_REEDS;
+            else if (r2 < (sz-1)*(sz-1)) g.map[ny][nx].terrain = (simRand()%4==0) ? T_SHALLOWS : T_WATER;
+            else                         g.map[ny][nx].terrain = (simRand()%2==0) ? T_SHALLOWS : T_REEDS;
             g.map[ny][nx].resources = 0;
         }
     }
     // Fish shoals — sparse food deposits in open water and shallows.
     for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
         Terrain t = g.map[y][x].terrain;
-        if ((t == T_WATER || t == T_SHALLOWS) && rand() % 30 == 0) {
+        if ((t == T_WATER || t == T_SHALLOWS) && simRand() % 30 == 0) {
             g.map[y][x].terrain = T_FISH;
-            g.map[y][x].resources = 80 + rand() % 70;
+            g.map[y][x].resources = 80 + simRand() % 70;
         }
     }
     // Gold — scattered medium deposits. Spawn-point gold is added later
     // by main.cpp once spawn positions are chosen.
     for (int i = 0; i < 14; i++)
-        placeGoldCluster(15 + rand()%(MAP_W-30), 15 + rand()%(MAP_H-30), 3 + rand()%3);
+        placeGoldCluster(15 + simRand()%(MAP_W-30), 15 + simRand()%(MAP_H-30), 3 + simRand()%3);
     // Signature gold lode: one extra-rich deposit somewhere mid-map — a
     // strategic landmark worth contesting.
     {
-        int gx = MAP_W/3 + rand()%(MAP_W/3);
-        int gy = MAP_H/3 + rand()%(MAP_H/3);
+        int gx = MAP_W/3 + simRand()%(MAP_W/3);
+        int gy = MAP_H/3 + simRand()%(MAP_H/3);
         for (int dy = -2; dy <= 2; dy++) for (int dx = -2; dx <= 2; dx++) {
             int nx = gx+dx, ny = gy+dy;
             if (!inBounds(nx,ny)) continue;
@@ -373,15 +373,15 @@ void generateMap() {
             if (o == T_WATER || o == T_MOUNTAIN || o == T_SHALLOWS) continue;
             if (dx*dx + dy*dy <= 5) {
                 g.map[ny][nx].terrain = T_GOLD;
-                g.map[ny][nx].resources = 500 + rand() % 300;
+                g.map[ny][nx].resources = 500 + simRand() % 300;
             }
         }
     }
     // Stone clusters
     for (int i = 0; i < 17; i++) {
-        int sx = 10 + rand()%(MAP_W-20), sy = 10 + rand()%(MAP_H-20);
+        int sx = 10 + simRand()%(MAP_W-20), sy = 10 + simRand()%(MAP_H-20);
         for (int j = 0; j < 3; j++) {
-            int nx = sx + rand()%4-2, ny = sy + rand()%4-2;
+            int nx = sx + simRand()%4-2, ny = sy + simRand()%4-2;
             if (inBounds(nx,ny) && g.map[ny][nx].terrain == T_GRASS) g.map[ny][nx].terrain = T_STONE;
         }
     }
@@ -394,9 +394,9 @@ void generateMap() {
                 && g.map[cy][cx].terrain != T_MOUNTAIN && g.map[cy][cx].terrain != T_GOLD
                 && g.map[cy][cx].terrain != T_SHALLOWS)
                 g.map[cy][cx].terrain = T_ROAD;
-            if (rand()%2==0) { if(cx<ex)cx++; else if(cx>ex)cx--; }
+            if (simRand()%2==0) { if(cx<ex)cx++; else if(cx>ex)cx--; }
             else              { if(cy<ey)cy++; else if(cy>ey)cy--; }
-            if (rand()%5==0) { cx += (rand()%3)-1; cy += (rand()%3)-1; }
+            if (simRand()%5==0) { cx += (simRand()%3)-1; cy += (simRand()%3)-1; }
             cx = std::max(0, std::min(cx, MAP_W-1));
             cy = std::max(0, std::min(cy, MAP_H-1));
         }
@@ -411,9 +411,9 @@ void generateMap() {
     }
     // Mountain pass — a horizontal wall of mountains across one band of the map,
     // with a 3-tile gap forming a strategic choke point. Skip on ocean maps.
-    if (g.biomeChoice != B_OCEAN && rand() % 2 == 0) {
-        int passY = MAP_H/2 + (rand() % 20) - 10;
-        int gapX  = MAP_W/4 + rand() % (MAP_W/2);
+    if (g.biomeChoice != B_OCEAN && simRand() % 2 == 0) {
+        int passY = MAP_H/2 + (simRand() % 20) - 10;
+        int gapX  = MAP_W/4 + simRand() % (MAP_W/2);
         for (int x = 5; x < MAP_W - 5; x++) {
             // Skip the gap and a small variation zone around it
             if (std::abs(x - gapX) < 3) continue;
@@ -434,36 +434,36 @@ void generateMap() {
     placeCastleRuin(3*MAP_W/4, 3*MAP_H/4, 6);
     // Smaller ruin clusters scattered everywhere
     for (int i = 0; i < 22; i++) {
-        int rx = 10 + rand()%(MAP_W-20), ry = 10 + rand()%(MAP_H-20);
-        for (int j = 0; j < 3+rand()%4; j++) {
-            int nx = rx + rand()%5-2, ny = ry + rand()%5-2;
+        int rx = 10 + simRand()%(MAP_W-20), ry = 10 + simRand()%(MAP_H-20);
+        for (int j = 0; j < 3+simRand()%4; j++) {
+            int nx = rx + simRand()%5-2, ny = ry + simRand()%5-2;
             if (inBounds(nx,ny) && g.map[ny][nx].terrain == T_GRASS) g.map[ny][nx].terrain = T_RUINS;
         }
     }
     // Berry patches
     for (int i = 0; i < 20; i++) {
-        int bx = 10 + rand()%(MAP_W-20), by = 10 + rand()%(MAP_H-20);
+        int bx = 10 + simRand()%(MAP_W-20), by = 10 + simRand()%(MAP_H-20);
         Biome b = g.map[by][bx].biome;
         if (b == B_DESERT || b == B_SNOW || b == B_OCEAN) continue;
-        int sz = 1 + rand() % 3;
+        int sz = 1 + simRand() % 3;
         for (int dy = -sz; dy <= sz; dy++) for (int dx = -sz; dx <= sz; dx++) {
             int nx = bx+dx, ny = by+dy;
             if (!inBounds(nx,ny)) continue;
             Terrain o = g.map[ny][nx].terrain;
-            if ((o==T_GRASS||o==T_TALL_GRASS||o==T_MEADOW) && rand()%3 != 0) {
+            if ((o==T_GRASS||o==T_TALL_GRASS||o==T_MEADOW) && simRand()%3 != 0) {
                 g.map[ny][nx].terrain = T_BERRY;
-                g.map[ny][nx].resources = 50 + rand() % 40;
+                g.map[ny][nx].resources = 50 + simRand() % 40;
             }
         }
     }
     // Wheat patches
     for (int i = 0; i < 17; i++) {
-        int wx = 10 + rand()%(MAP_W-20), wy = 10 + rand()%(MAP_H-20);
+        int wx = 10 + simRand()%(MAP_W-20), wy = 10 + simRand()%(MAP_H-20);
         if (g.map[wy][wx].biome != B_TEMPERATE) continue;
-        int sz = 2 + rand() % 3;
+        int sz = 2 + simRand() % 3;
         for (int dy = -sz; dy <= sz; dy++) for (int dx = -sz; dx <= sz; dx++) {
             int nx = wx+dx, ny = wy+dy;
-            if (inBounds(nx,ny) && g.map[ny][nx].terrain == T_GRASS && rand()%2==0)
+            if (inBounds(nx,ny) && g.map[ny][nx].terrain == T_GRASS && simRand()%2==0)
                 g.map[ny][nx].terrain = T_WHEAT;
         }
     }

@@ -134,7 +134,9 @@ static int showSplash() {
 }
 
 void initGame(int numAIs) {
-    srand((unsigned)time(nullptr));
+    // Seed the deterministic sim RNG. In a future multiplayer lobby this
+    // seed is what the host shares with every client.
+    seedSimRng((unsigned long long)time(nullptr) * 2654435761ull + 1);
     // Critical: wipe every piece of per-match state so a new game can't see
     // entities, projectiles, IDs, or cached fog from the previous match.
     g.entities.clear();
@@ -212,8 +214,8 @@ void initGame(int numAIs) {
     std::vector<Cand> candidates;
     candidates.reserve(220);
     for (int i = 0; i < 220; i++) {
-        int cx = EDGE + rand() % (MAP_W - 2*EDGE);
-        int cy = EDGE + rand() % (MAP_H - 2*EDGE);
+        int cx = EDGE + simRand() % (MAP_W - 2*EDGE);
+        int cy = EDGE + simRand() % (MAP_H - 2*EDGE);
         int s = scoreSpawn(cx, cy);
         if (s > 0) candidates.push_back({cx, cy, s});
     }
@@ -247,7 +249,7 @@ void initGame(int numAIs) {
 
     // Randomise which spawn the human gets so AIs don't always get the prime spots.
     if (spawns.size() > 1)
-        std::swap(spawns[0], spawns[rand() % spawns.size()]);
+        std::swap(spawns[0], spawns[simRand() % spawns.size()]);
 
     // Clear ground + place starter gold around each spawn, then drop entities.
     bool spawned[MAX_PLAYERS] = {false};
@@ -286,16 +288,16 @@ void initGame(int numAIs) {
         for (int h = 0; h < 10 && total < 42; h++) {
             int hx = -1, hy = -1;
             for (int t = 0; t < 300 && hx < 0; t++) {
-                int ax = 10 + rand()%(MAP_W-20), ay = 10 + rand()%(MAP_H-20);
+                int ax = 10 + simRand()%(MAP_W-20), ay = 10 + simRand()%(MAP_H-20);
                 Terrain tr = g.map[ay][ax].terrain;
                 if ((tr==T_GRASS||tr==T_MEADOW||tr==T_TALL_GRASS||tr==T_FOREST)
                     && farFromAnyBase(ax, ay, 14))
                     { hx=ax; hy=ay; }
             }
             if (hx < 0) continue;
-            int herdSize = 3 + rand()%4;
+            int herdSize = 3 + simRand()%4;
             for (int i = 0, t = 0; i < herdSize && t < 100; t++) {
-                int ax = hx+(rand()%9)-4, ay = hy+(rand()%9)-4;
+                int ax = hx+(simRand()%9)-4, ay = hy+(simRand()%9)-4;
                 ax = std::max(1, std::min(ax, MAP_W-2));
                 ay = std::max(1, std::min(ay, MAP_H-2));
                 Terrain tr = g.map[ay][ax].terrain;
@@ -307,7 +309,7 @@ void initGame(int numAIs) {
     }
     // Wolves in forested areas — must spawn well clear of every player base.
     for (int i = 0, t = 0; i < 7 && t < 600; t++) {
-        int ax = 10 + rand()%(MAP_W-20), ay = 10 + rand()%(MAP_H-20);
+        int ax = 10 + simRand()%(MAP_W-20), ay = 10 + simRand()%(MAP_H-20);
         Terrain tr = g.map[ay][ax].terrain;
         if ((tr==T_FOREST||tr==T_PINE||tr==T_TALL_GRASS) && !entityAt(ax,ay)
             && farFromAnyBase(ax, ay, 16))
@@ -315,7 +317,7 @@ void initGame(int numAIs) {
     }
     // Boars: same buffer as wolves — these are the biggest early-game peasant hazard.
     for (int i = 0, t = 0; i < 18 && t < 800; t++) {
-        int ax = 10 + rand()%(MAP_W-20), ay = 10 + rand()%(MAP_H-20);
+        int ax = 10 + simRand()%(MAP_W-20), ay = 10 + simRand()%(MAP_H-20);
         Terrain tr = g.map[ay][ax].terrain;
         Biome  b  = g.map[ay][ax].biome;
         if ((tr==T_FOREST||tr==T_PINE||tr==T_TALL_GRASS||tr==T_GRASS)
@@ -327,7 +329,7 @@ void initGame(int numAIs) {
     for (auto& sp : spawns) {
         int bx = sp.thX + 4, by = sp.thY + 4;
         for (int i = 0, t = 0; i < 4 && t < 200; t++) {
-            int ax = bx+(rand()%7)-3, ay = by+(rand()%7)-3;
+            int ax = bx+(simRand()%7)-3, ay = by+(simRand()%7)-3;
             ax = std::max(1, std::min(ax, MAP_W-2)); ay = std::max(1, std::min(ay, MAP_H-2));
             if (isPassable(ax,ay) && !entityAt(ax,ay)) { spawnEntity(E_SHEEP, OWNER_NATURE, ax, ay); i++; }
         }

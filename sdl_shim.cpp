@@ -4,9 +4,16 @@
 // Model: a cols×rows grid of cells (codepoint + pair + flags), exactly
 // like a terminal. The game writes cells through the ncurses-style calls;
 // refresh() draws the whole grid with SDL: a background rect per cell and
-// a glyph texture rendered from a monospace TTF at the window's device
-// pixel scale — so glyphs are rasterized from vector outlines at native
-// resolution and stay crisp on any display, including retina.
+// a glyph texture rendered from a TTF at the window's device pixel scale —
+// so glyphs are rasterized from vector outlines at native resolution and
+// stay crisp on any display, including retina.
+//
+// Coordinate spaces: SDL mouse events arrive in window points; all
+// rendering happens in device pixels. pointToCell() converts with a
+// live-queried window/output ratio — never cached, so DPI changes,
+// display moves, and resizes can't desynchronize clicks from drawing.
+// The OS cursor is hidden: the game's own cell cursor is the pointer,
+// and since hover and clicks share pointToCell, they always agree.
 // ============================================================
 #include "sdl_shim.h"
 #include <SDL.h>
@@ -30,10 +37,12 @@ SDL_Window*   win = nullptr;
 SDL_Renderer* ren = nullptr;
 TTF_Font*     font = nullptr;
 TTF_Font*     fontBold = nullptr;
+std::string   fontPath;
+int           fontPt = 15;          // point size; mouse wheel zooms this
+bool          mouseDebug = false;
 
-int cellW = 10, cellH = 20;      // device pixels
+int cellW = 10, cellH = 20;         // device pixels
 int cols = 80, rows = 24;
-float scaleX = 1.0f, scaleY = 1.0f;  // window points -> device pixels
 
 std::vector<Cell> grid;
 Pair  pairs[512];
@@ -50,7 +59,8 @@ Cell& at(int y, int x) { return grid[(size_t)y * cols + x]; }
 bool inGrid(int y, int x) { return y >= 0 && y < rows && x >= 0 && x < cols; }
 
 // xterm-256 palette -> RGB. The game's initColors() speaks 256-color
-// indexes; this is the same table every terminal emulator ships.
+// indexes; this is the same table every terminal emulator ships, so the
+// palette tuned in the terminal carries over to the GUI exactly.
 void color256(int v, Uint8& r, Uint8& g, Uint8& b) {
     static const Uint8 base[16][3] = {
         {0,0,0},{205,49,49},{13,188,121},{229,229,16},{36,114,200},{188,63,188},{17,168,205},{229,229,229},
@@ -78,6 +88,11 @@ void pairColors(short pair, unsigned flags, SDL_Color& fg, SDL_Color& bg) {
 // time via color mod. Bounded in practice (ASCII + a few dozen unicode).
 std::unordered_map<unsigned long long, SDL_Texture*> glyphCache;
 
+void clearGlyphCache() {
+    for (auto& kv : glyphCache) if (kv.second) SDL_DestroyTexture(kv.second);
+    glyphCache.clear();
+}
+
 SDL_Texture* glyphTex(unsigned cp, bool bold) {
     unsigned long long key = ((unsigned long long)bold << 32) | cp;
     auto it = glyphCache.find(key);
@@ -92,26 +107,94 @@ SDL_Texture* glyphTex(unsigned cp, bool bold) {
     return t;
 }
 
+// Live window-point -> device-pixel ratio. Queried per call, never cached.
+float pixelScale() {
+    int ww = 0, pw = 0, h;
+    SDL_GetWindowSize(win, &ww, &h);
+    SDL_GetRendererOutputSize(ren, &pw, &h);
+    return (ww > 0 && pw > 0) ? (float)pw / ww : 1.0f;
+}
+
+void pointToCell(int px, int py, int& cx, int& cy) {
+    float s = pixelScale();
+    cx = (int)(px * s) / cellW;
+    cy = (int)(py * s) / cellH;
+}
+
+void openFonts() {
+    if (font)     { TTF_CloseFont(font); font = nullptr; }
+    if (fontBold) { TTF_CloseFont(fontBold); fontBold = nullptr; }
+    clearGlyphCache();
+    int px = (int)(fontPt * pixelScale());
+    font     = TTF_OpenFont(fontPath.c_str(), px);
+    fontBold = TTF_OpenFont(fontPath.c_str(), px);
+    if (!font) { fprintf(stderr, "TTF_OpenFont(%s) failed: %s\n", fontPath.c_str(), TTF_GetError()); exit(1); }
+    if (fontBold) TTF_SetFontStyle(fontBold, TTF_STYLE_BOLD);
+    // Cell advance from '0': digits share one width even in proportional
+    // faces like Helvetica, giving a stable grid; glyphs are centered per
+    // cell so wider letters just spill symmetrically.
+    int adv = 0, minx, maxx, miny, maxy;
+    if (TTF_GlyphMetrics32(font, '0', &minx, &maxx, &miny, &maxy, &adv) != 0 || adv <= 0)
+        TTF_SizeUTF8(font, "0", &adv, nullptr);
+    cellW = adv > 0 ? adv : 10;
+    cellH = TTF_FontHeight(font);
+}
+
 void recomputeGrid() {
-    int pw, ph, ww, wh;
+    int pw, ph;
     SDL_GetRendererOutputSize(ren, &pw, &ph);
-    SDL_GetWindowSize(win, &ww, &wh);
-    scaleX = ww > 0 ? (float)pw / ww : 1.0f;
-    scaleY = wh > 0 ? (float)ph / wh : 1.0f;
     cols = pw / cellW > 20 ? pw / cellW : 20;
     rows = ph / cellH > 10 ? ph / cellH : 10;
     grid.assign((size_t)cols * rows, Cell{});
 }
 
+void zoomFont(int dir) {
+    int np = fontPt + dir;
+    if (np < 8) np = 8;
+    if (np > 32) np = 32;
+    if (np == fontPt) return;
+    fontPt = np;
+    openFonts();
+    recomputeGrid();
+}
+
 void pushKey(int k) { keyQ.push_back(k); }
+
 void pushMouse(mmask_t bstate, int px, int py) {
     MEVENT me{};
-    me.x = (int)(px * scaleX) / cellW;
-    me.y = (int)(py * scaleY) / cellH;
+    pointToCell(px, py, me.x, me.y);
     me.bstate = bstate;
     if (SDL_GetModState() & KMOD_SHIFT) me.bstate |= BUTTON_SHIFT;
     mouseQ.push_back(me);
     keyQ.push_back(KEY_MOUSE);
+    if (mouseDebug && (bstate & ~REPORT_MOUSE_POSITION)) {
+        int ww, wh, pw, ph;
+        SDL_GetWindowSize(win, &ww, &wh);
+        SDL_GetRendererOutputSize(ren, &pw, &ph);
+        fprintf(stderr, "[mouse] pt=(%d,%d) win=%dx%d out=%dx%d cell=%dx%d -> (%d,%d)\n",
+                px, py, ww, wh, pw, ph, cellW, cellH, me.x, me.y);
+    }
+}
+
+// AoE-style continuous edge scroll: the game's edge logic is driven by
+// motion events, which stop when the mouse parks. While the pointer sits
+// in the edge zone, feed it synthetic position reports so scrolling
+// continues. Never fires elsewhere, so keyboard cursor control is safe.
+void maybeSynthEdgeMotion() {
+    static Uint32 lastSynth = 0;
+    Uint32 now = SDL_GetTicks();
+    if (now - lastSynth < 60) return;
+    if (SDL_GetMouseFocus() != win) return;
+    int mx, my;
+    SDL_GetMouseState(&mx, &my);
+    int ww, wh;
+    SDL_GetWindowSize(win, &ww, &wh);
+    float s = pixelScale();
+    float edgeX = 2.0f * cellW / s, edgeY = 2.0f * cellH / s;
+    if (mx < edgeX || mx > ww - edgeX || my < edgeY || my > wh - edgeY) {
+        lastSynth = now;
+        pushMouse(REPORT_MOUSE_POSITION, mx, my);
+    }
 }
 
 int translateKey(const SDL_Keysym& k) {
@@ -151,13 +234,21 @@ void handleEvent(const SDL_Event& e) {
                 if ((unsigned char)*c < 128) pushKey(*c);
             break;
         case SDL_KEYDOWN: {
+            // Ctrl/Cmd + digit = assign control group (RTS standard).
+            // Routed through the game's existing G-then-digit flow.
+            if (e.key.keysym.sym >= SDLK_1 && e.key.keysym.sym <= SDLK_9
+                && (e.key.keysym.mod & (KMOD_CTRL | KMOD_GUI))) {
+                pushKey('G');
+                pushKey('1' + (e.key.keysym.sym - SDLK_1));
+                break;
+            }
             int k = translateKey(e.key.keysym);
             if (k >= 0) pushKey(k);
             break;
         }
         case SDL_MOUSEMOTION: {
-            int cx = (int)(e.motion.x * scaleX) / cellW;
-            int cy = (int)(e.motion.y * scaleY) / cellH;
+            int cx, cy;
+            pointToCell(e.motion.x, e.motion.y, cx, cy);
             // Hover events only when the cell changes (or mid-drag) so the
             // queue doesn't flood at device report rate.
             if (cx != lastCellX || cy != lastCellY || leftHeld) {
@@ -182,15 +273,66 @@ void handleEvent(const SDL_Event& e) {
                 pushMouse(BUTTON1_RELEASED, e.button.x, e.button.y);
             }
             break;
-        case SDL_WINDOWEVENT:
-            if (e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) recomputeGrid();
+        case SDL_MOUSEWHEEL:
+            zoomFont(e.wheel.y > 0 ? 1 : e.wheel.y < 0 ? -1 : 0);
             break;
+        case SDL_WINDOWEVENT:
+            if (e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
+                openFonts();      // DPI may have changed (display move)
+                recomputeGrid();
+            }
+            break;
+    }
+}
+
+// ---- optional instrumentation (env vars; zero cost when unset) ----
+// REALM_DUMP_GRID=/path  : write the cell grid every refresh (debug/CI)
+// REALM_SELFTEST=1       : scripted input — start a duel, then perform a
+//                          slow box-select drag and exit. Combined with
+//                          the grid dump this proves the whole pipeline
+//                          (events -> cells -> drag box render) headlessly.
+const char* dumpPath = nullptr;
+bool selfTest = false;
+
+void injectMotion(int x, int y) {
+    SDL_Event e{}; e.type = SDL_MOUSEMOTION; e.motion.x = x; e.motion.y = y; handleEvent(e);
+}
+void injectButton(bool down, int x, int y) {
+    SDL_Event e{}; e.type = down ? SDL_MOUSEBUTTONDOWN : SDL_MOUSEBUTTONUP;
+    e.button.button = SDL_BUTTON_LEFT; e.button.clicks = 1;
+    e.button.x = x; e.button.y = y; handleEvent(e);
+}
+void injectText(const char* s) {
+    SDL_Event e{}; e.type = SDL_TEXTINPUT;
+    strncpy(e.text.text, s, sizeof(e.text.text) - 1); handleEvent(e);
+}
+void injectKey(SDL_Keycode k) {
+    SDL_Event e{}; e.type = SDL_KEYDOWN; e.key.keysym.sym = k; handleEvent(e);
+}
+
+void selfTestStep() {
+    static int phase = 0;
+    static Uint32 t0 = SDL_GetTicks();
+    Uint32 t = SDL_GetTicks() - t0;
+    switch (phase) {
+        case 0: if (t > 1200) { injectText("1"); injectKey(SDLK_RETURN); phase++; } break;
+        case 1: if (t > 3500) { injectMotion(400, 300); phase++; } break;
+        case 2: if (t > 3600) { injectButton(true, 400, 300); phase++; } break;
+        case 3: if (t > 3700 && t < 5200) {
+                    int step = (int)((t - 3700) / 100);
+                    injectMotion(400 + step * 20, 300 + step * 12);
+                } else if (t >= 5200) phase++;
+                break;  // keep holding: drag box should be on screen now
+        case 4: if (t > 6800) { injectButton(false, 700, 480); phase++; } break;
+        case 5: if (t > 7600) { fprintf(stderr, "[selftest] done\n"); exit(0); } break;
     }
 }
 
 void pumpEvents() {
     SDL_Event e;
     while (SDL_PollEvent(&e)) handleEvent(e);
+    maybeSynthEdgeMotion();
+    if (selfTest) selfTestStep();
 }
 
 // Decode one UTF-8 codepoint; advances p.
@@ -222,11 +364,13 @@ const char* findFont() {
     const char* env = getenv("REALM_FONT");
     if (env && *env) return env;
     static const char* candidates[] = {
+        "/System/Library/Fonts/Helvetica.ttc",
         "/System/Library/Fonts/Menlo.ttc",
         "/System/Library/Fonts/Monaco.ttf",
         "/Library/Fonts/Andale Mono.ttf",
         "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
         "/usr/share/fonts/TTF/DejaVuSansMono.ttf",
+        "C:\\Windows\\Fonts\\arial.ttf",
         "C:\\Windows\\Fonts\\consola.ttf",
         nullptr
     };
@@ -248,6 +392,9 @@ WINDOW* initscr() {
         exit(1);
     }
     TTF_Init();
+    mouseDebug = getenv("REALM_MOUSE_DEBUG") != nullptr;
+    dumpPath   = getenv("REALM_DUMP_GRID");
+    selfTest   = getenv("REALM_SELFTEST") != nullptr;
     win = SDL_CreateWindow("REALM", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                            1440, 860,
                            SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
@@ -257,36 +404,23 @@ WINDOW* initscr() {
         exit(1);
     }
 
-    // Device pixel scale, so the font rasterizes at native resolution.
-    int pw, ww, ph, wh;
-    SDL_GetRendererOutputSize(ren, &pw, &ph);
-    SDL_GetWindowSize(win, &ww, &wh);
-    float scale = ww > 0 ? (float)pw / ww : 1.0f;
-
-    const char* fontPath = findFont();
-    if (!fontPath) { fprintf(stderr, "No monospace font found; set REALM_FONT=/path/to/font.ttf\n"); exit(1); }
-    int pt = 15;
-    if (const char* fp = getenv("REALM_FONT_PT")) { int v = atoi(fp); if (v >= 6 && v <= 72) pt = v; }
-    font     = TTF_OpenFont(fontPath, (int)(pt * scale));
-    fontBold = TTF_OpenFont(fontPath, (int)(pt * scale));
-    if (!font) { fprintf(stderr, "TTF_OpenFont failed: %s\n", TTF_GetError()); exit(1); }
-    if (fontBold) TTF_SetFontStyle(fontBold, TTF_STYLE_BOLD);
-
-    int adv = 0, minx, maxx, miny, maxy;
-    if (TTF_GlyphMetrics32(font, 'M', &minx, &maxx, &miny, &maxy, &adv) != 0 || adv <= 0)
-        TTF_SizeUTF8(font, "M", &adv, nullptr);
-    cellW = adv > 0 ? adv : 10;
-    cellH = TTF_FontHeight(font);
-
+    const char* fp = findFont();
+    if (!fp) { fprintf(stderr, "No usable font found; set REALM_FONT=/path/to/font.ttf\n"); exit(1); }
+    fontPath = fp;
+    if (const char* e = getenv("REALM_FONT_PT")) { int v = atoi(e); if (v >= 8 && v <= 32) fontPt = v; }
+    openFonts();
     recomputeGrid();
+
+    // The game draws its own cell cursor; the OS arrow would only ever
+    // disagree with it, so hide it inside the window.
+    SDL_ShowCursor(SDL_DISABLE);
     SDL_StartTextInput();
     stdscr = (WINDOW*)(void*)&grid; // non-null token
     return stdscr;
 }
 
 int endwin() {
-    for (auto& kv : glyphCache) if (kv.second) SDL_DestroyTexture(kv.second);
-    glyphCache.clear();
+    clearGlyphCache();
     if (font)     { TTF_CloseFont(font); font = nullptr; }
     if (fontBold) { TTF_CloseFont(fontBold); fontBold = nullptr; }
     if (ren) { SDL_DestroyRenderer(ren); ren = nullptr; }
@@ -393,7 +527,6 @@ int refresh() {
                     int tw, th;
                     SDL_QueryTexture(t, nullptr, nullptr, &tw, &th);
                     SDL_SetTextureColorMod(t, fg.r, fg.g, fg.b);
-                    // Center horizontally; align baseline by top (cellH == font height).
                     SDL_Rect dst = {x * cellW + (cellW - tw) / 2, y * cellH + (cellH - th) / 2, tw, th};
                     SDL_RenderCopy(ren, t, nullptr, &dst);
                 }
@@ -401,6 +534,19 @@ int refresh() {
         }
     }
     SDL_RenderPresent(ren);
+    if (dumpPath) {
+        static int frame = 0;
+        FILE* f = fopen(dumpPath, "w");
+        if (f) {
+            fprintf(f, "frame %d cols %d rows %d\n", ++frame, cols, rows);
+            for (int y = 0; y < rows; y++) for (int x = 0; x < cols; x++) {
+                Cell& c = at(y, x);
+                if (c.cp != ' ' || c.pair != 0)
+                    fprintf(f, "%d %d cp=%u pair=%d fl=%u\n", y, x, c.cp, c.pair, c.flags);
+            }
+            fclose(f);
+        }
+    }
     return OK;
 }
 

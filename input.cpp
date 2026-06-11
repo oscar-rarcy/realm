@@ -115,7 +115,15 @@ void handleInput(int ch) {
     if (ch == ERR) return;
     if (ch == 'q' || ch == 'Q') {
         if (g.mode == M_GAME_OVER) { g.returnToMenu = true; return; }
-        endwin(); exit(0);
+        // Mid-game quit needs a confirming second press — one stray key
+        // shouldn't end a long session. (Splash-screen quit stays instant.)
+        static int qArmedTick = -1;
+        if (qArmedTick >= 0 && qArmedTick <= g.tick && g.tick - qArmedTick < 40) {
+            endwin(); exit(0);
+        }
+        qArmedTick = g.tick;
+        setStatus("Press Q again to quit (no save!).");
+        return;
     }
     if ((ch=='\n'||ch==KEY_ENTER||ch=='\r') && g.mode==M_GAME_OVER) {
         g.returnToMenu = true; return;
@@ -686,10 +694,30 @@ void handleInput(int ch) {
         break;
     }
 
-    // 'A' is overloaded:
+    // Stop: cancel orders/waypoints/patrol and stand ground. Unlike hold
+    // position ('x'), auto-aggro stays on — the StarCraft/AoE 'S' stop.
+    // (Capital 'S' remains the debug map reveal.)
+    case 's': {
+        auto stop = [](Entity* u) {
+            if (!u || !u->alive || u->owner != 0 || !isUnit(u->type)) return;
+            u->state = S_IDLE; u->path.clear(); u->pathIdx = 0;
+            u->targetId = -1; u->attackMove = 0;
+            u->waypoints.clear(); u->patrolMode = false;
+        };
+        int n = 0;
+        if (!g.selectedIds.empty()) {
+            for (int id : g.selectedIds) { stop(findEntity(id)); n++; }
+        } else if (g.selectedId >= 0) {
+            stop(findEntity(g.selectedId)); n = 1;
+        }
+        if (n > 0) setStatus("Stop.");
+        break;
+    }
+
+    // 'A'/'a' is overloaded:
     //   with no selection or non-military selection → select all military
     //   with military selected → enter attack-move mode (next click = a-move target)
-    case 'A': {
+    case 'A': case 'a': {
         bool hasMilitarySel = false;
         if (!g.selectedIds.empty()) {
             for (int id : g.selectedIds) {
@@ -814,15 +842,21 @@ void handleInput(int ch) {
         int mapSX = me.x / tileW;
         int mapX  = g.viewX + mapSX;
         int mapY  = g.viewY + mapSY;
-        // Minimap click → jump viewport. Minimap sits at panelX+1..+mmW, mmY..+mmH.
+        // Minimap click → jump viewport; click-and-drag scrubs it (AoE-style).
+        // Minimap sits at panelX+1..+mmW, mmY..+mmH.
         {
+            static bool mmScrub = false;
+            bool wasScrub = mmScrub;
+            if (me.bstate & BUTTON1_RELEASED) mmScrub = false;
             int maxY2, maxX2; getmaxyx(stdscr, maxY2, maxX2); (void)maxY2;
             int panelW = 24, panelX = maxX2 - panelW;
             int mmX = panelX + 1, mmY = 1, mmW = panelW - 2;
             int mmH = std::min(g.viewH/3, 14);
             if (me.x >= mmX && me.x < mmX+mmW && me.y >= mmY && me.y < mmY+mmH) {
-                if (me.bstate & (BUTTON1_CLICKED | BUTTON1_PRESSED | BUTTON1_RELEASED
-                              | BUTTON3_CLICKED | BUTTON3_PRESSED)) {
+                bool buttoned = me.bstate & (BUTTON1_CLICKED | BUTTON1_PRESSED | BUTTON1_RELEASED
+                                          | BUTTON3_CLICKED | BUTTON3_PRESSED);
+                if (me.bstate & (BUTTON1_CLICKED | BUTTON1_PRESSED)) mmScrub = true;
+                if (buttoned || (wasScrub && (me.bstate & REPORT_MOUSE_POSITION))) {
                     int mx = (me.x - mmX) * MAP_W / mmW;
                     int my = (me.y - mmY) * MAP_H / mmH;
                     g.viewX = std::max(0, std::min(mx - g.viewW/2, MAP_W - g.viewW));

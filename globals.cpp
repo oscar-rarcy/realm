@@ -2,6 +2,16 @@
 
 Game g;
 
+// Sim RNG: splitmix64. Tiny, fast, and — unlike rand() — identical on
+// every platform and libc, which lockstep multiplayer depends on.
+void seedSimRng(unsigned long long seed) { g.rngState = seed; }
+int simRand() {
+    unsigned long long z = (g.rngState += 0x9E3779B97F4A7C15ull);
+    z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ull;
+    z = (z ^ (z >> 27)) * 0x94D049BB133111EBull;
+    return (int)((z ^ (z >> 31)) & 0x7FFFFFFF);
+}
+
 const EntityStats STATS[] = {
     {"None",       ' ',   0, 0,0,0,0,  0,  0,  0, 1,1,  0,0, false},
     {"Peasant",    'p',  35, 3,1,3,8, 50,  0, 40, 1,1,  0,1, false},

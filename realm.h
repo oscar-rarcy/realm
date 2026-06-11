@@ -200,8 +200,19 @@ struct Game {
     int weatherTimer;     // ticks until next weather change roll
     int biomeChoice;      // -1 = random, else Biome enum value forced on whole map
     bool returnToMenu;    // set on game-over to break back to splash screen
+    unsigned long long rngState; // sim RNG state — part of game state, saved/loaded
 };
 extern Game g;
+
+// ============================================================
+// SIM RNG — all gameplay randomness must come from simRand(), never
+// rand(): identical seed + identical command stream must replay
+// identically on every machine. That property is the foundation for
+// lockstep multiplayer, replays, and desync-free saves.
+// (render/ui may use any randomness they like — visuals don't desync.)
+// ============================================================
+void seedSimRng(unsigned long long seed);
+int  simRand();   // uniform 0..2^31-1, drop-in for rand()
 
 // ============================================================
 // FUNCTION PROTOTYPES

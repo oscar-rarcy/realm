@@ -14,7 +14,7 @@
 //   - Skips garbage corrupt files via fread return-value checks
 
 static constexpr char MAGIC[4] = {'R','L','M','2'};
-static constexpr int  SAVE_VERSION = 3;
+static constexpr int  SAVE_VERSION = 4;  // v4: + rngState (deterministic sim RNG)
 static constexpr int  MAX_ENTITIES = 100000;
 static constexpr int  MAX_VEC_LEN  = 50000;
 
@@ -52,6 +52,7 @@ bool saveGame(const char* path) {
     wr(f, g.weather); wr(f, g.weatherTimer);
     wr(f, g.biomeChoice);
     wr(f, g.winner); wr(f, g.aiTimer); wr(f, g.farmTimer);
+    wr(f, g.rngState);
 
     // ----- PLAYERS, MAP -----
     wrBlock(f, g.players, sizeof(g.players));
@@ -119,6 +120,7 @@ bool loadGame(const char* path) {
     rd(f, g.weather); rd(f, g.weatherTimer);
     rd(f, g.biomeChoice);
     rd(f, g.winner); rd(f, g.aiTimer); rd(f, g.farmTimer);
+    rd(f, g.rngState);
 
     // ----- PLAYERS, MAP -----
     if (!rdBlock(f, g.players, sizeof(g.players))) { fclose(f); return false; }

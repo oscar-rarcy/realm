@@ -818,15 +818,6 @@ void renderMap() {
         }
     }
 
-    // Precompute drag-selection box (map coords); -1 means no active box
-    int boxX0 = -1, boxY0 = -1, boxX1 = -1, boxY1 = -1;
-    if (g.dragging && g.mode != M_WALL_DRAG) {
-        boxX0 = std::min(g.dragStartX, g.cursorX);
-        boxY0 = std::min(g.dragStartY, g.cursorY);
-        boxX1 = std::max(g.dragStartX, g.cursorX);
-        boxY1 = std::max(g.dragStartY, g.cursorY);
-    }
-
     // Precompute building footprint preview for M_BUILD_PLACE.
     // bldPrev[y][x] = 0 not in footprint, 1 valid, 2 blocked.
     static unsigned char bldPrev[MAP_H][MAP_W];
@@ -1102,9 +1093,6 @@ void renderMap() {
                 }
             }
 
-            bool onBoxBorder = (boxX0 >= 0)
-                && mx >= boxX0 && mx <= boxX1 && my >= boxY0 && my <= boxY1
-                && (mx == boxX0 || mx == boxX1 || my == boxY0 || my == boxY1);
             bool onRangeRing = (ringR > 0)
                 && std::max(std::abs(mx - ringX), std::abs(my - ringY)) == ringR;
 
@@ -1133,11 +1121,6 @@ void renderMap() {
                 attron(COLOR_PAIR(CP_CURSOR));
                 drawAt(scY, scX, drawCh, emojiStr);
                 attroff(COLOR_PAIR(CP_CURSOR));
-            } else if (onBoxBorder) {
-                // Vivid selection-box border that pops on any terrain.
-                attron(COLOR_PAIR(CP_SUN)|A_BOLD|A_REVERSE);
-                drawAt(scY, scX, drawCh, emojiStr);
-                attroff(COLOR_PAIR(CP_SUN)|A_BOLD|A_REVERSE);
             } else if (onRangeRing && !ent) {
                 // Subtle range-ring marker on empty tiles only.
                 attron(COLOR_PAIR(CP_UI_HIGH)|A_DIM);
@@ -1188,6 +1171,25 @@ void renderMap() {
             else                         mvprintw(sy+2, sx * tileW, u8"·");
             attroff(COLOR_PAIR(CP_RAIN)|A_BOLD);
         }
+    }
+
+    // Drag-selection box: screen-space overlay drawn on top of everything,
+    // like AoE/StarCraft — visible over fog, units, weather, the lot.
+    // (It used to be a per-tile branch, which the fog early-out skipped,
+    // so boxes dragged across unexplored ground were invisible.)
+    if (g.dragging && g.mode != M_WALL_DRAG) {
+        int bx0 = std::min(g.dragStartX, g.cursorX), bx1 = std::max(g.dragStartX, g.cursorX);
+        int by0 = std::min(g.dragStartY, g.cursorY), by1 = std::max(g.dragStartY, g.cursorY);
+        attron(COLOR_PAIR(CP_SUN)|A_BOLD|A_REVERSE);
+        auto borderCell = [&](int mx, int my) {
+            int sx = mx - g.viewX, sy = my - g.viewY;
+            if (sx < 0 || sx >= g.viewW || sy < 0 || sy >= g.viewH) return;
+            if (displayMode == DM_ASCII) mvaddch(sy+2, sx * tileW, ' ');
+            else                         mvaddstr(sy+2, sx * tileW, "  ");
+        };
+        for (int mx = bx0; mx <= bx1; mx++) { borderCell(mx, by0); borderCell(mx, by1); }
+        for (int my = by0; my <= by1; my++) { borderCell(bx0, my); borderCell(bx1, my); }
+        attroff(COLOR_PAIR(CP_SUN)|A_BOLD|A_REVERSE);
     }
 }
 

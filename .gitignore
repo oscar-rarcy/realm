@@ -110,3 +110,4 @@ scratch/
 *.sav
 *.sav.tmp
 gui/
+/realm-gui
