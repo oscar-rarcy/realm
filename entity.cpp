@@ -112,7 +112,8 @@ bool isDetectedBy(int x, int y, int observerOwner) {
     return detectMap[observerOwner][y][x];
 }
 
-void setStatus(const std::string& msg) { g.statusMsg = msg; g.statusTimer = 35; }
+// 50 ticks ≈ 4 s on screen — the old 35 vanished before long lines were read.
+void setStatus(const std::string& msg) { g.statusMsg = msg; g.statusTimer = 50; }
 
 // Food can be deposited at a Mill, Town Hall, or Castle. A Mill tracks how much
 // of the player's food currently lives at its location — if the Mill is destroyed,

@@ -122,7 +122,7 @@ static int showSplash() {
         pr(row+4, c2, "Z patrol  X hold  1-9/G groups");
         pr(row+5, c2, "U eject  R rally  P pause");
         pr(row+6, c2, "F5-F8 save  F9-F12 load");
-        pr(row+7, c2, "Cmd +/- zoom  Shift+S reveal");
+        pr(row+7, c2, "? in-game help   QQ to menu");
         row += bh + 1;
 
         // ---- tips ----
@@ -446,7 +446,7 @@ static void runMatch() {
         bool ticked = false;
         if (Clock::now() >= nextTick) {
             nextTick += Ms(TICK_MS);
-            if (g.mode != M_PAUSED && g.mode != M_GAME_OVER) simTick();
+            if (g.mode != M_PAUSED && g.mode != M_GAME_OVER && g.mode != M_HELP) simTick();
             render();
             ticked = true;
         }

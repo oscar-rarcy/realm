@@ -537,11 +537,12 @@ const char* findFont() {
     // comes from one glyph's advance — a proportional face (Helvetica) makes
     // wide glyphs collide and narrow ones float, which reads as bad kerning.
     // Helvetica stays solely as a nothing-else-exists fallback.
-    // First choice is SF Mono MEDIUM (one weight up from Regular, which read
-    // too thin at game sizes) paired with the true Bold face for A_BOLD.
+    // First choice is SF Mono REGULAR (Medium was tried 2026-06-12 and read
+    // too heavy — user asked for the lighter weight back), paired with the
+    // true Bold face for A_BOLD.
     struct Cand { const char* reg; const char* bold; };
     static const Cand candidates[] = {
-        { "/System/Applications/Utilities/Terminal.app/Contents/Resources/Fonts/SF-Mono-Medium.otf",
+        { "/System/Applications/Utilities/Terminal.app/Contents/Resources/Fonts/SF-Mono-Regular.otf",
           "/System/Applications/Utilities/Terminal.app/Contents/Resources/Fonts/SF-Mono-Bold.otf" },
         { "/System/Library/Fonts/SFNSMono.ttf", nullptr },
         { "/System/Library/Fonts/Menlo.ttc", nullptr },

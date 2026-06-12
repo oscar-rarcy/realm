@@ -65,12 +65,16 @@ void renderUI() {
     if (inBounds(g.cursorX, g.cursorY) && g.map[g.cursorY][g.cursorX].explored[0]) {
         Tile& ct = g.map[g.cursorY][g.cursorX];
         const char* bn[] = {"Temperate","Desert","Tundra","Swamp","Woodland","Volcanic","Ocean"};
+        // Indexed by Terrain — keep in lockstep with the enum in realm.h.
+        // (T_BRIDGE was missing here once: hovering a bridge read past the array.)
         const char* tn[] = {"Grassland","Tall Grass","Wildflowers","Meadow","Oak Forest","Pine Forest",
-            "Palm Grove","Dead Tree","Mountain","Rolling Hills","Stone","Deep Water","Shallows",
+            "Palm Grove","Dead Tree","Mountain","Hills (ramp)","Stone","Deep Water","Shallows",
             "Marshland","Reed Bed","Gold Deposit","Sandy Ground","Sand Dunes","Snow Cover","Frozen Ice",
             "Bare Earth","Stone Road","Mud","Wheat Field","Berry Bush","Fish Shoal","Ancient Ruins","Gravel",
             "Lava Fissure","Volcanic Ash",
-            "Castle Wall","Castle Floor","Castle Gate"};
+            "Castle Wall","Castle Floor","Castle Gate","Stone Bridge"};
+        static_assert(sizeof(tn)/sizeof(tn[0]) == (size_t)T_BRIDGE + 1,
+            "terrain name table must cover every Terrain value");
         attron(COLOR_PAIR(CP_UI_TEXT)); mvprintw(1, 1, "%-16s", tn[ct.terrain]); attroff(COLOR_PAIR(CP_UI_TEXT));
         attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(1, 18, "[%s]", bn[ct.biome]); attroff(COLOR_PAIR(CP_UI_DIM));
         if (ct.resources > 0) { attron(COLOR_PAIR(CP_UI_HIGH)); mvprintw(1, 30, "Res:%d", ct.resources); attroff(COLOR_PAIR(CP_UI_HIGH)); }
@@ -123,7 +127,57 @@ void renderUI() {
     int iy = mmY + mmH + 1;
     attron(COLOR_PAIR(CP_UI_DIM)); mvhline(iy-1, panelX, '-', panelW); attroff(COLOR_PAIR(CP_UI_DIM));
 
-    if (g.selectedIds.size() > 1) {
+    // One row of a build/train menu: key, name, and the live cost from STATS.
+    auto menuRow = [&](int& row, char key, EntityType t, const char* req) {
+        attron(COLOR_PAIR(CP_UI_HIGH)); mvprintw(row, panelX+1, "[%c]", key); attroff(COLOR_PAIR(CP_UI_HIGH));
+        attron(COLOR_PAIR(CP_UI_TEXT)); mvprintw(row, panelX+4, "%-11.11s", STATS[t].name); attroff(COLOR_PAIR(CP_UI_TEXT));
+        char cost[16] = ""; int cl = 0;
+        if (STATS[t].costGold) cl += snprintf(cost+cl, sizeof(cost)-cl, "%dg", STATS[t].costGold);
+        if (STATS[t].costWood) cl += snprintf(cost+cl, sizeof(cost)-cl, "%s%dw", cl?" ":"", STATS[t].costWood);
+        int fc = isBuilding(t) ? 0 : trainFoodCost(t);
+        if (fc)                cl += snprintf(cost+cl, sizeof(cost)-cl, "%s%df", cl?" ":"", fc);
+        if (!cl) snprintf(cost, sizeof(cost), "free");
+        attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(row, panelX+15, "%-8s", cost); attroff(COLOR_PAIR(CP_UI_DIM));
+        if (req && *req) { attron(COLOR_PAIR(CP_UI_ACCENT)); mvprintw(row, panelX+15+7, "%s", req); attroff(COLOR_PAIR(CP_UI_ACCENT)); }
+        row++;
+    };
+
+    if (g.mode == M_BUILD_SELECT) {
+        // Keys mirror the M_BUILD_SELECT switch in input.cpp — keep in sync.
+        attron(COLOR_PAIR(CP_UI_ACCENT)|A_BOLD); mvprintw(iy++, panelX+1, "BUILD"); attroff(COLOR_PAIR(CP_UI_ACCENT)|A_BOLD);
+        menuRow(iy, 'H', E_HOUSE, "");      menuRow(iy, 'B', E_BARRACKS, "");
+        menuRow(iy, 'S', E_STABLE, "");     menuRow(iy, 'T', E_TOWER, "");
+        menuRow(iy, 'F', E_FARM, "");       menuRow(iy, 'W', E_WALL, "");
+        menuRow(iy, 'G', E_GATE, "");       menuRow(iy, 'A', E_BLACKSMITH, "");
+        menuRow(iy, 'C', E_CHURCH, "");     menuRow(iy, 'M', E_MARKET, "");
+        menuRow(iy, 'K', E_CASTLE, "");     menuRow(iy, 'L', E_LUMBER_CAMP, "");
+        menuRow(iy, 'N', E_MINING_CAMP, "");menuRow(iy, 'I', E_MILL, "");
+        menuRow(iy, 'D', E_DOCK, "");       menuRow(iy, 'R', E_BRIDGE, "");
+        iy++;
+        attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(iy++, panelX+1, "[Esc] cancel"); attroff(COLOR_PAIR(CP_UI_DIM));
+    } else if (g.mode == M_TRAIN_SELECT) {
+        Entity* b = findEntity(g.selectedId);
+        attron(COLOR_PAIR(CP_UI_ACCENT)|A_BOLD); mvprintw(iy++, panelX+1, "TRAIN"); attroff(COLOR_PAIR(CP_UI_ACCENT)|A_BOLD);
+        if (b) switch (b->type) {
+            case E_TOWNHALL: menuRow(iy, 'P', E_PEASANT, ""); break;
+            case E_BARRACKS:
+                menuRow(iy, 'M', E_MILITIA, "");     menuRow(iy, 'A', E_ARCHER, "");
+                menuRow(iy, 'S', E_SPEARMAN, "");    menuRow(iy, 'X', E_CROSSBOWMAN, "+smith");
+                menuRow(iy, 'P', E_SAPPER, "+smith");menuRow(iy, 'C', E_CATAPULT, "");
+                menuRow(iy, 'R', E_RAM, "");
+                break;
+            case E_STABLE: menuRow(iy, 'K', E_KNIGHT, ""); menuRow(iy, 'H', E_HUSSAR, ""); break;
+            case E_CHURCH: menuRow(iy, 'M', E_MONK, ""); break;
+            case E_CASTLE: menuRow(iy, 'T', E_TREBUCHET, ""); break;
+            case E_DOCK:
+                menuRow(iy, 'B', E_FISHING_BOAT, ""); menuRow(iy, 'W', E_WARSHIP, "");
+                menuRow(iy, 'T', E_TRANSPORT, "");
+                break;
+            default: break;
+        }
+        iy++;
+        attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(iy++, panelX+1, "[Esc] cancel"); attroff(COLOR_PAIR(CP_UI_DIM));
+    } else if (g.selectedIds.size() > 1) {
         // Multi-unit group summary
         int counts[6] = {0};
         for (int sid : g.selectedIds) {
@@ -170,7 +224,16 @@ void renderUI() {
             iy++;
             attron(COLOR_PAIR(CP_UI_TEXT)); mvprintw(iy++, panelX+1, "%d / %d", sel->hp, sel->maxHp); attroff(COLOR_PAIR(CP_UI_TEXT));
             if (isUnit(sel->type)) {
-                attron(COLOR_PAIR(CP_UI_TEXT)); mvprintw(iy++, panelX+1, "ATK %-3d  RNG %-2d", st.atk, st.range); attroff(COLOR_PAIR(CP_UI_TEXT));
+                // Live values: research, shield-wall and ale all show here.
+                attron(COLOR_PAIR(CP_UI_TEXT)); mvprintw(iy++, panelX+1, "ATK %-3d  RNG %-2d", unitAtk(*sel), unitRange(*sel)); attroff(COLOR_PAIR(CP_UI_TEXT));
+                static const char* armorName[] = {"Light","Armored","Siege"};
+                static const char* dmgName[]   = {"Slash","Pierce","Thrust","Crush"};
+                attron(COLOR_PAIR(CP_UI_DIM));
+                if (STATS[sel->type].atk > 0)
+                    mvprintw(iy++, panelX+1, "%s / deals %s", armorName[armorClassOf(sel->type)], dmgName[damageTypeOf(sel->type)]);
+                else
+                    mvprintw(iy++, panelX+1, "%s armour", armorName[armorClassOf(sel->type)]);
+                attroff(COLOR_PAIR(CP_UI_DIM));
                 std::string stDesc;
                 if (sel->type == E_PEASANT) {
                     switch (sel->state) {
@@ -363,21 +426,13 @@ void renderUI() {
     int botY2 = maxY-2, botY1 = maxY-1;
     attron(COLOR_PAIR(CP_UI_BAR)); mvhline(botY2, 0, ' ', maxX);
     if (g.mode == M_BUILD_SELECT)
-        mvprintw(botY2, 1, " BUILD: [H]ouse [B]arracks [S]table [T]ower [F]arm [W]all [G]ate [A]rmory [C]hurch [M]arket [K]Castle [L]umber [N]mine [I]mill [D]ock b[R]idge [Esc] ");
+        mvprintw(botY2, 1, " BUILD: press a key from the panel on the right. [Esc] cancel ");
     else if (g.mode == M_BUILD_PLACE) {
         const char* name = (g.buildPending != E_NONE) ? STATS[g.buildPending].name : "building";
         mvprintw(botY2, 1, " PLACE %s: Arrows/Mouse to position, [Enter]/Click to build, [Esc]/RClick to cancel ", name);
     }
     else if (g.mode == M_TRAIN_SELECT) {
-        Entity* s2 = findEntity(g.selectedId);
-        if (s2) {
-            if (s2->type==E_TOWNHALL)  mvprintw(botY2, 1, " TRAIN: [P]easant(50g) [Esc] ");
-            else if (s2->type==E_BARRACKS) mvprintw(botY2, 1, " TRAIN: [M]ilitia(60g) [A]rcher(70g) [S]pear(40g) [X]bow(70g+30w*) Sa[P]per(60g+20w*) [C]atapult [R]am  *=smith [Esc] ");
-            else if (s2->type==E_STABLE)   mvprintw(botY2, 1, " TRAIN: [K]night(120g) [H]ussar(80g) [Esc] ");
-            else if (s2->type==E_DOCK)     mvprintw(botY2, 1, " TRAIN: [B]oat(80g+50w) [W]arship(150g+80w) [T]ransport(80g+40w) [Esc] ");
-            else if (s2->type==E_CHURCH)   mvprintw(botY2, 1, " TRAIN: [M]onk(60g) — heals adjacent wounded while idle [Esc] ");
-            else if (s2->type==E_CASTLE)   mvprintw(botY2, 1, " TRAIN: [T]rebuchet(200g+250w) [Esc] ");
-        }
+        mvprintw(botY2, 1, " TRAIN: press a key from the panel on the right. [Esc] cancel ");
     } else if (g.mode == M_WALL_DRAG) {
         if (g.dragging)
             mvprintw(botY2, 1, " WALL: Drag to cursor position — release to place  [Esc] Cancel ");
@@ -394,10 +449,54 @@ void renderUI() {
         attron(A_BOLD); mvprintw(botY2, 1, " GROUP ASSIGN: Press [1]-[9] to assign selection to group, [Esc] to cancel "); attroff(A_BOLD);
     } else if (g.mode == M_PATROL_SET) {
         mvprintw(botY2, 1, " PATROL: Move cursor + Enter (or click) to set target. [Esc] cancel ");
+    } else if (g.mode == M_HELP) {
+        mvprintw(botY2, 1, " HELP — press any key to return ");
     } else {
-        mvprintw(botY2, 1, " Spc:Sel  Enter:Cmd  Shift+RClick:Waypoint  Z:Patrol  B:Build  T:Train  A:All Mil  G:Group  P:Pause  Q:Quit ");
+        mvprintw(botY2, 1, " Spc:Sel  Enter:Cmd  B:Build  T:Train  A:All Mil  X:Hold  Z:Patrol  G:Group  P:Pause  ?:Help  Q:Menu ");
     }
     attroff(COLOR_PAIR(CP_UI_BAR));
+
+    // ---- Help sheet: full reference, drawn over the map; sim is paused ----
+    if (g.mode == M_HELP) {
+        int hw = 74, hh = 26;
+        int hx = std::max(0, (maxX - panelW - hw) / 2);
+        int hy = std::max(1, (maxY - hh) / 2);
+        attron(COLOR_PAIR(CP_UI_BAR));
+        for (int r = 0; r < hh; r++) mvhline(hy+r, hx, ' ', hw);
+        attron(A_BOLD); mvprintw(hy+1, hx+2, "REALM — COMMAND REFERENCE"); attroff(A_BOLD);
+        int r = hy + 3, c1 = hx + 2, c2 = hx + 38;
+        mvprintw(r,   c1, "SELECTION");
+        mvprintw(r+1, c1, " Space/LClick   select");
+        mvprintw(r+2, c1, " Drag           box-select");
+        mvprintw(r+3, c1, " Dbl-click      all of type on screen");
+        mvprintw(r+4, c1, " Shift+click    add/remove");
+        mvprintw(r+5, c1, " Tab / ,        cycle units / idle peasant");
+        mvprintw(r+6, c1, " 1-9 / G        recall / assign group");
+        mvprintw(r+8, c1, "ORDERS");
+        mvprintw(r+9, c1, " Enter/RClick   move attack gather tend");
+        mvprintw(r+10,c1, " Shift+RClick   queue waypoint");
+        mvprintw(r+11,c1, " A              attack-move (mil. selected)");
+        mvprintw(r+12,c1, " s / X          stop / hold position");
+        mvprintw(r+13,c1, " Z              patrol to click");
+        mvprintw(r+14,c1, " D              pack/deploy trebuchet");
+        mvprintw(r+15,c1, " U / O          eject garrison / gate mode");
+        mvprintw(r,   c2, "PRODUCTION");
+        mvprintw(r+1, c2, " B   build menu (peasant)");
+        mvprintw(r+2, c2, " T   train menu (building)");
+        mvprintw(r+3, c2, " R   rally / research / trade");
+        mvprintw(r+5, c2, "CAMERA");
+        mvprintw(r+6, c2, " Arrows, Shift+arrows fast");
+        mvprintw(r+7, c2, " Mouse edge-scroll, minimap");
+        mvprintw(r+8, c2, " h   jump to town hall");
+        mvprintw(r+10,c2, "GAME");
+        mvprintw(r+11,c2, " P        pause");
+        mvprintw(r+12,c2, " F5-F8    save slots 1-4");
+        mvprintw(r+13,c2, " F9-F12   load slots 1-4");
+        mvprintw(r+14,c2, " Q Q      abandon to menu");
+        mvprintw(r+15,c2, " Shift+S  reveal map (debug)");
+        mvprintw(hy+hh-2, c1, "Terrain: ramps 'n' climb cliffs '#'. High ground: +sight, +ranged dmg.");
+        attroff(COLOR_PAIR(CP_UI_BAR));
+    }
 
     mvhline(botY1, 0, ' ', maxX);
     if (g.statusTimer > 0) {

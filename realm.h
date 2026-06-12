@@ -76,7 +76,7 @@ enum EntityState {
     S_BUILDING, S_TRAINING, S_RETURNING, S_DEAD,
     S_ENTERING, S_GARRISONED
 };
-enum GameMode  { M_NORMAL, M_BUILD_SELECT, M_BUILD_PLACE, M_TRAIN_SELECT, M_WALL_DRAG, M_PAUSED, M_GAME_OVER, M_RALLY_SET, M_RESEARCH_SELECT, M_ATTACK_MOVE, M_MARKET_TRADE, M_PATROL_SET };
+enum GameMode  { M_NORMAL, M_BUILD_SELECT, M_BUILD_PLACE, M_TRAIN_SELECT, M_WALL_DRAG, M_PAUSED, M_GAME_OVER, M_RALLY_SET, M_RESEARCH_SELECT, M_ATTACK_MOVE, M_MARKET_TRADE, M_PATROL_SET, M_HELP };
 
 // Research bits stored in Player.research
 enum Research { R_IRON_WEAPONS = 1, R_CROSSBOWS = 2, R_PIKES = 4, R_COUNTERWEIGHT = 8, R_PLATE_HELM = 16 };
@@ -343,6 +343,7 @@ void orderAttack(Entity& e,int tid);
 void orderGather(Entity& e,int tx,int ty);
 void orderBuild(Entity& e,EntityType bt,int bx,int by);
 void orderTrain(Entity& bld,EntityType ut);
+int  trainFoodCost(EntityType ut);
 void orderGroupMove(const std::vector<int>& unitIds,int tx,int ty);
 void orderGroupAttack(const std::vector<int>& unitIds,int tid);
 void orderGroupAttackMove(const std::vector<int>& unitIds,int tx,int ty);

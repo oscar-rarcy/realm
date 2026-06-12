@@ -231,6 +231,19 @@ static int reservedSupply(int owner) {
     return used;
 }
 
+// Food component of a unit's training cost. One source of truth — the
+// train menus (ui.cpp) print from here, orderTrain charges from here.
+int trainFoodCost(EntityType ut) {
+    switch (ut) {
+        case E_MILITIA: case E_ARCHER: case E_CROSSBOWMAN:
+        case E_HUSSAR:  case E_WARSHIP:                    return 20;
+        case E_KNIGHT:                                     return 40;
+        case E_CATAPULT:                                   return 30;
+        case E_TRANSPORT:                                  return 10;
+        default:                                           return 0;
+    }
+}
+
 void orderTrain(Entity& bld, EntityType ut) {
     if (!isBuilding(bld.type) || bld.underConstruction) return;
     // Queue if busy; reject only when queue is full.
@@ -251,13 +264,7 @@ void orderTrain(Entity& bld, EntityType ut) {
     if (reservedSupply(bld.owner) + STATS[ut].supplyUsed > p.supplyMax) {
         if (bld.owner==0) setStatus("Need more houses!"); return;
     }
-    int foodCost = 0;
-    if (ut==E_MILITIA||ut==E_ARCHER||ut==E_CROSSBOWMAN) foodCost = 20;
-    else if (ut==E_KNIGHT) foodCost = 40;
-    else if (ut==E_HUSSAR) foodCost = 20;
-    else if (ut==E_CATAPULT) foodCost = 30;
-    else if (ut==E_WARSHIP)  foodCost = 20;
-    else if (ut==E_TRANSPORT) foodCost = 10;
+    int foodCost = trainFoodCost(ut);
     if (p.food < foodCost) { if (bld.owner==0) setStatus("Need more food!"); return; }
     spendPlayerFood(bld.owner, foodCost);
     p.gold -= STATS[ut].costGold; p.wood -= STATS[ut].costWood;

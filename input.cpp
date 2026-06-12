@@ -153,13 +153,16 @@ void handleInput(int ch) {
     if (ch == 'q' || ch == 'Q') {
         if (g.mode == M_GAME_OVER) { g.returnToMenu = true; return; }
         // Mid-game quit needs a confirming second press — one stray key
-        // shouldn't end a long session. (Splash-screen quit stays instant.)
+        // shouldn't end a long session. Returns to the main menu (the splash
+        // owns app exit); the match is abandoned, not saved.
         static int qArmedTick = -1;
         if (qArmedTick >= 0 && qArmedTick <= g.tick && g.tick - qArmedTick < 40) {
-            endwin(); exit(0);
+            qArmedTick = -1;
+            g.returnToMenu = true;
+            return;
         }
         qArmedTick = g.tick;
-        setStatus("Press Q again to quit (no save!).");
+        setStatus("Press Q again to abandon the match and return to the menu (no save!).");
         return;
     }
     if ((ch=='\n'||ch==KEY_ENTER||ch=='\r') && g.mode==M_GAME_OVER) {
@@ -168,6 +171,9 @@ void handleInput(int ch) {
     if ((ch=='p'||ch=='P') && (g.mode==M_NORMAL||g.mode==M_PAUSED)) {
         g.mode = (g.mode==M_PAUSED) ? M_NORMAL : M_PAUSED; return;
     }
+    // Help overlay: '?' opens (game pauses underneath); any key closes.
+    if (g.mode == M_HELP) { if (ch != ERR && ch != KEY_MOUSE) g.mode = M_NORMAL; return; }
+    if (ch == '?' && g.mode == M_NORMAL) { g.mode = M_HELP; return; }
     if (g.mode==M_PAUSED || g.mode==M_GAME_OVER) return;
 
     // Build mode
