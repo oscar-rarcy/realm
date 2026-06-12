@@ -689,9 +689,9 @@ void handleInput(int ch) {
         break;
     }
 
-    // 'A'/'a' is overloaded:
-    //   with no selection or non-military selection → select all military
-    //   with military selected → enter attack-move mode (next click = a-move target)
+    // 'a' is contextual: attack-move with military selected, otherwise
+    // select all military. 'A' (Shift+A) ALWAYS (re)selects all military —
+    // so after an attack-move you can grab the whole army back in one key.
     case 'A': case 'a': {
         auto isMilType = [](EntityType t) {
             return t==E_MILITIA||t==E_ARCHER||t==E_KNIGHT||t==E_SPEARMAN
@@ -699,14 +699,16 @@ void handleInput(int ch) {
                 || t==E_CROSSBOWMAN||t==E_HUSSAR||t==E_MONK||t==E_SAPPER;
         };
         bool hasMilitarySel = false;
-        if (!g.selectedIds.empty()) {
-            for (int id : g.selectedIds) {
-                Entity* e = findEntity(id);
-                if (e && isMilType(e->type)) { hasMilitarySel = true; break; }
+        if (ch == 'a') {
+            if (!g.selectedIds.empty()) {
+                for (int id : g.selectedIds) {
+                    Entity* e = findEntity(id);
+                    if (e && isMilType(e->type)) { hasMilitarySel = true; break; }
+                }
+            } else if (g.selectedId >= 0) {
+                Entity* e = findEntity(g.selectedId);
+                if (e && isMilType(e->type)) hasMilitarySel = true;
             }
-        } else if (g.selectedId >= 0) {
-            Entity* e = findEntity(g.selectedId);
-            if (e && isMilType(e->type)) hasMilitarySel = true;
         }
         if (hasMilitarySel) {
             g.mode = M_ATTACK_MOVE;

@@ -602,12 +602,14 @@ WINDOW* initscr() {
     openFonts();
     recomputeGrid();
 
-    // Keep the OS cursor visible. It was hidden at first ("the cell cursor
-    // is the pointer"), but with trackpad acceleration an invisible pointer
-    // means the player can't tell why the cell cursor moves the way it does.
-    // Visible pointer + cell cursor snapped to the cell under its tip reads
-    // as one coherent cursor.
-    SDL_ShowCursor(SDL_ENABLE);
+    // Hide the OS cursor: the gold cell cursor IS the pointer. This was
+    // visible for a while because the cell cursor lagged the pointer (the
+    // 2026-06-12 queue-desync era); now that position comes from a 30 ms
+    // SDL_GetGlobalMouseState poll the cell tracks the fingertip exactly,
+    // and two cursors just read as clutter. REALM_SHOW_POINTER=1 restores
+    // the OS pointer if a setup ever needs it.
+    const char* showPtr = getenv("REALM_SHOW_POINTER");
+    SDL_ShowCursor((showPtr && *showPtr && *showPtr != '0') ? SDL_ENABLE : SDL_DISABLE);
     SDL_StartTextInput();
     stdscr = (WINDOW*)(void*)&grid; // non-null token
     return stdscr;

@@ -479,7 +479,38 @@ void renderUI() {
     } else if (g.mode == M_HELP) {
         mvprintw(botY2, 1, " HELP — press any key to return ");
     } else {
-        mvprintw(botY2, 1, " Spc:Sel  Enter:Cmd  B:Build  T:Train  A:All Mil  X:Hold  Z:Patrol  G:Group  P:Pause  ?:Help  Q:Menu ");
+        // Contextual hints: lead with what the current selection can DO.
+        Entity* cs = findEntity(g.selectedId);
+        bool group = g.selectedIds.size() > 1;
+        if (group) {
+            mvprintw(botY2, 1, " Enter:Move/Attack  a:Attack-move  X:Hold  s:Stop  Z:Patrol  G:Group  Shift+A:All Mil  ?:Help ");
+        } else if (cs && cs->owner == 0 && cs->type == E_PEASANT) {
+            mvprintw(botY2, 1, " B:Build  Enter:Move/Gather/Repair  Shift+RClick:Waypoint  ,:Next idle  ?:Help  Q:Menu ");
+        } else if (cs && cs->owner == 0 && cs->type == E_WAGON) {
+            mvprintw(botY2, 1, " Enter/RClick on a depot: load or deliver cargo  ?:Help  Q:Menu ");
+        } else if (cs && cs->owner == 0 && cs->type == E_TREBUCHET) {
+            mvprintw(botY2, 1, " D:Pack/Deploy  Enter:Move(packed)/Attack(deployed)  X:Hold  ?:Help ");
+        } else if (cs && cs->owner == 0 && isUnit(cs->type)) {
+            mvprintw(botY2, 1, " Enter:Move/Attack  a:Attack-move  X:Hold  Z:Patrol  G:Group  Shift+A:All Mil  ?:Help ");
+        } else if (cs && cs->owner == 0 && isBuilding(cs->type) && !cs->underConstruction) {
+            bool trains = (cs->type==E_TOWNHALL||cs->type==E_BARRACKS||cs->type==E_STABLE
+                        || cs->type==E_DOCK||cs->type==E_CASTLE||cs->type==E_CHURCH
+                        || cs->type==E_MILL||cs->type==E_GRANARY);
+            bool rallies = trains || cs->type==E_BLACKSMITH || cs->type==E_MARKET
+                        || cs->type==E_TAVERN || cs->type==E_TRADING_POST;
+            char line[120] = " ";
+            if (trains) strncat(line, "T:Train  ", sizeof(line)-strlen(line)-1);
+            if (cs->type==E_BLACKSMITH) strncat(line, "R:Research  ", sizeof(line)-strlen(line)-1);
+            else if (cs->type==E_MARKET||cs->type==E_TRADING_POST) strncat(line, "R:Trade  ", sizeof(line)-strlen(line)-1);
+            else if (cs->type==E_TAVERN) strncat(line, "R:Feast  ", sizeof(line)-strlen(line)-1);
+            else if (rallies) strncat(line, "R:Rally  ", sizeof(line)-strlen(line)-1);
+            if (cs->type==E_GATE) strncat(line, "O:Open/Close  ", sizeof(line)-strlen(line)-1);
+            if (canGarrisonIn(cs->type)) strncat(line, "U:Eject  ", sizeof(line)-strlen(line)-1);
+            strncat(line, "?:Help  Q:Menu ", sizeof(line)-strlen(line)-1);
+            mvprintw(botY2, 1, "%s", line);
+        } else {
+            mvprintw(botY2, 1, " Spc:Sel  Enter:Cmd  B:Build  T:Train  A:All Mil  X:Hold  Z:Patrol  G:Group  P:Pause  ?:Help  Q:Menu ");
+        }
     }
     attroff(COLOR_PAIR(CP_UI_BAR));
 
