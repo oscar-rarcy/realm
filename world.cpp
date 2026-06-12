@@ -26,6 +26,7 @@ void tickTowers() {
         if (e.type == E_TOWNHALL && canGarrAtk) rng = std::max(rng, 6);
         if (isCastle) { rng = std::max(rng, 9); atk = std::max(atk, 12); }
         if (e.type == E_HOUSE    && canGarrAtk) rng = std::max(rng, 4);
+        if (e.type == E_WALL     && canGarrAtk) rng = std::max(rng, 5);  // parapet archer
         if (rng <= 0 || atk <= 0) { if (e.atkCd > 0) e.atkCd--; continue; }
 
         int sx = e.x + STATS[e.type].sizeW/2;
@@ -56,7 +57,7 @@ void tickTowers() {
             });
             for (Entity* en : targets) {
                 if (aShots >= volley) break;
-                int dmg = damageVs(E_ARCHER, en->type, atk, en->owner);
+                int dmg = shieldBuilding(*en, damageVs(E_ARCHER, en->type, atk, en->owner));
                 en->hp -= dmg; en->alertTicks = 12;
                 spawnProjectile(sx, sy, en->x, en->y, '-', CP_PROJ_TOWER);
                 if (en->hp <= 0) killEntity(*en);
@@ -108,13 +109,18 @@ void tickFarms() {
                 if (!u.alive || u.owner!=p || u.type!=E_PEASANT) continue;
                 if (dist(u.x, u.y, farm.x, farm.y) <= 1) { tended=true; break; }
             }
+            // A claimed riverside watermill is a half-measure mill.
+            bool hasWatermill = false;
+            if (!hasMill)
+                for (auto& e : g.entities)
+                    if (e.alive && e.owner==p && e.type==E_WATERMILL) { hasWatermill = true; break; }
             // Mill doubles output. The farming year has a shape now:
             // spring = planting (slow), summer = steady, early autumn =
             // the great harvest (double), late autumn = fields spent.
             // Stockpile in autumn or starve in winter — and everyone's
             // bursting granaries make autumn the season to raid.
             if (tended && farm.carrying < FARM_CAP) {
-                int rate = hasMill ? 6 : 3;
+                int rate = hasMill ? 6 : hasWatermill ? 4 : 3;
                 Season ss = getSeason();
                 float sp = getSeasonProgress();
                 if      (ss == SPRING)             rate = std::max(1, rate / 2);
@@ -224,6 +230,64 @@ void tickTaverns() {
 }
 
 void tickChurches() {
+    // Shrines: old stones mend whoever rests beside them; a garrisoned monk
+    // projects the blessing to radius 4 for the claimant's units. Wells give
+    // the owner's peasants a slow mend. Stonemasons patch nearby buildings,
+    // chewing through the map's stone deposits to do it.
+    if (g.tick % 15 == 0) {
+        for (auto& s : g.entities) {
+            if (!s.alive || s.type != E_SHRINE) continue;
+            bool monkIn = false;
+            for (int gid : s.garrison) {
+                Entity* m = findEntity(gid);
+                if (m && m->alive && m->type == E_MONK) { monkIn = true; break; }
+            }
+            int radius = monkIn ? 4 : 1;
+            for (auto& u : g.entities) {
+                if (!u.alive || !isUnit(u.type) || u.owner >= MAX_PLAYERS) continue;
+                if (u.state == S_GARRISONED || u.hp >= u.maxHp) continue;
+                if (s.owner != OWNER_NATURE && u.owner != s.owner) continue; // claimed: owner only
+                if (dist(u.x, u.y, s.x, s.y) > radius) continue;
+                u.hp = std::min(u.maxHp, u.hp + 1);
+            }
+        }
+    }
+    if (g.tick % 25 == 0) {
+        for (auto& w : g.entities) {
+            if (!w.alive || w.type != E_WELL || w.underConstruction || w.owner >= MAX_PLAYERS) continue;
+            for (auto& u : g.entities) {
+                if (!u.alive || u.owner != w.owner || u.type != E_PEASANT) continue;
+                if (u.state == S_GARRISONED || u.hp >= u.maxHp) continue;
+                if (dist(u.x, u.y, w.x, w.y) <= 6) u.hp = std::min(u.maxHp, u.hp + 1);
+            }
+        }
+    }
+    if (g.tick % 15 == 0) {
+        for (auto& m : g.entities) {
+            if (!m.alive || m.type != E_STONEMASON || m.underConstruction || m.owner >= MAX_PLAYERS) continue;
+            // Restock repair points by quarrying a nearby stone deposit.
+            if (m.carrying <= 0) {
+                bool found = false;
+                for (int dy = -8; dy <= 8 && !found; dy++) for (int dx = -8; dx <= 8 && !found; dx++) {
+                    int nx = m.x+dx, ny = m.y+dy;
+                    if (!inBounds(nx,ny) || g.map[ny][nx].terrain != T_STONE) continue;
+                    g.map[ny][nx].terrain = T_GRAVEL;
+                    g.map[ny][nx].preWinterTerrain = T_GRAVEL;
+                    m.carrying = 200;
+                    found = true;
+                }
+                if (!found) continue;
+            }
+            // Patch the most damaged own building in reach, 1 hp per pass.
+            Entity* worst = nullptr;
+            for (auto& b : g.entities) {
+                if (!b.alive || b.owner != m.owner || !isBuilding(b.type) || b.underConstruction) continue;
+                if (b.hp >= b.maxHp || dist(b.x, b.y, m.x, m.y) > 8) continue;
+                if (!worst || b.hp * worst->maxHp < worst->hp * b.maxHp) worst = &b;
+            }
+            if (worst) { worst->hp++; m.carrying--; }
+        }
+    }
     const int CHURCH_RANGE = 6;
     for (auto& ch : g.entities) {
         if (!ch.alive || ch.type != E_CHURCH || ch.underConstruction) continue;
@@ -693,8 +757,25 @@ void tickAnimals() {
             }
         }
 
-        // Random wander when idle
-        if (e.state == S_IDLE && atick % (35 + (e.id%25)) == 0) {
+        // Wolf dens breed: while fewer than 2 wolves prowl within 10 tiles,
+        // the den whelps a new one every ~600 ticks. Burn it out to stop them.
+        if (e.type == E_WOLF_DEN && g.tick % 600 == 0) {
+            int near = 0;
+            for (auto& w : g.entities)
+                if (w.alive && w.type == E_WOLF && dist(w.x, w.y, e.x, e.y) <= 10) near++;
+            if (near < 2) {
+                for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
+                    int nx = e.x+dx, ny = e.y+dy;
+                    if ((dx||dy) && inBounds(nx,ny) && isPassable(nx,ny) && !entityAt(nx,ny)) {
+                        spawnEntity(E_WOLF, OWNER_NATURE, nx, ny);
+                        dy = 2; break;
+                    }
+                }
+            }
+        }
+
+        // Random wander when idle (animals only — dens stay put)
+        if (isUnit(e.type) && e.state == S_IDLE && atick % (35 + (e.id%25)) == 0) {
             int wx = e.x + (simRand()%9)-4, wy = e.y + (simRand()%9)-4;
             wx = std::max(1, std::min(wx, MAP_W-2));
             wy = std::max(1, std::min(wy, MAP_H-2));

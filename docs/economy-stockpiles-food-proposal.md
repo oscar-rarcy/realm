@@ -1,7 +1,19 @@
 # Stockpiles, stealable wealth, food types & ale — proposal
 
-Status: PROPOSAL. Dwarf-Fortress-referenced rework of where resources
-*live*, plus differentiated food and alcohol with tactical teeth.
+Status: IMPLEMENTED 2026-06-12 (all steps at once, not the staged plan),
+with these deviations:
+- Dock fish-salting (20g to preserve) skipped; instead the winter freeze
+  halts meat/fish spoilage globally — same autumn-hunt incentive, no UI.
+- "Well-fed" (+1 atk after eating meat) skipped — there's no general
+  eating outside winter drain to hook it to.
+- Plunder is pickup-by-any-idle-land-unit from loot scattered on the
+  destroyed depot's footprint (decays over ~4 sweeps), not a timed window.
+- Wagon is load/unload via right-click (one depot at a time), not a
+  standing two-depot route. AI doesn't use wagons yet.
+- Tavern-burning morale hit deferred until a morale system exists.
+
+Original proposal follows. Dwarf-Fortress-referenced rework of where
+resources *live*, plus differentiated food and alcohol with tactical teeth.
 
 ## 1. Where Realm already is
 

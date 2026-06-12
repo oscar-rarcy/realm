@@ -369,6 +369,61 @@ void initGame(int numAIs, unsigned long long seed) {
             && farFromAnyBase(ax, ay, 16))
             { spawnEntity(E_BOAR, OWNER_NATURE, ax, ay); i++; }
     }
+    // === NEUTRAL STRUCTURES — the land was lived in before this war ===
+    // Hermit shrines: heal whoever rests beside them; a garrisoned monk
+    // projects the blessing. Claim by garrisoning.
+    for (int i = 0, t = 0; i < 3 && t < 400; t++) {
+        int ax = 12 + simRand()%(MAP_W-24), ay = 12 + simRand()%(MAP_H-24);
+        if (!canPlace(E_SHRINE, ax, ay, OWNER_NATURE) || !farFromAnyBase(ax, ay, 14)) continue;
+        spawnEntity(E_SHRINE, OWNER_NATURE, ax, ay); i++;
+    }
+    // Old watermills on the waterline: claimed, they act as a half-rate mill
+    // and food drop-off — a reason to settle the rivers.
+    for (int i = 0, t = 0; i < 3 && t < 600; t++) {
+        int ax = 10 + simRand()%(MAP_W-20), ay = 10 + simRand()%(MAP_H-20);
+        if (!canPlace(E_WATERMILL, ax, ay, OWNER_NATURE) || !farFromAnyBase(ax, ay, 12)) continue;
+        bool shore = false;
+        for (int dy = -1; dy <= 2 && !shore; dy++) for (int dx = -1; dx <= 2 && !shore; dx++) {
+            int nx = ax+dx, ny = ay+dy;
+            if (inBounds(nx,ny) && isPassableWater(nx,ny)) shore = true;
+        }
+        if (!shore) continue;
+        spawnEntity(E_WATERMILL, OWNER_NATURE, ax, ay); i++;
+    }
+    // Trading posts where the old roads run: tolls + market trades when held.
+    for (int i = 0, t = 0; i < 2 && t < 600; t++) {
+        int ax = 15 + simRand()%(MAP_W-30), ay = 15 + simRand()%(MAP_H-30);
+        if (g.map[ay][ax].terrain != T_ROAD) continue;
+        // Settle just off the roadside.
+        int px = ax + 1, py = ay + 1;
+        if (!canPlace(E_TRADING_POST, px, py, OWNER_NATURE) || !farFromAnyBase(px, py, 16)) continue;
+        spawnEntity(E_TRADING_POST, OWNER_NATURE, px, py); i++;
+    }
+    // Abandoned villages: clusters of derelict houses, half-built shells a
+    // peasant can repair to claim — found expansions for whoever gets there.
+    for (int v = 0, t = 0; v < 4 && t < 500; t++) {
+        int ax = 14 + simRand()%(MAP_W-28), ay = 14 + simRand()%(MAP_H-28);
+        if (!canPlace(E_HOUSE, ax, ay, OWNER_NATURE) || !farFromAnyBase(ax, ay, 18)) continue;
+        int homes = 2 + simRand() % 3;
+        for (int h = 0, ht = 0; h < homes && ht < 40; ht++) {
+            int hx = ax + (simRand()%9) - 4, hy = ay + (simRand()%9) - 4;
+            if (!canPlace(E_HOUSE, hx, hy, OWNER_NATURE)) continue;
+            int hid = spawnEntity(E_HOUSE, OWNER_NATURE, hx, hy, false);
+            if (Entity* he = findEntity(hid)) he->hp = he->maxHp / 2;  // half the work survives
+            h++;
+        }
+        v++;
+    }
+    // Wolf dens: the forests have teeth until someone burns them out.
+    for (int i = 0, t = 0; i < 5 && t < 600; t++) {
+        int ax = 10 + simRand()%(MAP_W-20), ay = 10 + simRand()%(MAP_H-20);
+        Terrain tr = g.map[ay][ax].terrain;
+        if (tr != T_FOREST && tr != T_PINE && tr != T_TALL_GRASS) continue;
+        if (entityAt(ax, ay) || !farFromAnyBase(ax, ay, 18)) continue;
+        g.map[ay][ax].terrain = T_GRASS; g.map[ay][ax].resources = 0;
+        spawnEntity(E_WOLF_DEN, OWNER_NATURE, ax, ay); i++;
+    }
+
     // Domestic sheep near each chosen player spawn (one cluster per spawn).
     for (auto& sp : spawns) {
         int bx = sp.thX + 4, by = sp.thY + 4;

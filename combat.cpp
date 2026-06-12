@@ -199,7 +199,34 @@ void orderBuild(Entity& e, EntityType bt, int bx, int by) {
         if (e.owner == 0) setStatus("Can't build there!"); return;
     }
     drainStores(e.owner, STATS[bt].costGold, STATS[bt].costWood, bx, by);
-    int bid = spawnEntity(bt, e.owner, bx, by, false);
+    int bid;
+    if (bt == E_CASTLE) {
+        // Walk-in castle: the placement expands into a 7x7 compound —
+        // courtyard floor, pre-built perimeter walls with a gate mid-edge
+        // on each side, and the 3x3 keep (under construction) at the heart.
+        // Gates auto-open for the owner, so the courtyard is real, usable
+        // ground; sieges must breach a wall or force a gate, and losing the
+        // perimeter still isn't losing the keep.
+        for (int dy = 0; dy < 7; dy++) for (int dx = 0; dx < 7; dx++) {
+            int nx = bx+dx, ny = by+dy;
+            if (!inBounds(nx,ny)) continue;
+            Tile& t = g.map[ny][nx];
+            t.terrain = T_CASTLE_FLOOR; t.preWinterTerrain = T_CASTLE_FLOOR;
+            t.resources = 0; t.wear = 0;
+        }
+        for (int dy = 0; dy < 7; dy++) for (int dx = 0; dx < 7; dx++) {
+            bool edge = (dx == 0 || dx == 6 || dy == 0 || dy == 6);
+            if (!edge) continue;
+            bool corner = (dx == 0 || dx == 6) && (dy == 0 || dy == 6);
+            bool gate = !corner && (dx == 3 || dy == 3);
+            spawnEntity(gate ? E_GATE : E_WALL, e.owner, bx+dx, by+dy, true);
+        }
+        bid = spawnEntity(E_CASTLE, e.owner, bx+2, by+2, false);
+        bx += 2; by += 2;   // the builder works on the keep
+        if (e.owner == 0) setStatus("The compound walls rise — now raise the keep.");
+    } else {
+        bid = spawnEntity(bt, e.owner, bx, by, false);
+    }
     e.state = S_BUILDING; e.targetId = bid; e.targetX = bx; e.targetY = by;
     // Pick nearest passable tile adjacent to the building footprint
     int bldW = STATS[bt].sizeW, bldH = STATS[bt].sizeH;
@@ -367,7 +394,13 @@ void orderGroupAttack(const std::vector<int>& unitIds, int tid) {
 // ============================================================
 bool canGarrisonIn(EntityType bt) {
     return bt==E_TOWER || bt==E_TOWNHALL || bt==E_CASTLE || bt==E_HOUSE
-        || bt==E_TRANSPORT || bt==E_RUIN;
+        || bt==E_TRANSPORT || bt==E_RUIN || bt==E_MANOR || bt==E_WALL
+        || bt==E_WATERMILL || bt==E_TRADING_POST || bt==E_SHRINE;
+}
+// Neutral structures claimed by garrisoning: first unit in flips ownership,
+// last unit out reverts it to nobody's. The ruined keep set the pattern.
+bool isClaimable(EntityType bt) {
+    return bt==E_RUIN || bt==E_WATERMILL || bt==E_TRADING_POST || bt==E_SHRINE;
 }
 int garrisonCap(EntityType bt) {
     switch (bt) {
@@ -377,8 +410,24 @@ int garrisonCap(EntityType bt) {
         case E_CASTLE:    return 10;
         case E_TRANSPORT: return 4;
         case E_RUIN:      return 6;   // a sheltering shell of old walls
+        case E_MANOR:     return 6;
+        case E_WALL:      return 1;   // one archer on the parapet
+        case E_WATERMILL: return 2;
+        case E_TRADING_POST: return 2;
+        case E_SHRINE:    return 1;   // the hermit's cell fits a monk
         default:          return 0;
     }
+}
+
+// Bucket lines: a building within 6 of one of its owner's wells takes 3/4
+// damage — the village can fight the fires.
+int shieldBuilding(const Entity& tgt, int dmg) {
+    if (!isBuilding(tgt.type) || tgt.owner < 0 || tgt.owner >= MAX_PLAYERS) return dmg;
+    for (auto& w : g.entities) {
+        if (!w.alive || w.owner != tgt.owner || w.type != E_WELL || w.underConstruction) continue;
+        if (dist(w.x, w.y, tgt.x, tgt.y) <= 6) return std::max(1, dmg * 3 / 4);
+    }
+    return dmg;
 }
 
 void ejectGarrison(Entity& bld) {
@@ -412,8 +461,8 @@ void ejectGarrison(Entity& bld) {
     }
     bld.garrison.clear();
     updateSupply(bld.owner);
-    // An emptied ruined keep goes back to being nobody's — next claimant wins.
-    if (bld.type == E_RUIN && bld.alive) bld.owner = OWNER_NATURE;
+    // An emptied claimable structure goes back to being nobody's.
+    if (isClaimable(bld.type) && bld.alive) bld.owner = OWNER_NATURE;
 }
 
 // Centralized death handler: marks dead, ejects garrison, ruins terrain, updates supply.
@@ -480,8 +529,8 @@ void killEntity(Entity& t) {
 void orderGarrison(Entity& e, int buildingId) {
     Entity* bld = findEntity(buildingId);
     if (!bld || !bld->alive || bld->underConstruction) return;
-    // Neutral ruined keeps accept anyone — garrisoning one captures it.
-    bool ruinOk = (bld->type == E_RUIN && bld->owner == OWNER_NATURE);
+    // Neutral claimables accept anyone — garrisoning one captures it.
+    bool ruinOk = (isClaimable(bld->type) && bld->owner == OWNER_NATURE);
     if (bld->owner != e.owner && !ruinOk) return;
     if (!canGarrisonIn(bld->type)) return;
     if (!isUnit(e.type) || e.type == E_CATAPULT || e.type == E_WAGON) return;

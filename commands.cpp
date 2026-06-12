@@ -153,6 +153,18 @@ void applyCommand(const Command& c) {
         if (c.units.empty()) return;
         Entity* u = cmdEnt(c, c.units[0]);
         Entity* b = cmdEnt(c, c.target);
+        // Abandoned village houses: a derelict neutral shell is claimed the
+        // moment a peasant starts repairing it — half the work is done, and
+        // the timber costs nothing but the labour.
+        if (!b && u) {
+            Entity* r = findEntity(c.target);
+            if (r && r->alive && r->owner == OWNER_NATURE && r->type == E_HOUSE
+                && r->underConstruction) {
+                r->owner = c.player;
+                if (human) setStatus("Restoring the old house — it's yours now.");
+                b = r;
+            }
+        }
         if (!u || u->type != E_PEASANT || !b || !isBuilding(b->type)) return;
         clearQueued(*u);
         orderHelp(*u, c.target);
@@ -160,11 +172,11 @@ void applyCommand(const Command& c) {
     }
 
     case CMD_GARRISON: {
-        // Own buildings/transports — or a neutral ruined keep (capturable).
+        // Own buildings/transports — or a neutral claimable (capturable).
         Entity* b = cmdEnt(c, c.target);
         if (!b) {
             Entity* r = findEntity(c.target);
-            if (r && r->alive && r->type == E_RUIN && r->owner == OWNER_NATURE) b = r;
+            if (r && r->alive && isClaimable(r->type) && r->owner == OWNER_NATURE) b = r;
         }
         if (!b || b->underConstruction || !canGarrisonIn(b->type)) return;
         for (int id : cmdUnits(c)) {

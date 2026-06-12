@@ -502,6 +502,22 @@ void generateMap() {
         }
     }
 
+    // Stone circles: a monolith ringed by old stones. A sentry standing on
+    // the monolith itself watches the whole vale (+6 sight).
+    for (int i = 0; i < 3; i++) {
+        int sx = 15 + simRand()%(MAP_W-30), sy = 15 + simRand()%(MAP_H-30);
+        if (!isPassable(sx, sy) || g.map[sy][sx].terrain == T_GOLD) continue;
+        g.map[sy][sx].terrain = T_MONOLITH;
+        g.map[sy][sx].resources = 0;
+        for (int a = 0; a < 6; a++) {
+            int rx = sx + (simRand()%5) - 2, ry = sy + (simRand()%5) - 2;
+            if ((rx==sx && ry==sy) || !inBounds(rx,ry)) continue;
+            Terrain o = g.map[ry][rx].terrain;
+            if (o==T_GRASS||o==T_TALL_GRASS||o==T_MEADOW||o==T_DIRT)
+                g.map[ry][rx].terrain = (simRand()%2) ? T_STONE : T_RUINS;
+        }
+    }
+
     // === ELEVATION: highland plateaus ===
     // A coarse noise channel raises broad swathes of land one level. The rim
     // of each plateau is a cliff — impassable, a hard wall for armies — except

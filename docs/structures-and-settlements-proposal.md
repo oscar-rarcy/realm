@@ -1,6 +1,15 @@
 # Non-military structures & enterable buildings — proposal
 
-Status: PROPOSAL. Two threads: (1) civic/economic structures, both
+Status: IMPLEMENTED 2026-06-12 (same-day batch), with these deviations:
+- Monastery skipped (was conditional on monks proving fun; relics are a
+  separate feature).
+- Stonemason auto-repair consumes one T_STONE deposit per 200 hp of
+  repairs (converts it to gravel) rather than a peasant-mined resource.
+- Castle compound perimeter (walls/gates) spawns pre-built; only the keep
+  needs construction — avoids builders being walled out of their own site.
+- Road-wear seeding along claim routes not done (traffic does it anyway).
+
+Original proposal follows. Two threads: (1) civic/economic structures, both
 found-on-the-map and buildable, that make the realm feel inhabited;
 (2) making large buildings physically large — walkable interiors,
 starting with the Castle.

@@ -324,7 +324,11 @@ bool canPlace(EntityType type, int x, int y, int owner, int ignoreId) {
         if (t!=T_GRASS&&t!=T_MEADOW&&t!=T_TALL_GRASS&&t!=T_FLOWERS&&t!=T_DIRT&&t!=T_WHEAT&&t!=T_SNOW) return false;
     }
     auto& s = STATS[type];
-    for (int dy = 0; dy < s.sizeH; dy++) for (int dx = 0; dx < s.sizeW; dx++) {
+    // The castle is placed as its full 7x7 compound (walls + courtyard +
+    // 3x3 keep), so the whole enclosure must fit on clear, level ground.
+    int fw = s.sizeW, fh = s.sizeH;
+    if (type == E_CASTLE) { fw = 7; fh = 7; }
+    for (int dy = 0; dy < fh; dy++) for (int dx = 0; dx < fw; dx++) {
         int nx = x+dx, ny = y+dy;
         if (!inBounds(nx,ny) || !isPassable(nx,ny)) return false;
         // Foundations need level ground — no footprint may straddle a cliff.
@@ -511,7 +515,15 @@ std::vector<std::pair<int,int>> findPath(int sx, int sy, int tx, int ty, int /*m
 int spawnEntity(EntityType type, int owner, int x, int y, bool built) {
     Entity e{};
     e.id = g.nextId++; e.type = type; e.owner = owner; e.x = x; e.y = y;
-    e.maxHp = STATS[type].maxHp; e.hp = built ? e.maxHp : 1;
+    e.maxHp = STATS[type].maxHp;
+    // Stone construction: with a working stonemason, defensive works go up
+    // in dressed stone — double HP for walls, gates, and towers.
+    if ((type==E_WALL || type==E_GATE || type==E_TOWER) && owner < MAX_PLAYERS) {
+        for (auto& m : g.entities)
+            if (m.alive && m.owner == owner && m.type == E_STONEMASON && !m.underConstruction)
+                { e.maxHp *= 2; break; }
+    }
+    e.hp = built ? e.maxHp : 1;
     e.state = S_IDLE; e.targetId = -1; e.targetX = -1; e.targetY = -1;
     e.producing = E_NONE; e.underConstruction = !built; e.alive = true;
     e.rallyX = x + STATS[type].sizeW; e.rallyY = y + STATS[type].sizeH;
@@ -545,6 +557,8 @@ void updateFog() {
         if (e.type == E_TREBUCHET) r += (e.packed == 0 ? 8 : 2);
         // High ground: units on a plateau see further.
         if (!isBuilding(e.type) && g.map[e.y][e.x].elev > 0) r += 2;
+        // Standing stones: a sentry on the old monolith sees the whole vale.
+        if (!isBuilding(e.type) && g.map[e.y][e.x].terrain == T_MONOLITH) r += 6;
         if (r < 3) r = 3;
         auto& s = STATS[e.type];
         int cx = e.x + s.sizeW/2, cy = e.y + s.sizeH/2;
@@ -919,6 +933,16 @@ void tickEntity(Entity& e) {
             }
             if (e.state != S_IDLE) break;
         }
+        // Village life: on dark evenings idle peasants drift toward the
+        // tavern's light. Pure flavour — they're doing nothing anyway.
+        if (e.type == E_PEASANT && isNight() && (g.tick + e.id) % 60 == 0) {
+            for (auto& t : g.entities) {
+                if (!t.alive || t.owner != e.owner || t.type != E_TAVERN || t.underConstruction) continue;
+                int d = dist(e.x, e.y, t.x, t.y);
+                if (d > 3 && d <= 24) { orderMove(e, t.x, t.y); break; }
+            }
+            if (e.state != S_IDLE) break;
+        }
         // Monks mend: an idle monk heals the most-wounded adjacent friendly
         // unit 1 hp every 8 ticks. Focus the monk to stop the mending.
         if (e.type == E_MONK && e.owner < OWNER_NATURE && (g.tick + e.id) % 8 == 0) {
@@ -996,7 +1020,7 @@ void tickEntity(Entity& e) {
         // Sapper at the wall: light the fuse. 120 Crush to the building, a
         // 30-damage blast to anything adjacent (friend or foe), sapper dies.
         if (e.type == E_SAPPER && d <= 1) {
-            t->hp -= 120;
+            t->hp -= shieldBuilding(*t, 120);
             int blastX = e.x, blastY = e.y;
             for (auto& o : g.entities) {
                 if (!o.alive || o.id == e.id || o.id == t->id) continue;
@@ -1004,7 +1028,7 @@ void tickEntity(Entity& e) {
                 int ox = std::max(o.x, std::min(blastX, o.x + os.sizeW - 1));
                 int oy = std::max(o.y, std::min(blastY, o.y + os.sizeH - 1));
                 if (std::abs(ox - blastX) <= 1 && std::abs(oy - blastY) <= 1) {
-                    o.hp -= damageVs(E_SAPPER, o.type, 30, o.owner);
+                    o.hp -= shieldBuilding(o, damageVs(E_SAPPER, o.type, 30, o.owner));
                     o.alertTicks = 12;
                     if (o.hp <= 0) killEntity(o);
                 }
@@ -1030,6 +1054,7 @@ void tickEntity(Entity& e) {
                     if      (de > 0) dmg = dmg * 3 / 2;
                     else if (de < 0) dmg = std::max(1, dmg * 3 / 4);
                 }
+                dmg = shieldBuilding(*t, dmg);
                 t->hp -= dmg;
                 e.atkCd = STATS[e.type].atkSpeed;
                 e.alertTicks = 12; t->alertTicks = 12;
@@ -1058,7 +1083,7 @@ void tickEntity(Entity& e) {
                         int ox = std::max(o.x, std::min(tcx, o.x + os.sizeW - 1));
                         int oy = std::max(o.y, std::min(tcy, o.y + os.sizeH - 1));
                         if (std::abs(ox - tcx) <= 1 && std::abs(oy - tcy) <= 1) {
-                            int splashDmg = damageVs(E_CATAPULT, o.type, splashRaw, o.owner);
+                            int splashDmg = shieldBuilding(o, damageVs(E_CATAPULT, o.type, splashRaw, o.owner));
                             o.hp -= splashDmg; o.alertTicks = 12;
                             if (o.hp <= 0) killEntity(o);
                         }
@@ -1242,9 +1267,9 @@ void tickEntity(Entity& e) {
     }
     case S_ENTERING: {
         Entity* bld = findEntity(e.targetId);
-        // Ruined keeps are capturable: anyone may enter while they're neutral
-        // (or already theirs). Everything else stays own-buildings-only.
-        bool ruinOk = bld && bld->type == E_RUIN
+        // Claimable neutrals (ruins, watermills, posts, shrines) accept anyone
+        // while neutral or already theirs. Everything else is own-only.
+        bool ruinOk = bld && isClaimable(bld->type)
                    && (bld->owner == OWNER_NATURE || bld->owner == e.owner);
         if (!bld || !bld->alive || bld->underConstruction || !canGarrisonIn(bld->type)
             || (bld->owner != e.owner && !ruinOk)) {
@@ -1261,11 +1286,11 @@ void tickEntity(Entity& e) {
                 e.x = bld->x; e.y = bld->y;
                 e.path.clear(); e.pathIdx = 0; e.stuckTicks = 0;
                 if (e.owner == 0) setStatus(std::string("Garrisoned in ") + STATS[bld->type].name);
-                // First unit into a neutral ruin claims it — shelter + the
-                // vision of a watchpost. It reverts when the last one leaves.
-                if (bld->type == E_RUIN && bld->owner != e.owner) {
+                // First unit into a neutral claimable claims it; it reverts
+                // when the last one leaves.
+                if (isClaimable(bld->type) && bld->owner != e.owner) {
                     bld->owner = e.owner;
-                    if (e.owner == 0) setStatus("Ruined keep occupied — your banner flies over old stones.");
+                    if (e.owner == 0) setStatus(std::string(STATS[bld->type].name) + " claimed — your banner flies here.");
                 }
             } else {
                 if (e.owner == 0) setStatus(std::string(STATS[bld->type].name) + " is full");

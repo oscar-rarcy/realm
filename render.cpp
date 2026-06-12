@@ -569,6 +569,7 @@ static const char* terrainSymbolVariant(Terrain t, char ch, int x, int y) {
         case T_CASTLE_FLOOR: return (hash01(x,y,149) < 0.5f) ? u8"·" : u8"∙";
         case T_CASTLE_GATE:  return u8"▣";
         case T_BRIDGE:       return u8"🌉";
+        case T_MONOLITH:     return u8"🗿";
     }
     return getCharEmoji(ch);
 }
@@ -659,6 +660,7 @@ void getTerrainVisual(Terrain t, int x, int y, char& ch, int& cp) {
     case T_CASTLE_FLOOR: ch='.'; cp=CP_CASTLE_FLOOR;break;
     case T_CASTLE_GATE:  ch='='; cp=CP_CASTLE_GATE; break;
     case T_BRIDGE:       ch='='; cp=CP_ROAD;        break;
+    case T_MONOLITH:     ch='i'; cp=CP_STONE;       break;
     }
 
     // Water animation
@@ -839,7 +841,10 @@ void renderMap() {
         int ignoreId = (sel && sel->alive) ? sel->id : -1;
         bool ok = canPlace(g.buildPending, g.cursorX, g.cursorY, 0, ignoreId);
         auto& s = STATS[g.buildPending];
-        for (int dy = 0; dy < s.sizeH; dy++) for (int dx = 0; dx < s.sizeW; dx++) {
+        // Castle previews its full 7x7 compound, not just the keep.
+        int pw = s.sizeW, ph = s.sizeH;
+        if (g.buildPending == E_CASTLE) { pw = 7; ph = 7; }
+        for (int dy = 0; dy < ph; dy++) for (int dx = 0; dx < pw; dx++) {
             int nx = g.cursorX+dx, ny = g.cursorY+dy;
             if (inBounds(nx, ny)) bldPrev[ny][nx] = ok ? 1 : 2;
         }
@@ -1037,18 +1042,15 @@ void renderMap() {
                     drawCh = ACS_CKBOARD;
                     emojiStr = u8"🧱";
                 }
-                // Castle: 4×4 per-cell pattern in ASCII mode.
-                //   █ = = █   corners  → solid block (tower)
-                //   | . . |   edges    → | (sides) / = (top/bottom)
-                //   | . . |   interior → . (courtyard)
-                //   █ = = █
+                // Keep: 3×3 per-cell pattern in ASCII mode — solid corners,
+                // edged walls, the lord's hall at the centre.
                 if (ent->type == E_CASTLE && !ent->underConstruction && displayMode == DM_ASCII) {
                     int dx = mx - ent->x, dy = my - ent->y;
-                    bool corner = (dx == 0 || dx == 3) && (dy == 0 || dy == 3);
-                    if (corner)                drawCh = ACS_CKBOARD;
-                    else if (dy == 0 || dy == 3) { ch = '='; drawCh = (chtype)ch; }
-                    else if (dx == 0 || dx == 3) { ch = '|'; drawCh = (chtype)ch; }
-                    else                         { ch = '.'; drawCh = (chtype)ch; }
+                    bool corner = (dx == 0 || dx == 2) && (dy == 0 || dy == 2);
+                    if (corner)                  drawCh = ACS_CKBOARD;
+                    else if (dy == 0 || dy == 2) { ch = '='; drawCh = (chtype)ch; }
+                    else if (dx == 0 || dx == 2) { ch = '|'; drawCh = (chtype)ch; }
+                    else                         { ch = 'W'; drawCh = (chtype)ch; }
                 }
                 // Siege engine arm animations stay ASCII-only. Emoji mode uses
                 // one proper unit emoji in the entity's single 2-column tile.
@@ -1168,6 +1170,23 @@ void renderMap() {
                 attroff(attr);
             }
         }
+    }
+
+    // Hearth smoke curls from finished houses at dawn and dusk (render-only).
+    if (isDawn() || isDusk()) {
+        attron(COLOR_PAIR(CP_UI_DIM));
+        for (auto& e : g.entities) {
+            if (!e.alive || e.type != E_HOUSE || e.underConstruction || e.owner >= MAX_PLAYERS) continue;
+            int smx = e.x, smy = e.y - 1;
+            if (!inBounds(smx, smy) || !g.map[smy][smx].visible[0]) continue;
+            int sx = smx - g.viewX, sy = smy - g.viewY;
+            if (sx < 0 || sx >= g.viewW || sy < 0 || sy >= g.viewH) continue;
+            if (entityAt(smx, smy)) continue;
+            char puff = ((g.tick/10 + e.id) % 2) ? '~' : '\'';
+            if (displayMode == DM_ASCII) mvaddch(sy+2, sx * tileW, puff);
+            else                         mvprintw(sy+2, sx * tileW, u8"〜");
+        }
+        attroff(COLOR_PAIR(CP_UI_DIM));
     }
 
     // Snowflakes: drawn every tick; hash seed changes every 12 ticks (~1 second)

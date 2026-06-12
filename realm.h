@@ -53,7 +53,8 @@ enum Terrain {
     T_RUINS, T_GRAVEL,
     T_LAVA, T_ASH,
     T_CASTLE_WALL, T_CASTLE_FLOOR, T_CASTLE_GATE,
-    T_BRIDGE   // built over water; land-passable (fast), blocks boats
+    T_BRIDGE,  // built over water; land-passable (fast), blocks boats
+    T_MONOLITH // standing stone: a unit on it sees +6 (hilltop beacon)
 };
 
 enum EntityType {
@@ -376,7 +377,9 @@ void orderGroupAttackMove(const std::vector<int>& unitIds,int tx,int ty);
 void orderHelp(Entity& e,int buildingId);
 void orderGarrison(Entity& e,int buildingId);
 bool canGarrisonIn(EntityType bt);
+bool isClaimable(EntityType bt);    // neutral structures captured by garrisoning
 int  garrisonCap(EntityType bt);
+int  shieldBuilding(const Entity& tgt, int dmg); // wells damp damage to nearby buildings
 void ejectGarrison(Entity& bld);
 void killEntity(Entity& t);
 int  unitAtk(const Entity& e);

@@ -91,15 +91,20 @@ static void cmdAtTileSingle(Entity* sel, int x, int y) {
     if (tgt && tgt->alive && tgt->owner == 0 && tgt->underConstruction && sel->type == E_PEASANT) {
         pushCmd(CMD_HELP, {sel->id}, 0, 0, tgt->id); setStatus("Helping build..."); return;
     }
+    // Derelict village house: repair it to claim it.
+    if (tgt && tgt->alive && tgt->owner == OWNER_NATURE && tgt->type == E_HOUSE
+        && tgt->underConstruction && sel->type == E_PEASANT) {
+        pushCmd(CMD_HELP, {sel->id}, 0, 0, tgt->id); setStatus("Restoring the old house..."); return;
+    }
     if (tgt && tgt->alive && tgt->owner == 0 && tgt->type == E_FARM
         && !tgt->underConstruction && sel->type == E_PEASANT) {
         pushCmd(CMD_HELP, {sel->id}, 0, 0, tgt->id); setStatus("Tending farm..."); return;
     }
-    bool ruinClaim = tgt && tgt->type == E_RUIN && tgt->owner == OWNER_NATURE;
+    bool ruinClaim = tgt && isClaimable(tgt->type) && tgt->owner == OWNER_NATURE;
     if (tgt && tgt->alive && (tgt->owner == 0 || ruinClaim) && !tgt->underConstruction
         && canGarrisonIn(tgt->type) && sel->type != E_CATAPULT) {
         pushCmd(CMD_GARRISON, {sel->id}, 0, 0, tgt->id);
-        if (ruinClaim) setStatus("Claiming the ruined keep...");
+        if (ruinClaim) setStatus(std::string("Claiming the ") + STATS[tgt->type].name + "...");
         return;
     }
     if (tgt && tgt->alive && tgt->owner != 0 && visible) {
@@ -137,7 +142,7 @@ static void cmdAtTileGroup(int x, int y) {
     Entity* tgt = entityAt(x, y);
     bool visible = g.map[y][x].visible[0];
     if (tgt && tgt->alive
-        && (tgt->owner == 0 || (tgt->type == E_RUIN && tgt->owner == OWNER_NATURE))
+        && (tgt->owner == 0 || (isClaimable(tgt->type) && tgt->owner == OWNER_NATURE))
         && !tgt->underConstruction && canGarrisonIn(tgt->type)) {
         pushCmd(CMD_GARRISON, selectedUnitIds(), 0, 0, tgt->id);
         setStatus("Garrisoning...");

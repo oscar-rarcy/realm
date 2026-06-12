@@ -72,8 +72,8 @@ void renderUI() {
             "Marshland","Reed Bed","Gold Deposit","Sandy Ground","Sand Dunes","Snow Cover","Frozen Ice",
             "Bare Earth","Stone Road","Mud","Wheat Field","Berry Bush","Fish Shoal","Ancient Ruins","Gravel",
             "Lava Fissure","Volcanic Ash",
-            "Castle Wall","Castle Floor","Castle Gate","Stone Bridge"};
-        static_assert(sizeof(tn)/sizeof(tn[0]) == (size_t)T_BRIDGE + 1,
+            "Castle Wall","Castle Floor","Castle Gate","Stone Bridge","Standing Stones"};
+        static_assert(sizeof(tn)/sizeof(tn[0]) == (size_t)T_MONOLITH + 1,
             "terrain name table must cover every Terrain value");
         attron(COLOR_PAIR(CP_UI_TEXT)); mvprintw(1, 1, "%-16s", tn[ct.terrain]); attroff(COLOR_PAIR(CP_UI_TEXT));
         attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(1, 18, "[%s]", bn[ct.biome]); attroff(COLOR_PAIR(CP_UI_DIM));
