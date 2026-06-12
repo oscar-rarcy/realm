@@ -13,11 +13,17 @@ static const char* ENTITY_EMOJI[] = {
     u8"🤺",     // E_MILITIA
     u8"🏹",     // E_ARCHER
     u8"🐎",     // E_KNIGHT / cavalry
+    u8"🔱",     // E_SPEARMAN
     u8"🛞",     // E_CATAPULT
+    u8"🏗",      // E_TREBUCHET
     u8"🛶",     // E_FISHING_BOAT
     u8"🚢",     // E_WARSHIP
     u8"⛴",      // E_TRANSPORT
     u8"🪵",     // E_RAM
+    u8"🎯",     // E_CROSSBOWMAN
+    u8"🏇",     // E_HUSSAR
+    u8"🙏",     // E_MONK
+    u8"💣",     // E_SAPPER
     u8"🏛",      // E_TOWNHALL
     u8"🏠",     // E_HOUSE
     u8"🏕",      // E_BARRACKS
@@ -34,12 +40,14 @@ static const char* ENTITY_EMOJI[] = {
     u8"⛏",      // E_MINING_CAMP
     u8"⚙",      // E_MILL
     u8"⚓",     // E_DOCK
+    u8"🏚",      // E_RUIN
+    u8"🌉",     // E_BRIDGE
     u8"🦌",     // E_DEER
     u8"🐺",     // E_WOLF
     u8"🐑",     // E_SHEEP
     u8"🐗",     // E_BOAR
 };
-static_assert(sizeof(ENTITY_EMOJI)/sizeof(ENTITY_EMOJI[0]) == 30,
+static_assert(sizeof(ENTITY_EMOJI)/sizeof(ENTITY_EMOJI[0]) == (size_t)E_BOAR + 1,
     "ENTITY_EMOJI must have an entry for every EntityType (0..E_BOAR)");
 
 const char* getCharEmoji(char ch) {

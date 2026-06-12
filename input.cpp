@@ -309,10 +309,16 @@ void handleInput(int ch) {
             if (ch=='m'||ch=='M') tt = E_MILITIA;
             else if (ch=='a'||ch=='A') tt = E_ARCHER;
             else if (ch=='s'||ch=='S') tt = E_SPEARMAN;
+            else if (ch=='x'||ch=='X') tt = E_CROSSBOWMAN;
+            else if (ch=='p'||ch=='P') tt = E_SAPPER;
             else if (ch=='c'||ch=='C') tt = E_CATAPULT;
             else if (ch=='r'||ch=='R') tt = E_RAM;
         }
-        else if (sel->type == E_STABLE) { if (ch=='k'||ch=='K') tt = E_KNIGHT; }
+        else if (sel->type == E_STABLE) {
+            if      (ch=='k'||ch=='K') tt = E_KNIGHT;
+            else if (ch=='h'||ch=='H') tt = E_HUSSAR;
+        }
+        else if (sel->type == E_CHURCH) { if (ch=='m'||ch=='M') tt = E_MONK; }
         else if (sel->type == E_CASTLE) { if (ch=='t'||ch=='T') tt = E_TREBUCHET; }
         else if (sel->type == E_DOCK)   {
             if      (ch=='b'||ch=='B') tt = E_FISHING_BOAT;
@@ -559,7 +565,7 @@ void handleInput(int ch) {
     case 't': case 'T': {
         Entity* sel = findEntity(g.selectedId);
         if (sel && sel->owner==0 && isBuilding(sel->type) && !sel->underConstruction) {
-            if (sel->type==E_TOWNHALL||sel->type==E_BARRACKS||sel->type==E_STABLE||sel->type==E_DOCK||sel->type==E_CASTLE) {
+            if (sel->type==E_TOWNHALL||sel->type==E_BARRACKS||sel->type==E_STABLE||sel->type==E_DOCK||sel->type==E_CASTLE||sel->type==E_CHURCH) {
                 g.mode = M_TRAIN_SELECT;
                 setStatus("Select unit to train...");
             } else setStatus("This building can't train.");
@@ -658,17 +664,20 @@ void handleInput(int ch) {
     //   with no selection or non-military selection → select all military
     //   with military selected → enter attack-move mode (next click = a-move target)
     case 'A': case 'a': {
+        auto isMilType = [](EntityType t) {
+            return t==E_MILITIA||t==E_ARCHER||t==E_KNIGHT||t==E_SPEARMAN
+                || t==E_CATAPULT||t==E_TREBUCHET||t==E_RAM
+                || t==E_CROSSBOWMAN||t==E_HUSSAR||t==E_MONK||t==E_SAPPER;
+        };
         bool hasMilitarySel = false;
         if (!g.selectedIds.empty()) {
             for (int id : g.selectedIds) {
                 Entity* e = findEntity(id);
-                if (e && (e->type==E_MILITIA||e->type==E_ARCHER||e->type==E_KNIGHT||e->type==E_SPEARMAN||e->type==E_CATAPULT||e->type==E_TREBUCHET||e->type==E_RAM))
-                    { hasMilitarySel = true; break; }
+                if (e && isMilType(e->type)) { hasMilitarySel = true; break; }
             }
         } else if (g.selectedId >= 0) {
             Entity* e = findEntity(g.selectedId);
-            if (e && (e->type==E_MILITIA||e->type==E_ARCHER||e->type==E_KNIGHT||e->type==E_SPEARMAN||e->type==E_CATAPULT||e->type==E_TREBUCHET||e->type==E_RAM))
-                hasMilitarySel = true;
+            if (e && isMilType(e->type)) hasMilitarySel = true;
         }
         if (hasMilitarySel) {
             g.mode = M_ATTACK_MOVE;
@@ -677,7 +686,7 @@ void handleInput(int ch) {
             g.selectedIds.clear(); g.selectedId = -1;
             for (auto& e : g.entities) {
                 if (!e.alive || e.owner != 0 || e.state == S_GARRISONED) continue;
-                if (e.type==E_MILITIA||e.type==E_ARCHER||e.type==E_KNIGHT||e.type==E_SPEARMAN||e.type==E_CATAPULT||e.type==E_TREBUCHET||e.type==E_RAM) {
+                if (isMilType(e.type)) {
                     g.selectedIds.push_back(e.id);
                     if (g.selectedId < 0) { g.selectedId=e.id; g.cursorX=e.x; g.cursorY=e.y; }
                 }

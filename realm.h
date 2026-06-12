@@ -59,6 +59,10 @@ enum EntityType {
     E_NONE = 0,
     E_PEASANT, E_MILITIA, E_ARCHER, E_KNIGHT, E_SPEARMAN, E_CATAPULT, E_TREBUCHET,
     E_FISHING_BOAT, E_WARSHIP, E_TRANSPORT, E_RAM,
+    E_CROSSBOWMAN,  // Barracks + Blacksmith: armoured ranged, Thrust — the knight answer
+    E_HUSSAR,       // Stable: fastest unit in the game, light raider cavalry
+    E_MONK,         // Church: no attack; heals an adjacent friendly while idle
+    E_SAPPER,       // Barracks + Blacksmith: suicide petard vs buildings
     E_TOWNHALL, E_HOUSE, E_BARRACKS, E_STABLE, E_TOWER,
     E_FARM, E_BLACKSMITH, E_CHURCH, E_MARKET, E_WALL, E_GATE, E_CASTLE,
     E_LUMBER_CAMP, E_MINING_CAMP, E_MILL, E_DOCK,
@@ -136,10 +140,20 @@ struct EntityStats {
 };
 extern const EntityStats STATS[];
 
-inline bool isUnit(EntityType t)     { return (t>=E_PEASANT&&t<=E_RAM)||(t>=E_DEER&&t<=E_BOAR); }
+inline bool isUnit(EntityType t)     { return (t>=E_PEASANT&&t<=E_SAPPER)||(t>=E_DEER&&t<=E_BOAR); }
 inline bool isBuilding(EntityType t) { return t>=E_TOWNHALL&&t<=E_BRIDGE; }
-inline bool isRanged(EntityType t)   { return t==E_ARCHER||t==E_CATAPULT||t==E_TREBUCHET||t==E_WARSHIP; }
+inline bool isRanged(EntityType t)   { return t==E_ARCHER||t==E_CATAPULT||t==E_TREBUCHET||t==E_WARSHIP||t==E_CROSSBOWMAN; }
 inline bool isNaval(EntityType t)    { return t==E_FISHING_BOAT||t==E_WARSHIP||t==E_TRANSPORT; }
+
+// ============================================================
+// COMBAT GRAMMAR — every unit has an armour class; every attack a damage
+// type. damageVs() resolves them through one table (combat.cpp), so the
+// whole counter triangle is legible and tunable in one place.
+// ============================================================
+enum ArmorClass { ARM_LIGHT, ARM_ARMORED, ARM_SIEGE };
+enum DamageType { DMG_SLASH, DMG_PIERCE, DMG_THRUST, DMG_CRUSH };
+ArmorClass armorClassOf(EntityType t);
+DamageType damageTypeOf(EntityType t);
 
 // ============================================================
 // DATA STRUCTURES

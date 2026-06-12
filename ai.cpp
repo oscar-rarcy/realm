@@ -107,14 +107,15 @@ static void aiBuildSpotWide(int o, EntityType bt, int& ox, int& oy) {
 }
 
 // Scan all opponents — used to scale production and pick targets.
-struct AIIntel { int playerArmy; int playerCastles; int playerWalls; int playerPeasants; int playerCatapults; Entity* playerTH; };
+struct AIIntel { int playerArmy; int playerCastles; int playerWalls; int playerPeasants; int playerCatapults; int playerCavalry; Entity* playerTH; };
 static AIIntel aiScout(int o) {
-    AIIntel x{0,0,0,0,0,nullptr};
+    AIIntel x{0,0,0,0,0,0,nullptr};
     for (auto& e : g.entities) {
         if (!e.alive || e.owner == o || e.owner == OWNER_NATURE) continue;
         if (e.state == S_GARRISONED) continue;
         if      (e.type == E_PEASANT)  x.playerPeasants++;
         else if (e.type == E_CATAPULT) { x.playerCatapults++; x.playerArmy++; }
+        else if (e.type == E_KNIGHT || e.type == E_HUSSAR) { x.playerCavalry++; x.playerArmy++; }
         else if (isUnit(e.type))       x.playerArmy++;
         else if (e.type == E_CASTLE)   { x.playerCastles++; if (!x.playerTH) x.playerTH = &e; }
         else if (e.type == E_WALL)     x.playerWalls++;
@@ -349,6 +350,7 @@ static void tickAIForOwner(int o) {
     int peas = aiCount(o,E_PEASANT), mil = aiCount(o,E_MILITIA);
     int arch = aiCount(o,E_ARCHER),  kni = aiCount(o,E_KNIGHT);
     int spr  = aiCount(o,E_SPEARMAN);
+    int xbow = aiCount(o,E_CROSSBOWMAN), hus = aiCount(o,E_HUSSAR);
     int cat  = aiCountAll(o,E_CATAPULT);
     int treb = aiCountAll(o,E_TREBUCHET);
     int hous = aiCountAll(o,E_HOUSE), bar = aiCount(o,E_BARRACKS), stb = aiCount(o,E_STABLE);
@@ -431,6 +433,10 @@ static void tickAIForOwner(int o) {
         if (!br.alive || br.owner != o || br.type != E_BARRACKS || br.underConstruction) continue;
         if (br.producing != E_NONE) continue;
         if (needSiege && cat < 3 && p.gold >= 150 && p.wood >= 40 && p.food >= 30) { aiTrain(o, br, E_CATAPULT); continue; }
+        // Crossbowmen answer enemy cavalry: thrust punches plate. Needs a smith.
+        if (aiBldg(o, E_BLACKSMITH) && intel.playerCavalry >= 2
+            && xbow < std::max(2, intel.playerCavalry)
+            && p.gold >= 70 && p.wood >= 30 && p.food >= 20) { aiTrain(o, br, E_CROSSBOWMAN); continue; }
         // Spearmen counter the player's cavalry — train them in response to knights.
         int sprCap = std::max(4, intel.playerArmy/3 + 2);
         bool needSpears = (spr < sprCap && p.gold >= 40 && p.food >= 20);
@@ -444,7 +450,9 @@ static void tickAIForOwner(int o) {
     for (auto& st : g.entities) {
         if (!st.alive || st.owner != o || st.type != E_STABLE || st.underConstruction) continue;
         if (st.producing != E_NONE) continue;
-        if (kni < kniCap && p.gold >= 120 && p.food >= 40) aiTrain(o, st, E_KNIGHT);
+        if      (kni < kniCap && p.gold >= 120 && p.food >= 40) aiTrain(o, st, E_KNIGHT);
+        // Hussars raid the player's economy once the knight core exists.
+        else if (kni >= 2 && hus < 2 + diff && p.gold >= 80 && p.food >= 20) aiTrain(o, st, E_HUSSAR);
     }
     // Castles produce trebuchets — siege specialists, 1-2 max, only when sieging.
     bool wantTreb = (intel.playerCastles > 0 || intel.playerWalls > 8 || (intel.playerArmy >= 10));

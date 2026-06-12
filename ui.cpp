@@ -269,7 +269,7 @@ void renderUI() {
                 if (sel->type == E_PEASANT) { mvprintw(iy++, panelX+1, "[B] Build"); mvprintw(iy++, panelX+1, "[Enter] Move/Gather"); }
                 else if (isUnit(sel->type)) mvprintw(iy++, panelX+1, "[Enter] Move/Attack");
                 else if (isBuilding(sel->type) && !sel->underConstruction) {
-                    if (sel->type==E_TOWNHALL||sel->type==E_BARRACKS||sel->type==E_STABLE||sel->type==E_DOCK) mvprintw(iy++, panelX+1, "[T] Train");
+                    if (sel->type==E_TOWNHALL||sel->type==E_BARRACKS||sel->type==E_STABLE||sel->type==E_DOCK||sel->type==E_CHURCH) mvprintw(iy++, panelX+1, "[T] Train");
                     if (sel->type==E_DOCK)        mvprintw(iy++, panelX+1, "Fish drop-off");
                     if (sel->type==E_BLACKSMITH) mvprintw(iy++, panelX+1, "Speeds training");
                     if (sel->type==E_CHURCH)     mvprintw(iy++, panelX+1, "Heals nearby +Vision");
@@ -372,9 +372,10 @@ void renderUI() {
         Entity* s2 = findEntity(g.selectedId);
         if (s2) {
             if (s2->type==E_TOWNHALL)  mvprintw(botY2, 1, " TRAIN: [P]easant(50g) [Esc] ");
-            else if (s2->type==E_BARRACKS) mvprintw(botY2, 1, " TRAIN: [M]ilitia(60g) [A]rcher(70g) [S]pearman(40g) [C]atapult(150g+40w) [R]am(70g+80w) [Esc] ");
-            else if (s2->type==E_STABLE)   mvprintw(botY2, 1, " TRAIN: [K]night(120g) [Esc] ");
+            else if (s2->type==E_BARRACKS) mvprintw(botY2, 1, " TRAIN: [M]ilitia(60g) [A]rcher(70g) [S]pear(40g) [X]bow(70g+30w*) Sa[P]per(60g+20w*) [C]atapult [R]am  *=smith [Esc] ");
+            else if (s2->type==E_STABLE)   mvprintw(botY2, 1, " TRAIN: [K]night(120g) [H]ussar(80g) [Esc] ");
             else if (s2->type==E_DOCK)     mvprintw(botY2, 1, " TRAIN: [B]oat(80g+50w) [W]arship(150g+80w) [T]ransport(80g+40w) [Esc] ");
+            else if (s2->type==E_CHURCH)   mvprintw(botY2, 1, " TRAIN: [M]onk(60g) — heals adjacent wounded while idle [Esc] ");
             else if (s2->type==E_CASTLE)   mvprintw(botY2, 1, " TRAIN: [T]rebuchet(200g+250w) [Esc] ");
         }
     } else if (g.mode == M_WALL_DRAG) {

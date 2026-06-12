@@ -19,32 +19,66 @@ int unitAtk(const Entity& e) {
     }
     return a;
 }
-// Building-damage multiplier: catapults are siege specialists, everyone else
-// is bad at chewing through walls. Returns the damage actually applied.
-static bool isSiege(EntityType t) { return t==E_CATAPULT||t==E_RAM||t==E_WARSHIP||t==E_TREBUCHET; }
+// ============================================================
+// DAMAGE GRAMMAR — Brood-War-style damage type × armour class.
+// Composition beats raw numbers: every relationship lives in one table.
+// ============================================================
+static bool isSiege(EntityType t) { return t==E_CATAPULT||t==E_RAM||t==E_WARSHIP||t==E_TREBUCHET||t==E_SAPPER; }
+
+ArmorClass armorClassOf(EntityType t) {
+    if (isBuilding(t)) return ARM_SIEGE;
+    switch (t) {
+        case E_KNIGHT: case E_CROSSBOWMAN: case E_RAM: case E_WARSHIP:
+            return ARM_ARMORED;
+        case E_CATAPULT: case E_TREBUCHET:
+            return ARM_SIEGE;
+        default:
+            return ARM_LIGHT;   // peasant, militia, archer, spearman, hussar, monk, sapper, boats, animals
+    }
+}
+
+DamageType damageTypeOf(EntityType t) {
+    switch (t) {
+        case E_ARCHER:   case E_WARSHIP:                              return DMG_PIERCE;
+        case E_SPEARMAN: case E_CROSSBOWMAN:                          return DMG_THRUST;
+        case E_CATAPULT: case E_TREBUCHET: case E_RAM: case E_SAPPER: return DMG_CRUSH;
+        default:                                                       return DMG_SLASH;
+    }
+}
+
+// % of raw damage dealt: rows = DamageType, cols = Light / Armored / Siege.
+// Pierce shreds light but pings off plate; Thrust punches armour; Crush
+// breaks stone and engines but swings wide of nimble men.
+static const int DMG_TABLE[4][3] = {
+    {100, 100,  75},   // Slash
+    {100,  60,  40},   // Pierce
+    { 75, 150,  50},   // Thrust
+    { 75, 100, 150},   // Crush
+};
+
 int damageVs(EntityType attacker, EntityType target, int rawDmg, int targetOwner) {
     // Walls and gates require siege to breach — swords bounce off stone.
     if ((target==E_WALL||target==E_GATE) && !isSiege(attacker)) return 0;
-    // Spearman anti-cavalry: braced spears gut warhorses. Bonus is large because
-    // it's the only way cost-equal Spear stacks beat Knights — 2 Spear (80g)
-    // need to reliably beat 1 Knight (120g) to make the RPS triangle real.
-    if (attacker==E_SPEARMAN && target==E_KNIGHT) rawDmg += 14;
-    // Knight plate: 25% melee reduction, 40% if owner researched Plate Helm.
-    // Spearmen still pierce armour regardless — they're the hard counter.
-    if (target==E_KNIGHT && attacker!=E_SPEARMAN
-            && !isRanged(attacker) && !isSiege(attacker)) {
-        bool plate = (targetOwner >= 0 && targetOwner <= MAX_PLAYERS
-                      && (g.players[targetOwner].research & R_PLATE_HELM));
-        rawDmg = plate ? rawDmg*3/5 : rawDmg*3/4;
+    // Braced spears gut warhorses. Flat bonus on top of the Thrust multiplier
+    // so 2 Spearmen (80g) still reliably beat 1 Knight (120g).
+    if (attacker==E_SPEARMAN && (target==E_KNIGHT||target==E_HUSSAR)) rawDmg += 8;
+    // Buildings keep bespoke siege multipliers — the table covers field combat.
+    if (isBuilding(target)) {
+        if (attacker == E_TREBUCHET) return rawDmg * 3;       // city-killer
+        if (attacker == E_RAM)       return rawDmg * 2;       // built for doors
+        if (attacker == E_CATAPULT)  return (rawDmg * 3) / 2;
+        return std::max(1, rawDmg / 2);                       // 0.5x, floor 1
     }
-    if (!isBuilding(target)) {
-        // Trebuchet is a city-killer — terrible vs personnel.
-        if (attacker == E_TREBUCHET) return std::max(1, rawDmg / 4);
-        return rawDmg;
+    // Trebuchet vs personnel: a wall-breaker, not a man-killer.
+    if (attacker == E_TREBUCHET) rawDmg = std::max(1, rawDmg / 4);
+    int dmg = rawDmg * DMG_TABLE[damageTypeOf(attacker)][armorClassOf(target)] / 100;
+    // Plate Helm research: knights shrug 2 points off cuts and arrows.
+    if (target==E_KNIGHT && targetOwner >= 0 && targetOwner <= MAX_PLAYERS
+            && (g.players[targetOwner].research & R_PLATE_HELM)) {
+        DamageType dt = damageTypeOf(attacker);
+        if (dt == DMG_SLASH || dt == DMG_PIERCE) dmg -= 2;
     }
-    if (attacker == E_TREBUCHET) return rawDmg * 3;       // 3x: stone-shattering
-    if (attacker == E_CATAPULT)  return (rawDmg * 3) / 2; // 1.5x
-    return std::max(1, rawDmg / 2);                       // 0.5x, floor 1
+    return std::max(1, dmg);
 }
 int unitRange(const Entity& e) {
     int rng = STATS[e.type].range;
@@ -109,7 +143,8 @@ static void orderAttackMove(Entity& e, int tx, int ty) {
 void orderAttack(Entity& e, int tid) {
     Entity* t = findEntity(tid);
     if (!t) return;
-    if (e.type == E_RAM && !isBuilding(t->type)) return; // rams demolish buildings only
+    // Rams demolish buildings only; sappers are walking petards — same rule.
+    if ((e.type == E_RAM || e.type == E_SAPPER) && !isBuilding(t->type)) return;
     if (e.type == E_TREBUCHET && e.packed == 1) {
         if (e.owner == 0) setStatus("Deploy trebuchet first (D).");
         return;
@@ -203,6 +238,13 @@ void orderTrain(Entity& bld, EntityType ut) {
         if (bld.owner==0) setStatus("Queue full!"); return;
     }
     Player& p = g.players[bld.owner];
+    // Workshop units need a working forge: no Blacksmith, no crossbows/petards.
+    if (ut==E_CROSSBOWMAN || ut==E_SAPPER) {
+        bool smith = false;
+        for (auto& e : g.entities)
+            if (e.alive && e.owner==bld.owner && e.type==E_BLACKSMITH && !e.underConstruction) { smith = true; break; }
+        if (!smith) { if (bld.owner==0) setStatus("Requires a Blacksmith!"); return; }
+    }
     if (p.gold < STATS[ut].costGold || p.wood < STATS[ut].costWood) {
         if (bld.owner==0) setStatus("Not enough resources!"); return;
     }
@@ -210,8 +252,9 @@ void orderTrain(Entity& bld, EntityType ut) {
         if (bld.owner==0) setStatus("Need more houses!"); return;
     }
     int foodCost = 0;
-    if (ut==E_MILITIA||ut==E_ARCHER) foodCost = 20;
+    if (ut==E_MILITIA||ut==E_ARCHER||ut==E_CROSSBOWMAN) foodCost = 20;
     else if (ut==E_KNIGHT) foodCost = 40;
+    else if (ut==E_HUSSAR) foodCost = 20;
     else if (ut==E_CATAPULT) foodCost = 30;
     else if (ut==E_WARSHIP)  foodCost = 20;
     else if (ut==E_TRANSPORT) foodCost = 10;
@@ -230,12 +273,13 @@ void orderTrain(Entity& bld, EntityType ut) {
 // Lower priority = closer to the front of the formation (toward the destination).
 static int rolePriority(EntityType t) {
     switch (t) {
-        case E_KNIGHT:   return 0;
-        case E_MILITIA:  return 1;
-        case E_PEASANT:  return 2;
-        case E_ARCHER:   return 3;
-        case E_CATAPULT: return 4;
-        default:         return 5;
+        case E_KNIGHT: case E_HUSSAR:        return 0;
+        case E_MILITIA: case E_SPEARMAN:     return 1;
+        case E_PEASANT:                      return 2;
+        case E_ARCHER: case E_CROSSBOWMAN:   return 3;
+        case E_CATAPULT: case E_SAPPER:      return 4;
+        case E_MONK:                         return 5;
+        default:                             return 6;
     }
 }
 

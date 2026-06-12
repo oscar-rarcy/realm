@@ -144,7 +144,7 @@ void applyCommand(const Command& c) {
     case CMD_TRAIN: {
         Entity* b = cmdEnt(c, c.target);
         if (!b || !isBuilding(b->type)) return;
-        if (c.arg <= E_NONE || c.arg > E_RAM) return; // trainables are the unit range
+        if (c.arg <= E_NONE || c.arg > E_SAPPER) return; // trainables are the unit range
         orderTrain(*b, (EntityType)c.arg);
         break;
     }

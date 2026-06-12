@@ -775,6 +775,18 @@ void tickEntity(Entity& e) {
                 if (e.state == S_MOVING) break;
             }
         }
+        // Monks mend: an idle monk heals the most-wounded adjacent friendly
+        // unit 1 hp every 8 ticks. Focus the monk to stop the mending.
+        if (e.type == E_MONK && e.owner < OWNER_NATURE && (g.tick + e.id) % 8 == 0) {
+            Entity* worst = nullptr;
+            for (auto& o : g.entities) {
+                if (!o.alive || o.owner != e.owner || o.id == e.id) continue;
+                if (!isUnit(o.type) || o.state == S_GARRISONED) continue;
+                if (o.hp >= o.maxHp || dist(e.x, e.y, o.x, o.y) > 1) continue;
+                if (!worst || o.hp * worst->maxHp < worst->hp * o.maxHp) worst = &o;
+            }
+            if (worst) worst->hp = std::min(worst->maxHp, worst->hp + 1);
+        }
         // Archers kite: back away when an enemy closes to melee range.
         if (e.type == E_ARCHER && e.owner < OWNER_NATURE) {
             Entity* en = findNearestEnemy(e, 1);
@@ -837,6 +849,30 @@ void tickEntity(Entity& e) {
         // target dies inside the safe building.
         if (t->state == S_GARRISONED) { e.state = S_IDLE; e.targetId = -1; break; }
         int d = dist(e.x, e.y, t->x, t->y);
+        // Sapper at the wall: light the fuse. 120 Crush to the building, a
+        // 30-damage blast to anything adjacent (friend or foe), sapper dies.
+        if (e.type == E_SAPPER && d <= 1) {
+            t->hp -= 120;
+            int blastX = e.x, blastY = e.y;
+            for (auto& o : g.entities) {
+                if (!o.alive || o.id == e.id || o.id == t->id) continue;
+                auto& os = STATS[o.type];
+                int ox = std::max(o.x, std::min(blastX, o.x + os.sizeW - 1));
+                int oy = std::max(o.y, std::min(blastY, o.y + os.sizeH - 1));
+                if (std::abs(ox - blastX) <= 1 && std::abs(oy - blastY) <= 1) {
+                    o.hp -= damageVs(E_SAPPER, o.type, 30, o.owner);
+                    o.alertTicks = 12;
+                    if (o.hp <= 0) killEntity(o);
+                }
+            }
+            if (t->owner == 0 && g.attackNotifyCd == 0) {
+                setStatus("A sapper charge rocks your walls!");
+                g.attackNotifyCd = 200;
+            }
+            killEntity(e);
+            if (t->hp <= 0 && t->alive) killEntity(*t);
+            break;
+        }
         // Catapults need standoff — too close to arm the sling properly.
         if (e.type == E_CATAPULT && d < 2) { e.state = S_IDLE; break; }
         if (d <= unitRange(e)) {

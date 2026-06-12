@@ -964,7 +964,7 @@ void renderMap() {
             if (ent && ent->alive && !isBuilding(ent->type)) {
                 auto isMil = [](EntityType t) {
                     return t==E_MILITIA||t==E_ARCHER||t==E_KNIGHT||t==E_CATAPULT
-                        || t==E_WARSHIP;
+                        || t==E_WARSHIP||t==E_SPEARMAN||t==E_CROSSBOWMAN||t==E_HUSSAR;
                 };
                 int prio = isMil(ent->type) ? 1 : 0;
                 for (auto& other : g.entities) {
