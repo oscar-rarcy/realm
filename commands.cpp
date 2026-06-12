@@ -16,6 +16,10 @@
 static Entity* cmdEnt(const Command& c, int id) {
     Entity* e = findEntity(id);
     if (!e || !e->alive || e->owner != c.player) return nullptr;
+    // Garrisoned units can't act on the map. Without this, recalling a
+    // control group whose members fled into a building let orders reach
+    // them — they'd path out as ghosts while still in the garrison list.
+    if (isUnit(e->type) && e->state == S_GARRISONED) return nullptr;
     return e;
 }
 

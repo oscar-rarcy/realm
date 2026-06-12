@@ -950,7 +950,9 @@ void tickEntity(Entity& e) {
             }
             if (d > 1) {
                 moveAlongPath(e);
-                if (e.path.empty()) { e.path = findPathFor(e, bld->x, bld->y); e.pathIdx = 0; }
+                if (e.path.empty() && (g.tick + e.id) % 10 == 0) {
+                    e.path = findPathFor(e, bld->x, bld->y); e.pathIdx = 0;
+                }
             }
             break;
         }
@@ -960,7 +962,10 @@ void tickEntity(Entity& e) {
         int cy = std::max(bld->y, std::min(e.y, by2));
         if (dist(e.x, e.y, cx, cy) > 1) {
             moveAlongPath(e);
-            if (e.path.empty()) {
+            // Re-path at most every 10 ticks (staggered by id): an unreachable
+            // site used to trigger a full A* every tick per stuck builder —
+            // pure CPU burn that never went anywhere.
+            if (e.path.empty() && (g.tick + e.id) % 10 == 0) {
                 // Re-scan for the nearest free adjacent tile
                 int bestAX = bld->x-1, bestAY = bld->y, bestAD = 99999;
                 int bw = STATS[bld->type].sizeW, bh = STATS[bld->type].sizeH;

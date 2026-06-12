@@ -131,7 +131,14 @@ void openFonts() {
     font     = TTF_OpenFont(fontPath.c_str(), px);
     fontBold = TTF_OpenFont(fontPath.c_str(), px);
     if (!font) { fprintf(stderr, "TTF_OpenFont(%s) failed: %s\n", fontPath.c_str(), TTF_GetError()); exit(1); }
-    if (fontBold) TTF_SetFontStyle(fontBold, TTF_STYLE_BOLD);
+    // Light hinting: at game sizes the default (normal) hinting thickens
+    // stems on rasterization — part of the "fat/distorted" look. Light
+    // keeps the outlines closer to the vector shapes.
+    TTF_SetFontHinting(font, TTF_HINTING_LIGHT);
+    if (fontBold) {
+        TTF_SetFontStyle(fontBold, TTF_STYLE_BOLD);
+        TTF_SetFontHinting(fontBold, TTF_HINTING_LIGHT);
+    }
     // Cell advance from '0': digits share one width even in proportional
     // faces like Helvetica, giving a stable grid; glyphs are centered per
     // cell so wider letters just spill symmetrically.
@@ -319,9 +326,29 @@ void handleEvent(const SDL_Event& e) {
         case SDL_MOUSEWHEEL:
             // Zoom only with Cmd/Ctrl held. Trackpads stream wheel events
             // (two-finger scroll, momentum); bare-wheel zoom resized the
-            // whole grid every flick.
-            if (SDL_GetModState() & (KMOD_GUI | KMOD_CTRL))
-                zoomFont(e.wheel.y > 0 ? 1 : e.wheel.y < 0 ? -1 : 0);
+            // whole grid every flick. preciseY accumulates fractional
+            // deltas so trackpad zooming is smooth instead of stepping a
+            // full point per event.
+            if (SDL_GetModState() & (KMOD_GUI | KMOD_CTRL)) {
+                static float wheelAcc = 0.0f;
+                float dy = (e.wheel.preciseY != 0.0f) ? e.wheel.preciseY : (float)e.wheel.y;
+                wheelAcc += dy;
+                while (wheelAcc >= 0.5f)  { zoomFont(1);  wheelAcc -= 0.5f; }
+                while (wheelAcc <= -0.5f) { zoomFont(-1); wheelAcc += 0.5f; }
+            }
+            break;
+        case SDL_MULTIGESTURE:
+            // Two-finger pinch = seamless zoom, no modifier needed.
+            // dDist is the normalized pinch travel per event; accumulate and
+            // step the font point size as thresholds are crossed. Plain
+            // two-finger scrolls produce dDist ~0, so they don't drift this.
+            if (e.mgesture.numFingers >= 2) {
+                static float pinchAcc = 0.0f;
+                pinchAcc += e.mgesture.dDist;
+                const float STEP = 0.015f;
+                while (pinchAcc >= STEP)  { zoomFont(1);  pinchAcc -= STEP; }
+                while (pinchAcc <= -STEP) { zoomFont(-1); pinchAcc += STEP; }
+            }
             break;
         case SDL_WINDOWEVENT:
             if (e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
@@ -457,8 +484,11 @@ const char* findFont() {
     // wide glyphs collide and narrow ones float, which reads as bad kerning.
     // Helvetica stays solely as a nothing-else-exists fallback.
     static const char* candidates[] = {
-        "/System/Library/Fonts/Menlo.ttc",
+        // SF Mono first: it's Terminal.app's face — the exact look the
+        // ncurses build has — and a notch lighter than Menlo, which users
+        // read as "fat" at game sizes.
         "/System/Library/Fonts/SFNSMono.ttf",
+        "/System/Library/Fonts/Menlo.ttc",
         "/System/Library/Fonts/Monaco.ttf",
         "/Library/Fonts/Andale Mono.ttf",
         "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",

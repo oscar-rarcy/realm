@@ -173,6 +173,11 @@ void orderBuild(Entity& e, EntityType bt, int bx, int by) {
         }
     }
     e.path = findPathFor(e, bestAX, bestAY); e.pathIdx = 0;
+    // Unreachable site (boxed-in builder, spot across water/walls): the order
+    // used to fail silently — the peasant just stood there re-pathing forever,
+    // which reads as a dead unit. Say so immediately instead.
+    if (e.path.empty() && mdist(e.x, e.y, bestAX, bestAY) > 1 && e.owner == 0)
+        setStatus("Builder can't reach the site!");
 }
 
 // Supply already in use plus everything currently producing or queued. Used by
