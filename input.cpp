@@ -817,6 +817,10 @@ void handleInput(int ch) {
                     lastEdgeScroll = nowT;
                     g.viewX = std::max(0, std::min(g.viewX + dx, MAP_W - g.viewW));
                     g.viewY = std::max(0, std::min(g.viewY + dy, MAP_H - g.viewH));
+                    // The view just moved: re-derive the map tile under the
+                    // pointer or the cursor gets pinned with stale view coords.
+                    mapX = g.viewX + mapSX;
+                    mapY = g.viewY + mapSY;
                 }
             }
         }

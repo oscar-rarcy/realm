@@ -41,7 +41,7 @@ TTF_Font*     font = nullptr;
 TTF_Font*     fontBold = nullptr;
 std::string   fontPath;
 int           fontPt = 15;          // point size; mouse wheel zooms this
-bool          mouseDebug = false;
+int           mouseDebug = 0;     // 0=off, 1=buttons, 2=all events incl. hover
 
 int cellW = 10, cellH = 20;         // device pixels
 int cols = 80, rows = 24;
@@ -162,41 +162,89 @@ void zoomFont(int dir) {
 
 void pushKey(int k) { keyQ.push_back(k); }
 
+bool selfTest = false;   // defined early: pushMouse must know the input source
+
+// The authoritative pointer position: the OS's own global pointer minus the
+// window origin, both in desktop points. SDL *event* coordinates are NOT
+// used for position — across SDL builds (classic, sdl2-compat/SDL3) their
+// units on HiDPI macOS have not proven trustworthy, and a points-vs-pixels
+// mixup is exactly a "cursor tile doesn't sit under the pointer" bug.
+// Polling global state is permission-free and unambiguous.
+// Self-test keeps injected coordinates (there is no real pointer to poll).
+static void pointerWindowPos(int evX, int evY, int& outX, int& outY) {
+    if (selfTest) { outX = evX; outY = evY; return; }
+    int gx, gy, wx, wy;
+    SDL_GetGlobalMouseState(&gx, &gy);
+    SDL_GetWindowPosition(win, &wx, &wy);
+    outX = gx - wx; outY = gy - wy;
+}
+
 void pushMouse(mmask_t bstate, int px, int py) {
+    int evX = px, evY = py;
+    pointerWindowPos(evX, evY, px, py);
     MEVENT me{};
     pointToCell(px, py, me.x, me.y);
     me.bstate = bstate;
     if (SDL_GetModState() & KMOD_SHIFT) me.bstate |= BUTTON_SHIFT;
+    // Dedupe pure hover pushes to cell crossings (drags always go through);
+    // centralised here so the event path and the poll path can't differ.
+    bool isButton = (bstate & ~REPORT_MOUSE_POSITION) != 0;
+    if (!isButton && !leftHeld && me.x == lastCellX && me.y == lastCellY) return;
+    lastCellX = me.x; lastCellY = me.y;
     mouseQ.push_back(me);
     keyQ.push_back(KEY_MOUSE);
-    if (mouseDebug && (bstate & ~REPORT_MOUSE_POSITION)) {
-        int ww, wh, pw, ph;
+    // Debug level 1: buttons only. Level 2: every push — logs BOTH the SDL
+    // event coords and the global-derived ones; a systematic 2x mismatch
+    // between them is the HiDPI event-unit bug this design sidesteps.
+    if (mouseDebug && (isButton || mouseDebug >= 2)) {
+        int ww, wh, pw, ph, wx, wy;
         SDL_GetWindowSize(win, &ww, &wh);
         SDL_GetRendererOutputSize(ren, &pw, &ph);
-        fprintf(stderr, "[mouse] pt=(%d,%d) win=%dx%d out=%dx%d cell=%dx%d -> (%d,%d)\n",
-                px, py, ww, wh, pw, ph, cellW, cellH, me.x, me.y);
+        SDL_GetWindowPosition(win, &wx, &wy);
+        fprintf(stderr, "[mouse] %s evt=(%d,%d) glob-derived=(%d,%d) winpos=(%d,%d) win=%dx%d out=%dx%d cell=%dx%d -> (%d,%d)\n",
+                isButton ? "btn" : "mov",
+                evX, evY, px, py, wx, wy, ww, wh, pw, ph, cellW, cellH, me.x, me.y);
     }
 }
 
-// AoE-style continuous edge scroll: the game's edge logic is driven by
-// motion events, which stop when the mouse parks. While the pointer sits
-// in the edge zone, feed it synthetic position reports so scrolling
-// continues. Never fires elsewhere, so keyboard cursor control is safe.
-void maybeSynthEdgeMotion() {
-    static Uint32 lastSynth = 0;
+// Poll the real pointer every ~30ms and feed hover updates from it.
+// This — not the SDL motion event stream — is the primary hover source:
+// it keeps the cursor tile glued to the pointer even when no events
+// arrive (parked pointer while the view edge-scrolls underneath), and it
+// keeps edge scrolling continuous (unconditional re-push every 60ms in
+// the border zone, since the game's edge logic is event-driven).
+void pollPointer() {
+    if (selfTest) return;   // self-test drives injected coordinates only
+    static Uint32 lastPoll = 0, lastEdgePush = 0;
     Uint32 now = SDL_GetTicks();
-    if (now - lastSynth < 60) return;
-    if (SDL_GetMouseFocus() != win) return;
-    int mx, my;
-    SDL_GetMouseState(&mx, &my);
+    if (now - lastPoll < 30) return;
+    lastPoll = now;
+    // Gate on live window flags, not SDL_GetMouseFocus(): that one is fed by
+    // enter/leave EVENTS and goes stale (warped pointers, Cmd-Tab returns).
+    static bool pollAlways = getenv("REALM_POLL_ALWAYS") != nullptr;
+    Uint32 wf = SDL_GetWindowFlags(win);
+    if (!pollAlways && !(wf & (SDL_WINDOW_INPUT_FOCUS | SDL_WINDOW_MOUSE_FOCUS))) return;
+    int px, py;
+    pointerWindowPos(0, 0, px, py);
     int ww, wh;
     SDL_GetWindowSize(win, &ww, &wh);
+    if (px < 0 || py < 0 || px >= ww || py >= wh) return;
     float s = pixelScale();
     float edgeX = 2.0f * cellW / s, edgeY = 2.0f * cellH / s;
-    if (mx < edgeX || mx > ww - edgeX || my < edgeY || my > wh - edgeY) {
-        lastSynth = now;
-        pushMouse(REPORT_MOUSE_POSITION, mx, my);
+    bool inEdge = (px < edgeX || px > ww - edgeX || py < edgeY || py > wh - edgeY);
+    if (inEdge && now - lastEdgePush >= 60) {
+        lastEdgePush = now;
+        lastCellX = lastCellY = -1;   // force this push through the cell dedupe
     }
+    // Self-heal: once a second, push even without a cell change. Covers a
+    // pointer parked across a match start (dedupe primed on the splash) and
+    // any staleness after the cell size changes (font zoom, resize).
+    static Uint32 lastForce = 0;
+    if (now - lastForce >= 1000) {
+        lastForce = now;
+        lastCellX = lastCellY = -1;
+    }
+    pushMouse(REPORT_MOUSE_POSITION, px, py);
 }
 
 int translateKey(const SDL_Keysym& k) {
@@ -248,17 +296,10 @@ void handleEvent(const SDL_Event& e) {
             if (k >= 0) pushKey(k);
             break;
         }
-        case SDL_MOUSEMOTION: {
-            int cx, cy;
-            pointToCell(e.motion.x, e.motion.y, cx, cy);
-            // Hover events only when the cell changes (or mid-drag) so the
-            // queue doesn't flood at device report rate.
-            if (cx != lastCellX || cy != lastCellY || leftHeld) {
-                lastCellX = cx; lastCellY = cy;
-                pushMouse(REPORT_MOUSE_POSITION, e.motion.x, e.motion.y);
-            }
+        case SDL_MOUSEMOTION:
+            // Cell-crossing dedupe lives in pushMouse, shared with the poll path.
+            pushMouse(REPORT_MOUSE_POSITION, e.motion.x, e.motion.y);
             break;
-        }
         case SDL_MOUSEBUTTONDOWN:
             if (e.button.button == SDL_BUTTON_LEFT) {
                 leftHeld = true;
@@ -300,9 +341,11 @@ void handleEvent(const SDL_Event& e) {
 //                          slow box-select drag and exit. Combined with
 //                          the grid dump this proves the whole pipeline
 //                          (events -> cells -> drag box render) headlessly.
+// REALM_AUTOSTART=1      : just start a duel after 1.2s, then hands off —
+//                          used with external pointer-warping diagnostics.
 const char* dumpPath = nullptr;
 const char* dumpBmp  = nullptr;
-bool selfTest = false;
+bool autoStart = false;
 
 void maybeDumpFrame() {
     if (!dumpBmp) return;
@@ -365,11 +408,20 @@ void selfTestStep() {
     }
 }
 
+void autoStartStep() {
+    static bool done = false;
+    static Uint32 t0 = SDL_GetTicks();
+    if (done || SDL_GetTicks() - t0 < 1200) return;
+    injectText("1"); injectKey(SDLK_RETURN);
+    done = true;
+}
+
 void pumpEvents() {
     SDL_Event e;
     while (SDL_PollEvent(&e)) handleEvent(e);
-    maybeSynthEdgeMotion();
+    pollPointer();
     if (selfTest) selfTestStep();
+    if (autoStart) autoStartStep();
 }
 
 // Decode one UTF-8 codepoint; advances p.
@@ -434,10 +486,12 @@ WINDOW* initscr() {
         exit(1);
     }
     TTF_Init();
-    mouseDebug = getenv("REALM_MOUSE_DEBUG") != nullptr;
+    mouseDebug = getenv("REALM_MOUSE_DEBUG") ? atoi(getenv("REALM_MOUSE_DEBUG")) : 0;
+    if (getenv("REALM_MOUSE_DEBUG") && mouseDebug == 0) mouseDebug = 1;
     dumpPath   = getenv("REALM_DUMP_GRID");
     dumpBmp    = getenv("REALM_DUMP_BMP");
     selfTest   = getenv("REALM_SELFTEST") != nullptr;
+    autoStart  = getenv("REALM_AUTOSTART") != nullptr;
     win = SDL_CreateWindow("REALM", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                            1440, 860,
                            SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
@@ -491,6 +545,17 @@ int init_pair(short pair, short fg, short bg) {
 
 void timeout(int ms) { timeoutMs = ms; }
 
+// KEY_MOUSE tokens (keyQ) and their MEVENT payloads (mouseQ) are parallel
+// queues — they MUST be popped in lockstep. Staging the payload here, the
+// moment its KEY_MOUSE leaves getch(), makes that structural: a consumer
+// that swallows KEY_MOUSE without calling getmouse() (the splash menu, any
+// modal prompt) can no longer leave an orphaned MEVENT behind. Before this,
+// one mouse twitch on the splash screen desynced the queues for the whole
+// match — every later getmouse() returned a stale event, so the cursor
+// tile permanently trailed the real pointer by N events.
+static MEVENT stagedMouse{};
+static bool   hasStagedMouse = false;
+
 int getch() {
     pumpEvents();
     if (keyQ.empty() && timeoutMs > 0) {
@@ -507,12 +572,21 @@ int getch() {
     }
     if (keyQ.empty()) return ERR;
     int k = keyQ.front(); keyQ.pop_front();
+    if (k == KEY_MOUSE) {
+        if (!mouseQ.empty()) {
+            stagedMouse = mouseQ.front(); mouseQ.pop_front();
+            hasStagedMouse = true;
+        } else {
+            hasStagedMouse = false;   // defensive: never replay an old event
+        }
+    }
     return k;
 }
 
 int getmouse(MEVENT* event) {
-    if (mouseQ.empty()) return ERR;
-    *event = mouseQ.front(); mouseQ.pop_front();
+    if (!hasStagedMouse) return ERR;
+    *event = stagedMouse;
+    hasStagedMouse = false;
     return OK;
 }
 
