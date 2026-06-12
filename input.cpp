@@ -1,4 +1,5 @@
 #include "realm.h"
+#include <chrono>
 
 // ============================================================
 // SELECTION HELPERS — keep selectedId (leader) and selectedIds (group) in sync.
@@ -237,7 +238,7 @@ void handleInput(int ch) {
             int mapSX = me.x / tileW;
             int mapX  = g.viewX + mapSX;
             int mapY  = g.viewY + mapSY;
-            bool inMap = (mapSY >= 0 && g.viewW > 0 && me.x < g.viewW * tileW && inBounds(mapX, mapY));
+            bool inMap = (mapSY >= 0 && mapSY < g.viewH && g.viewW > 0 && me.x < g.viewW * tileW && inBounds(mapX, mapY));
             if (inMap) { g.cursorX = mapX; g.cursorY = mapY; }
             if (me.bstate & (BUTTON1_CLICKED | BUTTON1_RELEASED)) {
                 if (inMap) {
@@ -271,7 +272,7 @@ void handleInput(int ch) {
             int mapSX = me.x / tileW;
             int mapX  = g.viewX + mapSX;
             int mapY  = g.viewY + mapSY;
-            bool inMap = (mapSY >= 0 && g.viewW > 0 && me.x < g.viewW * tileW && inBounds(mapX, mapY));
+            bool inMap = (mapSY >= 0 && mapSY < g.viewH && g.viewW > 0 && me.x < g.viewW * tileW && inBounds(mapX, mapY));
             if (!inMap) goto clamp;
             g.cursorX = mapX; g.cursorY = mapY;
             if (me.bstate & (BUTTON1_CLICKED | BUTTON1_RELEASED | BUTTON3_CLICKED | BUTTON3_PRESSED)) {
@@ -349,7 +350,7 @@ void handleInput(int ch) {
             int mapSX = me.x / tileW;
             int mapX  = g.viewX + mapSX;
             int mapY  = g.viewY + mapSY;
-            bool inMap = (mapSY>=0 && g.viewW>0 && me.x<g.viewW*tileW && inBounds(mapX,mapY));
+            bool inMap = (mapSY>=0 && mapSY<g.viewH && g.viewW>0 && me.x<g.viewW*tileW && inBounds(mapX,mapY));
             if (!inMap) goto clamp;
             g.cursorX = mapX; g.cursorY = mapY;
             if (me.bstate & BUTTON1_PRESSED) {
@@ -389,7 +390,7 @@ void handleInput(int ch) {
             int mapSY = me.y - 2;
             int mapSX = me.x / tileW;
             int mapX = g.viewX + mapSX, mapY = g.viewY + mapSY;
-            if (mapSY >= 0 && g.viewW > 0 && me.x < g.viewW * tileW && inBounds(mapX, mapY)) {
+            if (mapSY >= 0 && mapSY < g.viewH && g.viewW > 0 && me.x < g.viewW * tileW && inBounds(mapX, mapY)) {
                 g.cursorX = mapX; g.cursorY = mapY;
                 if (me.bstate & (BUTTON1_CLICKED | BUTTON1_RELEASED | BUTTON3_CLICKED)) commit(mapX, mapY);
             }
@@ -420,7 +421,7 @@ void handleInput(int ch) {
             int mapSY = me.y - 2;
             int mapSX = me.x / tileW;
             int mapX = g.viewX + mapSX, mapY = g.viewY + mapSY;
-            if (mapSY >= 0 && me.x < g.viewW * tileW && inBounds(mapX, mapY)) {
+            if (mapSY >= 0 && mapSY < g.viewH && me.x < g.viewW * tileW && inBounds(mapX, mapY)) {
                 g.cursorX = mapX; g.cursorY = mapY;
                 if (me.bstate & (BUTTON1_CLICKED | BUTTON1_RELEASED | BUTTON3_CLICKED)) commit(mapX, mapY);
             }
@@ -791,7 +792,40 @@ void handleInput(int ch) {
                 break;
             }
         }
-        bool inMap = (mapSY >= 0 && g.viewW > 0 && me.x < g.viewW * tileW && inBounds(mapX, mapY));
+        bool clickEvt = (me.bstate & (BUTTON1_PRESSED|BUTTON1_RELEASED|BUTTON1_CLICKED
+                                    |BUTTON1_DOUBLE_CLICKED|BUTTON3_CLICKED|BUTTON3_PRESSED)) != 0;
+
+        // Edge scrolling: pointer against the WINDOW border pans the viewport.
+        // Runs before the in-map check so the bottom bars / HUD edges scroll too.
+        // Time-throttled to one tile per ~70ms regardless of event rate —
+        // trackpads stream motion events at device rate, and the old
+        // step-per-event logic scrolled 30+ tiles/sec the instant the pointer
+        // brushed the margin (the map flew, the cursor tile looked possessed).
+        // The shim feeds synthetic position reports while the pointer parks at
+        // an edge, so scrolling continues without wiggling.
+        if (!clickEvt) {
+            int maxY2, maxX2; getmaxyx(stdscr, maxY2, maxX2);
+            static std::chrono::steady_clock::time_point lastEdgeScroll{};
+            auto nowT = std::chrono::steady_clock::now();
+            if (nowT - lastEdgeScroll >= std::chrono::milliseconds(70)) {
+                int dx = 0, dy = 0;
+                if (me.x <= 1)              dx = -1;
+                else if (me.x >= maxX2 - 2) dx =  1;
+                if (me.y <= 1)              dy = -1;
+                else if (me.y >= maxY2 - 2) dy =  1;
+                if (dx || dy) {
+                    lastEdgeScroll = nowT;
+                    g.viewX = std::max(0, std::min(g.viewX + dx, MAP_W - g.viewW));
+                    g.viewY = std::max(0, std::min(g.viewY + dy, MAP_H - g.viewH));
+                }
+            }
+        }
+
+        // In-map = inside the VISIBLE viewport. mapSY < viewH matters: without
+        // it, hovering the bottom status/hotkey bars counted as map (mapY was
+        // still inBounds) and dragged the cursor to tiles below the screen.
+        bool inMap = (mapSY >= 0 && mapSY < g.viewH && g.viewW > 0
+                      && me.x < g.viewW * tileW && inBounds(mapX, mapY));
         if (!inMap) { g.dragging = false; break; }
 
         // Hover-track the cursor, but only when the mouse actually crossed into a new map
@@ -799,30 +833,9 @@ void handleInput(int ch) {
         // to the OS mouse position, fighting keyboard arrow input. Clicks/drags still pin
         // the cursor regardless of last-cell state.
         static int lastMx = -9999, lastMy = -9999;
-        bool clickEvt = (me.bstate & (BUTTON1_PRESSED|BUTTON1_RELEASED|BUTTON1_CLICKED
-                                    |BUTTON1_DOUBLE_CLICKED|BUTTON3_CLICKED|BUTTON3_PRESSED)) != 0;
         if (clickEvt || mapX != lastMx || mapY != lastMy) {
             g.cursorX = mapX; g.cursorY = mapY;
             lastMx = mapX; lastMy = mapY;
-        }
-
-        // Edge scrolling: nudge the viewport when the mouse hovers within 2 cells
-        // of the map area's edge. Fires on each motion event — terminals with
-        // REPORT_MOUSE_POSITION stream events while the mouse moves, so this feels
-        // continuous in practice. A parked-at-edge mouse will stop after the last
-        // event; small wiggle resumes the scroll.
-        if (!clickEvt) {
-            const int EDGE_MARGIN = 2;
-            const int EDGE_STEP   = 2;
-            int dx = 0, dy = 0;
-            if (mapSX < EDGE_MARGIN)               dx = -EDGE_STEP;
-            else if (mapSX >= g.viewW - EDGE_MARGIN) dx =  EDGE_STEP;
-            if (mapSY < EDGE_MARGIN)               dy = -EDGE_STEP;
-            else if (mapSY >= g.viewH - EDGE_MARGIN) dy =  EDGE_STEP;
-            if (dx || dy) {
-                g.viewX = std::max(0, std::min(g.viewX + dx, MAP_W - g.viewW));
-                g.viewY = std::max(0, std::min(g.viewY + dy, MAP_H - g.viewH));
-            }
         }
 
         if (me.bstate & BUTTON1_DOUBLE_CLICKED) {

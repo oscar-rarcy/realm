@@ -12,8 +12,10 @@
 // rendering happens in device pixels. pointToCell() converts with a
 // live-queried window/output ratio — never cached, so DPI changes,
 // display moves, and resizes can't desynchronize clicks from drawing.
-// The OS cursor is hidden: the game's own cell cursor is the pointer,
-// and since hover and clicks share pointToCell, they always agree.
+// The OS cursor stays VISIBLE: with macOS pointer acceleration the user
+// has no idea where a hidden pointer is, so the game's cell cursor
+// looked like it moved on its own. Both cursors share pointToCell, so
+// the cell cursor always sits exactly under the OS pointer tip.
 // ============================================================
 #include "sdl_shim.h"
 #include <SDL.h>
@@ -350,7 +352,16 @@ void selfTestStep() {
                 } else if (t >= 5200) phase++;
                 break;  // keep holding: drag box should be on screen now
         case 4: if (t > 6800) { injectButton(false, 700, 480); phase++; } break;
-        case 5: if (t > 7600) { fprintf(stderr, "[selftest] done\n"); exit(0); } break;
+        case 5: // Hover the bottom window edge (over the hotkey bar): must
+                // edge-scroll calmly (time-throttled) and must NOT move the
+                // cell cursor — that area is UI, not map. Jitter between two
+                // cells so motion events keep flowing like a real trackpad.
+                if (t > 7600 && t < 8000) {
+                    static bool flip = false; flip = !flip;
+                    injectMotion(flip ? 720 : 740, 855);
+                } else if (t >= 8000) phase++;
+                break;
+        case 6: if (t > 8600) { fprintf(stderr, "[selftest] done\n"); exit(0); } break;
     }
 }
 
@@ -443,9 +454,12 @@ WINDOW* initscr() {
     openFonts();
     recomputeGrid();
 
-    // The game draws its own cell cursor; the OS arrow would only ever
-    // disagree with it, so hide it inside the window.
-    SDL_ShowCursor(SDL_DISABLE);
+    // Keep the OS cursor visible. It was hidden at first ("the cell cursor
+    // is the pointer"), but with trackpad acceleration an invisible pointer
+    // means the player can't tell why the cell cursor moves the way it does.
+    // Visible pointer + cell cursor snapped to the cell under its tip reads
+    // as one coherent cursor.
+    SDL_ShowCursor(SDL_ENABLE);
     SDL_StartTextInput();
     stdscr = (WINDOW*)(void*)&grid; // non-null token
     return stdscr;
