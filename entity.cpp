@@ -56,6 +56,18 @@ bool isPassableWater(int x, int y) {
     return t == T_WATER || t == T_SHALLOWS || t == T_REEDS || t == T_FISH;
 }
 
+// Elevation step rule: land movement between tiles of different height needs
+// a ramp — a T_HILLS tile on either end bridges a one-level difference.
+// Everywhere else the plateau rim is a cliff. Water is all at sea level, so
+// naval movement ignores elevation entirely. Callers guarantee bounds.
+bool canStep(int fx, int fy, int tx, int ty, bool naval) {
+    if (naval) return true;
+    int d = std::abs(g.map[fy][fx].elev - g.map[ty][tx].elev);
+    if (d == 0) return true;
+    if (d > 1)  return false;
+    return g.map[fy][fx].terrain == T_HILLS || g.map[ty][tx].terrain == T_HILLS;
+}
+
 // Cloaking: at night or under storm, only short-range or torch-lit eyes see enemies.
 bool isConcealing() { return isNight() || g.weather == W_STORM; }
 
@@ -202,6 +214,8 @@ bool canPlace(EntityType type, int x, int y, int owner, int ignoreId) {
     for (int dy = 0; dy < s.sizeH; dy++) for (int dx = 0; dx < s.sizeW; dx++) {
         int nx = x+dx, ny = y+dy;
         if (!inBounds(nx,ny) || !isPassable(nx,ny)) return false;
+        // Foundations need level ground — no footprint may straddle a cliff.
+        if (g.map[ny][nx].elev != g.map[y][x].elev) return false;
         Terrain ter = g.map[ny][nx].terrain;
         if (ter == T_GOLD) return false;
         // Forests are resource terrain — chop the trees before you can build here.
@@ -346,12 +360,13 @@ std::vector<std::pair<int,int>> findPath(int sx, int sy, int tx, int ty, int /*m
             if (!inBounds(nx,ny)) continue;
             if (closed[ny][nx] == vgen) continue;
             if (!pass(nx,ny) || bldMap[ny][nx]) continue;
+            if (!canStep(cx,cy,nx,ny,naval)) continue;  // cliffs block, ramps connect
             // Forbid corner-cutting between two blocked cardinals on a diagonal step.
             if (i & 1) {
                 int hx = cx+dx8[i], hy = cy;
                 int vx = cx,         vy = cy+dy8[i];
-                if (!pass(hx,hy) || bldMap[hy][hx]) continue;
-                if (!pass(vx,vy) || bldMap[vy][vx]) continue;
+                if (!pass(hx,hy) || bldMap[hy][hx] || !canStep(cx,cy,hx,hy,naval)) continue;
+                if (!pass(vx,vy) || bldMap[vy][vx] || !canStep(cx,cy,vx,vy,naval)) continue;
             }
             int ng = gc + cost8[i];
             if (visited[ny][nx] == vgen && ng >= gScore[ny][nx]) continue;
@@ -412,6 +427,11 @@ void updateFog() {
         if (e.type == E_TOWER)  r += 4;
         if (e.type == E_CASTLE) r += 3;
         if (e.type == E_CHURCH) r += 3;
+        // A deployed trebuchet's spotters out-see every tower and castle —
+        // it has to: its throw (range 12) reaches beyond their sight.
+        if (e.type == E_TREBUCHET) r += (e.packed == 0 ? 8 : 2);
+        // High ground: units on a plateau see further.
+        if (!isBuilding(e.type) && g.map[e.y][e.x].elev > 0) r += 2;
         if (r < 3) r = 3;
         auto& s = STATS[e.type];
         int cx = e.x + s.sizeW/2, cy = e.y + s.sizeH/2;
@@ -430,6 +450,10 @@ void updateFog() {
 // MOVEMENT
 // ============================================================
 void moveAlongPath(Entity& e) {
+    // A trebuchet only travels in wagon configuration. Deployed (or mid-
+    // transition) it is anchored to the ground — every mover must respect
+    // that, not just orderMove (the S_ATTACKING chase used to walk it).
+    if (e.type == E_TREBUCHET && (e.packed == 0 || e.packTicks > 0)) return;
     if (e.pathIdx >= (int)e.path.size()) {
         e.path.clear(); e.pathIdx = 0;
         e.stuckTicks = 0;
@@ -438,6 +462,19 @@ void moveAlongPath(Entity& e) {
     }
     if (e.moveCd > 0) { e.moveCd--; return; }
     auto [nx, ny] = e.path[e.pathIdx];
+    // The world changes under stale paths — thaw turns ice back to water,
+    // walls go up, plateau rims appear. Re-validate every step instead of
+    // walking blind into terrain that no longer carries this unit.
+    bool naval = isNaval(e.type);
+    bool stepOk = (naval ? isPassableWater(nx, ny) : isPassable(nx, ny))
+               && canStep(e.x, e.y, nx, ny, naval);
+    if (!stepOk) {
+        int gx = e.path.back().first, gy = e.path.back().second;
+        e.path = findPathFor(e, gx, gy); e.pathIdx = 0;
+        // Goal unreachable now — stand down rather than spin re-pathing.
+        if (e.path.empty()) { if (e.state == S_MOVING) e.state = S_IDLE; }
+        return;
+    }
     // Units share tiles freely; buildings block, except open gates
     Entity* blk = entityAt(nx, ny);
     if (blk && blk->id != e.id && isBuilding(blk->type)) {
@@ -709,6 +746,35 @@ void tickEntity(Entity& e) {
             } else { e.retreating = 0; } // arrived — stand down
             break;
         }
+        // Anti-bunching: idle units don't linger stacked on one tile. The
+        // lowest-id occupant keeps the spot; everyone else steps to a free
+        // neighbouring tile. Throttled and deterministic (pure sim state).
+        if (e.owner < OWNER_NATURE && !e.holdPosition
+            && !(e.type == E_TREBUCHET && e.packed == 0)
+            && (g.tick + e.id) % 3 == 0) {
+            bool mustYield = false;
+            for (auto& o : g.entities) {
+                if (!o.alive || o.id == e.id || o.x != e.x || o.y != e.y) continue;
+                if (!isUnit(o.type) || o.state == S_GARRISONED) continue;
+                if (isNaval(o.type) != isNaval(e.type)) continue;
+                if (o.state == S_IDLE && o.id < e.id) { mustYield = true; break; }
+            }
+            if (mustYield) {
+                static const int dx8s[] = {1,-1,0,0,1,1,-1,-1};
+                static const int dy8s[] = {0,0,1,-1,1,-1,1,-1};
+                bool nav = isNaval(e.type);
+                for (int i = 0; i < 8; i++) {
+                    int nx = e.x + dx8s[i], ny = e.y + dy8s[i];
+                    if (!inBounds(nx, ny)) continue;
+                    bool ok = nav ? isPassableWater(nx, ny) : isPassable(nx, ny);
+                    if (!ok || !canStep(e.x, e.y, nx, ny, nav) || entityAt(nx, ny)) continue;
+                    e.state = S_MOVING; e.targetX = nx; e.targetY = ny;
+                    e.path.clear(); e.path.push_back({nx, ny}); e.pathIdx = 0;
+                    break;
+                }
+                if (e.state == S_MOVING) break;
+            }
+        }
         // Archers kite: back away when an enemy closes to melee range.
         if (e.type == E_ARCHER && e.owner < OWNER_NATURE) {
             Entity* en = findNearestEnemy(e, 1);
@@ -777,6 +843,13 @@ void tickEntity(Entity& e) {
             if (e.atkCd <= 0) {
                 int rawDmg = unitAtk(e);
                 int dmg = damageVs(e.type, t->type, rawDmg, t->owner);
+                // High ground: ranged fire strikes harder downhill (+50%) and
+                // loses force shooting up a cliff face (-25%). Melee unaffected.
+                if (isRanged(e.type)) {
+                    int de = g.map[e.y][e.x].elev - g.map[t->y][t->x].elev;
+                    if      (de > 0) dmg = dmg * 3 / 2;
+                    else if (de < 0) dmg = std::max(1, dmg * 3 / 4);
+                }
                 t->hp -= dmg;
                 e.atkCd = STATS[e.type].atkSpeed;
                 e.alertTicks = 12; t->alertTicks = 12;
@@ -785,8 +858,11 @@ void tickEntity(Entity& e) {
                     g.attackNotifyCd = 200;
                 }
                 if (isRanged(e.type)) {
-                    char pc = (e.type==E_CATAPULT) ? 'o' : '-';
-                    int pcol = (e.type==E_CATAPULT) ? CP_PROJ_BOULDER : CP_PROJ_ARROW;
+                    // Siege engines hurl boulders; everything else looses bolts/arrows.
+                    char pc = (e.type==E_CATAPULT) ? 'o'
+                            : (e.type==E_TREBUCHET) ? 'O' : '-';
+                    int pcol = (e.type==E_CATAPULT || e.type==E_TREBUCHET)
+                             ? CP_PROJ_BOULDER : CP_PROJ_ARROW;
                     spawnProjectile(e.x, e.y, t->x, t->y, pc, pcol);
                 }
                 // Catapult splash: 1-tile radius around impact centre, ~1/3 of the
@@ -833,6 +909,13 @@ void tickEntity(Entity& e) {
                 }
             } else e.atkCd--;
         } else {
+            // A deployed trebuchet is anchored — it cannot walk after a target
+            // that left its throw. Stand down; pack (D) to reposition.
+            if (e.type == E_TREBUCHET) {
+                e.state = S_IDLE; e.targetId = -1;
+                if (e.owner == 0) setStatus("Target out of range — pack the trebuchet (D) to move.");
+                break;
+            }
             // Re-path if our path is exhausted OR target wandered away from its end.
             bool stale = e.path.empty() || e.pathIdx >= (int)e.path.size();
             if (!stale) {

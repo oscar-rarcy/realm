@@ -23,6 +23,14 @@ void clearStartArea(int cx, int cy, int radius) {
         int x = cx+dx, y = cy+dy;
         if (inBounds(x,y) && g.map[y][x].terrain != T_GOLD) g.map[y][x].terrain = T_GRASS;
     }
+    // Level a wider apron around the spawn so the starting base, its gold
+    // cluster, and the first farms never end up split across a cliff.
+    int baseElev = inBounds(cx,cy) ? g.map[cy][cx].elev : 0;
+    int er = radius + 9;
+    for (int dy = -er; dy <= er; dy++) for (int dx = -er; dx <= er; dx++) {
+        int x = cx+dx, y = cy+dy;
+        if (inBounds(x,y)) g.map[y][x].elev = baseElev;
+    }
 }
 
 void placeGoldCluster(int cx, int cy, int count) {
@@ -98,7 +106,7 @@ static void generateContinentMap() {
         else if (adjD < contR)     { b = B_TEMPERATE; t = T_SAND;     }    // beach
         else if (adjD < contR + 3) { b = B_OCEAN;     t = T_SHALLOWS; }
         else                       { b = B_OCEAN;     t = T_WATER;    }
-        g.map[y][x] = {t, 0, {}, {}, b, t, 0};
+        g.map[y][x] = {t, 0, {}, {}, b, t, 0, 0};
     }
 
     // Inland variety: scatter forest/meadow/tall grass on grass tiles.
@@ -229,7 +237,7 @@ void generateMap() {
             else if (climate < 0.45f && n2 < 0.40f) b = B_FOREST;
             // remainder stays B_TEMPERATE
         }
-        g.map[y][x] = {T_GRASS, 0, {}, {}, b, T_GRASS, 0};
+        g.map[y][x] = {T_GRASS, 0, {}, {}, b, T_GRASS, 0, 0};
     }
     for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
         Tile& t = g.map[y][x]; int r = simRand() % 100;
@@ -491,6 +499,41 @@ void generateMap() {
             if (o!=T_GRASS && o!=T_TALL_GRASS && o!=T_FLOWERS && o!=T_MEADOW) continue;
             // Dense heart of wheat, meadow fringe.
             g.map[ny][nx].terrain = (ell < 0.65f || simRand()%3 != 0) ? T_WHEAT : T_MEADOW;
+        }
+    }
+
+    // === ELEVATION: highland plateaus ===
+    // A coarse noise channel raises broad swathes of land one level. The rim
+    // of each plateau is a cliff — impassable, a hard wall for armies — except
+    // where ramps spawn (below). Water, castle ruins and mountains stay put.
+    for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
+        Tile& t = g.map[y][x];
+        Terrain ter = t.terrain;
+        bool noLift = (ter==T_WATER||ter==T_SHALLOWS||ter==T_REEDS||ter==T_MARSH
+                    || ter==T_FISH ||ter==T_ICE||ter==T_CASTLE_WALL
+                    || ter==T_CASTLE_FLOOR||ter==T_CASTLE_GATE);
+        float n = sampleNoise(x*0.035f+60, y*0.035f+60);
+        t.elev = (!noLift && n > 0.74f) ? 1 : 0;
+    }
+    // Ramps: roughly a quarter of each plateau's rim becomes climbable hill
+    // tiles, so every highland is reachable but defensible — armies funnel
+    // through the ramps, and a tower on one owns the approach.
+    for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
+        Tile& t = g.map[y][x];
+        if (t.elev != 1) continue;
+        Terrain ter = t.terrain;
+        if (ter==T_GOLD||ter==T_MOUNTAIN||ter==T_STONE) continue;
+        bool rim = false;
+        static const int d4[4][2] = {{1,0},{-1,0},{0,1},{0,-1}};
+        for (auto& d : d4) {
+            int nx = x+d[0], ny = y+d[1];
+            if (inBounds(nx,ny) && g.map[ny][nx].elev == 0
+                && g.map[ny][nx].terrain != T_WATER) { rim = true; break; }
+        }
+        if (!rim) continue;
+        if (((unsigned)(x*7919 + y*6271) % 4) == 0) {
+            t.terrain = T_HILLS;
+            t.resources = 0;
         }
     }
 

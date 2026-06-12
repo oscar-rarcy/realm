@@ -223,6 +223,9 @@ void initColors() {
     init_pair(CP_FOG,            C::DARKER_GRAY,  bg);
     init_pair(CP_FOG_EXPLORED,   C::DARK_GRAY,    tileBg(C::NEAR_BLACK));
 
+    // Cliff faces: pale rock on earth-brown — reads as terrain relief, not wall.
+    init_pair(CP_CLIFF,          C::LIGHT_GRAY,   C::BROWN);
+
     // Cursor: black-on-gold pops on snow, grass, water, and dark biomes alike.
     init_pair(CP_CURSOR,         C::NEAR_BLACK,   C::BRIGHT_GOLD);
     // Build placement preview: green footprint = canPlace, red = blocked.
@@ -879,6 +882,18 @@ void renderMap() {
 
             char ch; int cp;
             getTerrainVisual(tile.terrain, mx, my, ch, cp);
+            // Cliff rim: a highland tile bordering lower ground renders as an
+            // escarpment so plateau edges read as hard walls. Ramps (T_HILLS)
+            // keep their own look — they're the way up.
+            if (tile.elev > 0 && tile.terrain != T_HILLS) {
+                static const int d4r[4][2] = {{1,0},{-1,0},{0,1},{0,-1}};
+                for (auto& d : d4r) {
+                    int nx = mx+d[0], ny = my+d[1];
+                    if (inBounds(nx,ny) && g.map[ny][nx].elev < tile.elev) {
+                        ch = '#'; cp = CP_CLIFF; break;
+                    }
+                }
+            }
             int terrainCp = (displayMode == DM_EMOJI) ? emojiTerrainColorPair(tile, mx, my, night) : cp;
             if (displayMode == DM_EMOJI) cp = terrainCp;
 
@@ -917,7 +932,7 @@ void renderMap() {
                 Entity* leftEnt = entityAt(mx-1, my);
                 bool isTwoTile = leftEnt && leftEnt->alive && !leftEnt->underConstruction &&
                     (leftEnt->type == E_CATAPULT || leftEnt->type == E_RAM ||
-                     (leftEnt->type == E_TREBUCHET && leftEnt->packed == 0 && leftEnt->packTicks == 0));
+                     leftEnt->type == E_TREBUCHET);   // treb is two tiles packed OR deployed
                 if (isTwoTile) {
                     bool inCropLeft = !isBuilding(leftEnt->type) && g.map[my][mx-1].terrain == T_WHEAT;
                     bool leftCloaked = leftEnt->owner != 0 && leftEnt->owner < MAX_PLAYERS
@@ -929,7 +944,9 @@ void renderMap() {
                         char sc;
                         if      (leftEnt->type == E_CATAPULT)  sc = 'c';
                         else if (leftEnt->type == E_RAM)       sc = 'r';
-                        else /* trebuchet deployed */          sc = 'Q'; // counterweight base
+                        else if (leftEnt->packed == 0 && leftEnt->packTicks == 0)
+                                                                sc = 'Q'; // counterweight base
+                        else                                    sc = 'o'; // wagon wheels
                         int sattr = COLOR_PAIR(bcp) | A_BOLD;
                         if (bodyIsSel) sattr |= A_REVERSE;
                         if (isCur) { attron(COLOR_PAIR(CP_CURSOR)); mvaddch(scY, scX, sc); attroff(COLOR_PAIR(CP_CURSOR)); }

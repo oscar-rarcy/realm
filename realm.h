@@ -122,6 +122,7 @@ enum {
     CP_OWN_P0, CP_OWN_P1, CP_OWN_P2, CP_OWN_P3,
     CP_OWN_P0_NIGHT, CP_OWN_P1_NIGHT, CP_OWN_P2_NIGHT, CP_OWN_P3_NIGHT,
     CP_BUILD_OK, CP_BUILD_BAD,
+    CP_CLIFF,   // plateau rim escarpment
     CP_COUNT
 };
 
@@ -150,6 +151,8 @@ struct Tile {
     bool visible[MAX_PLAYERS], explored[MAX_PLAYERS]; Biome biome;
     Terrain preWinterTerrain; // snapshot taken when winter arrives; restored during spring thaw
     int wear;        // 0-100: traffic + creep. Drives dirt/road transitions and decay.
+    int elev;        // 0 lowland, 1 highland plateau. Steps across the boundary
+                     // need a T_HILLS ramp; everywhere else the rim is a cliff.
 };
 
 struct Entity {
@@ -299,6 +302,7 @@ int     mdist(int x1,int y1,int x2,int y2);
 bool    inBounds(int x,int y);
 bool    isPassable(int x,int y);
 bool    isPassableWater(int x,int y);
+bool    canStep(int fx,int fy,int tx,int ty,bool naval);
 bool    isDetectedBy(int x,int y,int observerOwner);
 bool    isConcealing();
 void    setStatus(const std::string& msg);

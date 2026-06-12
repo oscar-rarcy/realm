@@ -74,6 +74,7 @@ void renderUI() {
         attron(COLOR_PAIR(CP_UI_TEXT)); mvprintw(1, 1, "%-16s", tn[ct.terrain]); attroff(COLOR_PAIR(CP_UI_TEXT));
         attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(1, 18, "[%s]", bn[ct.biome]); attroff(COLOR_PAIR(CP_UI_DIM));
         if (ct.resources > 0) { attron(COLOR_PAIR(CP_UI_HIGH)); mvprintw(1, 30, "Res:%d", ct.resources); attroff(COLOR_PAIR(CP_UI_HIGH)); }
+        if (ct.elev > 0) { attron(COLOR_PAIR(CP_UI_ACCENT)); mvprintw(1, 40, "Highland"); attroff(COLOR_PAIR(CP_UI_ACCENT)); }
     }
 
     // Panel separator

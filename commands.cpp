@@ -340,7 +340,7 @@ void applyCommand(const Command& c) {
 // (same caveat as save files).
 // ============================================================
 static constexpr char REP_MAGIC[4] = {'R','L','R','P'};
-static constexpr int  REP_VERSION  = 2;   // v2: + difficulty in header
+static constexpr int  REP_VERSION  = 3;   // v3: elevation mapgen + new units (v2: difficulty)
 
 static FILE* recF  = nullptr;   // recording
 static FILE* playF = nullptr;   // playback

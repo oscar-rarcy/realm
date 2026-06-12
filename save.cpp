@@ -14,7 +14,7 @@
 //   - Skips garbage corrupt files via fread return-value checks
 
 static constexpr char MAGIC[4] = {'R','L','M','2'};
-static constexpr int  SAVE_VERSION = 5;  // v5: + difficulty, winterSeverity (v4: rngState)
+static constexpr int  SAVE_VERSION = 6;  // v6: Tile.elev + new unit types (v5: difficulty, winterSeverity)
 static constexpr int  MAX_ENTITIES = 100000;
 static constexpr int  MAX_VEC_LEN  = 50000;
 
