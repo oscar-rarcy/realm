@@ -86,9 +86,12 @@ static void cmdAtTileSingle(Entity* sel, int x, int y) {
         && !tgt->underConstruction && sel->type == E_PEASANT) {
         pushCmd(CMD_HELP, {sel->id}, 0, 0, tgt->id); setStatus("Tending farm..."); return;
     }
-    if (tgt && tgt->alive && tgt->owner == 0 && !tgt->underConstruction
+    bool ruinClaim = tgt && tgt->type == E_RUIN && tgt->owner == OWNER_NATURE;
+    if (tgt && tgt->alive && (tgt->owner == 0 || ruinClaim) && !tgt->underConstruction
         && canGarrisonIn(tgt->type) && sel->type != E_CATAPULT) {
-        pushCmd(CMD_GARRISON, {sel->id}, 0, 0, tgt->id); return;
+        pushCmd(CMD_GARRISON, {sel->id}, 0, 0, tgt->id);
+        if (ruinClaim) setStatus("Claiming the ruined keep...");
+        return;
     }
     if (tgt && tgt->alive && tgt->owner != 0 && visible) {
         pushCmd(CMD_ATTACK, {sel->id}, 0, 0, tgt->id); setStatus("Attacking!"); return;
@@ -124,7 +127,8 @@ static void cmdAtTileSingle(Entity* sel, int x, int y) {
 static void cmdAtTileGroup(int x, int y) {
     Entity* tgt = entityAt(x, y);
     bool visible = g.map[y][x].visible[0];
-    if (tgt && tgt->alive && tgt->owner == 0
+    if (tgt && tgt->alive
+        && (tgt->owner == 0 || (tgt->type == E_RUIN && tgt->owner == OWNER_NATURE))
         && !tgt->underConstruction && canGarrisonIn(tgt->type)) {
         pushCmd(CMD_GARRISON, selectedUnitIds(), 0, 0, tgt->id);
         setStatus("Garrisoning...");
@@ -196,6 +200,7 @@ void handleInput(int ch) {
         case 'i': case 'I': tb = E_MILL;        break;
         case 'g': case 'G': tb = E_GATE;        break;
         case 'd': case 'D': tb = E_DOCK;        break;
+        case 'r': case 'R': tb = E_BRIDGE;      break;
         case 27: g.mode = M_NORMAL; return;
         default: return;
         }

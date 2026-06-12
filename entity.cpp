@@ -4,7 +4,16 @@
 // ============================================================
 // TIME
 // ============================================================
-float getBrightness() { return std::max(0.0f, std::min(1.0f, sinf(g.dayPhase * M_PI))); }
+float getBrightness() {
+    float b = sinf(g.dayPhase * M_PI);
+    // Seasonal day length: midsummer nights are short, midwinter nights long.
+    // Biasing brightness moves the isNight()/dusk thresholds, which stretches
+    // or shrinks the dark window without touching the day-cycle clock.
+    Season s = getSeason();
+    if (s == SUMMER)      b += 0.12f;
+    else if (s == WINTER) b -= 0.10f;
+    return std::max(0.0f, std::min(1.0f, b));
+}
 Season getSeason() { return (Season)((int)g.seasonPhase % 4); }
 float getSeasonProgress() { return g.seasonPhase - (int)g.seasonPhase; }
 const char* getSeasonName() {
@@ -164,6 +173,25 @@ bool canPlace(EntityType type, int x, int y, int owner, int ignoreId) {
     // Top-level bounds check protects every g.map read below, including the
     // farm-only terrain read that previously ran before any inBounds check.
     if (!inBounds(x, y)) return false;
+    // Bridges are the inverse of every other building: they REQUIRE water.
+    // One tile of water/shallows/reeds, no entity on it, and at least one
+    // orthogonal neighbour that's land or another bridge — so spans grow
+    // from the shore outward, tile by tile.
+    if (type == E_BRIDGE) {
+        Terrain t = g.map[y][x].terrain;
+        if (t != T_WATER && t != T_SHALLOWS && t != T_REEDS) return false;
+        Entity* occ = entityAt(x, y);
+        if (occ && (ignoreId < 0 || occ->id != ignoreId)) return false;
+        static const int d4[4][2] = {{1,0},{-1,0},{0,1},{0,-1}};
+        for (auto& d : d4) {
+            int nx2 = x+d[0], ny2 = y+d[1];
+            if (!inBounds(nx2,ny2)) continue;
+            Terrain nt = g.map[ny2][nx2].terrain;
+            if (nt == T_BRIDGE || (isPassable(nx2,ny2)
+                && nt!=T_SHALLOWS && nt!=T_REEDS && nt!=T_MARSH && nt!=T_ICE)) return true;
+        }
+        return false;
+    }
     // Farms can only be sown on open ground, not in winter
     if (type == E_FARM) {
         if (getSeason() == WINTER) return false;
@@ -447,7 +475,10 @@ void moveAlongPath(Entity& e) {
     e.stuckTicks = 0;
     Terrain ter = g.map[ny][nx].terrain;
     int spd = STATS[e.type].speed;
-    if (ter==T_ROAD||ter==T_DIRT||ter==T_CASTLE_FLOOR) spd = std::max(1, spd-1);
+    // Roads (and bridges) are strictly faster than everything else. Dirt no
+    // longer shares the bonus — it's the halfway stage; let traffic finish
+    // the road (wear 80) to earn the speed. Makes road networks worth having.
+    if (ter==T_ROAD||ter==T_BRIDGE||ter==T_CASTLE_FLOOR) spd = std::max(1, spd-1);
     else if (ter==T_MARSH||ter==T_SHALLOWS||ter==T_SAND||ter==T_SNOW||ter==T_ICE||ter==T_ASH) spd += 1;
     else if (ter==T_MUD) spd += 2; // bogged down
     // Forests impede everyone; cavalry takes a worse penalty since trees
@@ -457,9 +488,16 @@ void moveAlongPath(Entity& e) {
     }
     if (getSeason() == WINTER) spd = std::max(spd, STATS[e.type].speed+1);
     // Weather: rain and storm bog down movement on natural ground.
-    if (g.weather != W_CLEAR && (ter==T_GRASS||ter==T_TALL_GRASS||ter==T_FLOWERS
-            ||ter==T_MEADOW||ter==T_DIRT||ter==T_SAND||ter==T_DUNES))
+    bool naturalGround = (ter==T_GRASS||ter==T_TALL_GRASS||ter==T_FLOWERS
+            ||ter==T_MEADOW||ter==T_DIRT||ter==T_SAND||ter==T_DUNES);
+    if (g.weather != W_CLEAR && naturalGround)
         spd += (g.weather == W_STORM) ? 2 : 1;
+    // Mud season: spring soil swallows wheels. Siege engines crawl off-road —
+    // launch your sieges in summer, or build roads first.
+    if (getSeason() == SPRING
+        && (e.type==E_CATAPULT || e.type==E_RAM || e.type==E_TREBUCHET)
+        && (naturalGround || ter==T_MUD))
+        spd += 2;
     e.moveCd = spd;
 
     // Path wear — natural ground gets compacted into dirt then road by repeated traffic.
@@ -601,6 +639,16 @@ void tickEntity(Entity& e) {
             if (e.hp >= e.maxHp) {
                 e.hp = e.maxHp; e.underConstruction = false; updateSupply(e.owner);
                 if (e.owner==0) setStatus(std::string(STATS[e.type].name) + " complete!");
+                // A finished bridge becomes terrain: the scaffold entity goes
+                // away and the tile itself turns into a fast, land-passable
+                // span (T_BRIDGE survives winter — it isn't water anymore).
+                if (e.type == E_BRIDGE) {
+                    g.map[e.y][e.x].terrain = T_BRIDGE;
+                    g.map[e.y][e.x].preWinterTerrain = T_BRIDGE;
+                    g.map[e.y][e.x].resources = 0;
+                    e.alive = false; e.state = S_DEAD;
+                    return;
+                }
                 for (auto& o : g.entities) {
                     if (!o.alive || o.state!=S_BUILDING || o.targetId!=e.id) continue;
                     // For farms: keep tending — S_BUILDING handler routes to its farm branch.
@@ -887,7 +935,12 @@ void tickEntity(Entity& e) {
     }
     case S_ENTERING: {
         Entity* bld = findEntity(e.targetId);
-        if (!bld || !bld->alive || bld->underConstruction || !canGarrisonIn(bld->type) || bld->owner != e.owner) {
+        // Ruined keeps are capturable: anyone may enter while they're neutral
+        // (or already theirs). Everything else stays own-buildings-only.
+        bool ruinOk = bld && bld->type == E_RUIN
+                   && (bld->owner == OWNER_NATURE || bld->owner == e.owner);
+        if (!bld || !bld->alive || bld->underConstruction || !canGarrisonIn(bld->type)
+            || (bld->owner != e.owner && !ruinOk)) {
             e.state = S_IDLE; break;
         }
         int bw = STATS[bld->type].sizeW, bh = STATS[bld->type].sizeH;
@@ -901,6 +954,12 @@ void tickEntity(Entity& e) {
                 e.x = bld->x; e.y = bld->y;
                 e.path.clear(); e.pathIdx = 0; e.stuckTicks = 0;
                 if (e.owner == 0) setStatus(std::string("Garrisoned in ") + STATS[bld->type].name);
+                // First unit into a neutral ruin claims it — shelter + the
+                // vision of a watchpost. It reverts when the last one leaves.
+                if (bld->type == E_RUIN && bld->owner != e.owner) {
+                    bld->owner = e.owner;
+                    if (e.owner == 0) setStatus("Ruined keep occupied — your banner flies over old stones.");
+                }
             } else {
                 if (e.owner == 0) setStatus(std::string(STATS[bld->type].name) + " is full");
                 e.state = S_IDLE;

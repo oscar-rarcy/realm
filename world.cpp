@@ -108,10 +108,19 @@ void tickFarms() {
                 if (!u.alive || u.owner!=p || u.type!=E_PEASANT) continue;
                 if (dist(u.x, u.y, farm.x, farm.y) <= 1) { tended=true; break; }
             }
-            // Mill doubles output; summer adds +1. No Mill still works — just slower.
+            // Mill doubles output. The farming year has a shape now:
+            // spring = planting (slow), summer = steady, early autumn =
+            // the great harvest (double), late autumn = fields spent.
+            // Stockpile in autumn or starve in winter — and everyone's
+            // bursting granaries make autumn the season to raid.
             if (tended && farm.carrying < FARM_CAP) {
                 int rate = hasMill ? 6 : 3;
-                if (getSeason() == SUMMER) rate++;
+                Season ss = getSeason();
+                float sp = getSeasonProgress();
+                if      (ss == SPRING)             rate = std::max(1, rate / 2);
+                else if (ss == SUMMER)             rate += 1;
+                else if (ss == AUTUMN && sp < 0.6f) rate *= 2;
+                else if (ss == AUTUMN)             rate = 0;   // fields spent
                 farm.carrying = std::min(FARM_CAP, farm.carrying + rate);
             }
 
@@ -215,13 +224,28 @@ static void applyWinter() {
             default: break; // forests, hills, mountains, gold, walls, stone keep their look
         }
     }
-    // Cull a chunk of wildlife — the herd is thinned by the cold.
+    // Roll this winter's severity — every year is different. Mild winters
+    // are a breather; brutal ones are the event you spent autumn preparing
+    // for. (Part of sim state: saved, and identical in replays.)
+    int roll = simRand() % 100;
+    g.winterSeverity = (roll < 25) ? 0 : (roll < 75) ? 1 : 2;
+
+    // Cull wildlife — the herd is thinned by the cold; brutal winters bite deeper.
+    int cullPct = (g.winterSeverity == 2) ? 50 : (g.winterSeverity == 1) ? 35 : 25;
     for (auto& e : g.entities) {
         if (!e.alive || e.owner != OWNER_NATURE) continue;
         if (e.type != E_DEER && e.type != E_SHEEP && e.type != E_BOAR) continue;
-        if (simRand() % 100 < 35) killEntity(e);
+        if (simRand() % 100 < cullPct) killEntity(e);
     }
-    if (g.players[0].alive) setStatus("Winter falls. The land freezes over.");
+    if (g.players[0].alive) {
+        if      (g.winterSeverity == 2) setStatus("A BRUTAL winter descends. The land turns to iron — pray your granaries hold.");
+        else if (g.winterSeverity == 0) setStatus("Winter falls — a mild one, mercifully.");
+        else                            setStatus("Winter falls. The land freezes over.");
+        // Ice-locked fleets are worth a separate warning if anyone owns boats.
+        for (auto& e : g.entities)
+            if (e.alive && e.owner == 0 && isNaval(e.type))
+                { setStatus("The waters freeze — your fleet is ice-locked until spring."); break; }
+    }
 }
 
 void tickSeasons() {
@@ -234,13 +258,25 @@ void tickSeasons() {
         if (s == WINTER) applyWinter();
         if (g.players[0].alive) {
             if (s == SPRING && g.prevSeason == WINTER)
-                setStatus("The frost retreats. New life stirs across the land.");
+                setStatus("The frost retreats. Mud season — heavy wheels will struggle till summer.");
             else if (s == SUMMER)
-                setStatus("Summer is upon the realm. Long days and warm soil.");
+                setStatus("Summer is upon the realm. Long days, dry roads — campaign season.");
             else if (s == AUTUMN)
-                setStatus("Autumn descends. The harvest calls — winter is not far.");
+                setStatus("Autumn descends. The great harvest begins — granaries fill, raiders watch.");
         }
         g.prevSeason = s;
+    }
+
+    // Mid-winter hard freeze: rivers become marching routes at 25% progress.
+    // (Static announce-once flag is presentation only — a save/load mid-winter
+    // just repeats the horn, it can't desync anything.)
+    if (g.players[0].alive) {
+        static bool frozeAnnounced = false;
+        if (s == WINTER && getSeasonProgress() > 0.25f && !frozeAnnounced) {
+            setStatus("The rivers freeze solid. New paths open across the ice.");
+            frozeAnnounced = true;
+        }
+        if (s != WINTER) frozeAnnounced = false;
     }
 
     // Time-of-day transitions (fire once per phase crossing, not every tick).
@@ -279,6 +315,9 @@ void tickThaw() {
 void tickWinter() {
     if (getSeason() != WINTER) return;
     if (g.tick % 100 != 0) return;
+    // Severity scales the hunger: mild winters drain every other cycle,
+    // brutal ones drain double.
+    bool mildSkip = (g.winterSeverity == 0 && (g.tick / 100) % 2 == 0);
     for (int p = 0; p < MAX_PLAYERS; p++) {
         if (!g.players[p].alive) continue;
         int unitCount = 0;
@@ -288,21 +327,48 @@ void tickWinter() {
         }
         if (unitCount == 0) continue;
         Player& pl = g.players[p];
-        int drain = unitCount; // 1 food per unit per 100 ticks
-        if (pl.food >= drain) {
-            spendPlayerFood(p, drain);
-        } else {
-            int starve = drain - pl.food;
-            spendPlayerFood(p, pl.food);
-            // Damage `starve` random units. If any die, they're gone.
-            int hits = 0;
+        int drain = unitCount * (g.winterSeverity == 2 ? 2 : 1);
+        if (mildSkip) drain = 0;
+        if (drain > 0) {
+            if (pl.food >= drain) {
+                spendPlayerFood(p, drain);
+            } else {
+                int starve = drain - pl.food;
+                spendPlayerFood(p, pl.food);
+                // Damage `starve` random units. If any die, they're gone.
+                int hits = 0;
+                for (auto& e : g.entities) {
+                    if (!e.alive || e.owner != p || !isUnit(e.type)) continue;
+                    e.hp -= 3;
+                    if (e.hp <= 0) killEntity(e);
+                    if (++hits >= starve) break;
+                }
+                if (p == 0) setStatus("Starvation! Units are losing health.");
+            }
+        }
+        // Frostbite: units campaigning far from any friendly roof bleed hp
+        // through the cold — winter offensives need nearby shelter. Mild
+        // winters spare them; brutal winters cut twice as deep. Garrisoned
+        // units are indoors by definition.
+        if (g.winterSeverity >= 1) {
+            int frost = g.winterSeverity;   // 1 or 2 hp per cycle
+            bool warned = false;
             for (auto& e : g.entities) {
                 if (!e.alive || e.owner != p || !isUnit(e.type)) continue;
-                e.hp -= 3;
+                if (e.state == S_GARRISONED || isNaval(e.type)) continue;
+                bool sheltered = false;
+                for (auto& b : g.entities) {
+                    if (!b.alive || b.owner != p || !isBuilding(b.type) || b.underConstruction) continue;
+                    if (dist(e.x, e.y, b.x, b.y) <= 25) { sheltered = true; break; }
+                }
+                if (sheltered) continue;
+                e.hp -= frost;
                 if (e.hp <= 0) killEntity(e);
-                if (++hits >= starve) break;
+                else if (p == 0 && !warned) {
+                    setStatus("Frostbite! Troops far from shelter are freezing.");
+                    warned = true;
+                }
             }
-            if (p == 0) setStatus("Starvation! Units are losing health.");
         }
     }
 }
@@ -430,8 +496,10 @@ void tickWeather() {
         }
     } else {
         // Spring / summer / early autumn: rain and storms only.
-        int rainBias  = (s == AUTUMN) ? 50 : (s == SPRING) ? 35 : 25;
-        int stormBias = (s == AUTUMN) ? 15 : 8;
+        // Spring is the wet season (mud — siege engines crawl, see
+        // moveAlongPath); summer is dry campaign weather.
+        int rainBias  = (s == AUTUMN) ? 50 : (s == SPRING) ? 55 : 15;
+        int stormBias = (s == AUTUMN) ? 15 : (s == SPRING) ? 12 : 5;
         if (g.weather == W_CLEAR) {
             if (roll < stormBias)     g.weather = W_STORM;
             else if (roll < rainBias) g.weather = W_RAIN;

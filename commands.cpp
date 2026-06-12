@@ -160,7 +160,12 @@ void applyCommand(const Command& c) {
     }
 
     case CMD_GARRISON: {
+        // Own buildings/transports — or a neutral ruined keep (capturable).
         Entity* b = cmdEnt(c, c.target);
+        if (!b) {
+            Entity* r = findEntity(c.target);
+            if (r && r->alive && r->type == E_RUIN && r->owner == OWNER_NATURE) b = r;
+        }
         if (!b || b->underConstruction || !canGarrisonIn(b->type)) return;
         for (int id : cmdUnits(c)) {
             Entity& u = *findEntity(id);
@@ -335,7 +340,7 @@ void applyCommand(const Command& c) {
 // (same caveat as save files).
 // ============================================================
 static constexpr char REP_MAGIC[4] = {'R','L','R','P'};
-static constexpr int  REP_VERSION  = 1;
+static constexpr int  REP_VERSION  = 2;   // v2: + difficulty in header
 
 static FILE* recF  = nullptr;   // recording
 static FILE* playF = nullptr;   // playback
@@ -366,6 +371,7 @@ bool replayStartRecording(int numAIs) {
     wrU64(recF, g.simSeed);
     wrI(recF, numAIs);
     wrI(recF, g.biomeChoice);
+    wrI(recF, g.difficulty);
     fflush(recF);
     return true;
 }
@@ -402,13 +408,15 @@ static bool replayReadNext() {
     return true;
 }
 
-bool replayLoadFile(const char* path, unsigned long long& seed, int& numAIs, int& biomeChoice) {
+bool replayLoadFile(const char* path, unsigned long long& seed, int& numAIs,
+                    int& biomeChoice, int& difficulty) {
     playF = fopen(path, "rb");
     if (!playF) return false;
     char magic[4]; int ver;
     if (fread(magic, 4, 1, playF) != 1 || memcmp(magic, REP_MAGIC, 4) != 0
         || !rdI(playF, ver) || ver != REP_VERSION
-        || !rdU64(playF, seed) || !rdI(playF, numAIs) || !rdI(playF, biomeChoice)) {
+        || !rdU64(playF, seed) || !rdI(playF, numAIs) || !rdI(playF, biomeChoice)
+        || !rdI(playF, difficulty)) {
         fclose(playF); playF = nullptr; return false;
     }
     playbackMode = true;

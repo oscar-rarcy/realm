@@ -342,6 +342,9 @@ static int aiPickSiegeTarget(int o, Entity* attacker) {
 
 static void tickAIForOwner(int o) {
     Player& p = g.players[o];
+    // Difficulty pacing (0 easy / 1 normal / 2 hard). Hard is the original
+    // tuning; normal blunts the snowball; easy gives a sandbox-ish opponent.
+    const int diff = g.difficulty;
 
     int peas = aiCount(o,E_PEASANT), mil = aiCount(o,E_MILITIA);
     int arch = aiCount(o,E_ARCHER),  kni = aiCount(o,E_KNIGHT);
@@ -359,9 +362,10 @@ static void tickAIForOwner(int o) {
     int peasCap = std::max(12, intel.playerPeasants + 4);
     if (g.tick > 9000) peasCap = std::min(peasCap, 18);   // late-game hard cap
     if (g.tick > 15000) peasCap = std::min(peasCap, 14);  // end-game even tighter
-    int milCap  = std::max(8,  intel.playerArmy + 4);
-    int archCap = std::max(6,  intel.playerArmy/2 + 3);
-    int kniCap  = std::max(4,  intel.playerArmy/3 + 2);
+    int capPad  = (diff==2) ? 4 : (diff==1) ? 2 : 0;
+    int milCap  = std::max(8,  intel.playerArmy + capPad);
+    int archCap = std::max(6,  intel.playerArmy/2 + 1 + diff);
+    int kniCap  = std::max(4,  intel.playerArmy/3 + diff);
     int towerCap= (intel.playerArmy >= 6 || intel.playerCastles > 0) ? 4 : 2;
 
     // === ECONOMY: peasants from every TH/Castle ===
@@ -414,11 +418,11 @@ static void tickAIForOwner(int o) {
     for (auto& smith : g.entities) {
         if (!smith.alive || smith.owner != o || smith.type != E_BLACKSMITH || smith.underConstruction) continue;
         if (smith.researching != 0) break;
-        if      (!(p.research & R_IRON_WEAPONS))  { smith.researching = R_IRON_WEAPONS;  smith.prodProgress=0; smith.prodTime=350; break; }
-        else if (!(p.research & R_CROSSBOWS))     { smith.researching = R_CROSSBOWS;     smith.prodProgress=0; smith.prodTime=350; break; }
-        else if (!(p.research & R_PIKES))         { smith.researching = R_PIKES;         smith.prodProgress=0; smith.prodTime=350; break; }
-        else if (!(p.research & R_PLATE_HELM))    { smith.researching = R_PLATE_HELM;    smith.prodProgress=0; smith.prodTime=400; break; }
-        else if (!(p.research & R_COUNTERWEIGHT) && aiCountAll(o,E_CASTLE) > 0) { smith.researching = R_COUNTERWEIGHT; smith.prodProgress=0; smith.prodTime=400; break; }
+        if      (!(p.research & R_IRON_WEAPONS))  { smith.researching = R_IRON_WEAPONS;  smith.prodProgress=0; smith.prodTime=350*((diff==2)?10:(diff==1)?16:24)/10; break; }
+        else if (!(p.research & R_CROSSBOWS))     { smith.researching = R_CROSSBOWS;     smith.prodProgress=0; smith.prodTime=350*((diff==2)?10:(diff==1)?16:24)/10; break; }
+        else if (!(p.research & R_PIKES))         { smith.researching = R_PIKES;         smith.prodProgress=0; smith.prodTime=350*((diff==2)?10:(diff==1)?16:24)/10; break; }
+        else if (!(p.research & R_PLATE_HELM))    { smith.researching = R_PLATE_HELM;    smith.prodProgress=0; smith.prodTime=400*((diff==2)?10:(diff==1)?16:24)/10; break; }
+        else if (!(p.research & R_COUNTERWEIGHT) && aiCountAll(o,E_CASTLE) > 0) { smith.researching = R_COUNTERWEIGHT; smith.prodProgress=0; smith.prodTime=400*((diff==2)?10:(diff==1)?16:24)/10; break; }
     }
 
     // === MILITARY UNITS — train at every barracks/stable in parallel ===
@@ -645,11 +649,11 @@ static void tickAIForOwner(int o) {
     }
 
     // Grace period before first attack. Threshold scales with game age.
-    const int graceTicks = 1500;          // ~2 minutes of setup time
+    const int graceTicks = (diff==2) ? 1500 : (diff==1) ? 2250 : 3200; // ~2/3/4.5 min
     bool lateGame = g.tick > 12000;
     bool midGame  = g.tick > 6000;
-    int attackThreshold = (g.tick < graceTicks) ? 999 : (lateGame ? 4 : (midGame ? 5 : 7));
-    int waveCooldown    = lateGame ? 6 : 10; // AI ticks between wave re-orders
+    int attackThreshold = (g.tick < graceTicks) ? 999 : (lateGame ? 4 : (midGame ? 5 : 7)) + (2-diff)*2;
+    int waveCooldown    = (lateGame ? 6 : 10) + (2-diff)*3; // AI ticks between wave re-orders
 
     if (idleArmy >= attackThreshold && p.aiWaveCd == 0 && anchor) {
         int tid    = aiPickTarget(o, anchor);

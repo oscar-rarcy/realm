@@ -49,6 +49,11 @@ static void placeCastleRuin(int cx, int cy, int size) {
     int corners[][2] = {{cx,cy},{cx+size-1,cy},{cx,cy+size-1},{cx+size-1,cy+size-1}};
     for (auto& c : corners)
         if (inBounds(c[0], c[1])) g.map[c[1]][c[0]].terrain = T_CASTLE_WALL;
+    // The keep itself: a neutral, capturable shelter in the castle's heart.
+    // Garrison units inside to claim it — vision and stone walls, no upkeep.
+    int kx = cx + size/2 - 1, ky = cy + size/2 - 1;
+    if (inBounds(kx, ky) && inBounds(kx+1, ky+1))
+        spawnEntity(E_RUIN, OWNER_NATURE, kx, ky);
 }
 
 // Distance helper for Voronoi continent generation — Euclidean (round shapes).
@@ -211,15 +216,17 @@ void generateMap() {
                 // Ocean stays ocean — its identity is total water coverage.
             }
         } else {
-            // Random/mixed map: aim for ~30% temperate, ~20% forest, ~15% each
-            // of desert/snow/swamp. Thresholds tuned for clearer regions on the
-            // larger 180x110 map.
-            if      (n1 > 0.68f)               b = B_DESERT;
-            else if (n1 < 0.26f)               b = B_SNOW;
-            else if (n2 > 0.70f)               b = B_SWAMP;
-            else if (n2 < 0.30f
-                     && n1 > 0.38f
-                     && n1 < 0.62f)            b = B_FOREST;
+            // Random map: latitude-banded climate. North is cold, south is
+            // hot, noise wobbles the band borders so they read as organic
+            // frontiers rather than ruler lines. Swamps hug the wet noise,
+            // forests sit on the cool side of temperate. The map gets real
+            // geography: tundra campaigns up top, desert flanks below.
+            float lat = (float)y / MAP_H;                 // 0 = north, 1 = south
+            float climate = lat * 0.55f + n1 * 0.45f;     // cold..hot with wobble
+            if      (climate < 0.24f)          b = B_SNOW;
+            else if (climate > 0.76f)          b = B_DESERT;
+            else if (n2 > 0.72f)               b = B_SWAMP;
+            else if (climate < 0.45f && n2 < 0.40f) b = B_FOREST;
             // remainder stays B_TEMPERATE
         }
         g.map[y][x] = {T_GRASS, 0, {}, {}, b, T_GRASS, 0};
@@ -465,6 +472,25 @@ void generateMap() {
             int nx = wx+dx, ny = wy+dy;
             if (inBounds(nx,ny) && g.map[ny][nx].terrain == T_GRASS && simRand()%2==0)
                 g.map[ny][nx].terrain = T_WHEAT;
+        }
+    }
+    // Great corn meadows: a few HUGE swathes of wild wheat rolling across
+    // temperate plains — natural breadbaskets. Settle near one and the
+    // sow-a-farm-on-wheat mechanic turns it into your kingdom's larder;
+    // they're also the most flammable thing in an enemy's economy to raid.
+    for (int i = 0; i < 4; i++) {
+        int mx = 20 + simRand()%(MAP_W-40), my = 15 + simRand()%(MAP_H-30);
+        if (g.map[my][mx].biome != B_TEMPERATE) continue;
+        int rx = 6 + simRand()%5, ry = 4 + simRand()%3;   // elliptical swathe
+        for (int dy = -ry; dy <= ry; dy++) for (int dx = -rx; dx <= rx; dx++) {
+            int nx = mx+dx, ny = my+dy;
+            if (!inBounds(nx,ny)) continue;
+            float ell = (float)(dx*dx)/(rx*rx) + (float)(dy*dy)/(ry*ry);
+            if (ell > 1.0f) continue;
+            Terrain o = g.map[ny][nx].terrain;
+            if (o!=T_GRASS && o!=T_TALL_GRASS && o!=T_FLOWERS && o!=T_MEADOW) continue;
+            // Dense heart of wheat, meadow fringe.
+            g.map[ny][nx].terrain = (ell < 0.65f || simRand()%3 != 0) ? T_WHEAT : T_MEADOW;
         }
     }
 

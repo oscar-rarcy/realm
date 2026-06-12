@@ -41,8 +41,10 @@ static int showSplash() {
     static const char* biomeNames[] = {
         "Temperate","Desert","Snow","Swamp","Forest","Ocean","Random"
     };
+    static const char* diffNames[] = { "Easy", "Normal", "Hard" };
     int numAIs = 1;
     int biomeIdx = 6; // 6 = random
+    int diffIdx = 1;  // Normal
 
     int maxY, maxX;
     while (true) {
@@ -101,8 +103,13 @@ static int showSplash() {
         pr(row++, col, "  > Display: %s", displayMode == DM_EMOJI ? "Emoji" : "ASCII");
 
         row++;
+        attron(A_BOLD); pr(row++, col, "DIFFICULTY"); attroff(A_BOLD);
+        pr(row++, col, "  [E]asy      [N]ormal     [H]ard");
+
+        row++;
         attron(A_BOLD);
-        pr(row++, col, "  > Opponents: %d    Biome: %s", numAIs, biomeNames[biomeIdx]);
+        pr(row++, col, "  > Opponents: %d    Biome: %s    Difficulty: %s",
+           numAIs, biomeNames[biomeIdx], diffNames[diffIdx]);
         attroff(A_BOLD);
 
         row++;
@@ -122,9 +129,13 @@ static int showSplash() {
         else if (ch=='w'||ch=='W') biomeIdx=3;
         else if (ch=='f'||ch=='F') biomeIdx=4;
         else if (ch=='c'||ch=='C') biomeIdx=5;
+        else if (ch=='e'||ch=='E') diffIdx=0;
+        else if (ch=='n'||ch=='N') diffIdx=1;
+        else if (ch=='h'||ch=='H') diffIdx=2;
         else if (ch=='4') displayMode = DM_ASCII;
         else if (ch=='5') displayMode = DM_EMOJI;
     }
+    g.difficulty = diffIdx;
     // 6 = Random/mixed; otherwise pass index 0..5 (Ocean is 5 in the local list,
     // but B_OCEAN is enum value 6; remap so the engine sees the right Biome enum).
     if (biomeIdx == 6)      g.biomeChoice = -1;
@@ -162,6 +173,9 @@ void initGame(int numAIs, unsigned long long seed) {
     g.prevTimePhase = 0; g.attackNotifyCd = 0;
     g.returnToMenu = false;
     g.cursorByMouse = false;
+    g.winterSeverity = 1;
+    // g.difficulty is match config like biomeChoice — set by the splash /
+    // replay header / verify harness before initGame; never reset here.
     // Invalidate per-tick detection cache so the new match (which starts at
     // tick=0 again) can't accidentally share a row with last match's tick 0.
     resetDetectMapCache();
@@ -425,7 +439,8 @@ static void runMatch() {
 // commands and print the final state hash. Run it twice; identical hashes
 // mean the sim is reproducible — the property lockstep multiplayer needs.
 static int runVerify(unsigned long long seed, int ticks, int numAIs) {
-    g.biomeChoice = 0;   // fixed biome: the check must not depend on a menu
+    g.biomeChoice = 0;   // fixed biome + difficulty: no menu dependence
+    g.difficulty  = 1;
     initGame(numAIs, seed);
     for (int i = 0; i < ticks; i++) simTick();
     printf("seed=%llu ticks=%d ais=%d hash=%016llx\n",
@@ -448,12 +463,13 @@ int main(int argc, char** argv) {
     // and compare hashes — a recorded game that replays identically is the
     // end-to-end proof the funnel + sim are deterministic.
     if (argc >= 3 && strcmp(argv[1], "--verify-replay") == 0) {
-        unsigned long long seed; int ais, biome;
-        if (!replayLoadFile(argv[2], seed, ais, biome)) {
+        unsigned long long seed; int ais, biome, diffc;
+        if (!replayLoadFile(argv[2], seed, ais, biome, diffc)) {
             fprintf(stderr, "Can't read replay '%s'.\n", argv[2]);
             return 1;
         }
         g.biomeChoice = biome;
+        g.difficulty  = diffc;
         initGame(ais, seed);
         int ticks = (argc >= 4) ? std::max(1, atoi(argv[3])) : 5000;
         for (int i = 0; i < ticks; i++) simTick();
@@ -464,9 +480,9 @@ int main(int argc, char** argv) {
     // --replay: load header before touching the screen so a bad file can
     // fail to stderr instead of into a half-initialised terminal.
     bool replay = false;
-    unsigned long long repSeed = 0; int repAIs = 1, repBiome = -1;
+    unsigned long long repSeed = 0; int repAIs = 1, repBiome = -1, repDiff = 1;
     if (argc >= 3 && strcmp(argv[1], "--replay") == 0) {
-        if (!replayLoadFile(argv[2], repSeed, repAIs, repBiome)) {
+        if (!replayLoadFile(argv[2], repSeed, repAIs, repBiome, repDiff)) {
             fprintf(stderr, "Can't read replay '%s' (missing, wrong version, or corrupt).\n", argv[2]);
             return 1;
         }
@@ -480,6 +496,7 @@ int main(int argc, char** argv) {
 
     if (replay) {
         g.biomeChoice = repBiome;
+        g.difficulty  = repDiff;
         initGame(repAIs, repSeed);
         setStatus("REPLAY — commands come from the recording. Camera/selection are yours; [Q][Q] to quit.");
         runMatch();

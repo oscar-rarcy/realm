@@ -20,6 +20,7 @@
 #include "sdl_shim.h"
 #include <SDL.h>
 #include <SDL_ttf.h>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -40,6 +41,7 @@ SDL_Renderer* ren = nullptr;
 TTF_Font*     font = nullptr;
 TTF_Font*     fontBold = nullptr;
 std::string   fontPath;
+std::string   fontPathBold;         // explicit bold face; empty = synthesize
 int           fontPt = 15;          // point size; mouse wheel zooms this
 int           mouseDebug = 0;     // 0=off, 1=buttons, 2=all events incl. hover
 
@@ -128,17 +130,19 @@ void openFonts() {
     if (fontBold) { TTF_CloseFont(fontBold); fontBold = nullptr; }
     clearGlyphCache();
     int px = (int)(fontPt * pixelScale());
-    font     = TTF_OpenFont(fontPath.c_str(), px);
-    fontBold = TTF_OpenFont(fontPath.c_str(), px);
+    font = TTF_OpenFont(fontPath.c_str(), px);
     if (!font) { fprintf(stderr, "TTF_OpenFont(%s) failed: %s\n", fontPath.c_str(), TTF_GetError()); exit(1); }
+    // A real bold face when the family ships one; synthesized bold otherwise.
+    if (!fontPathBold.empty()) fontBold = TTF_OpenFont(fontPathBold.c_str(), px);
+    if (!fontBold) {
+        fontBold = TTF_OpenFont(fontPath.c_str(), px);
+        if (fontBold) TTF_SetFontStyle(fontBold, TTF_STYLE_BOLD);
+    }
     // Light hinting: at game sizes the default (normal) hinting thickens
     // stems on rasterization — part of the "fat/distorted" look. Light
     // keeps the outlines closer to the vector shapes.
     TTF_SetFontHinting(font, TTF_HINTING_LIGHT);
-    if (fontBold) {
-        TTF_SetFontStyle(fontBold, TTF_STYLE_BOLD);
-        TTF_SetFontHinting(fontBold, TTF_HINTING_LIGHT);
-    }
+    if (fontBold) TTF_SetFontHinting(fontBold, TTF_HINTING_LIGHT);
     // Cell advance from '0': digits share one width even in proportional
     // faces like Helvetica, giving a stable grid; glyphs are centered per
     // cell so wider letters just spill symmetrically.
@@ -299,6 +303,13 @@ void handleEvent(const SDL_Event& e) {
                 pushKey('1' + (e.key.keysym.sym - SDLK_1));
                 break;
             }
+            // Cmd/Ctrl +/- = font zoom (reliable everywhere, gestures aside).
+            if (e.key.keysym.mod & (KMOD_CTRL | KMOD_GUI)) {
+                if (e.key.keysym.sym == SDLK_EQUALS || e.key.keysym.sym == SDLK_PLUS
+                    || e.key.keysym.sym == SDLK_KP_PLUS)  { zoomFont(1);  break; }
+                if (e.key.keysym.sym == SDLK_MINUS || e.key.keysym.sym == SDLK_KP_MINUS)
+                                                          { zoomFont(-1); break; }
+            }
             int k = translateKey(e.key.keysym);
             if (k >= 0) pushKey(k);
             break;
@@ -337,19 +348,47 @@ void handleEvent(const SDL_Event& e) {
                 while (wheelAcc <= -0.5f) { zoomFont(-1); wheelAcc += 0.5f; }
             }
             break;
-        case SDL_MULTIGESTURE:
-            // Two-finger pinch = seamless zoom, no modifier needed.
-            // dDist is the normalized pinch travel per event; accumulate and
-            // step the font point size as thresholds are crossed. Plain
-            // two-finger scrolls produce dDist ~0, so they don't drift this.
-            if (e.mgesture.numFingers >= 2) {
-                static float pinchAcc = 0.0f;
-                pinchAcc += e.mgesture.dDist;
-                const float STEP = 0.015f;
-                while (pinchAcc >= STEP)  { zoomFont(1);  pinchAcc -= STEP; }
-                while (pinchAcc <= -STEP) { zoomFont(-1); pinchAcc += STEP; }
+        // Pinch zoom, built from raw trackpad finger events. SDL on macOS
+        // does not deliver MULTIGESTURE for trackpads (verified — pinch did
+        // nothing), but it does surface the pad as an indirect touch device
+        // with FINGERDOWN/MOTION/UP in normalized pad coordinates. Track two
+        // fingers, measure their spread; a deadband distinguishes pinching
+        // from two-finger scrolling (spread ~constant while scrolling).
+        case SDL_FINGERDOWN:
+        case SDL_FINGERMOTION:
+        case SDL_FINGERUP: {
+            static SDL_FingerID ids[2]; static float fx[2], fy[2];
+            static int nf = 0;
+            static float baseDist = -1.0f, lastDist = -1.0f;
+            static bool zooming = false;
+            auto upd = [&](SDL_FingerID id, float x, float y, bool remove) {
+                for (int i = 0; i < nf; i++) {
+                    if (ids[i] == id) {
+                        if (remove) { ids[i]=ids[--nf]; fx[i]=fx[nf]; fy[i]=fy[nf]; }
+                        else        { fx[i]=x; fy[i]=y; }
+                        return;
+                    }
+                }
+                if (!remove && nf < 2) { ids[nf]=id; fx[nf]=x; fy[nf]=y; nf++; }
+            };
+            upd(e.tfinger.fingerId, e.tfinger.x, e.tfinger.y, e.type == SDL_FINGERUP);
+            if (nf == 2) {
+                float dx = fx[0]-fx[1], dy = fy[0]-fy[1];
+                float d = std::sqrt(dx*dx + dy*dy);
+                if (baseDist < 0) { baseDist = lastDist = d; zooming = false; }
+                // Deadband: ignore spread drift < 6% of pad until it's
+                // clearly a pinch; then zoom 1pt per 2.5% spread change.
+                if (!zooming && std::fabs(d - baseDist) > 0.06f) { zooming = true; lastDist = d; }
+                if (zooming) {
+                    const float STEP = 0.025f;
+                    while (d - lastDist >= STEP)  { zoomFont(1);  lastDist += STEP; }
+                    while (lastDist - d >= STEP)  { zoomFont(-1); lastDist -= STEP; }
+                }
+            } else {
+                baseDist = lastDist = -1.0f; zooming = false;
             }
             break;
+        }
         case SDL_WINDOWEVENT:
             if (e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
                 openFonts();      // DPI may have changed (display move)
@@ -413,7 +452,11 @@ void selfTestStep() {
     static Uint32 t0 = SDL_GetTicks();
     Uint32 t = SDL_GetTicks() - t0;
     switch (phase) {
-        case 0: if (t > 1200) { injectText("1"); injectKey(SDLK_RETURN); phase++; } break;
+        case 0: if (t > 1200) {
+                    injectText("1"); injectKey(SDLK_RETURN);
+                    injectText("S");   // debug reveal: dumps show the whole map
+                    phase++;
+                } break;
         case 1: if (t > 3500) { injectMotion(400, 300); phase++; } break;
         case 2: if (t > 3600) { injectButton(true, 400, 300); phase++; } break;
         case 3: if (t > 3700 && t < 5200) {
@@ -478,29 +521,42 @@ void putCells(int y, int x, const char* s) {
 
 const char* findFont() {
     const char* env = getenv("REALM_FONT");
-    if (env && *env) return env;
+    if (env && *env) {
+        const char* envB = getenv("REALM_FONT_BOLD");
+        if (envB && *envB) fontPathBold = envB;
+        return env;
+    }
     // Monospace only: the renderer is a strict cell grid, and the grid pitch
     // comes from one glyph's advance — a proportional face (Helvetica) makes
     // wide glyphs collide and narrow ones float, which reads as bad kerning.
     // Helvetica stays solely as a nothing-else-exists fallback.
-    static const char* candidates[] = {
-        // SF Mono first: it's Terminal.app's face — the exact look the
-        // ncurses build has — and a notch lighter than Menlo, which users
-        // read as "fat" at game sizes.
-        "/System/Library/Fonts/SFNSMono.ttf",
-        "/System/Library/Fonts/Menlo.ttc",
-        "/System/Library/Fonts/Monaco.ttf",
-        "/Library/Fonts/Andale Mono.ttf",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
-        "/usr/share/fonts/TTF/DejaVuSansMono.ttf",
-        "C:\\Windows\\Fonts\\consola.ttf",
-        "C:\\Windows\\Fonts\\lucon.ttf",
-        "/System/Library/Fonts/Helvetica.ttc",
-        nullptr
+    // First choice is SF Mono MEDIUM (one weight up from Regular, which read
+    // too thin at game sizes) paired with the true Bold face for A_BOLD.
+    struct Cand { const char* reg; const char* bold; };
+    static const Cand candidates[] = {
+        { "/System/Applications/Utilities/Terminal.app/Contents/Resources/Fonts/SF-Mono-Medium.otf",
+          "/System/Applications/Utilities/Terminal.app/Contents/Resources/Fonts/SF-Mono-Bold.otf" },
+        { "/System/Library/Fonts/SFNSMono.ttf", nullptr },
+        { "/System/Library/Fonts/Menlo.ttc", nullptr },
+        { "/System/Library/Fonts/Monaco.ttf", nullptr },
+        { "/Library/Fonts/Andale Mono.ttf", nullptr },
+        { "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
+          "/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf" },
+        { "/usr/share/fonts/TTF/DejaVuSansMono.ttf", nullptr },
+        { "C:\\Windows\\Fonts\\consola.ttf", "C:\\Windows\\Fonts\\consolab.ttf" },
+        { "C:\\Windows\\Fonts\\lucon.ttf", nullptr },
+        { "/System/Library/Fonts/Helvetica.ttc", nullptr },
+        { nullptr, nullptr }
     };
-    for (int i = 0; candidates[i]; i++) {
-        FILE* f = fopen(candidates[i], "rb");
-        if (f) { fclose(f); return candidates[i]; }
+    for (int i = 0; candidates[i].reg; i++) {
+        FILE* f = fopen(candidates[i].reg, "rb");
+        if (!f) continue;
+        fclose(f);
+        if (candidates[i].bold) {
+            FILE* fb = fopen(candidates[i].bold, "rb");
+            if (fb) { fclose(fb); fontPathBold = candidates[i].bold; }
+        }
+        return candidates[i].reg;
     }
     return nullptr;
 }

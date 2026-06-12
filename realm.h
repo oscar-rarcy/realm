@@ -47,7 +47,8 @@ enum Terrain {
     T_WHEAT, T_BERRY, T_FISH,
     T_RUINS, T_GRAVEL,
     T_LAVA, T_ASH,
-    T_CASTLE_WALL, T_CASTLE_FLOOR, T_CASTLE_GATE
+    T_CASTLE_WALL, T_CASTLE_FLOOR, T_CASTLE_GATE,
+    T_BRIDGE   // built over water; land-passable (fast), blocks boats
 };
 
 enum EntityType {
@@ -57,6 +58,8 @@ enum EntityType {
     E_TOWNHALL, E_HOUSE, E_BARRACKS, E_STABLE, E_TOWER,
     E_FARM, E_BLACKSMITH, E_CHURCH, E_MARKET, E_WALL, E_GATE, E_CASTLE,
     E_LUMBER_CAMP, E_MINING_CAMP, E_MILL, E_DOCK,
+    E_RUIN,    // neutral ruined keep: garrison to capture (shelter + vision)
+    E_BRIDGE,  // construction scaffold; completion converts the tile to T_BRIDGE
     E_DEER, E_WOLF, E_SHEEP, E_BOAR
 };
 
@@ -129,7 +132,7 @@ struct EntityStats {
 extern const EntityStats STATS[];
 
 inline bool isUnit(EntityType t)     { return (t>=E_PEASANT&&t<=E_RAM)||(t>=E_DEER&&t<=E_BOAR); }
-inline bool isBuilding(EntityType t) { return t>=E_TOWNHALL&&t<=E_DOCK; }
+inline bool isBuilding(EntityType t) { return t>=E_TOWNHALL&&t<=E_BRIDGE; }
 inline bool isRanged(EntityType t)   { return t==E_ARCHER||t==E_CATAPULT||t==E_TREBUCHET||t==E_WARSHIP; }
 inline bool isNaval(EntityType t)    { return t==E_FISHING_BOAT||t==E_WARSHIP||t==E_TRANSPORT; }
 
@@ -251,6 +254,8 @@ struct Game {
                           // scrolling is edge-scroll/minimap only.
     unsigned long long rngState; // sim RNG state — part of game state, saved/loaded
     unsigned long long simSeed;  // seed this match started from (replay header)
+    int difficulty;       // 0 easy / 1 normal / 2 hard — AI pacing knobs (ai.cpp)
+    int winterSeverity;   // rolled at each winter onset: 0 mild / 1 normal / 2 brutal
     std::vector<Command> pendingCmds; // local player's queued commands; applied at tick start
 };
 extern Game g;
@@ -378,7 +383,7 @@ void applyPendingCommands();          // drain g.pendingCmds at tick start; reco
 // commands.cpp — replays (seed + command stream)
 bool replayStartRecording(int numAIs);          // uses g.simSeed/g.biomeChoice; new file per match
 void replayStopRecording();
-bool replayLoadFile(const char* path, unsigned long long& seed, int& numAIs, int& biomeChoice);
+bool replayLoadFile(const char* path, unsigned long long& seed, int& numAIs, int& biomeChoice, int& difficulty);
 void replayInjectCommands();          // playback: queue recorded commands for the current tick
 bool replayPlaying();
 

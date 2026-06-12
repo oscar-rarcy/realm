@@ -565,6 +565,7 @@ static const char* terrainSymbolVariant(Terrain t, char ch, int x, int y) {
         case T_CASTLE_WALL:  return u8"▓";
         case T_CASTLE_FLOOR: return (hash01(x,y,149) < 0.5f) ? u8"·" : u8"∙";
         case T_CASTLE_GATE:  return u8"▣";
+        case T_BRIDGE:       return u8"🌉";
     }
     return getCharEmoji(ch);
 }
@@ -654,6 +655,7 @@ void getTerrainVisual(Terrain t, int x, int y, char& ch, int& cp) {
     case T_CASTLE_WALL:  ch='#'; cp=CP_CASTLE_WALL; break;
     case T_CASTLE_FLOOR: ch='.'; cp=CP_CASTLE_FLOOR;break;
     case T_CASTLE_GATE:  ch='='; cp=CP_CASTLE_GATE; break;
+    case T_BRIDGE:       ch='='; cp=CP_ROAD;        break;
     }
 
     // Water animation

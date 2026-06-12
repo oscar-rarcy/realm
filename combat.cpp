@@ -310,7 +310,8 @@ void orderGroupAttack(const std::vector<int>& unitIds, int tid) {
 // GARRISON
 // ============================================================
 bool canGarrisonIn(EntityType bt) {
-    return bt==E_TOWER || bt==E_TOWNHALL || bt==E_CASTLE || bt==E_HOUSE || bt==E_TRANSPORT;
+    return bt==E_TOWER || bt==E_TOWNHALL || bt==E_CASTLE || bt==E_HOUSE
+        || bt==E_TRANSPORT || bt==E_RUIN;
 }
 int garrisonCap(EntityType bt) {
     switch (bt) {
@@ -319,6 +320,7 @@ int garrisonCap(EntityType bt) {
         case E_TOWNHALL:  return 6;
         case E_CASTLE:    return 10;
         case E_TRANSPORT: return 4;
+        case E_RUIN:      return 6;   // a sheltering shell of old walls
         default:          return 0;
     }
 }
@@ -354,6 +356,8 @@ void ejectGarrison(Entity& bld) {
     }
     bld.garrison.clear();
     updateSupply(bld.owner);
+    // An emptied ruined keep goes back to being nobody's — next claimant wins.
+    if (bld.type == E_RUIN && bld.alive) bld.owner = OWNER_NATURE;
 }
 
 // Centralized death handler: marks dead, ejects garrison, ruins terrain, updates supply.
@@ -391,7 +395,9 @@ void killEntity(Entity& t) {
 void orderGarrison(Entity& e, int buildingId) {
     Entity* bld = findEntity(buildingId);
     if (!bld || !bld->alive || bld->underConstruction) return;
-    if (bld->owner != e.owner) return;
+    // Neutral ruined keeps accept anyone — garrisoning one captures it.
+    bool ruinOk = (bld->type == E_RUIN && bld->owner == OWNER_NATURE);
+    if (bld->owner != e.owner && !ruinOk) return;
     if (!canGarrisonIn(bld->type)) return;
     if (!isUnit(e.type) || e.type == E_CATAPULT) return;
     // Naval units can't board buildings or each other.

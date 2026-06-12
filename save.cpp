@@ -14,7 +14,7 @@
 //   - Skips garbage corrupt files via fread return-value checks
 
 static constexpr char MAGIC[4] = {'R','L','M','2'};
-static constexpr int  SAVE_VERSION = 4;  // v4: + rngState (deterministic sim RNG)
+static constexpr int  SAVE_VERSION = 5;  // v5: + difficulty, winterSeverity (v4: rngState)
 static constexpr int  MAX_ENTITIES = 100000;
 static constexpr int  MAX_VEC_LEN  = 50000;
 
@@ -53,6 +53,7 @@ bool saveGame(const char* path) {
     wr(f, g.biomeChoice);
     wr(f, g.winner); wr(f, g.aiTimer); wr(f, g.farmTimer);
     wr(f, g.rngState);
+    wr(f, g.difficulty); wr(f, g.winterSeverity);
 
     // ----- PLAYERS, MAP -----
     wrBlock(f, g.players, sizeof(g.players));
@@ -121,6 +122,7 @@ bool loadGame(const char* path) {
     rd(f, g.biomeChoice);
     rd(f, g.winner); rd(f, g.aiTimer); rd(f, g.farmTimer);
     rd(f, g.rngState);
+    rd(f, g.difficulty); rd(f, g.winterSeverity);
     // Commands queued against the pre-load world would mis-target ids in
     // the loaded one. The queue is transient, never saved — just drop it.
     g.pendingCmds.clear();
