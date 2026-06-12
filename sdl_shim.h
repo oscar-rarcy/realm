@@ -34,6 +34,9 @@ extern WINDOW* stdscr;
 #define A_BOLD    (1u << 20)
 #define A_DIM     (1u << 21)
 #define A_REVERSE (1u << 22)
+// Decorative face (blackletter) for titles/headers. The SDL build renders
+// these cells in a display font (Luminari); ncurses maps it to bold.
+#define A_TITLE   (1u << 23)
 
 // ----- colors -----
 #define COLOR_BLACK   0

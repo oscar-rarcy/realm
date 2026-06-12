@@ -6,6 +6,10 @@
 #include "sdl_shim.h"
 #else
 #include <ncurses.h>
+// Decorative title attribute is SDL-only; terminal renders it as bold.
+#ifndef A_TITLE
+#define A_TITLE A_BOLD
+#endif
 #endif
 #include <vector>
 #include <queue>

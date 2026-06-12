@@ -36,7 +36,9 @@ static void forceUtf8Locale() {
 }
 
 
-// Full splash screen. Sets g.biomeChoice and displayMode. Returns numAIs.
+// Full splash screen. Sets g.biomeChoice, g.difficulty and displayMode.
+// Returns numAIs. Banner is block-art; headers use A_TITLE, which the SDL
+// build renders in a blackletter face (Luminari) — the terminal gets bold.
 static int showSplash() {
     static const char* biomeNames[] = {
         "Temperate","Desert","Snow","Swamp","Forest","Ocean","Random"
@@ -46,13 +48,23 @@ static int showSplash() {
     int biomeIdx = 6; // 6 = random
     int diffIdx = 1;  // Normal
 
+    static const char* banner[] = {
+        u8"██████╗ ███████╗ █████╗ ██╗     ███╗   ███╗",
+        u8"██╔══██╗██╔════╝██╔══██╗██║     ████╗ ████║",
+        u8"██████╔╝█████╗  ███████║██║     ██╔████╔██║",
+        u8"██╔══██╗██╔══╝  ██╔══██║██║     ██║╚██╔╝██║",
+        u8"██║  ██║███████╗██║  ██║███████╗██║ ╚═╝ ██║",
+        u8"╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝",
+    };
+
     int maxY, maxX;
     while (true) {
         getmaxyx(stdscr, maxY, maxX);
         erase();
 
-        int col = std::max(2, maxX/2 - 34);
-        int row = std::max(0, maxY/2 - 15);
+        const int W = 78;
+        int col = std::max(1, maxX/2 - W/2);
+        int row = std::max(0, maxY/2 - 16);
 
         auto pr = [&](int r, int c, const char* fmt, ...) {
             va_list ap; va_start(ap, fmt);
@@ -60,60 +72,70 @@ static int showSplash() {
             mvprintw(r, c, "%s", buf);
         };
 
-        attron(A_BOLD);
-        pr(row,   col+17, "R  E  A  L  M");
-        pr(row+1, col+13, "-- Medieval Warlord --");
-        attroff(A_BOLD);
+        // ---- banner ----
+        attron(COLOR_PAIR(CP_GOLD) | A_BOLD);
+        for (int i = 0; i < 6; i++) mvaddstr(row + i, col + (W-43)/2, banner[i]);
+        attroff(COLOR_PAIR(CP_GOLD) | A_BOLD);
+        attron(A_TITLE | COLOR_PAIR(CP_UI_ACCENT));
+        pr(row + 6, col + (W-22)/2, "~  Medieval Warlord  ~");
+        attroff(A_TITLE | COLOR_PAIR(CP_UI_ACCENT));
+        row += 8;
 
-        row += 3;
-        pr(row++, col, "You are lord of a small settlement in a hostile");
-        pr(row++, col, "realm. Gather resources, build an army, and");
-        pr(row++, col, "outlast every rival. Survive winter or starve.");
+        // ---- two columns: war setup | commands ----
+        auto box = [&](int r, int c, int w, int h, const char* titleTxt) {
+            mvaddstr(r, c, u8"┌─ ");
+            attron(A_TITLE); mvaddstr(r, c+3, titleTxt); attroff(A_TITLE);
+            int tl = (int)strlen(titleTxt);
+            mvaddstr(r, c+3+tl, " ");
+            for (int x = c+4+tl; x < c+w-1; x++) mvaddstr(r, x, u8"─");
+            mvaddstr(r, c+w-1, u8"┐");
+            for (int y = r+1; y < r+h-1; y++) {
+                mvaddstr(y, c,     u8"│");
+                mvaddstr(y, c+w-1, u8"│");
+            }
+            mvaddstr(r+h-1, c, u8"└");
+            for (int x = c+1; x < c+w-1; x++) mvaddstr(r+h-1, x, u8"─");
+            mvaddstr(r+h-1, c+w-1, u8"┘");
+        };
 
+        int bw = 38, bh = 9;
+        box(row, col,        bw, bh, "THE WAR");
+        box(row, col + bw+2, bw, bh, "COMMANDS");
+
+        auto sel = [&](int r, int c, const char* label, const char* value, const char* keys) {
+            pr(r, c, "%-11s", label);
+            attron(A_BOLD | COLOR_PAIR(CP_UI_HIGH)); pr(r, c+11, "%-10s", value); attroff(A_BOLD | COLOR_PAIR(CP_UI_HIGH));
+            attron(COLOR_PAIR(CP_UI_DIM)); pr(r, c+22, "%s", keys); attroff(COLOR_PAIR(CP_UI_DIM));
+        };
+        char opp[8]; snprintf(opp, sizeof opp, "%d", numAIs);
+        sel(row+2, col+2, "Opponents",  opp,                  "1/2/3");
+        sel(row+3, col+2, "Difficulty", diffNames[diffIdx],   "E/N/H");
+        sel(row+4, col+2, "Biome",      biomeNames[biomeIdx], "T/D/S/W/F/C/0");
+        sel(row+5, col+2, "Display",    displayMode == DM_EMOJI ? "Emoji" : "ASCII", "4/5");
+        attron(COLOR_PAIR(CP_UI_DIM));
+        pr(row+7, col+2, "0=random map with climate bands");
+        attroff(COLOR_PAIR(CP_UI_DIM));
+
+        int c2 = col + bw + 4;
+        pr(row+2, c2, "Space/Click sel   Enter/RClick act");
+        pr(row+3, c2, "B build  T train  A all military");
+        pr(row+4, c2, "Z patrol  X hold  1-9/G groups");
+        pr(row+5, c2, "U eject  R rally  P pause");
+        pr(row+6, c2, "F5-F8 save  F9-F12 load");
+        pr(row+7, c2, "Cmd +/- zoom  Shift+S reveal");
+        row += bh + 1;
+
+        // ---- tips ----
+        attron(COLOR_PAIR(CP_UI_DIM));
+        pr(row++, col+1, "Sow farms on wild wheat. Harvest doubles in autumn; stockpile before the");
+        pr(row++, col+1, "freeze. Mud slows siege in spring. Garrison ruined keeps to claim them.");
+        attroff(COLOR_PAIR(CP_UI_DIM));
         row++;
-        attron(A_BOLD); pr(row++, col, "CONTROLS"); attroff(A_BOLD);
-        pr(row++, col, "  Space/click    Select unit or building");
-        pr(row++, col, "  Enter/R-click  Command (move/attack/gather)");
-        pr(row++, col, "  B              Build menu");
-        pr(row++, col, "  T              Train units");
-        pr(row++, col, "  A              Select all military");
-        pr(row++, col, "  H              Jump to town hall");
-        pr(row++, col, "  1-9 / G        Control groups");
-        pr(row++, col, "  P              Pause");
 
-        row++;
-        attron(A_BOLD); pr(row++, col, "TIPS"); attroff(A_BOLD);
-        pr(row++, col, "  Stockpile food before winter (1 food/unit/8s).");
-        pr(row++, col, "  Boars fight back. Wolves hunt in winter.");
-        pr(row++, col, "  Catapults need 2+ tiles of standoff to fire.");
-
-        row++;
-        attron(A_BOLD); pr(row++, col, "OPPONENTS"); attroff(A_BOLD);
-        pr(row++, col, "  [1] Duel       [2] Three-way     [3] Four-way");
-
-        row++;
-        attron(A_BOLD); pr(row++, col, "BIOME"); attroff(A_BOLD);
-        pr(row++, col, "  [0] Random    [T] Temperate  [D] Desert");
-        pr(row++, col, "  [S] Snow      [W] Swamp      [F] Forest");
-        pr(row++, col, "  [C] Coastal");
-
-        row++;
-        attron(A_BOLD); pr(row++, col, "DISPLAY"); attroff(A_BOLD);
-        pr(row++, col, "  [4] ASCII     [5] Emoji");
-        pr(row++, col, "  > Display: %s", displayMode == DM_EMOJI ? "Emoji" : "ASCII");
-
-        row++;
-        attron(A_BOLD); pr(row++, col, "DIFFICULTY"); attroff(A_BOLD);
-        pr(row++, col, "  [E]asy      [N]ormal     [H]ard");
-
-        row++;
-        attron(A_BOLD);
-        pr(row++, col, "  > Opponents: %d    Biome: %s    Difficulty: %s",
-           numAIs, biomeNames[biomeIdx], diffNames[diffIdx]);
-        attroff(A_BOLD);
-
-        row++;
-        pr(row, col, "  [Enter] Start game            [Q] Quit");
+        // ---- footer ----
+        attron(A_BOLD | COLOR_PAIR(CP_UI_HIGH));
+        pr(row, col + (W-40)/2, "[Enter] Begin the conquest    [Q] Quit");
+        attroff(A_BOLD | COLOR_PAIR(CP_UI_HIGH));
 
         refresh();
         int ch = getch();

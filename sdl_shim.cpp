@@ -40,6 +40,7 @@ SDL_Window*   win = nullptr;
 SDL_Renderer* ren = nullptr;
 TTF_Font*     font = nullptr;
 TTF_Font*     fontBold = nullptr;
+TTF_Font*     fontTitle = nullptr;   // decorative blackletter for A_TITLE
 std::string   fontPath;
 std::string   fontPathBold;         // explicit bold face; empty = synthesize
 int           fontPt = 15;          // point size; mouse wheel zooms this
@@ -97,11 +98,12 @@ void clearGlyphCache() {
     glyphCache.clear();
 }
 
-SDL_Texture* glyphTex(unsigned cp, bool bold) {
-    unsigned long long key = ((unsigned long long)bold << 32) | cp;
+SDL_Texture* glyphTex(unsigned cp, int face) {   // 0 normal, 1 bold, 2 title
+    unsigned long long key = ((unsigned long long)face << 32) | cp;
     auto it = glyphCache.find(key);
     if (it != glyphCache.end()) return it->second;
-    TTF_Font* f = bold && fontBold ? fontBold : font;
+    TTF_Font* f = (face == 2 && fontTitle) ? fontTitle
+                : (face >= 1 && fontBold)  ? fontBold : font;
     SDL_Color white = {255, 255, 255, 255};
     SDL_Surface* s = TTF_RenderGlyph32_Blended(f, cp, white);
     if (!s && cp > 127) s = TTF_RenderGlyph32_Blended(f, '?', white);
@@ -126,8 +128,9 @@ void pointToCell(int px, int py, int& cx, int& cy) {
 }
 
 void openFonts() {
-    if (font)     { TTF_CloseFont(font); font = nullptr; }
-    if (fontBold) { TTF_CloseFont(fontBold); fontBold = nullptr; }
+    if (font)      { TTF_CloseFont(font); font = nullptr; }
+    if (fontBold)  { TTF_CloseFont(fontBold); fontBold = nullptr; }
+    if (fontTitle) { TTF_CloseFont(fontTitle); fontTitle = nullptr; }
     clearGlyphCache();
     int px = (int)(fontPt * pixelScale());
     font = TTF_OpenFont(fontPath.c_str(), px);
@@ -143,6 +146,10 @@ void openFonts() {
     // keeps the outlines closer to the vector shapes.
     TTF_SetFontHinting(font, TTF_HINTING_LIGHT);
     if (fontBold) TTF_SetFontHinting(fontBold, TTF_HINTING_LIGHT);
+    // Blackletter display face for A_TITLE cells (headers, flourishes).
+    // Same px size as the grid font so it stays cell-aligned; bold fallback.
+    fontTitle = TTF_OpenFont("/System/Library/Fonts/Supplemental/Luminari.ttf", px);
+    if (fontTitle) TTF_SetFontHinting(fontTitle, TTF_HINTING_LIGHT);
     // Cell advance from '0': digits share one width even in proportional
     // faces like Helvetica, giving a stable grid; glyphs are centered per
     // cell so wider letters just spill symmetrically.
@@ -607,8 +614,9 @@ WINDOW* initscr() {
 
 int endwin() {
     clearGlyphCache();
-    if (font)     { TTF_CloseFont(font); font = nullptr; }
-    if (fontBold) { TTF_CloseFont(fontBold); fontBold = nullptr; }
+    if (font)      { TTF_CloseFont(font); font = nullptr; }
+    if (fontBold)  { TTF_CloseFont(fontBold); fontBold = nullptr; }
+    if (fontTitle) { TTF_CloseFont(fontTitle); fontTitle = nullptr; }
     if (ren) { SDL_DestroyRenderer(ren); ren = nullptr; }
     if (win) { SDL_DestroyWindow(win); win = nullptr; }
     if (TTF_WasInit()) TTF_Quit();
@@ -683,12 +691,12 @@ int erase() {
 
 int attron(unsigned attrs)  {
     if (attrs >> 8 & 0xFFF) curPair = (short)(attrs >> 8 & 0xFFF);
-    curFlags |= attrs & (A_BOLD | A_DIM | A_REVERSE);
+    curFlags |= attrs & (A_BOLD | A_DIM | A_REVERSE | A_TITLE);
     return OK;
 }
 int attroff(unsigned attrs) {
     if (attrs >> 8 & 0xFFF) curPair = 0;
-    curFlags &= ~(attrs & (A_BOLD | A_DIM | A_REVERSE));
+    curFlags &= ~(attrs & (A_BOLD | A_DIM | A_REVERSE | A_TITLE));
     return OK;
 }
 
@@ -728,7 +736,8 @@ int refresh() {
             SDL_SetRenderDrawColor(ren, bg.r, bg.g, bg.b, 255);
             SDL_RenderFillRect(ren, &r);
             if (c.cp != ' ' && c.cp != 0) {
-                SDL_Texture* t = glyphTex(c.cp, (c.flags & A_BOLD) != 0);
+                int face = (c.flags & A_TITLE) ? 2 : (c.flags & A_BOLD) ? 1 : 0;
+                SDL_Texture* t = glyphTex(c.cp, face);
                 if (t) {
                     int tw, th;
                     SDL_QueryTexture(t, nullptr, nullptr, &tw, &th);
