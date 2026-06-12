@@ -17,6 +17,8 @@ int unitAtk(const Entity& e) {
         }
         a += allies;
     }
+    // Ale-warmed: bolder in the press of melee...
+    if (e.aleTicks > 0 && a > 0) a += 1;
     return a;
 }
 // ============================================================
@@ -85,6 +87,8 @@ int unitRange(const Entity& e) {
     int r = g.players[e.owner].research;
     if (e.type == E_ARCHER && (r & R_CROSSBOWS)) rng += 2;
     if (e.type == E_SPEARMAN && (r & R_PIKES))   rng += 1;
+    // ...but a drunk archer is a worse archer. Keep the bowline sober.
+    if (e.aleTicks > 0 && rng > 1) rng -= 1;
     return rng;
 }
 
@@ -162,6 +166,7 @@ void orderGather(Entity& e, int tx, int ty) {
     if (e.type == E_PEASANT) {
         if (ter != T_GOLD && !isW && !isBerry) return;
         e.gatherType = (ter == T_GOLD) ? 0 : isBerry ? 3 : 1;
+        if (isBerry) e.foodKind = F_BERRY;
     } else if (e.type == E_FISHING_BOAT) {
         if (!isFishT) return;
         e.gatherType = 2;
@@ -193,7 +198,7 @@ void orderBuild(Entity& e, EntityType bt, int bx, int by) {
     if (!canPlace(bt, bx, by, e.owner, e.id)) {
         if (e.owner == 0) setStatus("Can't build there!"); return;
     }
-    p.gold -= STATS[bt].costGold; p.wood -= STATS[bt].costWood;
+    drainStores(e.owner, STATS[bt].costGold, STATS[bt].costWood, bx, by);
     int bid = spawnEntity(bt, e.owner, bx, by, false);
     e.state = S_BUILDING; e.targetId = bid; e.targetX = bx; e.targetY = by;
     // Pick nearest passable tile adjacent to the building footprint
@@ -267,7 +272,7 @@ void orderTrain(Entity& bld, EntityType ut) {
     int foodCost = trainFoodCost(ut);
     if (p.food < foodCost) { if (bld.owner==0) setStatus("Need more food!"); return; }
     spendPlayerFood(bld.owner, foodCost);
-    p.gold -= STATS[ut].costGold; p.wood -= STATS[ut].costWood;
+    drainStores(bld.owner, STATS[ut].costGold, STATS[ut].costWood, bld.x, bld.y);
     if (bld.producing == E_NONE) {
         bld.producing = ut; bld.prodProgress = 0; bld.prodTime = STATS[ut].trainTime;
         bld.state = S_TRAINING;
@@ -415,13 +420,42 @@ void ejectGarrison(Entity& bld) {
 void killEntity(Entity& t) {
     if (!t.alive) return;
     t.alive = false; t.state = S_DEAD;
-    // Mill destruction forfeits the food stored locally at it — the only food depot
-    // that's "exposed" (TC/Castle food is treated as safe; their death ends the run anyway).
-    if (t.type == E_MILL && t.carrying > 0 && t.owner >= 0 && t.owner < MAX_PLAYERS) {
-        int loss = std::min(t.carrying, g.players[t.owner].food);
-        g.players[t.owner].food -= loss;
-        if (t.owner == 0 && loss > 0)
-            setStatus(std::string("Mill destroyed! Lost ") + std::to_string(loss) + " food.");
+    // A depot dies with its stores: the share vanishes from the realm's
+    // totals, and ~60% scatters onto the footprint as loot — for whoever
+    // is standing over the ashes. Ale burns outright.
+    if (isBuilding(t.type) && t.owner >= 0 && t.owner < MAX_PLAYERS) {
+        int edible = 0, allFood = 0;
+        for (int k = 0; k < F_COUNT; k++) { allFood += t.storeFood[k]; if (k != F_ALE) edible += t.storeFood[k]; }
+        if (t.storeGold > 0 || t.storeWood > 0 || allFood > 0) {
+            Player& p = g.players[t.owner];
+            p.gold -= std::min(t.storeGold, p.gold);
+            p.wood -= std::min(t.storeWood, p.wood);
+            p.food -= std::min(edible, p.food);
+            auto& s = STATS[t.type];
+            int cells = s.sizeW * s.sizeH;
+            int sg = t.storeGold*3/5/cells, sw = t.storeWood*3/5/cells, sf = edible*3/5/cells;
+            for (int dy = 0; dy < s.sizeH; dy++) for (int dx = 0; dx < s.sizeW; dx++) {
+                int nx = t.x+dx, ny = t.y+dy;
+                if (!inBounds(nx,ny)) continue;
+                g.map[ny][nx].lootGold += sg;
+                g.map[ny][nx].lootWood += sw;
+                g.map[ny][nx].lootFood += sf;
+            }
+            if (t.owner == 0)
+                setStatus(std::string(STATS[t.type].name) + " destroyed — its stores burn and scatter!");
+            t.storeGold = t.storeWood = 0;
+            for (int k = 0; k < F_COUNT; k++) t.storeFood[k] = 0;
+        }
+    }
+    // A laden carrier (peasant courier, supply wagon) spills its cargo
+    // where it falls. Wagon cargo was already off the books at load time;
+    // courier cargo was never credited — either way the loot pickup
+    // credits whoever delivers it.
+    if (isUnit(t.type) && t.owner < MAX_PLAYERS && t.carrying > 0 && inBounds(t.x, t.y)) {
+        Tile& lt = g.map[t.y][t.x];
+        if      (t.gatherType == 0) lt.lootGold += t.carrying;
+        else if (t.gatherType == 1) lt.lootWood += t.carrying;
+        else                        lt.lootFood += t.carrying;
         t.carrying = 0;
     }
     // Anything that can hold a garrison (buildings + transports) drops its cargo on death.
@@ -450,7 +484,7 @@ void orderGarrison(Entity& e, int buildingId) {
     bool ruinOk = (bld->type == E_RUIN && bld->owner == OWNER_NATURE);
     if (bld->owner != e.owner && !ruinOk) return;
     if (!canGarrisonIn(bld->type)) return;
-    if (!isUnit(e.type) || e.type == E_CATAPULT) return;
+    if (!isUnit(e.type) || e.type == E_CATAPULT || e.type == E_WAGON) return;
     // Naval units can't board buildings or each other.
     if (isNaval(e.type)) return;
     if ((int)bld->garrison.size() >= garrisonCap(bld->type)) {

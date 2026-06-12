@@ -309,6 +309,9 @@ static int aiPickTarget(int o, Entity* attacker) {
         else if (e.type == E_DOCK)                                   score += 80;
         else if (e.type == E_FARM || e.type == E_MILL)               score += 65;
         else if (isBuilding(e.type))                                 score += 30;
+        // Fat depots are worth burning: weight targets by what's stored there.
+        if (isBuilding(e.type))
+            score += (e.storeGold + e.storeWood + depotFoodSum(e)) / 4;
         // Focus-fire bonus: heavily wounded targets are almost dead, finish them.
         int missing = e.maxHp - e.hp;
         score += missing / 2;
@@ -390,7 +393,7 @@ static void tickAIForOwner(int o) {
     // === LATE-GAME UPGRADE: Castle ===
     // Castle (100g+250w, 4x4) replaces or supplements the TH — more HP, more supply,
     // and gives the AI a hardened anchor for late-game sieges.
-    if (aiCountAll(o,E_CASTLE) == 0 && mil + kni >= 8 && p.gold >= 100 && p.wood >= 250) {
+    if (aiCountAll(o,E_CASTLE) == 0 && mil + kni >= 8 && p.gold >= STATS[E_CASTLE].costGold && p.wood >= STATS[E_CASTLE].costWood) {
         Entity* b = aiWorker(o);
         if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_CASTLE,bx,by); if(bx>=0) aiBuildAt(o,*b,E_CASTLE,bx,by); }
     }
@@ -474,6 +477,12 @@ static void tickAIForOwner(int o) {
         Entity* b = aiWorker(o);
         if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_MILL,bx,by); if(bx>=0) aiBuildAt(o,*b,E_MILL,bx,by); }
     }
+    // Granary once the economy is rolling: deep larder + halved winter hunger.
+    if (aiCountAll(o,E_MILL) > 0 && aiCountAll(o,E_GRANARY) == 0
+        && g.tick > 4000 && p.wood >= 80) {
+        Entity* b = aiWorker(o);
+        if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_GRANARY,bx,by); if(bx>=0) aiBuildAt(o,*b,E_GRANARY,bx,by); }
+    }
     int wantFarms = (getSeason() == AUTUMN) ? 8 : (getSeason() == WINTER ? 0 : 5);
     if (aiCountAll(o,E_MILL) > 0 && aiCountAll(o,E_FARM) < wantFarms && getSeason() != WINTER) {
         Entity* b = aiWorker(o);
@@ -551,7 +560,7 @@ static void tickAIForOwner(int o) {
                 if (dist(e.x, e.y, fx, fy) < 18) { fwdAnchor = &e; break; }
             }
             // Plant the forward Castle.
-            if (!fwdAnchor && p.gold >= 100 && p.wood >= 250) {
+            if (!fwdAnchor && p.gold >= STATS[E_CASTLE].costGold && p.wood >= STATS[E_CASTLE].costWood) {
                 int bx=-1, by=-1; aiBuildSpotNear(o, E_CASTLE, fx, fy, bx, by);
                 if (bx >= 0) {
                     Entity* b = aiWorker(o);
@@ -594,7 +603,7 @@ static void tickAIForOwner(int o) {
     // === COASTAL BEACHHEAD: any peasant landed near the enemy starts a forward base.
     // A peasant marooned across the sea is the AI's signal to colonise — build a
     // Castle near them so trained units spawn on the enemy island.
-    if (g.biomeChoice == B_OCEAN && intel.playerTH && p.gold >= 100 && p.wood >= 250) {
+    if (g.biomeChoice == B_OCEAN && intel.playerTH && p.gold >= STATS[E_CASTLE].costGold && p.wood >= STATS[E_CASTLE].costWood) {
         Entity* myHome = aiBldg(o, E_TOWNHALL);
         if (!myHome) myHome = aiBldg(o, E_CASTLE);
         for (auto& u : g.entities) {

@@ -111,7 +111,7 @@ void applyCommand(const Command& c) {
         int err = dx+dy, firstId = -1;
         while (true) {
             if (canPlace(E_WALL, x0, y0, c.player) && p.wood >= STATS[E_WALL].costWood) {
-                p.wood -= STATS[E_WALL].costWood;
+                drainStores(c.player, 0, STATS[E_WALL].costWood, x0, y0);
                 int wid = spawnEntity(E_WALL, c.player, x0, y0, false);
                 if (firstId < 0) firstId = wid;
             }
@@ -289,7 +289,7 @@ void applyCommand(const Command& c) {
         if (p.gold < r->gold || p.wood < r->wood) {
             if (human) setStatus("Not enough resources!"); return;
         }
-        p.gold -= r->gold; p.wood -= r->wood;
+        drainStores(c.player, r->gold, r->wood, b->x, b->y);
         b->researching = r->bit; b->prodProgress = 0; b->prodTime = r->ticks;
         if (human) setStatus(r->msg);
         break;
@@ -311,10 +311,43 @@ void applyCommand(const Command& c) {
         if (p.gold < t.cg || p.wood < t.cw || p.food < t.cf) {
             if (human) setStatus("Not enough resources!"); return;
         }
-        p.gold += t.gg - t.cg;
-        p.wood += t.gw - t.cw;
-        p.food += t.gf - t.cf;
+        // Pay from the piles near the market; credit the gains the same way.
+        drainStores(c.player, t.cg, t.cw, b->x, b->y);
+        if (t.cf) spendPlayerFood(c.player, t.cf);
+        depositToNearest(c.player, t.gg, t.gw, F_GRAIN, t.gf, b->x, b->y);
         if (human) setStatus(t.msg);
+        break;
+    }
+
+    case CMD_FEAST: {
+        // Tavern throws a feast: 10 ale, every friendly unit nearby heals 20%.
+        Entity* b = cmdEnt(c, c.target);
+        if (!b || b->type != E_TAVERN || b->underConstruction) return;
+        if (b->atkCd > 0) { if (human) setStatus("The tavern is still cleaning up the last feast."); return; }
+        if (b->storeFood[F_ALE] < 10) { if (human) setStatus("Need 10 ale for a feast!"); return; }
+        b->storeFood[F_ALE] -= 10;
+        int fed = 0;
+        for (auto& u : g.entities) {
+            if (!u.alive || u.owner != c.player || !isUnit(u.type)) continue;
+            if (u.state == S_GARRISONED) continue;
+            if (dist(u.x, u.y, b->x, b->y) > 8) continue;
+            if (u.hp < u.maxHp) { u.hp = std::min(u.maxHp, u.hp + u.maxHp/5); fed++; }
+        }
+        b->atkCd = 1500;
+        if (human) setStatus("A feast! " + std::to_string(fed) + " soldiers eat, drink and mend.");
+        break;
+    }
+
+    case CMD_HAUL: {
+        // Wagon ↔ depot: the wagon resolves load-vs-unload on arrival.
+        if (c.units.empty()) return;
+        Entity* w = cmdEnt(c, c.units[0]);
+        Entity* b = cmdEnt(c, c.target);
+        if (!w || w->type != E_WAGON || !b || !isBuilding(b->type) || b->underConstruction) return;
+        clearQueued(*w);
+        w->state = S_RETURNING; w->targetId = b->id;
+        w->targetX = b->x; w->targetY = b->y;
+        w->path = findPathFor(*w, b->x, b->y); w->pathIdx = 0;
         break;
     }
 
@@ -340,7 +373,7 @@ void applyCommand(const Command& c) {
 // (same caveat as save files).
 // ============================================================
 static constexpr char REP_MAGIC[4] = {'R','L','R','P'};
-static constexpr int  REP_VERSION  = 3;   // v3: elevation mapgen + new units (v2: difficulty)
+static constexpr int  REP_VERSION  = 4;   // v4: stockpile economy + structures (v3: elevation)
 
 static FILE* recF  = nullptr;   // recording
 static FILE* playF = nullptr;   // playback
@@ -479,6 +512,9 @@ unsigned long long simStateHash() {
         fnv(h, e.x); fnv(h, e.y); fnv(h, e.hp);
         fnv(h, e.state); fnv(h, e.carrying);
         fnv(h, e.targetId); fnv(h, (int)e.garrison.size());
+        fnv(h, e.storeGold); fnv(h, e.storeWood);
+        for (int k = 0; k < F_COUNT; k++) fnv(h, e.storeFood[k]);
+        fnv(h, e.aleTicks);
     }
     return h;
 }

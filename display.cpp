@@ -24,6 +24,7 @@ static const char* ENTITY_EMOJI[] = {
     u8"🏇",     // E_HUSSAR
     u8"🙏",     // E_MONK
     u8"💣",     // E_SAPPER
+    u8"🛒",     // E_WAGON
     u8"🏛",      // E_TOWNHALL
     u8"🏠",     // E_HOUSE
     u8"🏕",      // E_BARRACKS
@@ -40,6 +41,15 @@ static const char* ENTITY_EMOJI[] = {
     u8"⛏",      // E_MINING_CAMP
     u8"⚙",      // E_MILL
     u8"⚓",     // E_DOCK
+    u8"🧺",     // E_GRANARY
+    u8"🍺",     // E_TAVERN
+    u8"⛲",     // E_WELL
+    u8"🏡",     // E_MANOR
+    u8"⚒",      // E_STONEMASON
+    u8"🕯",      // E_SHRINE
+    u8"💦",     // E_WATERMILL
+    u8"⚖",      // E_TRADING_POST
+    u8"🕳",      // E_WOLF_DEN
     u8"🏚",      // E_RUIN
     u8"🌉",     // E_BRIDGE
     u8"🦌",     // E_DEER

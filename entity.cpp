@@ -115,27 +115,126 @@ bool isDetectedBy(int x, int y, int observerOwner) {
 // 50 ticks ≈ 4 s on screen — the old 35 vanished before long lines were read.
 void setStatus(const std::string& msg) { g.statusMsg = msg; g.statusTimer = 50; }
 
-// Food can be deposited at a Mill, Town Hall, or Castle. A Mill tracks how much
-// of the player's food currently lives at its location — if the Mill is destroyed,
-// that share is forfeited. TC/Castle food is treated as safe (loss of either ends the run).
-static void addPlayerFood(int owner, int amount, Entity* depot) {
-    g.players[owner].food += amount;
-    if (depot && depot->type == E_MILL) depot->carrying += amount;
+// ============================================================
+// STOCKPILES — wealth physically lives at depot buildings (DF lite).
+// Player.gold/wood/food remain the cached totals every cost check reads;
+// the per-depot stores say WHERE it sits. A burned depot forfeits its
+// share and scatters part of it as loot; spending drains the piles
+// nearest the paying site, so frontier logistics emerge on their own.
+// ============================================================
+bool isDepot(EntityType t) {
+    return depotCapGold(t) > 0 || depotCapWood(t) > 0 || depotCapFood(t) > 0;
+}
+int depotCapGold(EntityType t) {
+    switch (t) {
+        case E_TOWNHALL: return 400;  case E_CASTLE: return 600;
+        case E_MINING_CAMP: return 250; case E_TRADING_POST: return 150;
+        default: return 0;
+    }
+}
+int depotCapWood(EntityType t) {
+    switch (t) {
+        case E_TOWNHALL: return 400;  case E_CASTLE: return 600;
+        case E_LUMBER_CAMP: return 250;
+        default: return 0;
+    }
+}
+int depotCapFood(EntityType t) {
+    switch (t) {
+        case E_TOWNHALL: return 400;  case E_CASTLE: return 600;
+        case E_MILL: return 300;      case E_GRANARY: return 600;
+        case E_DOCK: return 200;      case E_TAVERN: return 200;
+        case E_WATERMILL: return 150;
+        default: return 0;
+    }
+}
+int depotFoodSum(const Entity& e) {
+    int s = 0;
+    for (int k = 0; k < F_COUNT; k++) s += e.storeFood[k];
+    return s;
 }
 
-// Drain Mill stockpiles first so the exposed share is consumed before the safer
-// reserve held at TC/Castle. Keeps mill.carrying consistent with player.food.
+// Deposit food of a given kind at a depot. Ale never counts toward the
+// edible total — it's drunk, not eaten.
+void addFood(int owner, int kind, int amount, Entity* depot) {
+    if (kind != F_ALE) g.players[owner].food += amount;
+    if (depot) depot->storeFood[kind] += amount;
+}
+
+// Eat spoilables first: berries rot before fish, fish before meat, and the
+// granary grain is the winter reserve that's touched last.
 void spendPlayerFood(int owner, int amount) {
     Player& p = g.players[owner];
     int spent = std::min(amount, p.food);
     p.food -= spent;
-    int remaining = spent;
-    for (auto& e : g.entities) {
-        if (remaining <= 0) break;
-        if (!e.alive || e.owner != owner || e.type != E_MILL || e.underConstruction) continue;
-        int take = std::min(e.carrying, remaining);
-        e.carrying -= take; remaining -= take;
+    static const int EAT_ORDER[] = {F_BERRY, F_FISH, F_MEAT, F_GRAIN};
+    for (int kind : EAT_ORDER) {
+        if (spent <= 0) break;
+        for (auto& e : g.entities) {
+            if (spent <= 0) break;
+            if (!e.alive || e.owner != owner || !isBuilding(e.type)) continue;
+            int take = std::min(e.storeFood[kind], spent);
+            e.storeFood[kind] -= take; spent -= take;
+        }
     }
+}
+
+// Pull a specific kind (e.g. brewing wants grain). Fails without spending
+// if the player doesn't hold enough of that kind anywhere.
+bool spendFoodKind(int owner, int kind, int amount) {
+    int have = 0;
+    for (auto& e : g.entities) {
+        if (!e.alive || e.owner != owner || !isBuilding(e.type)) continue;
+        have += e.storeFood[kind];
+    }
+    if (have < amount) return false;
+    if (kind != F_ALE) g.players[owner].food -= std::min(amount, g.players[owner].food);
+    for (auto& e : g.entities) {
+        if (amount <= 0) break;
+        if (!e.alive || e.owner != owner || !isBuilding(e.type)) continue;
+        int take = std::min(e.storeFood[kind], amount);
+        e.storeFood[kind] -= take; amount -= take;
+    }
+    return true;
+}
+
+// Spend gold/wood: totals drop, and the piles nearest the paying site are
+// the ones that empty — a drained frontier camp means longer hauls.
+void drainStores(int owner, int gold, int wood, int x, int y) {
+    Player& p = g.players[owner];
+    p.gold -= std::min(gold, p.gold);
+    p.wood -= std::min(wood, p.wood);
+    std::vector<Entity*> depots;
+    for (auto& e : g.entities)
+        if (e.alive && e.owner == owner && isBuilding(e.type)) depots.push_back(&e);
+    std::sort(depots.begin(), depots.end(), [x,y](Entity* a, Entity* b){
+        int da = mdist(a->x, a->y, x, y), db = mdist(b->x, b->y, x, y);
+        return da != db ? da < db : a->id < b->id;
+    });
+    for (Entity* d : depots) {
+        if (gold <= 0 && wood <= 0) break;
+        int tg = std::min(d->storeGold, gold); d->storeGold -= tg; gold -= tg;
+        int tw = std::min(d->storeWood, wood); d->storeWood -= tw; wood -= tw;
+    }
+}
+
+// Credit income (market trades, tolls) to the nearest depot with capacity.
+void depositToNearest(int owner, int gold, int wood, int foodKind, int food, int x, int y) {
+    Player& p = g.players[owner];
+    p.gold += gold; p.wood += wood;
+    if (food > 0 && foodKind != F_ALE) p.food += food;
+    Entity* bg = nullptr; Entity* bw = nullptr; Entity* bf = nullptr;
+    int dg = 99999, dw = 99999, df = 99999;
+    for (auto& e : g.entities) {
+        if (!e.alive || e.owner != owner || !isBuilding(e.type) || e.underConstruction) continue;
+        int d = mdist(e.x, e.y, x, y);
+        if (gold > 0 && depotCapGold(e.type) > 0 && d < dg) { dg = d; bg = &e; }
+        if (wood > 0 && depotCapWood(e.type) > 0 && d < dw) { dw = d; bw = &e; }
+        if (food > 0 && depotCapFood(e.type) > 0 && d < df) { df = d; bf = &e; }
+    }
+    if (bg) bg->storeGold += gold;
+    if (bw) bw->storeWood += wood;
+    if (bf) bf->storeFood[foodKind] += food;
 }
 
 Entity* findEntity(int id) {
@@ -144,21 +243,34 @@ Entity* findEntity(int id) {
 }
 
 Entity* findDepot(Entity& e) {
-    Entity* best = nullptr; int bestD = 99999;
-    for (auto& o : g.entities) {
-        if (!o.alive || o.owner != e.owner || o.underConstruction) continue;
-        bool isBase = (o.type == E_TOWNHALL || o.type == E_CASTLE) && e.gatherType != 2;
-        bool isWood = (o.type == E_LUMBER_CAMP && e.gatherType == 1);
-        bool isGold = (o.type == E_MINING_CAMP && e.gatherType == 0);
-        bool isFish = (o.type == E_DOCK        && e.gatherType == 2);
-        // Mill accepts food deliveries from farm couriers (and berry pickers).
-        bool isFood = (o.type == E_MILL        && e.gatherType == 3);
-        if (isBase || isWood || isGold || isFish || isFood) {
+    // Two passes: prefer depots with spare capacity for what we carry; if
+    // every pile is full, fall back to the nearest anyway (over-cap deposits
+    // are accepted — caps steer routing, they don't strand couriers).
+    for (int pass = 0; pass < 2; pass++) {
+        Entity* best = nullptr; int bestD = 99999;
+        for (auto& o : g.entities) {
+            if (!o.alive || o.owner != e.owner || o.underConstruction) continue;
+            bool isBase = (o.type == E_TOWNHALL || o.type == E_CASTLE) && e.gatherType != 2;
+            bool isWood = (o.type == E_LUMBER_CAMP && e.gatherType == 1);
+            bool isGold = (o.type == E_MINING_CAMP && e.gatherType == 0);
+            bool isFish = (o.type == E_DOCK        && e.gatherType == 2);
+            // Food couriers (farm/berry/hunt) deliver to Mill, Granary, or a claimed Watermill.
+            bool isFood = ((o.type == E_MILL || o.type == E_GRANARY || o.type == E_WATERMILL)
+                           && e.gatherType == 3);
+            if (!(isBase || isWood || isGold || isFish || isFood)) continue;
+            if (pass == 0) {
+                bool full = false;
+                if      (e.gatherType == 0) full = o.storeGold >= depotCapGold(o.type);
+                else if (e.gatherType == 1) full = o.storeWood >= depotCapWood(o.type);
+                else                        full = depotFoodSum(o) >= depotCapFood(o.type);
+                if (full) continue;
+            }
             int d = mdist(e.x, e.y, o.x, o.y);
             if (d < bestD) { bestD = d; best = &o; }
         }
+        if (best) return best;
     }
-    return best;
+    return nullptr;
 }
 
 Entity* entityAt(int x, int y) {
@@ -593,6 +705,9 @@ static Entity* findSafeHaven(Entity& e) {
 void tickEntity(Entity& e) {
     if (!e.alive) return;
     if (e.alertTicks > 0) e.alertTicks--;
+    if (e.aleTicks > 0) e.aleTicks--;
+    // Tavern feast cooldown (atkCd is unused on non-attacking buildings).
+    if (e.type == E_TAVERN && e.atkCd > 0) e.atkCd--;
     // Pop the next queued waypoint when the unit goes idle.
     // Patrol mode rotates the waypoint to the back of the queue so the unit loops.
     if (e.state == S_IDLE && !e.waypoints.empty() && isUnit(e.type) && !isNaval(e.type)
@@ -776,6 +891,34 @@ void tickEntity(Entity& e) {
                 if (e.state == S_MOVING) break;
             }
         }
+        // Plunder: an idle land unit standing on or beside scattered loot
+        // scoops a load and hauls it to its own nearest depot. Raiders ride
+        // home laden; kill the carrier and the loot drops again.
+        if (e.owner < OWNER_NATURE && !isNaval(e.type) && e.carrying == 0
+            && e.type != E_TREBUCHET && (g.tick + e.id) % 5 == 0) {
+            static const int d5x[] = {0,1,-1,0,0}, d5y[] = {0,0,0,1,-1};
+            for (int i = 0; i < 5; i++) {
+                int lx = e.x + d5x[i], ly = e.y + d5y[i];
+                if (!inBounds(lx, ly)) continue;
+                Tile& lt = g.map[ly][lx];
+                int take = 0;
+                if      (lt.lootGold > 0) { take = std::min(CARRY_MAX, lt.lootGold); lt.lootGold -= take; e.gatherType = 0; }
+                else if (lt.lootWood > 0) { take = std::min(CARRY_MAX, lt.lootWood); lt.lootWood -= take; e.gatherType = 1; }
+                else if (lt.lootFood > 0) { take = std::min(CARRY_MAX, lt.lootFood); lt.lootFood -= take; e.gatherType = 3; e.foodKind = F_GRAIN; }
+                if (take == 0) continue;
+                e.carrying = take;
+                e.rallyX = -1; e.rallyY = -1;   // no auto-resume after dropoff
+                Entity* dep = findDepot(e);
+                if (dep) {
+                    e.state = S_RETURNING; e.targetId = dep->id;
+                    e.targetX = dep->x; e.targetY = dep->y;
+                    e.path = findPathFor(e, dep->x, dep->y); e.pathIdx = 0;
+                    if (e.owner == 0) setStatus("Plunder! Hauling stolen stores home.");
+                }
+                break;
+            }
+            if (e.state != S_IDLE) break;
+        }
         // Monks mend: an idle monk heals the most-wounded adjacent friendly
         // unit 1 hp every 8 ticks. Focus the monk to stop the mending.
         if (e.type == E_MONK && e.owner < OWNER_NATURE && (g.tick + e.id) % 8 == 0) {
@@ -926,7 +1069,7 @@ void tickEntity(Entity& e) {
                     if (hunted && e.type == E_PEASANT && e.carrying == 0) {
                         // Peasant hunter hauls the carcass back to a Mill/TC/Castle.
                         int food = (t->type==E_SHEEP)?80:(t->type==E_DEER)?120:(t->type==E_BOAR)?100:30;
-                        e.carrying = food; e.gatherType = 3;
+                        e.carrying = food; e.gatherType = 3; e.foodKind = F_MEAT;
                         e.rallyX = -1; e.rallyY = -1; // sentinel: don't auto-resume after dropoff
                         Entity* dep = findDepot(e);
                         if (dep) {
@@ -1007,6 +1150,50 @@ void tickEntity(Entity& e) {
         break;
     }
     case S_RETURNING: {
+        // Wagon haul: load at a depot when empty, unload when laden. Cargo
+        // leaves the realm's totals while on the road — a killed wagon
+        // scatters it as loot (see killEntity), an ambushed supply line.
+        if (e.type == E_WAGON) {
+            Entity* dep = findEntity(e.targetId);
+            if (!dep || !dep->alive || dep->underConstruction || !isBuilding(dep->type)
+                || dep->owner != e.owner) { e.state = S_IDLE; break; }
+            int d = dist(e.x, e.y, dep->x, dep->y);
+            if (d <= STATS[dep->type].sizeW + 1) {
+                Player& p = g.players[e.owner];
+                if (e.carrying == 0) {
+                    // Load the largest pile at this depot (ale travels too).
+                    int bestAmt = dep->storeGold, bestKind = -2;     // -2 gold, -1 wood, >=0 food kind
+                    if (dep->storeWood > bestAmt) { bestAmt = dep->storeWood; bestKind = -1; }
+                    for (int k = 0; k < F_COUNT; k++)
+                        if (dep->storeFood[k] > bestAmt) { bestAmt = dep->storeFood[k]; bestKind = k; }
+                    int take = std::min(bestAmt, WAGON_CAP);
+                    if (take > 0) {
+                        if (bestKind == -2)      { dep->storeGold -= take; p.gold -= std::min(take, p.gold); e.gatherType = 0; }
+                        else if (bestKind == -1) { dep->storeWood -= take; p.wood -= std::min(take, p.wood); e.gatherType = 1; }
+                        else {
+                            dep->storeFood[bestKind] -= take;
+                            if (bestKind != F_ALE) p.food -= std::min(take, p.food);
+                            e.gatherType = 3; e.foodKind = bestKind;
+                        }
+                        e.carrying = take;
+                        if (e.owner == 0) setStatus("Wagon loaded — right-click another depot to deliver.");
+                    } else if (e.owner == 0) setStatus("Nothing stored here to load.");
+                } else {
+                    if      (e.gatherType == 0) { p.gold += e.carrying; dep->storeGold += e.carrying; }
+                    else if (e.gatherType == 1) { p.wood += e.carrying; dep->storeWood += e.carrying; }
+                    else                        addFood(e.owner, e.foodKind, e.carrying, dep);
+                    e.carrying = 0;
+                    if (e.owner == 0) setStatus("Wagon unloaded.");
+                }
+                e.state = S_IDLE;
+            } else {
+                moveAlongPath(e);
+                if (e.path.empty() && (g.tick + e.id) % 10 == 0) {
+                    e.path = findPathFor(e, dep->x, dep->y); e.pathIdx = 0;
+                }
+            }
+            break;
+        }
         Entity* dep = findEntity(e.targetId);
         if (!dep || !dep->alive) {
             dep = findDepot(e);
@@ -1016,10 +1203,10 @@ void tickEntity(Entity& e) {
         }
         int d = dist(e.x, e.y, dep->x, dep->y);
         if (d <= STATS[dep->type].sizeW + 1) {
-            if (e.gatherType == 0)      g.players[e.owner].gold += e.carrying;
-            else if (e.gatherType == 1) g.players[e.owner].wood += e.carrying;
-            else if (e.gatherType == 3) addPlayerFood(e.owner, e.carrying, dep); // farm/berry/hunt
-            else                        g.players[e.owner].food += e.carrying;   // fish (dock-tracked)
+            if      (e.gatherType == 0) { g.players[e.owner].gold += e.carrying; dep->storeGold += e.carrying; }
+            else if (e.gatherType == 1) { g.players[e.owner].wood += e.carrying; dep->storeWood += e.carrying; }
+            else if (e.gatherType == 3) addFood(e.owner, e.foodKind, e.carrying, dep); // farm/berry/hunt
+            else                        addFood(e.owner, F_FISH, e.carrying, dep);
             e.carrying = 0;
             // Farm courier: rallyX/Y stores the farm we came from — go back and resume tending.
             if (e.gatherType == 3 && inBounds(e.rallyX, e.rallyY)) {
@@ -1114,7 +1301,7 @@ void tickEntity(Entity& e) {
             if (d <= 1 && bld->carrying >= 3 && e.carrying == 0) {
                 int take = std::min(bld->carrying, CARRY_MAX);
                 e.carrying = take; bld->carrying -= take;
-                e.gatherType = 3; // food — depots: TC, Castle, Mill
+                e.gatherType = 3; e.foodKind = F_GRAIN; // wheat harvest
                 e.rallyX = bld->x; e.rallyY = bld->y; // return-to point: this farm
                 Entity* dep = findDepot(e);
                 if (dep) {

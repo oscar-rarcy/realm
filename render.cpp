@@ -894,6 +894,10 @@ void renderMap() {
                     }
                 }
             }
+            // Scattered loot glints on the ground until someone hauls it off.
+            if      (tile.lootGold > 0) { ch = '$'; cp = CP_GOLD_SHIMMER; }
+            else if (tile.lootWood > 0) { ch = '='; cp = CP_DEAD_TREE; }
+            else if (tile.lootFood > 0) { ch = '%'; cp = CP_WHEAT; }
             int terrainCp = (displayMode == DM_EMOJI) ? emojiTerrainColorPair(tile, mx, my, night) : cp;
             if (displayMode == DM_EMOJI) cp = terrainCp;
 

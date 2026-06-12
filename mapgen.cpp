@@ -106,7 +106,7 @@ static void generateContinentMap() {
         else if (adjD < contR)     { b = B_TEMPERATE; t = T_SAND;     }    // beach
         else if (adjD < contR + 3) { b = B_OCEAN;     t = T_SHALLOWS; }
         else                       { b = B_OCEAN;     t = T_WATER;    }
-        g.map[y][x] = {t, 0, {}, {}, b, t, 0, 0};
+        g.map[y][x] = {t, 0, {}, {}, b, t, 0, 0, 0, 0, 0};
     }
 
     // Inland variety: scatter forest/meadow/tall grass on grass tiles.
@@ -237,7 +237,7 @@ void generateMap() {
             else if (climate < 0.45f && n2 < 0.40f) b = B_FOREST;
             // remainder stays B_TEMPERATE
         }
-        g.map[y][x] = {T_GRASS, 0, {}, {}, b, T_GRASS, 0, 0};
+        g.map[y][x] = {T_GRASS, 0, {}, {}, b, T_GRASS, 0, 0, 0, 0, 0};
     }
     for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
         Tile& t = g.map[y][x]; int r = simRand() % 100;

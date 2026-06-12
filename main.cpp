@@ -300,7 +300,11 @@ void initGame(int numAIs, unsigned long long seed) {
         clearStartArea(spawns[i].thX - 2, spawns[i].thY - 2, 6);
         // Gold deposit a few tiles offset (not directly on the TH).
         placeGoldCluster(spawns[i].thX + 9, spawns[i].thY + 4, 5);
-        spawnEntity(E_TOWNHALL, owner, spawns[i].thX, spawns[i].thY);
+        int thId = spawnEntity(E_TOWNHALL, owner, spawns[i].thX, spawns[i].thY);
+        // The starting treasury physically sits in the Town Hall vault.
+        if (Entity* th = findEntity(thId)) {
+            th->storeGold = 300; th->storeWood = 200; th->storeFood[F_GRAIN] = 100;
+        }
         for (int j = 0; j < 4; j++)
             spawnEntity(E_PEASANT, owner, spawns[i].thX + 4 + j, spawns[i].thY + 4);
     }
@@ -399,6 +403,7 @@ void simTick() {
     tickSeasons(); tickThaw(); tickWinter();
     tickWeather(); tickPaving();
     tickTowers(); tickGates(); tickProjectiles(); tickFarms(); tickMarkets();
+    tickSpoilage(); tickTaverns();
     tickChurches(); tickAnimals(); tickAI(); updateFog();
     // Prune dead IDs from selection + control groups so UI counts
     // ("Group: N units") stay honest as casualties pile up.

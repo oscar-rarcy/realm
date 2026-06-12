@@ -151,10 +151,75 @@ void tickFarms() {
 
 void tickMarkets() {
     if (g.tick % 50 != 0) return;
-    for (int p = 0; p < MAX_PLAYERS; p++) {
-        int m = 0;
-        for (auto& e : g.entities) if (e.alive && e.owner==p && e.type==E_MARKET && !e.underConstruction) m++;
-        g.players[p].gold += m * 5;
+    for (auto& e : g.entities) {
+        if (!e.alive || e.owner >= MAX_PLAYERS || e.underConstruction) continue;
+        // Market income lands in the nearest vault, not thin air.
+        if (e.type == E_MARKET)
+            depositToNearest(e.owner, 5, 0, 0, 0, e.x, e.y);
+        // A claimed trading post tolls the road into its own strongbox.
+        if (e.type == E_TRADING_POST) {
+            g.players[e.owner].gold += 3;
+            e.storeGold = std::min(e.storeGold + 3, depotCapGold(E_TRADING_POST));
+        }
+        // Manor tax: +1 gold per worked farm within 6 tiles.
+        if (e.type == E_MANOR) {
+            int tax = 0;
+            for (auto& f : g.entities) {
+                if (!f.alive || f.owner != e.owner || f.type != E_FARM || f.underConstruction) continue;
+                if (dist(f.x, f.y, e.x, e.y) > 6) continue;
+                for (auto& u : g.entities) {
+                    if (!u.alive || u.owner != e.owner || u.type != E_PEASANT) continue;
+                    if (dist(u.x, u.y, f.x, f.y) <= 1) { tax++; break; }
+                }
+            }
+            if (tax > 0) depositToNearest(e.owner, tax, 0, 0, 0, e.x, e.y);
+        }
+    }
+}
+
+// Larder decay: meat and fish keep about a season, berries half that.
+// Winter is the great preserver — the freeze halts meat/fish spoilage,
+// which is exactly why the autumn hunt fills the granaries.
+void tickSpoilage() {
+    if (g.tick % 100 != 0) return;
+    bool frozen = (getSeason() == WINTER);
+    for (auto& e : g.entities) {
+        if (!e.alive || e.owner >= MAX_PLAYERS || !isBuilding(e.type)) continue;
+        int rot = 0;
+        if (!frozen) {
+            if (e.storeFood[F_MEAT] > 0) { int r = std::max(1, e.storeFood[F_MEAT]/30); e.storeFood[F_MEAT] -= r; rot += r; }
+            if (e.storeFood[F_FISH] > 0) { int r = std::max(1, e.storeFood[F_FISH]/30); e.storeFood[F_FISH] -= r; rot += r; }
+        }
+        if (e.storeFood[F_BERRY] > 0) { int r = std::max(1, e.storeFood[F_BERRY]/15); e.storeFood[F_BERRY] -= r; rot += r; }
+        if (rot > 0) g.players[e.owner].food -= std::min(rot, g.players[e.owner].food);
+    }
+}
+
+// Taverns brew grain into ale and warm passing soldiers with it.
+void tickTaverns() {
+    // Brewing: 2 grain -> 1 ale, one batch per tavern per 50 ticks.
+    if (g.tick % 50 == 0) {
+        for (auto& e : g.entities) {
+            if (!e.alive || e.owner >= MAX_PLAYERS || e.type != E_TAVERN || e.underConstruction) continue;
+            if (depotFoodSum(e) >= depotCapFood(E_TAVERN)) continue;
+            if (spendFoodKind(e.owner, F_GRAIN, 2)) e.storeFood[F_ALE] += 1;
+        }
+    }
+    // Ale-warmed: military passing within 4 of a stocked tavern drinks one.
+    // +1 atk and frostbite immunity for ~600 ticks; ranged aim suffers -1.
+    if (g.tick % 25 == 0) {
+        for (auto& e : g.entities) {
+            if (!e.alive || e.owner >= MAX_PLAYERS || e.type != E_TAVERN || e.underConstruction) continue;
+            if (e.storeFood[F_ALE] <= 0) continue;
+            for (auto& u : g.entities) {
+                if (e.storeFood[F_ALE] <= 0) break;
+                if (!u.alive || u.owner != e.owner || !isUnit(u.type) || isNaval(u.type)) continue;
+                if (STATS[u.type].atk <= 0 || u.state == S_GARRISONED || u.aleTicks > 0) continue;
+                if (dist(u.x, u.y, e.x, e.y) > 4) continue;
+                e.storeFood[F_ALE]--;
+                u.aleTicks = 600;
+            }
+        }
     }
 }
 
@@ -320,14 +385,23 @@ void tickWinter() {
     bool mildSkip = (g.winterSeverity == 0 && (g.tick / 100) % 2 == 0);
     for (int p = 0; p < MAX_PLAYERS; p++) {
         if (!g.players[p].alive) continue;
-        int unitCount = 0;
+        // Each unit costs 1 food per cycle (2 in a brutal winter), HALVED for
+        // units within 10 tiles of a stocked granary — the larder is close.
+        // Accumulate in half-units so the halving rounds fairly.
+        int unitCount = 0, drainHalves = 0;
         for (auto& e : g.entities) {
             if (!e.alive || e.owner != p || !isUnit(e.type)) continue;
             unitCount++;
+            int h = (g.winterSeverity == 2 ? 2 : 1) * 2;
+            for (auto& b : g.entities) {
+                if (!b.alive || b.owner != p || b.type != E_GRANARY || b.underConstruction) continue;
+                if (depotFoodSum(b) > 0 && dist(e.x, e.y, b.x, b.y) <= 10) { h /= 2; break; }
+            }
+            drainHalves += h;
         }
         if (unitCount == 0) continue;
         Player& pl = g.players[p];
-        int drain = unitCount * (g.winterSeverity == 2 ? 2 : 1);
+        int drain = drainHalves / 2;
         if (mildSkip) drain = 0;
         if (drain > 0) {
             if (pl.food >= drain) {
@@ -356,6 +430,7 @@ void tickWinter() {
             for (auto& e : g.entities) {
                 if (!e.alive || e.owner != p || !isUnit(e.type)) continue;
                 if (e.state == S_GARRISONED || isNaval(e.type)) continue;
+                if (e.aleTicks > 0) continue;   // ale in the blood keeps the cold out
                 bool sheltered = false;
                 for (auto& b : g.entities) {
                     if (!b.alive || b.owner != p || !isBuilding(b.type) || b.underConstruction) continue;
@@ -403,10 +478,14 @@ void tickPaving() {
             }
         }
     }
-    // Decay: unused paving gradually returns to nature.
+    // Decay: unused paving gradually returns to nature. Scattered loot is
+    // carried off by crows and rain on the same slow clock.
     if (g.tick % 250 == 0) {
         for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
             Tile& t = g.map[y][x];
+            if (t.lootGold > 0) t.lootGold -= std::max(1, t.lootGold/4);
+            if (t.lootWood > 0) t.lootWood -= std::max(1, t.lootWood/4);
+            if (t.lootFood > 0) t.lootFood -= std::max(1, t.lootFood/4);
             if (t.wear > 0) t.wear--;
             if (t.wear == 0 && t.terrain == T_ROAD) {
                 t.terrain = T_DIRT; t.preWinterTerrain = T_DIRT;

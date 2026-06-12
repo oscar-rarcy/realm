@@ -153,6 +153,9 @@ void renderUI() {
         menuRow(iy, 'K', E_CASTLE, "");     menuRow(iy, 'L', E_LUMBER_CAMP, "");
         menuRow(iy, 'N', E_MINING_CAMP, "");menuRow(iy, 'I', E_MILL, "");
         menuRow(iy, 'D', E_DOCK, "");       menuRow(iy, 'R', E_BRIDGE, "");
+        menuRow(iy, 'Y', E_GRANARY, "");    menuRow(iy, 'V', E_TAVERN, "");
+        menuRow(iy, 'O', E_WELL, "");       menuRow(iy, 'E', E_MANOR, "");
+        menuRow(iy, 'U', E_STONEMASON, "");
         iy++;
         attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(iy++, panelX+1, "[Esc] cancel"); attroff(COLOR_PAIR(CP_UI_DIM));
     } else if (g.mode == M_TRAIN_SELECT) {
@@ -168,6 +171,7 @@ void renderUI() {
                 break;
             case E_STABLE: menuRow(iy, 'K', E_KNIGHT, ""); menuRow(iy, 'H', E_HUSSAR, ""); break;
             case E_CHURCH: menuRow(iy, 'M', E_MONK, ""); break;
+            case E_MILL: case E_GRANARY: menuRow(iy, 'W', E_WAGON, ""); break;
             case E_CASTLE: menuRow(iy, 'T', E_TREBUCHET, ""); break;
             case E_DOCK:
                 menuRow(iy, 'B', E_FISHING_BOAT, ""); menuRow(iy, 'W', E_WARSHIP, "");
@@ -342,9 +346,32 @@ void renderUI() {
                                                      mvprintw(iy++, panelX+1, "Ripe: %d / 20", sel->carrying); }
                     if (sel->type==E_LUMBER_CAMP) mvprintw(iy++, panelX+1, "Wood drop-off");
                     if (sel->type==E_MINING_CAMP) mvprintw(iy++, panelX+1, "Gold drop-off");
-                    if (sel->type==E_MILL)        { mvprintw(iy++, panelX+1, "Enables harvesting");
-                                                     mvprintw(iy++, panelX+1, "Stored: %d food", sel->carrying);
-                                                     mvprintw(iy++, panelX+1, "(lost if destroyed)"); }
+                    if (sel->type==E_MILL)        mvprintw(iy++, panelX+1, "Boosts farms; food store");
+                    if (sel->type==E_GRANARY)     { mvprintw(iy++, panelX+1, "Deep larder (600)");
+                                                     mvprintw(iy++, panelX+1, "Halves winter hunger"); }
+                    if (sel->type==E_TAVERN)      { mvprintw(iy++, panelX+1, "Brews grain into ale");
+                                                     mvprintw(iy++, panelX+1, "Ale-warms passing troops");
+                                                     if (sel->atkCd > 0) mvprintw(iy++, panelX+1, "[R] Feast in %ds", sel->atkCd*8/100);
+                                                     else                mvprintw(iy++, panelX+1, "[R] Feast (10 ale)"); }
+                    if (sel->type==E_WELL)        { mvprintw(iy++, panelX+1, "Peasants heal nearby");
+                                                     mvprintw(iy++, panelX+1, "Shields close buildings"); }
+                    if (sel->type==E_MANOR)       mvprintw(iy++, panelX+1, "+10 supply, farm tax");
+                    if (sel->type==E_STONEMASON)  { mvprintw(iy++, panelX+1, "Stone walls (2x HP)");
+                                                     mvprintw(iy++, panelX+1, "Repairs from stone: %d", sel->carrying); }
+                    if (sel->type==E_WATERMILL)   mvprintw(iy++, panelX+1, "Half-rate mill (claimed)");
+                    if (sel->type==E_TRADING_POST) mvprintw(iy++, panelX+1, "Road toll, [R] trade");
+                    if (sel->type==E_SHRINE)      mvprintw(iy++, panelX+1, "Heals the faithful nearby");
+                    // Stockpile readout — anything stored here burns with the building.
+                    if (isDepot(sel->type) && !sel->underConstruction) {
+                        if (sel->storeGold || sel->storeWood)
+                            mvprintw(iy++, panelX+1, "Stored: %dg %dw", sel->storeGold, sel->storeWood);
+                        static const char* fk[] = {"Grain","Meat","Fish","Berry","Ale"};
+                        for (int k = 0; k < F_COUNT; k++)
+                            if (sel->storeFood[k] > 0)
+                                mvprintw(iy++, panelX+1, " %s: %d", fk[k], sel->storeFood[k]);
+                        if (sel->storeGold || sel->storeWood || depotFoodSum(*sel))
+                            mvprintw(iy++, panelX+1, "(scatters if destroyed)");
+                    }
                     if (sel->type==E_GATE) {
                         mvprintw(iy++, panelX+1, sel->gateOpen ? "State: Open" : "State: Closed");
                         mvprintw(iy++, panelX+1, sel->gateLocked ? "Mode: Locked" : "Mode: Auto");

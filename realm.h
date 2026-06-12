@@ -33,6 +33,7 @@ const int GATHER_TICKS = 15;
 const int DAY_LENGTH   = 1500;
 const int SEASON_LENGTH= 3000;
 const int CARRY_MAX    = 20;
+const int WAGON_CAP    = 100;  // supply wagon hold — five peasant-loads per trip
 const int MAX_PLAYERS  = 4;
 const int OWNER_NATURE = MAX_PLAYERS;
 
@@ -63,13 +64,27 @@ enum EntityType {
     E_HUSSAR,       // Stable: fastest unit in the game, light raider cavalry
     E_MONK,         // Church: no attack; heals an adjacent friendly while idle
     E_SAPPER,       // Barracks + Blacksmith: suicide petard vs buildings
+    E_WAGON,        // Mill/Granary: hauls up to 100 resources between depots; drops loot if killed
     E_TOWNHALL, E_HOUSE, E_BARRACKS, E_STABLE, E_TOWER,
     E_FARM, E_BLACKSMITH, E_CHURCH, E_MARKET, E_WALL, E_GATE, E_CASTLE,
     E_LUMBER_CAMP, E_MINING_CAMP, E_MILL, E_DOCK,
+    E_GRANARY,      // big food store; halves winter drain for units near it
+    E_TAVERN,       // brews grain into ale; ale-warms passing soldiers; feast ability
+    E_WELL,         // peasant heal trickle; nearby buildings take less damage (bucket line)
+    E_MANOR,        // +supply, garrison, small tax on nearby worked farms
+    E_STONEMASON,   // stone construction (2x wall/gate/tower HP) + auto-repair from stone deposits
+    E_SHRINE,       // neutral: heals adjacent; a garrisoned monk projects the aura
+    E_WATERMILL,    // neutral riverside: claim by garrison — half-rate mill + food dropoff
+    E_TRADING_POST, // neutral on roads: claim by garrison — trickle gold + market trades
+    E_WOLF_DEN,     // neutral: spawns wolves until destroyed
     E_RUIN,    // neutral ruined keep: garrison to capture (shelter + vision)
     E_BRIDGE,  // construction scaffold; completion converts the tile to T_BRIDGE
     E_DEER, E_WOLF, E_SHEEP, E_BOAR
 };
+
+// Food is a larder, not a number: each kind stores, spoils, and is eaten
+// differently. Ale is brewed from grain and never auto-eaten.
+enum FoodKind { F_GRAIN = 0, F_MEAT, F_FISH, F_BERRY, F_ALE, F_COUNT };
 
 enum EntityState {
     S_IDLE, S_MOVING, S_ATTACKING, S_GATHERING,
@@ -140,7 +155,7 @@ struct EntityStats {
 };
 extern const EntityStats STATS[];
 
-inline bool isUnit(EntityType t)     { return (t>=E_PEASANT&&t<=E_SAPPER)||(t>=E_DEER&&t<=E_BOAR); }
+inline bool isUnit(EntityType t)     { return (t>=E_PEASANT&&t<=E_WAGON)||(t>=E_DEER&&t<=E_BOAR); }
 inline bool isBuilding(EntityType t) { return t>=E_TOWNHALL&&t<=E_BRIDGE; }
 inline bool isRanged(EntityType t)   { return t==E_ARCHER||t==E_CATAPULT||t==E_TREBUCHET||t==E_WARSHIP||t==E_CROSSBOWMAN; }
 inline bool isNaval(EntityType t)    { return t==E_FISHING_BOAT||t==E_WARSHIP||t==E_TRANSPORT; }
@@ -167,6 +182,9 @@ struct Tile {
     int wear;        // 0-100: traffic + creep. Drives dirt/road transitions and decay.
     int elev;        // 0 lowland, 1 highland plateau. Steps across the boundary
                      // need a T_HILLS ramp; everywhere else the rim is a cliff.
+    // Plunder: a destroyed depot scatters part of its stores onto its
+    // footprint. Any land unit standing by picks loot up and hauls it home.
+    int lootGold, lootWood, lootFood;
 };
 
 struct Entity {
@@ -193,6 +211,12 @@ struct Entity {
     std::vector<int> garrison; // unit ids currently inside this building
     std::vector<std::pair<int,int>> waypoints; // queued move targets (Shift+RClick) and patrol loop
     bool patrolMode;           // when true, completed waypoints are re-queued so the unit loops
+    // Stockpiles: wealth physically lives at depots. Player totals are the
+    // cached sum; these say WHERE — and burn or scatter with the building.
+    int storeGold, storeWood;
+    int storeFood[F_COUNT];
+    int foodKind;   // FoodKind of the food this unit is carrying (peasant/wagon)
+    int aleTicks;   // >0: ale-warmed — +1 atk, -1 ranged range, no frostbite
 };
 
 struct Player {
@@ -234,6 +258,8 @@ enum CmdType {
     CMD_RESEARCH,    // blacksmith `target` starts research bit `arg`
     CMD_TRADE,       // market `target` trade: arg 0=g→w 1=w→g 2=g→f 3=f→g
     CMD_REVEAL,      // debug: reveal map for issuing player
+    CMD_FEAST,       // tavern `target` throws a feast: 10 ale, heal nearby units
+    CMD_HAUL,        // wagon units[0] ↔ depot `target`: load if empty, unload if laden
 };
 
 struct Command {
@@ -360,7 +386,19 @@ int  damageVs(EntityType attacker, EntityType target, int rawDmg, int targetOwne
 // entity.cpp — movement / state
 void moveAlongPath(Entity& e);
 void resetDetectMapCache();
-void spendPlayerFood(int owner, int amount);
+
+// entity.cpp — stockpiles. Totals (Player.gold/wood/food) stay the cheap
+// check; these keep the per-depot location bookkeeping in sync with them.
+bool isDepot(EntityType t);
+int  depotCapGold(EntityType t);
+int  depotCapWood(EntityType t);
+int  depotCapFood(EntityType t);
+int  depotFoodSum(const Entity& e);
+void addFood(int owner, int kind, int amount, Entity* depot);
+void spendPlayerFood(int owner, int amount);              // eats spoilables first
+bool spendFoodKind(int owner, int kind, int amount);      // e.g. brewing pulls grain
+void drainStores(int owner, int gold, int wood, int x, int y); // pay from nearest piles
+void depositToNearest(int owner, int gold, int wood, int foodKind, int food, int x, int y);
 
 // entity.cpp — tick (units)
 void tickEntity(Entity& e);
@@ -378,6 +416,8 @@ void tickThaw();
 void tickWinter();
 void tickPaving();
 void tickWeather();
+void tickSpoilage();
+void tickTaverns();
 void checkWin();
 
 // entity.cpp — AI

@@ -14,7 +14,7 @@
 //   - Skips garbage corrupt files via fread return-value checks
 
 static constexpr char MAGIC[4] = {'R','L','M','2'};
-static constexpr int  SAVE_VERSION = 6;  // v6: Tile.elev + new unit types (v5: difficulty, winterSeverity)
+static constexpr int  SAVE_VERSION = 7;  // v7: stockpiles, food kinds, ale, loot tiles (v6: elevation)
 static constexpr int  MAX_ENTITIES = 100000;
 static constexpr int  MAX_VEC_LEN  = 50000;
 
@@ -86,6 +86,9 @@ bool saveGame(const char* path) {
         n = (int32_t)e.waypoints.size(); wr(f, n);
         for (auto& w : e.waypoints) { wr(f, w.first); wr(f, w.second); }
         wr(f, e.patrolMode);
+        wr(f, e.storeGold); wr(f, e.storeWood);
+        for (int k = 0; k < F_COUNT; k++) wr(f, e.storeFood[k]);
+        wr(f, e.foodKind); wr(f, e.aleTicks);
     }
 
     // Check the stream is healthy before committing.
@@ -167,6 +170,9 @@ bool loadGame(const char* path) {
         e.waypoints.reserve(n);
         for (int j = 0; j < n; j++) { int a, b; rd(f, a); rd(f, b); e.waypoints.push_back({a,b}); }
         rd(f, e.patrolMode);
+        rd(f, e.storeGold); rd(f, e.storeWood);
+        for (int k = 0; k < F_COUNT; k++) rd(f, e.storeFood[k]);
+        rd(f, e.foodKind); rd(f, e.aleTicks);
         g.entities.push_back(e);
     }
 

@@ -79,6 +79,15 @@ static void cmdAtTileSingle(Entity* sel, int x, int y) {
     Entity* tgt = entityAt(x, y);
     bool visible = g.map[y][x].visible[0];
 
+    // Wagon: right-click a friendly building to load (if empty) or unload.
+    if (sel->type == E_WAGON) {
+        if (tgt && tgt->alive && tgt->owner == 0 && isBuilding(tgt->type) && !tgt->underConstruction) {
+            pushCmd(CMD_HAUL, {sel->id}, 0, 0, tgt->id);
+            setStatus(sel->carrying ? "Wagon delivering..." : "Wagon heading to load...");
+            return;
+        }
+        pushCmd(CMD_MOVE, {sel->id}, x, y); setStatus("Moving..."); return;
+    }
     if (tgt && tgt->alive && tgt->owner == 0 && tgt->underConstruction && sel->type == E_PEASANT) {
         pushCmd(CMD_HELP, {sel->id}, 0, 0, tgt->id); setStatus("Helping build..."); return;
     }
@@ -207,6 +216,11 @@ void handleInput(int ch) {
         case 'g': case 'G': tb = E_GATE;        break;
         case 'd': case 'D': tb = E_DOCK;        break;
         case 'r': case 'R': tb = E_BRIDGE;      break;
+        case 'y': case 'Y': tb = E_GRANARY;     break;
+        case 'v': case 'V': tb = E_TAVERN;      break;
+        case 'o': case 'O': tb = E_WELL;        break;
+        case 'e': case 'E': tb = E_MANOR;       break;
+        case 'u': case 'U': tb = E_STONEMASON;  break;
         case 27: g.mode = M_NORMAL; return;
         default: return;
         }
@@ -325,6 +339,7 @@ void handleInput(int ch) {
             else if (ch=='h'||ch=='H') tt = E_HUSSAR;
         }
         else if (sel->type == E_CHURCH) { if (ch=='m'||ch=='M') tt = E_MONK; }
+        else if (sel->type == E_MILL || sel->type == E_GRANARY) { if (ch=='w'||ch=='W') tt = E_WAGON; }
         else if (sel->type == E_CASTLE) { if (ch=='t'||ch=='T') tt = E_TREBUCHET; }
         else if (sel->type == E_DOCK)   {
             if      (ch=='b'||ch=='B') tt = E_FISHING_BOAT;
@@ -446,11 +461,12 @@ void handleInput(int ch) {
         goto clamp;
     }
 
-    // Market trade menu.
+    // Market trade menu (markets and claimed trading posts).
     if (g.mode == M_MARKET_TRADE) {
         if (ch == 27) { g.mode = M_NORMAL; return; }
         Entity* mkt = findEntity(g.selectedId);
-        if (!mkt || mkt->type != E_MARKET || mkt->underConstruction) { g.mode = M_NORMAL; return; }
+        if (!mkt || (mkt->type != E_MARKET && mkt->type != E_TRADING_POST)
+            || mkt->underConstruction) { g.mode = M_NORMAL; return; }
         // Rates + statuses live in the CMD_TRADE table in commands.cpp.
         int tradeIdx = -1;
         if      (ch == 'g' || ch == 'G') tradeIdx = 0;
@@ -571,7 +587,7 @@ void handleInput(int ch) {
     case 't': case 'T': {
         Entity* sel = findEntity(g.selectedId);
         if (sel && sel->owner==0 && isBuilding(sel->type) && !sel->underConstruction) {
-            if (sel->type==E_TOWNHALL||sel->type==E_BARRACKS||sel->type==E_STABLE||sel->type==E_DOCK||sel->type==E_CASTLE||sel->type==E_CHURCH) {
+            if (sel->type==E_TOWNHALL||sel->type==E_BARRACKS||sel->type==E_STABLE||sel->type==E_DOCK||sel->type==E_CASTLE||sel->type==E_CHURCH||sel->type==E_MILL||sel->type==E_GRANARY) {
                 g.mode = M_TRAIN_SELECT;
                 setStatus("Select unit to train...");
             } else setStatus("This building can't train.");
@@ -606,9 +622,11 @@ void handleInput(int ch) {
             setStatus("Select a production building first.");
             break;
         }
-        if (sel->type == E_MARKET) {
+        if (sel->type == E_MARKET || sel->type == E_TRADING_POST) {
             g.mode = M_MARKET_TRADE;
             setStatus("Trade (40→30): [G]old→Wood  [W]ood→Gold  [F]ood←Gold  [V]ictuals→Gold  [Esc]");
+        } else if (sel->type == E_TAVERN) {
+            pushCmd(CMD_FEAST, {}, 0, 0, sel->id);   // validation + statuses on apply
         } else if (sel->type == E_BLACKSMITH) {
             g.mode = M_RESEARCH_SELECT;
             setStatus("Research: [I]ron 100/100 [C]rossbows 80/80 [P]ikes 100/100 [W]eight 120/150 [H]elm 120/100 [Esc]");
