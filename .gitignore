@@ -6,6 +6,8 @@
 /realm.exe
 /realm.out
 /realm.app/
+/Realm.app/
+/Realm.zip
 /realm.dSYM/
 
 *.o

@@ -145,7 +145,6 @@ enum {
     CP_BUILD_OK, CP_BUILD_BAD,
     CP_CLIFF,   // plateau rim escarpment
     CP_CORPSE,  // fallen-soldier marker (dim blood-red)
-    CP_TORCH,   // night torch flame (warm flicker)
     CP_COUNT
 };
 

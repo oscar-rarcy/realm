@@ -227,8 +227,6 @@ void initColors() {
     init_pair(CP_CLIFF,          C::LIGHT_GRAY,   C::BROWN);
     // Fallen-soldier markers: dim blood-red on dark ground.
     init_pair(CP_CORPSE,         C::BERRY_RED,    tileBg(C::DARKER_GRAY));
-    // Night torches: a warm flame, gold/amber over the dark.
-    init_pair(CP_TORCH,          C::BRIGHT_GOLD,  tileBg(C::BROWN));
 
     // Cursor: black-on-gold pops on snow, grass, water, and dark biomes alike.
     init_pair(CP_CURSOR,         C::NEAR_BLACK,   C::BRIGHT_GOLD);
@@ -1224,31 +1222,6 @@ void renderMap() {
             }
         }
         attroff(COLOR_PAIR(CP_UI_DIM));
-    }
-
-    // Night torches: defensive works and the town hall keep a flame burning
-    // after dark, flickering on a per-building stagger (render-only).
-    if (isNight()) {
-        for (auto& e : g.entities) {
-            if (!e.alive || e.underConstruction || e.owner >= MAX_PLAYERS) continue;
-            if (e.type != E_TOWER && e.type != E_GATE && e.type != E_CASTLE
-                && e.type != E_TOWNHALL && e.type != E_WALL) continue;
-            // A wall lights a torch only now and then, so ramparts twinkle
-            // rather than blaze; keeps/towers/gates always carry one.
-            if (e.type == E_WALL && ((g.tick/15 + e.id) % 4) != 0) continue;
-            int tx = e.x, ty = e.y - 1;
-            if (!inBounds(tx, ty) || !g.map[ty][tx].visible[0]) continue;
-            int sx = tx - g.viewX, sy = ty - g.viewY;
-            if (sx < 0 || sx >= g.viewW || sy < 0 || sy >= g.viewH) continue;
-            if (entityAt(tx, ty)) continue;
-            // Flicker: bold flame most ticks, a dimmer ember on the off-beat.
-            bool bright = ((g.tick/4 + e.id*3) % 3) != 0;
-            attron(COLOR_PAIR(CP_TORCH) | (bright ? A_BOLD : A_DIM));
-            char fl = bright ? 'i' : '.';
-            if (displayMode == DM_ASCII) mvaddch(sy+2, sx * tileW, fl);
-            else                         mvprintw(sy+2, sx * tileW, bright ? u8"🔥" : u8"·");
-            attroff(COLOR_PAIR(CP_TORCH) | (bright ? A_BOLD : A_DIM));
-        }
     }
 
     // Snowflakes: drawn every tick; hash seed changes every 12 ticks (~1 second)

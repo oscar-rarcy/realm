@@ -41,8 +41,13 @@ gui/%.o: %.cpp realm.h sdl_shim.h | gui
 gui:
 	mkdir -p gui
 
+# Self-contained Realm.app (Apple Silicon) — bundles the SDL dylibs so the app
+# runs on a Mac without Homebrew. See make-app.sh.
+app:
+	./make-app.sh
+
 clean:
 	rm -f $(OBJS) $(TARGET) $(GUI_OBJS) $(GUI_TARGET)
-	rm -rf obj gui
+	rm -rf obj gui Realm.app Realm.zip
 
-.PHONY: all clean gui-build
+.PHONY: all clean gui-build app
