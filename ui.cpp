@@ -482,7 +482,9 @@ void renderUI() {
         else
             mvprintw(botY2, 1, " WALL: Click and drag to draw wall line  [Esc] Cancel ");
     } else if (g.mode == M_PAUSED) {
-        attron(A_BOLD); mvprintw(botY2, 1, " PAUSED - Press [P] to resume "); attroff(A_BOLD);
+        attron(A_BOLD); mvprintw(botY2, 1, " PAUSED — [S] Save / Load game    [P] resume "); attroff(A_BOLD);
+    } else if (g.mode == M_SAVELOAD) {
+        mvprintw(botY2, 1, " SAVE / LOAD — Up/Down or click a slot   [Enter] Load   [S] Save   [D] Delete   [Esc] Back ");
     } else if (g.mode == M_GAME_OVER) {
         attron(A_BOLD);
         if (g.winner==0) mvprintw(botY2, 1, " VICTORY! The realm is yours. [Enter] New game  [Q] Quit ");
@@ -563,12 +565,48 @@ void renderUI() {
         mvprintw(r+7, c2, " Mouse edge-scroll, minimap");
         mvprintw(r+8, c2, " h   jump to town hall");
         mvprintw(r+10,c2, "GAME");
-        mvprintw(r+11,c2, " P        pause");
-        mvprintw(r+12,c2, " F5-F8    save slots 1-4");
-        mvprintw(r+13,c2, " F9-F12   load slots 1-4");
+        mvprintw(r+11,c2, " P        pause + Save/Load menu");
+        mvprintw(r+12,c2, " F5-F8    quick-save slots 1-4");
+        mvprintw(r+13,c2, " F9-F12   quick-load slots 1-4");
         mvprintw(r+14,c2, " Q Q      abandon to menu");
         mvprintw(r+15,c2, " Shift+S  reveal map (debug)");
         mvprintw(hy+hh-2, c1, "Terrain: ramps 'n' climb cliffs '#'. High ground: +sight, +ranged dmg.");
+        attroff(COLOR_PAIR(CP_UI_BAR));
+    }
+
+    // ---- Visual Save / Load menu: slot cards with in-game date + timestamp ----
+    if (g.mode == M_SAVELOAD) {
+        const int rowH = 3, hw = 60, hh = 6 + NUM_SAVE_SLOTS * rowH;
+        int hx = std::max(0, (maxX - panelW - hw) / 2);
+        int hy = std::max(1, (maxY - hh) / 2);
+        attron(COLOR_PAIR(CP_UI_BAR));
+        for (int rr = 0; rr < hh; rr++) mvhline(hy+rr, hx, ' ', hw);
+        attron(A_BOLD); mvprintw(hy+1, hx+2, "SAVE  /  LOAD"); attroff(A_BOLD);
+        int rowY0 = hy + 3;
+        // Stash geometry so input.cpp can hit-test mouse clicks onto slot rows.
+        g.slMenuX = hx; g.slMenuW = hw; g.slMenuRowY0 = rowY0; g.slMenuRowH = rowH;
+        static const char* seasons[] = {"Spring","Summer","Autumn","Winter"};
+        for (int s = 0; s < NUM_SAVE_SLOTS; s++) {
+            int ry = rowY0 + s * rowH;
+            bool sel = (s == g.saveSlotSel);
+            char path[64]; saveSlotPath(s+1, path, sizeof(path));
+            SaveSlotInfo info; bool used = peekSave(path, info);
+            if (sel) attron(A_REVERSE);
+            mvprintw(ry, hx+2, " %s Slot %d%s",
+                     sel ? ">" : " ", s+1, (s==0 ? "  (quicksave)" : ""));
+            if (used) {
+                char when[40] = "";
+                time_t t = (time_t)info.saveTime;
+                struct tm* lt = localtime(&t);
+                if (lt) strftime(when, sizeof(when), "%b %d  %H:%M", lt);
+                mvprintw(ry+1, hx+6, "Year %d, %-6s          saved %s",
+                         info.year, seasons[info.season & 3], when);
+            } else {
+                mvprintw(ry+1, hx+6, "- empty -");
+            }
+            if (sel) attroff(A_REVERSE);
+        }
+        mvprintw(hy+hh-2, hx+2, "Up/Down or click: pick   Enter: Load   S: Save   D: Delete   Esc: Back");
         attroff(COLOR_PAIR(CP_UI_BAR));
     }
 

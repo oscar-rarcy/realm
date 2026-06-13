@@ -521,7 +521,7 @@ static void runMatch() {
         bool ticked = false;
         if (Clock::now() >= nextTick) {
             nextTick += Ms(TICK_MS);
-            if (g.mode != M_PAUSED && g.mode != M_GAME_OVER && g.mode != M_HELP) simTick();
+            if (g.mode != M_PAUSED && g.mode != M_GAME_OVER && g.mode != M_HELP && g.mode != M_SAVELOAD) simTick();
             render();
             ticked = true;
         }

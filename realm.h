@@ -94,7 +94,7 @@ enum EntityState {
     S_ENTERING, S_GARRISONED,
     S_ROUTING   // morale broke: fleeing, unorderable until it rallies
 };
-enum GameMode  { M_NORMAL, M_BUILD_SELECT, M_BUILD_PLACE, M_TRAIN_SELECT, M_WALL_DRAG, M_PAUSED, M_GAME_OVER, M_RALLY_SET, M_RESEARCH_SELECT, M_ATTACK_MOVE, M_MARKET_TRADE, M_PATROL_SET, M_HELP };
+enum GameMode  { M_NORMAL, M_BUILD_SELECT, M_BUILD_PLACE, M_TRAIN_SELECT, M_WALL_DRAG, M_PAUSED, M_GAME_OVER, M_RALLY_SET, M_RESEARCH_SELECT, M_ATTACK_MOVE, M_MARKET_TRADE, M_PATROL_SET, M_HELP, M_SAVELOAD };
 
 // Research bits stored in Player.research
 enum Research { R_IRON_WEAPONS = 1, R_CROSSBOWS = 2, R_PIKES = 4, R_COUNTERWEIGHT = 8, R_PLATE_HELM = 16 };
@@ -322,6 +322,9 @@ struct Game {
     // "Their line broke!" status flash: counts routs per side in a short
     // window. UI-only — never saved, never hashed (doesn't feed the sim).
     int routFlashTick, routFlashOwner, routFlashCount;
+    // Save/Load overlay (M_SAVELOAD): transient UI state — never saved/hashed.
+    int saveSlotSel;                                  // highlighted slot 0..NUM_SAVE_SLOTS-1
+    int slMenuX, slMenuW, slMenuRowY0, slMenuRowH;    // overlay geometry for mouse hit-test
     int difficulty;       // 0 easy / 1 normal / 2 hard — AI pacing knobs (ai.cpp)
     int winterSeverity;   // rolled at each winter onset: 0 mild / 1 normal / 2 brutal
     std::vector<Command> pendingCmds; // local player's queued commands; applied at tick start
@@ -482,8 +485,14 @@ unsigned long long simStateHash();    // FNV-1a over entities + players + RNG st
 void simHashTick();                   // REALM_HASH=1: append tick/hash to realm-hash.log every 100 ticks
 
 // save.cpp
+inline constexpr int NUM_SAVE_SLOTS = 4;
+// Lightweight summary of a save slot for the visual Save/Load menu (peekSave
+// reads only the header — never the full map/entity payload).
+struct SaveSlotInfo { bool used=false; long long saveTime=0; int year=1; int season=0; };
 bool saveGame(const char* path);
 bool loadGame(const char* path);
+bool peekSave(const char* path, SaveSlotInfo& out);
+void saveSlotPath(int slot, char* buf, int n);   // slot is 1-based
 
 // main.cpp
 void initGame(int numAIs, unsigned long long seed = 0); // seed 0 = derive from clock

@@ -25,6 +25,40 @@ template<typename T> static bool rd(FILE* f, T& v)        { return fread(&v, siz
 static void wrBlock(FILE* f, const void* p, size_t n) { fwrite(p, 1, n, f); }
 static bool rdBlock(FILE* f, void* p, size_t n)        { return fread(p, 1, n, f) == n; }
 
+// Canonical slot file path (1-based). One source of truth for the F-keys,
+// the visual menu, and peekSave.
+void saveSlotPath(int slot, char* buf, int n) {
+    snprintf(buf, n, "realm-slot%d.sav", slot);
+}
+
+// Read just enough of a save to summarise it for the Save/Load menu: the
+// header (magic/version/dims/timestamp) plus the first four game scalars,
+// which carry the in-game clock. Never touches the big map/entity blocks.
+// Returns false for a missing, wrong-version, or corrupt file (shown "empty").
+bool peekSave(const char* path, SaveSlotInfo& out) {
+    out = SaveSlotInfo{};
+    FILE* f = fopen(path, "rb");
+    if (!f) return false;
+    char magic[4];
+    if (fread(magic, 1, 4, f) != 4 || memcmp(magic, MAGIC, 4) != 0) { fclose(f); return false; }
+    int ver;
+    if (!rd(f, ver) || ver != SAVE_VERSION) { fclose(f); return false; }
+    int32_t mapW, mapH, maxPlayers;
+    if (!rd(f, mapW) || !rd(f, mapH) || !rd(f, maxPlayers)) { fclose(f); return false; }
+    if (mapW != MAP_W || mapH != MAP_H || maxPlayers != MAX_PLAYERS) { fclose(f); return false; }
+    int64_t saveTime;
+    if (!rd(f, saveTime)) { fclose(f); return false; }
+    int nextId, tick; float dayPhase, seasonPhase;   // same order as saveGame
+    if (!rd(f, nextId) || !rd(f, tick) || !rd(f, dayPhase) || !rd(f, seasonPhase)) { fclose(f); return false; }
+    fclose(f);
+    int sp = (int)seasonPhase;
+    out.used     = true;
+    out.saveTime = (long long)saveTime;
+    out.season   = ((sp % 4) + 4) % 4;
+    out.year     = sp / 4 + 1;
+    return true;
+}
+
 bool saveGame(const char* path) {
     // Atomic save: write to .tmp, then rename. If anything fails partway,
     // the existing save file is untouched.

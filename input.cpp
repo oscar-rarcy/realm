@@ -202,6 +202,54 @@ void handleInput(int ch) {
     // Help overlay: '?' opens (game pauses underneath); any key closes.
     if (g.mode == M_HELP) { if (ch != ERR && ch != KEY_MOUSE) g.mode = M_NORMAL; return; }
     if (ch == '?' && g.mode == M_NORMAL) { g.mode = M_HELP; return; }
+
+    // From the pause screen, S / L / Enter open the visual Save/Load menu.
+    if (g.mode == M_PAUSED &&
+        (ch=='s'||ch=='S'||ch=='l'||ch=='L'||ch=='\n'||ch=='\r'||ch==KEY_ENTER)) {
+        g.saveSlotSel = 0; g.mode = M_SAVELOAD; return;
+    }
+
+    // Visual Save/Load menu: pick a slot (arrows or click), then act on it.
+    if (g.mode == M_SAVELOAD) {
+        if (ch == 27 || ch=='p' || ch=='P') { g.mode = M_NORMAL; return; }
+        if (ch == KEY_UP)   { g.saveSlotSel = (g.saveSlotSel + NUM_SAVE_SLOTS - 1) % NUM_SAVE_SLOTS; return; }
+        if (ch == KEY_DOWN) { g.saveSlotSel = (g.saveSlotSel + 1) % NUM_SAVE_SLOTS; return; }
+        int slot = g.saveSlotSel + 1;
+        char path[64]; saveSlotPath(slot, path, sizeof(path));
+        if (ch=='s' || ch=='S') {
+            if (saveGame(path)) setStatus(std::string("Saved to slot ") + std::to_string(slot) + ".");
+            else                setStatus("Save failed! (disk full?)");
+            return;
+        }
+        if (ch=='d' || ch=='D') {
+            SaveSlotInfo info;
+            if (peekSave(path, info)) { remove(path); setStatus(std::string("Deleted slot ") + std::to_string(slot) + "."); }
+            else setStatus("Slot is already empty.");
+            return;
+        }
+        if (ch=='\n' || ch=='\r' || ch==KEY_ENTER || ch=='l' || ch=='L') {
+            if (replayPlaying()) { setStatus("Can't load a save during replay playback."); return; }
+            SaveSlotInfo info;
+            if (!peekSave(path, info)) { setStatus("That slot is empty — nothing to load."); return; }
+            if (loadGame(path)) {
+                replayStopRecording();   // loaded state no longer reproduces from the seed
+                g.mode = M_NORMAL;
+                setStatus(std::string("Loaded slot ") + std::to_string(slot) + ".");
+            } else setStatus("Load failed — wrong version or corrupt.");
+            return;
+        }
+        if (ch == KEY_MOUSE) {
+            MEVENT me;
+            if (getmouse(&me) == OK && g.slMenuRowH > 0
+                && me.x >= g.slMenuX && me.x < g.slMenuX + g.slMenuW) {
+                int row = (me.y - g.slMenuRowY0) / g.slMenuRowH;
+                if (row >= 0 && row < NUM_SAVE_SLOTS) g.saveSlotSel = row;  // click selects; Enter loads
+            }
+            return;
+        }
+        return;
+    }
+
     if (g.mode==M_PAUSED || g.mode==M_GAME_OVER) return;
 
     // Build mode
