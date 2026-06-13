@@ -25,6 +25,24 @@ static const char* stateName(EntityState s) {
     return "Unknown";
 }
 
+// Human-readable terrain / biome names. One source of truth — the top bar and
+// the side-panel tile readout both use these.
+static const char* terrName(Terrain t) {
+    static const char* tn[] = {"Grassland","Tall Grass","Wildflowers","Meadow","Oak Forest","Pine Forest",
+        "Palm Grove","Dead Tree","Mountain","Hills (ramp)","Stone","Deep Water","Shallows",
+        "Marshland","Reed Bed","Gold Deposit","Sandy Ground","Sand Dunes","Snow Cover","Frozen Ice",
+        "Bare Earth","Stone Road","Mud","Wheat Field","Berry Bush","Fish Shoal","Ancient Ruins","Gravel",
+        "Lava Fissure","Volcanic Ash",
+        "Castle Wall","Castle Floor","Castle Gate","Stone Bridge","Standing Stones"};
+    static_assert(sizeof(tn)/sizeof(tn[0]) == (size_t)T_MONOLITH + 1,
+        "terrain name table must cover every Terrain value");
+    return ((int)t >= 0 && (int)t <= (int)T_MONOLITH) ? tn[t] : "?";
+}
+static const char* biomeName(Biome b) {
+    static const char* bn[] = {"Temperate","Desert","Tundra","Swamp","Woodland","Volcanic","Ocean"};
+    return ((int)b >= 0 && (int)b < (int)(sizeof(bn)/sizeof(bn[0]))) ? bn[b] : "?";
+}
+
 void renderUI() {
     int maxY, maxX; getmaxyx(stdscr, maxY, maxX);
     Player& p = g.players[0]; int panelW = 24, panelX = maxX - panelW;
@@ -65,19 +83,8 @@ void renderUI() {
     attron(COLOR_PAIR(CP_UI_DIM)); mvhline(1, 0, '-', g.viewW); attroff(COLOR_PAIR(CP_UI_DIM));
     if (inBounds(g.cursorX, g.cursorY) && g.map[g.cursorY][g.cursorX].explored[0]) {
         Tile& ct = g.map[g.cursorY][g.cursorX];
-        const char* bn[] = {"Temperate","Desert","Tundra","Swamp","Woodland","Volcanic","Ocean"};
-        // Indexed by Terrain — keep in lockstep with the enum in realm.h.
-        // (T_BRIDGE was missing here once: hovering a bridge read past the array.)
-        const char* tn[] = {"Grassland","Tall Grass","Wildflowers","Meadow","Oak Forest","Pine Forest",
-            "Palm Grove","Dead Tree","Mountain","Hills (ramp)","Stone","Deep Water","Shallows",
-            "Marshland","Reed Bed","Gold Deposit","Sandy Ground","Sand Dunes","Snow Cover","Frozen Ice",
-            "Bare Earth","Stone Road","Mud","Wheat Field","Berry Bush","Fish Shoal","Ancient Ruins","Gravel",
-            "Lava Fissure","Volcanic Ash",
-            "Castle Wall","Castle Floor","Castle Gate","Stone Bridge","Standing Stones"};
-        static_assert(sizeof(tn)/sizeof(tn[0]) == (size_t)T_MONOLITH + 1,
-            "terrain name table must cover every Terrain value");
-        attron(COLOR_PAIR(CP_UI_TEXT)); mvprintw(1, 1, "%-16s", tn[ct.terrain]); attroff(COLOR_PAIR(CP_UI_TEXT));
-        attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(1, 18, "[%s]", bn[ct.biome]); attroff(COLOR_PAIR(CP_UI_DIM));
+        attron(COLOR_PAIR(CP_UI_TEXT)); mvprintw(1, 1, "%-16s", terrName(ct.terrain)); attroff(COLOR_PAIR(CP_UI_TEXT));
+        attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(1, 18, "[%s]", biomeName(ct.biome)); attroff(COLOR_PAIR(CP_UI_DIM));
         if (ct.resources > 0) { attron(COLOR_PAIR(CP_UI_HIGH)); mvprintw(1, 30, "Res:%d", ct.resources); attroff(COLOR_PAIR(CP_UI_HIGH)); }
         if (ct.elev > 0) { attron(COLOR_PAIR(CP_UI_ACCENT)); mvprintw(1, 40, "Highland"); attroff(COLOR_PAIR(CP_UI_ACCENT)); }
     }
@@ -403,8 +410,34 @@ void renderUI() {
                 attroff(COLOR_PAIR(CP_UI_ACCENT));
             }
         } else {
-            attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(iy, panelX+1, "No selection"); attroff(COLOR_PAIR(CP_UI_DIM));
-            iy += 2;
+            // Nothing selected → inspect the tile under the cursor in detail
+            // (left-click empty ground to read it here).
+            if (inBounds(g.cursorX, g.cursorY) && g.map[g.cursorY][g.cursorX].explored[0]) {
+                Tile& ct = g.map[g.cursorY][g.cursorX];
+                attron(COLOR_PAIR(CP_UI_ACCENT)|A_BOLD);
+                mvprintw(iy++, panelX+1, "TILE (%d,%d)", g.cursorX, g.cursorY);
+                attroff(COLOR_PAIR(CP_UI_ACCENT)|A_BOLD);
+                attron(COLOR_PAIR(CP_UI_TEXT));
+                mvprintw(iy++, panelX+1, "%-.22s", terrName(ct.terrain));
+                mvprintw(iy++, panelX+1, "Biome: %-.15s", biomeName(ct.biome));
+                attroff(COLOR_PAIR(CP_UI_TEXT));
+                if (ct.elev > 0) { attron(COLOR_PAIR(CP_UI_ACCENT)); mvprintw(iy++, panelX+1, "Highland +sight/+rng"); attroff(COLOR_PAIR(CP_UI_ACCENT)); }
+                if (ct.resources > 0) {
+                    const char* rk = (ct.terrain==T_GOLD) ? "Gold" :
+                        (ct.terrain==T_FOREST||ct.terrain==T_PINE||ct.terrain==T_PALM||ct.terrain==T_DEAD_TREE) ? "Wood" :
+                        (ct.terrain==T_BERRY) ? "Berries" : (ct.terrain==T_FISH) ? "Fish" :
+                        (ct.terrain==T_WHEAT) ? "Wheat" : "Resource";
+                    attron(COLOR_PAIR(CP_UI_HIGH)); mvprintw(iy++, panelX+1, "%s: %d left", rk, ct.resources); attroff(COLOR_PAIR(CP_UI_HIGH));
+                }
+                if (ct.lootGold || ct.lootWood || ct.lootFood) {
+                    attron(COLOR_PAIR(CP_UI_HIGH)); mvprintw(iy++, panelX+1, "Loot: %dg %dw %df", ct.lootGold, ct.lootWood, ct.lootFood); attroff(COLOR_PAIR(CP_UI_HIGH));
+                }
+                if (ct.terrain==T_ROAD) { attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(iy++, panelX+1, "Road: faster travel"); attroff(COLOR_PAIR(CP_UI_DIM)); }
+                iy += 1;
+            } else {
+                attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(iy, panelX+1, "Unexplored"); attroff(COLOR_PAIR(CP_UI_DIM));
+                iy += 2;
+            }
             if (displayMode == DM_ASCII) {
                 attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(iy++, panelX+1, "-- Legend (ASCII) --"); attroff(COLOR_PAIR(CP_UI_DIM));
                 attron(COLOR_PAIR(CP_UI_TEXT));
@@ -461,6 +494,24 @@ void renderUI() {
                 attron(COLOR_PAIR(CP_UI_DIM));
                 mvprintw(iy++, panelX+1, "Sel=reversed bg");
                 attroff(COLOR_PAIR(CP_UI_DIM));
+            }
+        }
+    }
+
+    // ---- Event log: rolling feed of recent happenings, bottom of the panel ----
+    {
+        int logRows = std::min((int)g.eventLog.size(), 6);
+        int logY = maxY - 3 - logRows;        // sit just above the two bottom bars
+        if (logRows > 0 && logY > 2) {        // only when the panel has room
+            attron(COLOR_PAIR(CP_UI_DIM)); mvhline(logY-1, panelX, '-', panelW); attroff(COLOR_PAIR(CP_UI_DIM));
+            attron(COLOR_PAIR(CP_UI_ACCENT)|A_BOLD); mvprintw(logY-1, panelX+1, " Events "); attroff(COLOR_PAIR(CP_UI_ACCENT)|A_BOLD);
+            int start = (int)g.eventLog.size() - logRows;
+            for (int i = 0; i < logRows; i++) {
+                bool newest = (i == logRows-1);
+                int cp = newest ? CP_UI_HIGH : CP_UI_DIM;
+                attron(COLOR_PAIR(cp));
+                mvprintw(logY + i, panelX+1, "%-.*s", panelW-2, g.eventLog[start+i].c_str());
+                attroff(COLOR_PAIR(cp));
             }
         }
     }

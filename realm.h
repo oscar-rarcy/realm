@@ -328,6 +328,7 @@ struct Game {
     int difficulty;       // 0 easy / 1 normal / 2 hard — AI pacing knobs (ai.cpp)
     int winterSeverity;   // rolled at each winter onset: 0 mild / 1 normal / 2 brutal
     std::vector<Command> pendingCmds; // local player's queued commands; applied at tick start
+    std::vector<std::string> eventLog; // rolling recent-events feed (UI only; not saved/hashed)
 };
 extern Game g;
 

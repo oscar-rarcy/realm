@@ -113,7 +113,15 @@ bool isDetectedBy(int x, int y, int observerOwner) {
 }
 
 // 50 ticks ≈ 4 s on screen — the old 35 vanished before long lines were read.
-void setStatus(const std::string& msg) { g.statusMsg = msg; g.statusTimer = 50; }
+void setStatus(const std::string& msg) {
+    g.statusMsg = msg; g.statusTimer = 50;
+    // Mirror into the rolling event log so a glanced-away player can catch up
+    // on what just happened (dedup back-to-back repeats like chain-build hints).
+    if (g.eventLog.empty() || g.eventLog.back() != msg) {
+        g.eventLog.push_back(msg);
+        if ((int)g.eventLog.size() > 6) g.eventLog.erase(g.eventLog.begin());
+    }
+}
 
 // ============================================================
 // STOCKPILES — wealth physically lives at depot buildings (DF lite).

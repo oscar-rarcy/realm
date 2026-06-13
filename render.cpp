@@ -1100,9 +1100,12 @@ void renderMap() {
                 // doesn't strobe in sync.
                 if (displayMode == DM_ASCII && ent->type == E_PEASANT) {
                     int cyc = (g.tick + ent->id*5) % 30;
-                    if      (ent->state == S_GATHERING && cyc < 3) { ch = '*'; drawCh = (chtype)ch; }
+                    // ONE flashing icon for harvesting (gathering or hauling the
+                    // load home count as the same job) and a DISTINCT one for
+                    // building — so a busy resource node reads as a single clear
+                    // pulse instead of a clutter of mixed symbols.
+                    if      ((ent->state == S_GATHERING || ent->state == S_RETURNING) && cyc < 3) { ch = '*'; drawCh = (chtype)ch; }
                     else if (ent->state == S_BUILDING  && cyc < 3) { ch = '+'; drawCh = (chtype)ch; }
-                    else if (ent->state == S_RETURNING && cyc < 2) { ch = ','; drawCh = (chtype)ch; }
                     else if (ent->state == S_IDLE) {
                         // Slow daydream pulse: '?' shown ~1 s every ~20 s, staggered.
                         int slow = (g.tick + ent->id*47) % 250;
