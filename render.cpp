@@ -1311,6 +1311,34 @@ void renderMap() {
 #endif
         }
     }
+
+    // Off-screen alert arrows: a blinking edge marker pointing toward any of the
+    // player's units/buildings that are fighting or routing out of view — so a
+    // battle you can't see still announces itself. (Render-only.)
+    if ((g.tick % 12) < 9) {
+        int vx0 = g.viewX, vy0 = g.viewY, vx1 = g.viewX + g.viewW - 1, vy1 = g.viewY + g.viewH - 1;
+        int edgeX[16], edgeY[16], nd = 0, drawn = 0;
+        attron(COLOR_PAIR(CP_UI_HIGH) | A_BOLD);
+        for (auto& e : g.entities) {
+            if (drawn >= 8) break;
+            if (!e.alive || e.owner != 0) continue;
+            if (!(e.alertTicks > 0 || e.state == S_ROUTING)) continue;     // only trouble
+            if (e.x >= vx0 && e.x <= vx1 && e.y >= vy0 && e.y <= vy1) continue;  // on-screen
+            int cxm = std::max(vx0, std::min(e.x, vx1));
+            int cym = std::max(vy0, std::min(e.y, vy1));
+            int sx = cxm - g.viewX, sy = cym - g.viewY;
+            char arrow = (e.y < vy0) ? '^' : (e.y > vy1) ? 'v' : (e.x < vx0) ? '<' : '>';
+            bool dup = false;
+            for (int i = 0; i < nd; i++) if (edgeX[i]==sx && edgeY[i]==sy) { dup = true; break; }
+            if (dup) continue;
+            if (nd < 16) { edgeX[nd]=sx; edgeY[nd]=sy; nd++; }
+            if (sx >= 0 && sx < g.viewW && sy >= 0 && sy < g.viewH) {
+                mvaddch(sy + 2, sx * tileW, (chtype)arrow);
+                drawn++;
+            }
+        }
+        attroff(COLOR_PAIR(CP_UI_HIGH) | A_BOLD);
+    }
 }
 
 void render() { erase(); renderMap(); renderUI(); refresh(); }
