@@ -505,8 +505,10 @@ void ejectGarrison(Entity& bld) {
     }
     bld.garrison.clear();
     updateSupply(bld.owner);
-    // An emptied claimable structure goes back to being nobody's.
-    if (isClaimable(bld.type) && bld.alive) bld.owner = OWNER_NATURE;
+    // An emptied claimable structure goes back to being nobody's — EXCEPT a
+    // Ruined Keep, which stays yours once activated, so you can pull the
+    // claiming peasant back out to work instead of parking it idle inside.
+    if (isClaimable(bld.type) && bld.type != E_RUIN && bld.alive) bld.owner = OWNER_NATURE;
 }
 
 // Centralized death handler: marks dead, ejects garrison, ruins terrain, updates supply.

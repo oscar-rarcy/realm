@@ -572,7 +572,7 @@ void renderUI() {
             if (cs->type==E_BLACKSMITH) strncat(line, "R:Research  ", sizeof(line)-strlen(line)-1);
             else if (cs->type==E_MARKET||cs->type==E_TRADING_POST) strncat(line, "R:Trade  ", sizeof(line)-strlen(line)-1);
             else if (cs->type==E_TAVERN) strncat(line, "R:Feast  ", sizeof(line)-strlen(line)-1);
-            else if (rallies) strncat(line, "R:Rally  ", sizeof(line)-strlen(line)-1);
+            else if (rallies) strncat(line, "Sh+RClick:Rally  ", sizeof(line)-strlen(line)-1);
             if (cs->type==E_GATE) strncat(line, "O:Open/Close  ", sizeof(line)-strlen(line)-1);
             if (canGarrisonIn(cs->type)) strncat(line, "U:Eject  ", sizeof(line)-strlen(line)-1);
             strncat(line, "?:Help  Q:Menu ", sizeof(line)-strlen(line)-1);

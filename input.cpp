@@ -706,8 +706,7 @@ void handleInput(int ch) {
             setStatus("Research: [I]ron 100/100 [C]rossbows 80/80 [P]ikes 100/100 [W]eight 120/150 [H]elm 120/100 [Esc]");
         } else if (sel->type == E_TOWNHALL || sel->type == E_CASTLE
                 || sel->type == E_BARRACKS || sel->type == E_STABLE || sel->type == E_DOCK) {
-            g.mode = M_RALLY_SET;
-            setStatus("Click a tile (or move cursor + Enter) to set rally. [Esc]");
+            setStatus("Shift+right-click a tile to set rally (drop on a resource to auto-harvest).");
         } else {
             setStatus("Nothing to rally or research here.");
         }
@@ -1054,10 +1053,19 @@ void handleInput(int ch) {
             // existing waypoints/patrol so the new command is honoured immediately.
             g.dragging = false;
             if (shift) {
-                std::vector<int> ids = selectedUnitIds();
-                if (!ids.empty()) {
-                    setStatus("Waypoint queued (" + std::to_string(ids.size()) + " units)");
-                    pushCmd(CMD_WAYPOINT, std::move(ids), mapX, mapY);
+                // Shift+right-click on a selected building = set its rally point
+                // (drop it on a resource to auto-assign trained peasants to it);
+                // otherwise it queues a waypoint/gather order onto the units.
+                Entity* selB = findEntity(g.selectedId);
+                if (selB && selB->owner == 0 && isBuilding(selB->type)
+                        && !selB->underConstruction && g.selectedIds.size() <= 1) {
+                    pushCmd(CMD_RALLY, {}, mapX, mapY, selB->id);   // status on apply
+                } else {
+                    std::vector<int> ids = selectedUnitIds();
+                    if (!ids.empty()) {
+                        setStatus("Queued (" + std::to_string(ids.size()) + " units)");
+                        pushCmd(CMD_WAYPOINT, std::move(ids), mapX, mapY);
+                    }
                 }
             } else {
                 // Plain right-click: the applied command clears waypoints/patrol.

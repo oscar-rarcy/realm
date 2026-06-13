@@ -778,6 +778,34 @@ static void capture(Entity& e) {
 // ============================================================
 // ENTITY TICK
 // ============================================================
+// Is (x,y) a resource tile a peasant can work right now?
+static bool isGatherTile(int x, int y) {
+    if (!inBounds(x, y) || g.map[y][x].resources <= 0) return false;
+    Terrain t = g.map[y][x].terrain;
+    return t==T_GOLD || t==T_BERRY || t==T_FOREST || t==T_PINE || t==T_PALM || t==T_DEAD_TREE;
+}
+
+// Send an idle builder to the nearest matching resource within `rad` of a
+// just-finished camp/mill (wantType: 0 gold, 1 wood, 3 berries). "In the
+// vicinity" only — we don't march them across the map.
+static bool autoHarvestNear(Entity& e, int ox, int oy, int wantType, int rad) {
+    int bestD = rad + 1, bx = -1, by = -1;
+    for (int dy = -rad; dy <= rad; dy++) for (int dx = -rad; dx <= rad; dx++) {
+        int x = ox+dx, y = oy+dy;
+        if (!inBounds(x, y) || g.map[y][x].resources <= 0) continue;
+        Terrain t = g.map[y][x].terrain;
+        bool match = (wantType==0 && t==T_GOLD)
+                  || (wantType==1 && (t==T_FOREST||t==T_PINE||t==T_PALM||t==T_DEAD_TREE))
+                  || (wantType==3 && t==T_BERRY);
+        if (!match) continue;
+        int d = dist(e.x, e.y, x, y);
+        if (d < bestD) { bestD = d; bx = x; by = y; }
+    }
+    if (bx < 0) return false;
+    orderGather(e, bx, by);
+    return e.state == S_GATHERING;
+}
+
 void tickEntity(Entity& e) {
     if (!e.alive) return;
     if (e.alertTicks > 0) e.alertTicks--;
@@ -839,7 +867,13 @@ void tickEntity(Entity& e) {
         auto wp = e.waypoints.front();
         e.waypoints.erase(e.waypoints.begin());
         if (e.patrolMode) e.waypoints.push_back(wp);
-        orderMove(e, wp.first, wp.second);
+        // Command queue: a queued waypoint that lands on a resource is a
+        // GATHER order (e.g. "build here, then go mine that gold"); patrol
+        // waypoints always just move.
+        if (e.type == E_PEASANT && !e.patrolMode && isGatherTile(wp.first, wp.second))
+            orderGather(e, wp.first, wp.second);
+        else
+            orderMove(e, wp.first, wp.second);
     }
     // Building production
     if (e.producing != E_NONE && !e.underConstruction) {
@@ -875,10 +909,17 @@ void tickEntity(Entity& e) {
             if (!placed) {
                 e.prodProgress = e.prodTime; // stay at completion threshold
             } else {
-                // Send to rally point if the building has a player-set one
+                // Send to rally point if the building has a player-set one.
+                // A rally placed on a resource makes new peasants go HARVEST it
+                // (assign workers straight from the Town Hall).
                 if (e.rallySet && newId >= 0) {
                     Entity* nu = findEntity(newId);
-                    if (nu) orderMove(*nu, e.rallyX, e.rallyY);
+                    if (nu) {
+                        if (nu->type == E_PEASANT && isGatherTile(e.rallyX, e.rallyY))
+                            orderGather(*nu, e.rallyX, e.rallyY);
+                        else
+                            orderMove(*nu, e.rallyX, e.rallyY);
+                    }
                 }
                 EntityType justTrained = e.producing;
                 e.producing = E_NONE; e.state = S_IDLE;
@@ -1525,7 +1566,18 @@ void tickEntity(Entity& e) {
             }
             break;
         }
-        if (!bld->underConstruction) { e.state = S_IDLE; break; }
+        if (!bld->underConstruction) {
+            // The building just finished: send the builder straight to work if
+            // it raised a resource depot near a matching resource — lumber camp
+            // → wood, mining camp → gold, mill → nearby berries.
+            int bt = bld->type, ox = bld->x, oy = bld->y;
+            bool tasked = (bt==E_LUMBER_CAMP) ? autoHarvestNear(e, ox, oy, 1, 12)
+                        : (bt==E_MINING_CAMP) ? autoHarvestNear(e, ox, oy, 0, 12)
+                        : (bt==E_MILL)        ? autoHarvestNear(e, ox, oy, 3, 12)
+                        : false;
+            if (!tasked) e.state = S_IDLE;
+            break;
+        }
         int bx2 = bld->x + STATS[bld->type].sizeW - 1, by2 = bld->y + STATS[bld->type].sizeH - 1;
         int cx = std::max(bld->x, std::min(e.x, bx2));
         int cy = std::max(bld->y, std::min(e.y, by2));
