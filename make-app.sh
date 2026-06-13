@@ -63,6 +63,25 @@ done
 fix_refs "$EXE"
 install_name_tool -add_rpath "@executable_path/../Frameworks" "$EXE" 2>/dev/null || true
 
+# --- Optional app icon -------------------------------------------------------
+# To set the icon, drop ONE of these in the repo root and re-run:
+#   * icon.png    — a square PNG (1024x1024 ideal); it's converted to .icns
+#   * Realm.icns  — a ready-made macOS icon, used as-is
+# With neither present the app keeps the generic icon.
+ICON_SET=0
+if [ -f Realm.icns ]; then
+  cp Realm.icns "$APP/Contents/Resources/Realm.icns"; ICON_SET=1
+elif [ -f icon.png ]; then
+  echo "==> Building Realm.icns from icon.png ..."
+  ICONSET="$(mktemp -d)/Realm.iconset"; mkdir -p "$ICONSET"
+  for sz in 16 32 128 256 512; do
+    sips -z $sz $sz           icon.png --out "$ICONSET/icon_${sz}x${sz}.png"    >/dev/null
+    sips -z $((sz*2)) $((sz*2)) icon.png --out "$ICONSET/icon_${sz}x${sz}@2x.png" >/dev/null
+  done
+  iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/Realm.icns"
+  ICON_SET=1
+fi
+
 cat > "$APP/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -80,6 +99,14 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 </dict>
 </plist>
 PLIST
+
+# Point the bundle at the icon (only if one was produced). Signing happens
+# after this, so the icon is covered by the signature.
+if [ "$ICON_SET" = 1 ]; then
+  sed -i '' 's#<key>CFBundleExecutable</key><string>Realm</string>#&\
+  <key>CFBundleIconFile</key><string>Realm</string>#' "$APP/Contents/Info.plist"
+  echo "==> App icon set from $( [ -f Realm.icns ] && echo Realm.icns || echo icon.png )."
+fi
 
 # Ad-hoc sign the dylibs, then the whole bundle. This lets a friend right-click
 # -> Open (a paid Developer ID + notarization would remove the prompt entirely).
