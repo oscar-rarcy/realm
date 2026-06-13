@@ -24,9 +24,7 @@
 *.ilk
 *.idb
 
-# If realm.command is a generated launcher, keep this.
-# If it is a handwritten script you want in git, remove this line.
-/realm.command
+# realm.command is a handwritten launcher kept in git (see run docs).
 
 
 # -------------------------------------------------------------------
@@ -100,10 +98,9 @@ temp/
 
 
 # -------------------------------------------------------------------
-# Local notes / scratch files
+# Local notes / scratch files  (notes.rtf is kept in git intentionally)
 # -------------------------------------------------------------------
 
-notes.rtf
 notes.txt
 scratch/
 .junie/
