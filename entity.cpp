@@ -977,10 +977,16 @@ void tickEntity(Entity& e) {
                     e.alive = false; e.state = S_DEAD;
                     return;
                 }
+                // Resource depots send their builder straight to work the
+                // resource they were raised to serve (if any is in the vicinity).
+                int harvestType = (e.type==E_LUMBER_CAMP) ? 1
+                                : (e.type==E_MINING_CAMP) ? 0
+                                : (e.type==E_MILL)        ? 3 : -1;
                 for (auto& o : g.entities) {
                     if (!o.alive || o.state!=S_BUILDING || o.targetId!=e.id) continue;
                     // For farms: keep tending — S_BUILDING handler routes to its farm branch.
                     if (e.type == E_FARM) continue;
+                    if (harvestType >= 0 && autoHarvestNear(o, e.x, e.y, harvestType, 12)) continue;
                     // For other structures: cast around for the nearest in-progress build
                     // (any owner==o.owner site under construction) and continue helping.
                     Entity* next = nullptr; int bestD = 99999;
