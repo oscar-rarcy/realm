@@ -253,13 +253,18 @@ void aiTickTransports(AIContext& context) {
     Entity* target = nullptr;
     WorldIndex& world = context.ctx.world;
     if (!validAiOwner(o)) return;
-    forEachEnemyEntity(context.ctx.game, world, o, [&](Entity& e) {
-        if (target) return;
-        if (e.type == E_TOWNHALL || e.type == E_CASTLE) target = &e;
-    });
     Entity* home = aiBldg(context, E_TOWNHALL);
     if (!home) home = aiBldg(context, E_CASTLE);
-    if (!target || !home) return;
+    if (!home) return;
+    // Pick assault target: enemy TC/Castle nearest our own base (was
+    // first-found, so transports from every AI converged arbitrarily).
+    int bestD = 99999;
+    forEachEnemyEntity(context.ctx.game, world, o, [&](Entity& e) {
+        if (e.type != E_TOWNHALL && e.type != E_CASTLE) return;
+        int d = mdist(home->x, home->y, e.x, e.y);
+        if (d < bestD) { bestD = d; target = &e; }
+    });
+    if (!target) return;
     int ex=-1, ey=-1, hx=-1, hy=-1;
     if (!findShoreTileNear(context.ctx.game, target->x, target->y, 18, ex, ey)) return;
     if (!findShoreTileNear(context.ctx.game, home->x, home->y, 18, hx, hy)) return;
