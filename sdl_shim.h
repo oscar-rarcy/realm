@@ -107,3 +107,9 @@ int  mvprintw(int y, int x, const char* fmt, ...);
 
 void shimGetMaxYX(int& y, int& x);
 #define getmaxyx(win, y, x) shimGetMaxYX((y), (x))
+
+// Queue a translucent overlay rect, in grid-cell coords (inclusive bounds),
+// drawn alpha-blended over the whole grid at the next refresh(). Used for the
+// drag-selection box. r/g/b 0-255; fillA = interior alpha, borderA = edge alpha.
+void shimOverlayRect(int gx0, int gy0, int gx1, int gy1,
+                     int r, int g, int b, int fillA, int borderA);

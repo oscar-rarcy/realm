@@ -60,6 +60,12 @@ std::deque<MEVENT> mouseQ;
 int lastCellX = -1, lastCellY = -1;
 bool leftHeld = false;
 
+// Translucent overlay rects (e.g. the drag-selection box), in grid-cell
+// coords. Buffered during the frame, alpha-blended over the composed cells
+// in refresh(), then cleared. Terminal builds never see these.
+struct OverlayRect { int gx0, gy0, gx1, gy1; Uint8 r, g, b, fillA, borderA; };
+std::vector<OverlayRect> overlays;
+
 Cell& at(int y, int x) { return grid[(size_t)y * cols + x]; }
 bool inGrid(int y, int x) { return y >= 0 && y < rows && x >= 0 && x < cols; }
 
@@ -751,6 +757,25 @@ int refresh() {
             }
         }
     }
+    // Translucent overlays (drag-selection box) sit on top of the whole
+    // composed grid — a soft tinted fill plus a crisp 2px border.
+    if (!overlays.empty()) {
+        SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND);
+        for (const auto& o : overlays) {
+            SDL_Rect r = { o.gx0 * cellW, o.gy0 * cellH,
+                           (o.gx1 - o.gx0 + 1) * cellW, (o.gy1 - o.gy0 + 1) * cellH };
+            SDL_SetRenderDrawColor(ren, o.r, o.g, o.b, o.fillA);
+            SDL_RenderFillRect(ren, &r);
+            SDL_SetRenderDrawColor(ren, o.r, o.g, o.b, o.borderA);
+            for (int t = 0; t < 2; t++) {
+                SDL_Rect e = { r.x + t, r.y + t, r.w - 2*t, r.h - 2*t };
+                if (e.w <= 0 || e.h <= 0) break;
+                SDL_RenderDrawRect(ren, &e);
+            }
+        }
+        SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_NONE);
+        overlays.clear();
+    }
     maybeDumpFrame();   // before present: read back the frame we just composed
     SDL_RenderPresent(ren);
     if (dumpPath) {
@@ -767,6 +792,18 @@ int refresh() {
         }
     }
     return OK;
+}
+
+// Queue a translucent overlay rect (grid-cell coords, inclusive). Drawn over
+// the whole grid at the next refresh(). See sdl_shim.h.
+void shimOverlayRect(int gx0, int gy0, int gx1, int gy1,
+                     int r, int g, int b, int fillA, int borderA) {
+    if (gx1 < gx0 || gy1 < gy0) return;
+    if (gx0 < 0) gx0 = 0; if (gy0 < 0) gy0 = 0;
+    if (gx1 > cols - 1) gx1 = cols - 1; if (gy1 > rows - 1) gy1 = rows - 1;
+    if (gx1 < gx0 || gy1 < gy0) return;
+    overlays.push_back({ gx0, gy0, gx1, gy1,
+        (Uint8)r, (Uint8)g, (Uint8)b, (Uint8)fillA, (Uint8)borderA });
 }
 
 void shimGetMaxYX(int& y, int& x) { y = rows; x = cols; }

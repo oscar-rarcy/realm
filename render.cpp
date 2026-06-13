@@ -1291,16 +1291,30 @@ void renderMap() {
     if (g.dragging && g.mode != M_WALL_DRAG) {
         int bx0 = std::min(g.dragStartX, g.cursorX), bx1 = std::max(g.dragStartX, g.cursorX);
         int by0 = std::min(g.dragStartY, g.cursorY), by1 = std::max(g.dragStartY, g.cursorY);
-        attron(COLOR_PAIR(CP_SUN)|A_BOLD|A_REVERSE);
-        auto borderCell = [&](int mx, int my) {
-            int sx = mx - g.viewX, sy = my - g.viewY;
-            if (sx < 0 || sx >= g.viewW || sy < 0 || sy >= g.viewH) return;
-            if (displayMode == DM_ASCII) mvaddch(sy+2, sx * tileW, ' ');
-            else                         mvaddstr(sy+2, sx * tileW, "  ");
-        };
-        for (int mx = bx0; mx <= bx1; mx++) { borderCell(mx, by0); borderCell(mx, by1); }
-        for (int my = by0; my <= by1; my++) { borderCell(bx0, my); borderCell(bx1, my); }
-        attroff(COLOR_PAIR(CP_SUN)|A_BOLD|A_REVERSE);
+        // Clamp to the visible map viewport (screen-cell coords).
+        int sx0 = std::max(0, bx0 - g.viewX), sx1 = std::min(g.viewW - 1, bx1 - g.viewX);
+        int sy0 = std::max(0, by0 - g.viewY), sy1 = std::min(g.viewH - 1, by1 - g.viewY);
+        if (sx0 <= sx1 && sy0 <= sy1) {
+#ifdef USE_SDL_SHIM
+            // GUI: a soft translucent gold marquee with a crisp thin border —
+            // the modern RTS look, instead of a chunky one-cell block ring.
+            shimOverlayRect(sx0 * tileW, sy0 + 2, sx1 * tileW + (tileW - 1), sy1 + 2,
+                            255, 205, 60, 46, 230);
+#else
+            // Terminal: a thin gold line outline (box-drawing glyphs) rather
+            // than solid reversed blocks — reads as a slim marquee.
+            attron(COLOR_PAIR(CP_SUN) | A_BOLD);
+            auto put = [&](int sx, int sy, chtype acs, char ascii) {
+                if (sx < 0 || sx >= g.viewW || sy < 0 || sy >= g.viewH) return;
+                mvaddch(sy + 2, sx * tileW, displayMode == DM_ASCII ? (chtype)ascii : acs);
+            };
+            for (int sx = sx0; sx <= sx1; sx++) { put(sx, sy0, ACS_HLINE, '-'); put(sx, sy1, ACS_HLINE, '-'); }
+            for (int sy = sy0; sy <= sy1; sy++) { put(sx0, sy, ACS_VLINE, '|'); put(sx1, sy, ACS_VLINE, '|'); }
+            put(sx0, sy0, ACS_ULCORNER, '+'); put(sx1, sy0, ACS_URCORNER, '+');
+            put(sx0, sy1, ACS_LLCORNER, '+'); put(sx1, sy1, ACS_LRCORNER, '+');
+            attroff(COLOR_PAIR(CP_SUN) | A_BOLD);
+#endif
+        }
     }
 }
 

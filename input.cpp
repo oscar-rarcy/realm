@@ -144,8 +144,22 @@ static void cmdAtTileGroup(int x, int y) {
     if (tgt && tgt->alive
         && (tgt->owner == 0 || (isClaimable(tgt->type) && tgt->owner == OWNER_NATURE))
         && !tgt->underConstruction && canGarrisonIn(tgt->type)) {
-        pushCmd(CMD_GARRISON, selectedUnitIds(), 0, 0, tgt->id);
-        setStatus("Garrisoning...");
+        // Garrison the soldiers, but never sweep the workers in: a keep/TC has
+        // a big footprint that sits in your base, and a stray move-click on it
+        // used to march every peasant into the walls "for no reason". Peasants
+        // take the move instead (shelter them deliberately one at a time, or
+        // let the wounded-flee logic tuck them away under fire).
+        std::vector<int> troops, workers;
+        for (int id : selectedUnitIds()) {
+            Entity* u = findEntity(id);
+            if (!u) continue;
+            (u->type == E_PEASANT ? workers : troops).push_back(id);
+        }
+        if (!troops.empty()) {
+            pushCmd(CMD_GARRISON, std::move(troops), 0, 0, tgt->id);
+            setStatus("Garrisoning...");
+        }
+        if (!workers.empty()) pushCmd(CMD_MOVE, std::move(workers), x, y);
         return;
     }
     if (tgt && tgt->alive && tgt->owner != 0 && visible) {

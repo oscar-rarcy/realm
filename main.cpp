@@ -36,6 +36,70 @@ static void forceUtf8Locale() {
 }
 
 
+// Animated ASCII world framing the splash menu: a starlit sky above (twinkling
+// stars, a crescent moon, drifting clouds) and a living frontier below (pines,
+// a keep, a flickering campfire, a marching column under its banner). Pure
+// decoration, deterministic per (cell, frame) — never touches the sim RNG.
+static void drawSplashScene(int frame, int maxX, int maxY) {
+    if (maxX < 24 || maxY < 16) return;
+    auto hash = [](int a, int b) -> unsigned {
+        unsigned h = (unsigned)(a*73856093) ^ (unsigned)(b*19349663);
+        h ^= h >> 13; h *= 0x5bd1e995u; h ^= h >> 15; return h;
+    };
+
+    // ---- Night sky (top 2 rows): twinkling stars, moon, drifting clouds ----
+    for (int y = 0; y < 2; y++) for (int x = 0; x < maxX; x++) {
+        unsigned h = hash(x, y + 7);
+        if (h % 15 != 0) continue;
+        if (((h >> 4) + frame/7) % 5 == 0) continue;     // gentle blink
+        attron(COLOR_PAIR(CP_SNOW_FALL) | ((h & 8) ? A_BOLD : 0));
+        mvaddstr(y, x, (h & 1) ? u8"✦" : u8"·");
+        attroff(COLOR_PAIR(CP_SNOW_FALL) | A_BOLD);
+    }
+    attron(COLOR_PAIR(CP_MOON) | A_BOLD);
+    mvaddstr(0, maxX - 5, u8"☾");
+    attroff(COLOR_PAIR(CP_MOON) | A_BOLD);
+    attron(COLOR_PAIR(CP_UI_DIM));
+    for (int k = 0; k < 3; k++) {
+        int cx = (((frame / 5) + k * 31) % (maxX + 10)) - 5;
+        if (cx >= 0 && cx < maxX - 4) mvaddstr(k % 2, cx, u8"⌒⌒⌒");
+    }
+    attroff(COLOR_PAIR(CP_UI_DIM));
+
+    // ---- Frontier (bottom 2 rows): pines, a keep, a campfire, marchers ----
+    int ground = maxY - 1, march = maxY - 2;
+    for (int x = 0; x < maxX; x++) {
+        unsigned h = hash(x, 101);
+        const char* g = (h % 6 == 0) ? u8"♣" : (h % 9 == 0) ? u8"♠" : (h % 4 == 0) ? u8"„" : nullptr;
+        if (!g) continue;
+        attron(COLOR_PAIR(CP_PINE) | ((h % 6 == 0) ? A_BOLD : 0));
+        mvaddstr(ground, x, g);
+        attroff(COLOR_PAIR(CP_PINE) | A_BOLD);
+    }
+    // A keep on the left rise.
+    attron(COLOR_PAIR(CP_CASTLE_WALL) | A_BOLD);
+    mvaddstr(march,  2, u8"▟▆▆▙");
+    mvaddstr(ground, 2, u8"▐▒▒▌");
+    attroff(COLOR_PAIR(CP_CASTLE_WALL) | A_BOLD);
+    // A campfire flickering on the right.
+    bool flare = (frame / 4) % 3 != 0;
+    attron(COLOR_PAIR(flare ? CP_SUN : CP_GOLD) | A_BOLD);
+    mvaddstr(ground, maxX - 7, flare ? u8"♨" : u8"∗");
+    attroff(COLOR_PAIR(flare ? CP_SUN : CP_GOLD) | A_BOLD);
+    // A column marching toward the keep, banner up front.
+    int span = maxX - 16;
+    int lead = maxX - 8 - ((frame / 4) % span);
+    attron(COLOR_PAIR(CP_GOLD) | A_BOLD);
+    if (lead >= 0 && lead < maxX) mvaddstr(march, lead, ((frame/3) & 1) ? u8"╤" : u8"╥");
+    attroff(COLOR_PAIR(CP_GOLD) | A_BOLD);
+    attron(COLOR_PAIR(CP_PLAYER) | A_BOLD);
+    for (int k = 1; k <= 4; k++) {
+        int sx = lead + k * 2;
+        if (sx >= 6 && sx < maxX - 8) mvaddstr(march, sx, ((frame/3 + k) & 1) ? u8"i" : u8"î");
+    }
+    attroff(COLOR_PAIR(CP_PLAYER) | A_BOLD);
+}
+
 // Full splash screen. Sets g.biomeChoice, g.difficulty and displayMode.
 // Returns numAIs. Banner is block-art; headers use A_TITLE, which the SDL
 // build renders in a blackletter face (Luminari) — the terminal gets bold.
@@ -58,9 +122,13 @@ static int showSplash() {
     };
 
     int maxY, maxX;
+    int frame = 0;
     while (true) {
         getmaxyx(stdscr, maxY, maxX);
         erase();
+
+        // Living backdrop, drawn first so the menu boxes paint cleanly over it.
+        drawSplashScene(frame, maxX, maxY);
 
         const int W = 78;
         int col = std::max(1, maxX/2 - W/2);
@@ -138,7 +206,11 @@ static int showSplash() {
         attroff(A_BOLD | COLOR_PAIR(CP_UI_HIGH));
 
         refresh();
+        // ~90 ms frames so the backdrop animates while we wait for a key.
+        timeout(90);
         int ch = getch();
+        frame++;
+        if (ch == ERR) continue;            // timer tick — just advance the scene
         if (ch=='q'||ch=='Q') { endwin(); exit(0); }
         if (ch=='\n'||ch==KEY_ENTER||ch=='\r') break;
         if (ch=='1') numAIs=1;
