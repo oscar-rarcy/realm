@@ -229,6 +229,51 @@ void tickTaverns() {
     }
 }
 
+// Prisoners (docs/combat-feel-proposals.md 3.3): a captive is marched to the
+// captor's nearest hold and ransomed for coin — or freed if a soldier of his
+// old allegiance reaches him first.
+void tickPrisoners() {
+    if (g.tick % 20 != 0) return;
+    for (auto& p : g.entities) {
+        if (!p.alive || !p.prisoner) continue;
+        // Rescue: an unbroken soldier of the old colours reaches the captive.
+        bool rescued = false;
+        for (auto& o : g.entities) {
+            if (!o.alive || o.owner != p.origOwner || o.prisoner) continue;
+            if (!isUnit(o.type) || o.state == S_GARRISONED) continue;
+            if (dist(p.x, p.y, o.x, o.y) <= 1) { rescued = true; break; }
+        }
+        if (rescued) {
+            int captor = p.owner;
+            p.prisoner = 0; p.owner = p.origOwner; p.origOwner = -1;
+            p.morale = 40; p.state = S_IDLE; p.path.clear(); p.pathIdx = 0;
+            updateSupply(captor); updateSupply(p.owner);
+            if (p.owner == 0) setStatus("A captured soldier breaks free!");
+            continue;
+        }
+        // March to the captor's nearest hold; ransom on arrival.
+        Entity* hold = nullptr; int bestD = 99999;
+        for (auto& o : g.entities) {
+            if (!o.alive || o.owner != p.owner || o.underConstruction) continue;
+            if (o.type != E_TOWNHALL && o.type != E_CASTLE) continue;
+            int d = dist(p.x, p.y, o.x, o.y);
+            if (d < bestD) { bestD = d; hold = &o; }
+        }
+        if (!hold) continue;   // no hold to march to — just held where he stands
+        if (bestD <= 2) {
+            const int ransom = 25;
+            g.players[p.owner].gold += ransom;
+            if (p.owner == 0) setStatus("Prisoner ransomed: +25 gold.");
+            int captor = p.owner, orig = p.origOwner;
+            p.alive = false; p.state = S_DEAD; p.prisoner = 0;
+            updateSupply(captor); if (orig >= 0) updateSupply(orig);
+        } else if (p.state != S_MOVING || p.path.empty()) {
+            p.path = findPathFor(p, hold->x, hold->y); p.pathIdx = 0;
+            p.state = S_MOVING; p.targetX = hold->x; p.targetY = hold->y;
+        }
+    }
+}
+
 void tickChurches() {
     // Shrines: old stones mend whoever rests beside them; a garrisoned monk
     // projects the blessing to radius 4 for the claimant's units. Wells give

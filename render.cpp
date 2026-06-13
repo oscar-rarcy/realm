@@ -225,6 +225,10 @@ void initColors() {
 
     // Cliff faces: pale rock on earth-brown — reads as terrain relief, not wall.
     init_pair(CP_CLIFF,          C::LIGHT_GRAY,   C::BROWN);
+    // Fallen-soldier markers: dim blood-red on dark ground.
+    init_pair(CP_CORPSE,         C::BERRY_RED,    tileBg(C::DARKER_GRAY));
+    // Night torches: a warm flame, gold/amber over the dark.
+    init_pair(CP_TORCH,          C::BRIGHT_GOLD,  tileBg(C::BROWN));
 
     // Cursor: black-on-gold pops on snow, grass, water, and dark biomes alike.
     init_pair(CP_CURSOR,         C::NEAR_BLACK,   C::BRIGHT_GOLD);
@@ -1093,6 +1097,14 @@ void renderMap() {
                     ch = '!'; drawCh = (chtype)ch;
                     emojiStr = "!";
                 }
+                // Broken men flee under a blinking '?'; captives are marked '"'.
+                if (ent->state == S_ROUTING) {
+                    if ((g.tick % 6) < 3) { ch = '?'; drawCh = (chtype)ch; }
+                    emojiStr = u8"💨";
+                } else if (ent->prisoner) {
+                    ch = '"'; drawCh = (chtype)ch;
+                    emojiStr = u8"⛓";
+                }
             }
             // Projectile overwrites terrain/entity glyph; keep ASCII char for colour lookup.
             for (auto& p : g.projectiles) {
@@ -1172,21 +1184,71 @@ void renderMap() {
         }
     }
 
-    // Hearth smoke curls from finished houses at dawn and dusk (render-only).
-    if (isDawn() || isDusk()) {
+    // The fallen linger on the field a while — a dim '%' on the death tile,
+    // fading after ~200 ticks (g.corpses; render-only, never sim state).
+    attron(COLOR_PAIR(CP_CORPSE)|A_DIM);
+    for (auto& c : g.corpses) {
+        if (g.tick - c.tick > 200) continue;
+        if (!inBounds(c.x, c.y) || !g.map[c.y][c.x].visible[0]) continue;
+        int sx = c.x - g.viewX, sy = c.y - g.viewY;
+        if (sx < 0 || sx >= g.viewW || sy < 0 || sy >= g.viewH) continue;
+        if (entityAt(c.x, c.y)) continue;   // don't paint under the living
+        if (displayMode == DM_ASCII) mvaddch(sy+2, sx * tileW, '%');
+        else                         mvprintw(sy+2, sx * tileW, u8"🩸");
+    }
+    attroff(COLOR_PAIR(CP_CORPSE)|A_DIM);
+
+    // Hearth smoke rises from finished houses — a two-cell plume that drifts
+    // and curls each second (render-only). Strongest at dawn/dusk when the
+    // fires are stoked; a faint wisp persists through the night.
+    if (isDawn() || isDusk() || isNight()) {
+        bool stoked = isDawn() || isDusk();
         attron(COLOR_PAIR(CP_UI_DIM));
         for (auto& e : g.entities) {
-            if (!e.alive || e.type != E_HOUSE || e.underConstruction || e.owner >= MAX_PLAYERS) continue;
-            int smx = e.x, smy = e.y - 1;
-            if (!inBounds(smx, smy) || !g.map[smy][smx].visible[0]) continue;
-            int sx = smx - g.viewX, sy = smy - g.viewY;
-            if (sx < 0 || sx >= g.viewW || sy < 0 || sy >= g.viewH) continue;
-            if (entityAt(smx, smy)) continue;
-            char puff = ((g.tick/10 + e.id) % 2) ? '~' : '\'';
-            if (displayMode == DM_ASCII) mvaddch(sy+2, sx * tileW, puff);
-            else                         mvprintw(sy+2, sx * tileW, u8"〜");
+            if (!e.alive || e.underConstruction || e.owner >= MAX_PLAYERS) continue;
+            if (e.type != E_HOUSE && e.type != E_TAVERN && e.type != E_MANOR) continue;
+            // Lower puff sits just above the roof; a higher wisp trails it when stoked.
+            int phase = (g.tick / 8 + e.id);
+            for (int h = 0; h < (stoked ? 2 : 1); h++) {
+                int smx = e.x + ((phase + h) % 3 == 0 ? (((phase>>1)&1) ? 1 : -1) : 0);
+                int smy = e.y - 1 - h;
+                if (!inBounds(smx, smy) || !g.map[smy][smx].visible[0]) continue;
+                int sx = smx - g.viewX, sy = smy - g.viewY;
+                if (sx < 0 || sx >= g.viewW || sy < 0 || sy >= g.viewH) continue;
+                if (entityAt(smx, smy)) continue;
+                char puff = (h == 0)
+                    ? ((phase % 2) ? '~' : '\'')
+                    : ((phase % 2) ? '.'  : '`');
+                if (displayMode == DM_ASCII) mvaddch(sy+2, sx * tileW, puff);
+                else                         mvprintw(sy+2, sx * tileW, h ? u8"·" : u8"〜");
+            }
         }
         attroff(COLOR_PAIR(CP_UI_DIM));
+    }
+
+    // Night torches: defensive works and the town hall keep a flame burning
+    // after dark, flickering on a per-building stagger (render-only).
+    if (isNight()) {
+        for (auto& e : g.entities) {
+            if (!e.alive || e.underConstruction || e.owner >= MAX_PLAYERS) continue;
+            if (e.type != E_TOWER && e.type != E_GATE && e.type != E_CASTLE
+                && e.type != E_TOWNHALL && e.type != E_WALL) continue;
+            // A wall lights a torch only now and then, so ramparts twinkle
+            // rather than blaze; keeps/towers/gates always carry one.
+            if (e.type == E_WALL && ((g.tick/15 + e.id) % 4) != 0) continue;
+            int tx = e.x, ty = e.y - 1;
+            if (!inBounds(tx, ty) || !g.map[ty][tx].visible[0]) continue;
+            int sx = tx - g.viewX, sy = ty - g.viewY;
+            if (sx < 0 || sx >= g.viewW || sy < 0 || sy >= g.viewH) continue;
+            if (entityAt(tx, ty)) continue;
+            // Flicker: bold flame most ticks, a dimmer ember on the off-beat.
+            bool bright = ((g.tick/4 + e.id*3) % 3) != 0;
+            attron(COLOR_PAIR(CP_TORCH) | (bright ? A_BOLD : A_DIM));
+            char fl = bright ? 'i' : '.';
+            if (displayMode == DM_ASCII) mvaddch(sy+2, sx * tileW, fl);
+            else                         mvprintw(sy+2, sx * tileW, bright ? u8"🔥" : u8"·");
+            attroff(COLOR_PAIR(CP_TORCH) | (bright ? A_BOLD : A_DIM));
+        }
     }
 
     // Snowflakes: drawn every tick; hash seed changes every 12 ticks (~1 second)

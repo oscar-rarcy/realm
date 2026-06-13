@@ -90,7 +90,8 @@ enum FoodKind { F_GRAIN = 0, F_MEAT, F_FISH, F_BERRY, F_ALE, F_COUNT };
 enum EntityState {
     S_IDLE, S_MOVING, S_ATTACKING, S_GATHERING,
     S_BUILDING, S_TRAINING, S_RETURNING, S_DEAD,
-    S_ENTERING, S_GARRISONED
+    S_ENTERING, S_GARRISONED,
+    S_ROUTING   // morale broke: fleeing, unorderable until it rallies
 };
 enum GameMode  { M_NORMAL, M_BUILD_SELECT, M_BUILD_PLACE, M_TRAIN_SELECT, M_WALL_DRAG, M_PAUSED, M_GAME_OVER, M_RALLY_SET, M_RESEARCH_SELECT, M_ATTACK_MOVE, M_MARKET_TRADE, M_PATROL_SET, M_HELP };
 
@@ -143,6 +144,8 @@ enum {
     CP_OWN_P0_NIGHT, CP_OWN_P1_NIGHT, CP_OWN_P2_NIGHT, CP_OWN_P3_NIGHT,
     CP_BUILD_OK, CP_BUILD_BAD,
     CP_CLIFF,   // plateau rim escarpment
+    CP_CORPSE,  // fallen-soldier marker (dim blood-red)
+    CP_TORCH,   // night torch flame (warm flicker)
     CP_COUNT
 };
 
@@ -218,6 +221,16 @@ struct Entity {
     int storeFood[F_COUNT];
     int foodKind;   // FoodKind of the food this unit is carrying (peasant/wagon)
     int aleTicks;   // >0: ale-warmed — +1 atk, -1 ranged range, no frostbite
+    // Combat feel (docs/combat-feel-proposals.md):
+    int morale;        // 0-100; at 0 the unit breaks and routs
+    int routTicks;     // >0 while routing; rallies when it expires / reaches safety
+    int chargeSteps;   // consecutive cavalry steps — >=4 means the next hit is a charge
+    int stamina;       // 0-100; <30 = -25% damage, slower steps
+    int kills;         // military kills; militia with 3+ become a veteran banner
+    int prisoner;      // 1 = captured soldier: can be marched, ransomed, or rescued
+    int origOwner;     // who a prisoner belonged to (-1 otherwise)
+    int captureTicks;  // routing while cornered by enemies: counts up to capture
+    int entrenchTicks; // catapult standing still: >=200 entrenched (+1 range)
 };
 
 struct Player {
@@ -302,6 +315,13 @@ struct Game {
                           // scrolling is edge-scroll/minimap only.
     unsigned long long rngState; // sim RNG state — part of game state, saved/loaded
     unsigned long long simSeed;  // seed this match started from (replay header)
+    // Fallen-soldier markers: written by killEntity, read only by render.
+    // Transient presentation state (like projectiles): not saved, not hashed.
+    struct Corpse { int x, y, tick; char glyph; };
+    std::vector<Corpse> corpses;
+    // "Their line broke!" status flash: counts routs per side in a short
+    // window. UI-only — never saved, never hashed (doesn't feed the sim).
+    int routFlashTick, routFlashOwner, routFlashCount;
     int difficulty;       // 0 easy / 1 normal / 2 hard — AI pacing knobs (ai.cpp)
     int winterSeverity;   // rolled at each winter onset: 0 mild / 1 normal / 2 brutal
     std::vector<Command> pendingCmds; // local player's queued commands; applied at tick start
@@ -421,7 +441,11 @@ void tickPaving();
 void tickWeather();
 void tickSpoilage();
 void tickTaverns();
+void tickPrisoners();
 void checkWin();
+
+// Combat-feel helpers (entity.cpp / combat.cpp)
+bool hasMorale(EntityType t);   // units that can break and rout
 
 // entity.cpp — AI
 int     aiCount(int owner,EntityType t);

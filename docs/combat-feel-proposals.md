@@ -1,9 +1,37 @@
 # Combat feel — proposals
 
-Status: PROPOSAL. A deep dive on why Realm fights feel the way they do and
-a menu of changes, ordered roughly by (impact / effort). The armour-class
-damage table, high-ground modifiers, and anti-bunching landed June 2026 —
-this doc is about what's still missing.
+Status: PARTLY IMPLEMENTED (June 2026). A deep dive on why Realm fights feel
+the way they do and a menu of changes, ordered roughly by (impact / effort).
+The armour-class damage table, high-ground modifiers, and anti-bunching landed
+earlier.
+
+**Implemented June 2026 (SAVE_VERSION 8, REP_VERSION 5):**
+- **1.1 Morale & routing** — per-unit `morale` 0–100, drains on wounds /
+  nearby friendly deaths / being locally outnumbered; recovers out of combat,
+  near a TC/Castle, or beside a veteran banner. At 0 the unit enters
+  `S_ROUTING`: drops orders, flees to the nearest stronghold at +1 speed,
+  unorderable for ~80 ticks, renders as a blinking `?`. Rallies (morale→40)
+  on reaching safety or when the panic passes.
+- **1.2 Charge impact** — Knight/Hussar with ≥4 consecutive strides into the
+  foe deal ×2 on the first blow + knockback + stun; spearmen and buildings
+  cancel the bonus. `chargeSteps` resets on any block/turn.
+- **1.3 Death reads** — corpse `%` markers linger ~200 ticks (render-only
+  `g.corpses`); "You broke their line!" status flash on 3 routs in 20 ticks.
+- **2.2 Stamina** — `stamina` 0–100 drains marching/fighting, recovers at
+  rest; <30 → −25% damage and +1 move cd.
+- **2.4 Veteran banner** — a militia with 3+ kills gives +1 atk and +morale
+  regen to friendlies within 3.
+- **3.3 Capture & ransom** — a router cornered by an adjacent enemy footman
+  for ~40 ticks becomes an inert prisoner (owner = captor); `tickPrisoners`
+  marches him to the captor's hold to be ransomed (+25g) or frees him if a
+  soldier of his old side reaches him.
+- **3.4 (partial) Catapult entrenchment** — a catapult standing still ≥200
+  ticks gains +1 range; rolling resets `entrenchTicks`.
+
+**Still open:** 1.4 engagement-lock/parting hits, 2.1 combat collision,
+2.3 facing/flanking, 3.1 battle pause/auto-slow, 3.2 weapon reach rows,
+3.4 sortie tools (murder-holes / boiling oil). The text below is the original
+proposal menu.
 
 ## Diagnosis: why fights blur
 

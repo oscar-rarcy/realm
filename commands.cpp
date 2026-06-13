@@ -385,7 +385,7 @@ void applyCommand(const Command& c) {
 // (same caveat as save files).
 // ============================================================
 static constexpr char REP_MAGIC[4] = {'R','L','R','P'};
-static constexpr int  REP_VERSION  = 4;   // v4: stockpile economy + structures (v3: elevation)
+static constexpr int  REP_VERSION  = 5;   // v5: combat-feel sim (morale/rout/charge/capture) (v4: stockpile economy)
 
 static FILE* recF  = nullptr;   // recording
 static FILE* playF = nullptr;   // playback
@@ -527,6 +527,10 @@ unsigned long long simStateHash() {
         fnv(h, e.storeGold); fnv(h, e.storeWood);
         for (int k = 0; k < F_COUNT; k++) fnv(h, e.storeFood[k]);
         fnv(h, e.aleTicks);
+        fnv(h, e.morale); fnv(h, e.routTicks); fnv(h, e.chargeSteps);
+        fnv(h, e.stamina); fnv(h, e.kills);
+        fnv(h, e.prisoner); fnv(h, e.origOwner); fnv(h, e.captureTicks);
+        fnv(h, e.entrenchTicks);
     }
     return h;
 }

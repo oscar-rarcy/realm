@@ -524,6 +524,10 @@ int spawnEntity(EntityType type, int owner, int x, int y, bool built) {
                 { e.maxHp *= 2; break; }
     }
     e.hp = built ? e.maxHp : 1;
+    // Combat feel: full heart and wind on muster (docs/combat-feel-proposals.md).
+    e.morale = 100; e.stamina = 100;
+    e.routTicks = 0; e.chargeSteps = 0; e.kills = 0;
+    e.prisoner = 0; e.origOwner = -1; e.captureTicks = 0; e.entrenchTicks = 0;
     e.state = S_IDLE; e.targetId = -1; e.targetX = -1; e.targetY = -1;
     e.producing = E_NONE; e.underConstruction = !built; e.alive = true;
     e.rallyX = x + STATS[type].sizeW; e.rallyY = y + STATS[type].sizeH;
@@ -583,7 +587,7 @@ void moveAlongPath(Entity& e) {
     if (e.type == E_TREBUCHET && (e.packed == 0 || e.packTicks > 0)) return;
     if (e.pathIdx >= (int)e.path.size()) {
         e.path.clear(); e.pathIdx = 0;
-        e.stuckTicks = 0;
+        e.stuckTicks = 0; e.chargeSteps = 0;
         if (e.state == S_MOVING) e.state = S_IDLE;
         return;
     }
@@ -598,6 +602,7 @@ void moveAlongPath(Entity& e) {
     if (!stepOk) {
         int gx = e.path.back().first, gy = e.path.back().second;
         e.path = findPathFor(e, gx, gy); e.pathIdx = 0;
+        e.chargeSteps = 0;   // a turned-aside charge is no charge
         // Goal unreachable now — stand down rather than spin re-pathing.
         if (e.path.empty()) { if (e.state == S_MOVING) e.state = S_IDLE; }
         return;
@@ -607,6 +612,7 @@ void moveAlongPath(Entity& e) {
     if (blk && blk->id != e.id && isBuilding(blk->type)) {
         bool isOpenGate = (blk->type == E_GATE && blk->gateOpen);
         if (!isOpenGate) {
+            e.chargeSteps = 0;   // blocked — momentum lost
             // Tolerate transient blocks; only repath after several stuck ticks (staggered by id).
             // Tightened threshold (was 3+id%5) so stuck units recover quicker.
             e.stuckTicks++;
@@ -637,6 +643,12 @@ void moveAlongPath(Entity& e) {
     }
     e.x = nx; e.y = ny; e.pathIdx++;
     e.stuckTicks = 0;
+    // Cavalry build a charge over consecutive strides; siege engines lose
+    // their entrenchment the moment they roll; marching tires the men.
+    if (e.type == E_KNIGHT || e.type == E_HUSSAR) { if (e.chargeSteps < 99) e.chargeSteps++; }
+    if (e.type == E_CATAPULT) e.entrenchTicks = 0;
+    if (hasMorale(e.type) && (g.tick + e.id) % 3 == 0)
+        e.stamina = std::max(0, e.stamina - 1);
     Terrain ter = g.map[ny][nx].terrain;
     int spd = STATS[e.type].speed;
     // Roads (and bridges) are strictly faster than everything else. Dirt no
@@ -662,6 +674,9 @@ void moveAlongPath(Entity& e) {
         && (e.type==E_CATAPULT || e.type==E_RAM || e.type==E_TREBUCHET)
         && (naturalGround || ter==T_MUD))
         spd += 2;
+    // Winded troops drag their feet; broken men run faster than they march.
+    if (hasMorale(e.type) && e.stamina < 30) spd += 1;
+    if (e.state == S_ROUTING) spd = std::max(1, spd - 1);
     e.moveCd = spd;
 
     // Path wear — natural ground gets compacted into dirt then road by repeated traffic.
@@ -713,6 +728,45 @@ static Entity* findSafeHaven(Entity& e) {
     return best;
 }
 
+// A unit whose morale has shattered drops its orders and bolts for the
+// nearest friendly stronghold, deaf to commands until it rallies (1.1).
+static void beginRout(Entity& e) {
+    e.state = S_ROUTING; e.routTicks = 80;
+    e.attackMove = 0; e.holdPosition = 0; e.retreating = 0; e.targetId = -1;
+    Entity* haven = findSafeHaven(e);
+    if (haven) {
+        e.path = findPathFor(e, haven->x, haven->y); e.pathIdx = 0;
+        e.targetX = haven->x; e.targetY = haven->y;
+    } else { e.path.clear(); e.pathIdx = 0; }
+    if (e.owner == 0)      setStatus("Your men are breaking — rally them!");
+    // Tally routs per side in a short window for the "broke their line" flash.
+    if (e.owner < MAX_PLAYERS) {
+        if (g.tick - g.routFlashTick > 20 || e.owner != g.routFlashOwner) {
+            g.routFlashTick = g.tick; g.routFlashOwner = e.owner; g.routFlashCount = 0;
+        }
+        if (++g.routFlashCount == 3 && e.owner != 0) setStatus("You broke their line!");
+    }
+}
+
+// A broken man run down by the enemy is taken, not killed: he changes hands
+// as an inert prisoner, to be ransomed or freed later (tickPrisoners) (3.3).
+static void capture(Entity& e) {
+    Entity* captor = nullptr;
+    for (auto& o : g.entities) {
+        if (!o.alive || o.owner == e.owner || o.owner >= OWNER_NATURE) continue;
+        if (!isUnit(o.type) || isRanged(o.type) || o.prisoner) continue;
+        if (dist(e.x, e.y, o.x, o.y) <= 1) { captor = &o; break; }
+    }
+    if (!captor) { e.captureTicks = 0; return; }
+    int oldOwner = e.owner;
+    e.prisoner = 1; e.origOwner = oldOwner; e.owner = captor->owner;
+    e.state = S_IDLE; e.routTicks = 0; e.captureTicks = 0; e.morale = 0;
+    e.path.clear(); e.pathIdx = 0; e.targetId = -1; e.holdPosition = 0;
+    updateSupply(oldOwner); updateSupply(e.owner);
+    if (captor->owner == 0) setStatus("Prisoner taken!");
+    else if (oldOwner == 0) setStatus("One of your soldiers was captured!");
+}
+
 // ============================================================
 // ENTITY TICK
 // ============================================================
@@ -722,6 +776,54 @@ void tickEntity(Entity& e) {
     if (e.aleTicks > 0) e.aleTicks--;
     // Tavern feast cooldown (atkCd is unused on non-attacking buildings).
     if (e.type == E_TAVERN && e.atkCd > 0) e.atkCd--;
+    // Prisoners are inert: they only shuffle along the march path tickPrisoners
+    // set for them (toward the captor's hold), and otherwise do nothing.
+    if (e.prisoner) {
+        if (e.state == S_MOVING) moveAlongPath(e);
+        return;
+    }
+    // --- Combat feel: morale, stamina, entrenchment (docs/combat-feel) ---
+    if (isUnit(e.type) && e.owner < OWNER_NATURE) {
+        // Catapults entrench by standing still; rolling resets the dig-in.
+        if (e.type == E_CATAPULT) {
+            if (e.state == S_MOVING) e.entrenchTicks = 0;
+            else if (e.entrenchTicks < 100000) e.entrenchTicks++;
+        }
+        // Stamina recovers at rest; it's spent moving (moveAlongPath) and fighting.
+        if ((e.state == S_IDLE || e.state == S_GARRISONED) && e.alertTicks == 0
+                && (g.tick + e.id) % 4 == 0)
+            e.stamina = std::min(100, e.stamina + 1);
+        if (hasMorale(e.type)) {
+            // Morale recovers out of combat — faster near a town/castle or a banner.
+            if (e.state != S_ROUTING && (g.tick + e.id) % 8 == 0) {
+                int regen = (e.alertTicks == 0) ? 2 : 0;
+                for (auto& o : g.entities) {
+                    if (!o.alive || o.owner != e.owner) continue;
+                    if ((o.type==E_TOWNHALL||o.type==E_CASTLE) && !o.underConstruction
+                            && dist(e.x,e.y,o.x,o.y) <= 8) { regen += 2; break; }
+                }
+                for (auto& o : g.entities) {   // a veteran banner steadies the line
+                    if (!o.alive || o.owner != e.owner || o.type != E_MILITIA || o.kills < 3) continue;
+                    if (o.state == S_GARRISONED) continue;
+                    if (dist(e.x,e.y,o.x,o.y) <= 3) { regen += 2; break; }
+                }
+                if (regen) e.morale = std::min(100, e.morale + regen);
+            }
+            // Outnumbered locally in a fight: nerves fray.
+            if (e.alertTicks > 0 && (g.tick + e.id) % 10 == 0) {
+                int friends = 0, foes = 0;
+                for (auto& o : g.entities) {
+                    if (!o.alive || !isUnit(o.type) || o.state == S_GARRISONED) continue;
+                    if (dist(e.x,e.y,o.x,o.y) > 5) continue;
+                    if (o.owner == e.owner) friends++;
+                    else if (o.owner < OWNER_NATURE) foes++;
+                }
+                if (foes > friends + 1) e.morale = std::max(0, e.morale - 2*(foes-friends));
+            }
+            // Broken: drop everything and run.
+            if (e.morale <= 0 && e.state != S_ROUTING) beginRout(e);
+        }
+    }
     // Pop the next queued waypoint when the unit goes idle.
     // Patrol mode rotates the waypoint to the back of the queue so the unit loops.
     if (e.state == S_IDLE && !e.waypoints.empty() && isUnit(e.type) && !isNaval(e.type)
@@ -1009,6 +1111,32 @@ void tickEntity(Entity& e) {
             e.state = S_IDLE; e.attackMove = 0;
         }
         break;
+    case S_ROUTING: {
+        if (e.routTicks > 0) e.routTicks--;
+        // Cornered while broken: an adjacent enemy footman can take him captive.
+        bool cornered = false;
+        for (auto& o : g.entities) {
+            if (!o.alive || o.owner == e.owner || o.owner >= OWNER_NATURE) continue;
+            if (!isUnit(o.type) || isRanged(o.type) || o.prisoner) continue;
+            if (dist(e.x,e.y,o.x,o.y) <= 1) { cornered = true; break; }
+        }
+        if (cornered) {
+            if (++e.captureTicks >= 40) { capture(e); break; }
+        } else if (e.captureTicks > 0) e.captureTicks--;
+        // Rally on reaching safety or once the panic passes.
+        Entity* haven = findSafeHaven(e);
+        bool safe = haven && dist(e.x,e.y,haven->x,haven->y) <= 3;
+        if (e.routTicks == 0 || safe) {
+            e.state = S_IDLE; e.morale = std::max(e.morale, 40);
+            e.captureTicks = 0; e.path.clear(); e.pathIdx = 0;
+            break;
+        }
+        if (e.path.empty() || e.pathIdx >= (int)e.path.size()) {
+            if (haven) { e.path = findPathFor(e, haven->x, haven->y); e.pathIdx = 0; }
+        }
+        moveAlongPath(e);   // routers get +1 speed inside moveAlongPath
+        break;
+    }
     case S_ATTACKING: {
         Entity* t = findEntity(e.targetId);
         if (!t || !t->alive) { e.state = S_IDLE; break; }
@@ -1054,10 +1182,37 @@ void tickEntity(Entity& e) {
                     if      (de > 0) dmg = dmg * 3 / 2;
                     else if (de < 0) dmg = std::max(1, dmg * 3 / 4);
                 }
+                // Cavalry charge: several unbroken strides into the foe land a
+                // crushing first blow — but a braced spearman eats the charge,
+                // and buildings don't flinch.
+                bool charged = false;
+                if ((e.type==E_KNIGHT || e.type==E_HUSSAR) && e.chargeSteps >= 4
+                        && t->type != E_SPEARMAN && !isBuilding(t->type)) {
+                    dmg *= 2; charged = true;
+                }
+                // Winded attackers hit softer (stamina also bites in unitAtk).
                 dmg = shieldBuilding(*t, dmg);
                 t->hp -= dmg;
                 e.atkCd = STATS[e.type].atkSpeed;
+                e.chargeSteps = 0;   // the charge (if any) is spent on this blow
+                if (hasMorale(e.type)) e.stamina = std::max(0, e.stamina - 2);
                 e.alertTicks = 12; t->alertTicks = 12;
+                // A wound shakes resolve; a charge shakes it harder.
+                if (hasMorale(t->type)) {
+                    int md = 3 + dmg * 25 / std::max(1, t->maxHp);
+                    if (charged) md += 15;
+                    t->morale = std::max(0, t->morale - md);
+                }
+                // Charge knockback + stun: shove the target back a free tile.
+                if (charged) {
+                    t->atkCd = std::max(t->atkCd, STATS[t->type].atkSpeed);
+                    int kx = t->x + ((t->x>e.x)-(t->x<e.x));
+                    int ky = t->y + ((t->y>e.y)-(t->y<e.y));
+                    if (inBounds(kx,ky) && isPassable(kx,ky) && !entityAt(kx,ky)
+                            && canStep(t->x,t->y,kx,ky,false)) {
+                        t->x = kx; t->y = ky; t->path.clear(); t->pathIdx = 0;
+                    }
+                }
                 if (t->owner == 0 && g.attackNotifyCd == 0 && t->type != E_NONE) {
                     setStatus("Your people are under attack!");
                     g.attackNotifyCd = 200;
@@ -1110,6 +1265,11 @@ void tickEntity(Entity& e) {
                         // Non-peasant kills (e.g. militia defending base) waste the carcass.
                         e.state = S_IDLE;
                     }
+                    // Felling an enemy soldier bloods the attacker — 3 kills
+                    // make a militia a veteran banner (hasMorale / unitAtk).
+                    if (isUnit(t->type) && t->owner < OWNER_NATURE && hasMorale(t->type)
+                            && e.owner < OWNER_NATURE)
+                        e.kills++;
                     killEntity(*t);
                 }
             } else e.atkCd--;

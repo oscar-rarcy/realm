@@ -14,7 +14,7 @@
 //   - Skips garbage corrupt files via fread return-value checks
 
 static constexpr char MAGIC[4] = {'R','L','M','2'};
-static constexpr int  SAVE_VERSION = 7;  // v7: stockpiles, food kinds, ale, loot tiles (v6: elevation)
+static constexpr int  SAVE_VERSION = 8;  // v8: combat-feel (morale/stamina/rout/charge/kills/prisoners/entrench)
 static constexpr int  MAX_ENTITIES = 100000;
 static constexpr int  MAX_VEC_LEN  = 50000;
 
@@ -89,6 +89,10 @@ bool saveGame(const char* path) {
         wr(f, e.storeGold); wr(f, e.storeWood);
         for (int k = 0; k < F_COUNT; k++) wr(f, e.storeFood[k]);
         wr(f, e.foodKind); wr(f, e.aleTicks);
+        wr(f, e.morale); wr(f, e.routTicks); wr(f, e.chargeSteps);
+        wr(f, e.stamina); wr(f, e.kills);
+        wr(f, e.prisoner); wr(f, e.origOwner); wr(f, e.captureTicks);
+        wr(f, e.entrenchTicks);
     }
 
     // Check the stream is healthy before committing.
@@ -173,6 +177,10 @@ bool loadGame(const char* path) {
         rd(f, e.storeGold); rd(f, e.storeWood);
         for (int k = 0; k < F_COUNT; k++) rd(f, e.storeFood[k]);
         rd(f, e.foodKind); rd(f, e.aleTicks);
+        rd(f, e.morale); rd(f, e.routTicks); rd(f, e.chargeSteps);
+        rd(f, e.stamina); rd(f, e.kills);
+        rd(f, e.prisoner); rd(f, e.origOwner); rd(f, e.captureTicks);
+        rd(f, e.entrenchTicks);
         g.entities.push_back(e);
     }
 

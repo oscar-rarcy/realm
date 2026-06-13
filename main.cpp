@@ -458,7 +458,7 @@ void simTick() {
     tickSeasons(); tickThaw(); tickWinter();
     tickWeather(); tickPaving();
     tickTowers(); tickGates(); tickProjectiles(); tickFarms(); tickMarkets();
-    tickSpoilage(); tickTaverns();
+    tickSpoilage(); tickTaverns(); tickPrisoners();
     tickChurches(); tickAnimals(); tickAI(); updateFog();
     // Prune dead IDs from selection + control groups so UI counts
     // ("Group: N units") stay honest as casualties pile up.
@@ -472,6 +472,9 @@ void simTick() {
     if (g.tick % 100 == 0) {
         g.entities.erase(std::remove_if(g.entities.begin(), g.entities.end(),
             [](const Entity& e){ return !e.alive && e.state==S_DEAD; }), g.entities.end());
+        // Corpse markers fade after ~200 ticks (render-only, not sim state).
+        g.corpses.erase(std::remove_if(g.corpses.begin(), g.corpses.end(),
+            [](const Game::Corpse& c){ return g.tick - c.tick > 200; }), g.corpses.end());
         // Defensive: rebuild supply totals so any kill path that
         // missed updateSupply gets reconciled within ~8 seconds.
         for (int p = 0; p < MAX_PLAYERS; p++) updateSupply(p);

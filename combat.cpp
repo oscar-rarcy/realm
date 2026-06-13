@@ -4,7 +4,16 @@
 // ============================================================
 // COMBAT HELPERS (research-aware stats, damage modifiers)
 // ============================================================
+// Units that can break: line infantry and cavalry. Peasants have their own
+// flee logic, siege crews abandon engines via the retreat rule, monks trust
+// in providence, and machines don't have nerves.
+bool hasMorale(EntityType t) {
+    return t==E_MILITIA||t==E_ARCHER||t==E_KNIGHT||t==E_SPEARMAN
+        || t==E_CROSSBOWMAN||t==E_HUSSAR||t==E_SAPPER;
+}
+
 int unitAtk(const Entity& e) {
+    if (e.prisoner) return 0;   // disarmed
     int a = STATS[e.type].atk;
     int r = g.players[e.owner].research;
     if ((e.type == E_MILITIA || e.type == E_KNIGHT) && (r & R_IRON_WEAPONS)) a += 2;
@@ -19,6 +28,16 @@ int unitAtk(const Entity& e) {
     }
     // Ale-warmed: bolder in the press of melee...
     if (e.aleTicks > 0 && a > 0) a += 1;
+    // A veteran banner nearby stiffens every arm (militia with 3+ kills).
+    if (a > 0) {
+        for (const auto& o : g.entities) {
+            if (!o.alive || o.owner != e.owner || o.type != E_MILITIA || o.kills < 3) continue;
+            if (o.state == S_GARRISONED) continue;
+            if (dist(e.x, e.y, o.x, o.y) <= 3) { a += 1; break; }
+        }
+    }
+    // Spent legs, weak arms: a winded soldier swings 25% softer.
+    if (hasMorale(e.type) && e.stamina < 30 && a > 1) a = std::max(1, a * 3 / 4);
     return a;
 }
 // ============================================================
@@ -89,6 +108,9 @@ int unitRange(const Entity& e) {
     if (e.type == E_SPEARMAN && (r & R_PIKES))   rng += 1;
     // ...but a drunk archer is a worse archer. Keep the bowline sober.
     if (e.aleTicks > 0 && rng > 1) rng -= 1;
+    // An entrenched catapult (200 ticks unmoved) gains reach from its
+    // prepared position — and loses it the moment it rolls.
+    if (e.type == E_CATAPULT && e.entrenchTicks >= 200) rng += 1;
     return rng;
 }
 
@@ -116,6 +138,11 @@ Entity* findNearestEnemy(Entity& e, int range) {
 // ORDERS
 // ============================================================
 void orderMove(Entity& e, int tx, int ty) {
+    // Broken men and captives don't take orders.
+    if (e.prisoner || e.state == S_ROUTING) {
+        if (e.owner == 0) setStatus(e.prisoner ? "That soldier is a prisoner." : "They've broken — can't be ordered!");
+        return;
+    }
     // Deployed trebuchet is rooted — must be packed (press P) before moving.
     if (e.type == E_TREBUCHET && e.packed == 0) {
         if (e.owner == 0) setStatus("Pack trebuchet first (D).");
@@ -149,6 +176,8 @@ void orderAttack(Entity& e, int tid) {
     if (!t) return;
     // Rams demolish buildings only; sappers are walking petards — same rule.
     if ((e.type == E_RAM || e.type == E_SAPPER) && !isBuilding(t->type)) return;
+    if (e.prisoner) return;             // prisoners don't fight
+    if (e.state == S_ROUTING) return;   // broken men don't take orders
     if (e.type == E_TREBUCHET && e.packed == 1) {
         if (e.owner == 0) setStatus("Deploy trebuchet first (D).");
         return;
@@ -469,6 +498,19 @@ void ejectGarrison(Entity& bld) {
 void killEntity(Entity& t) {
     if (!t.alive) return;
     t.alive = false; t.state = S_DEAD;
+    // The fallen stay on the field a while (render-only marker).
+    if (isUnit(t.type) && inBounds(t.x, t.y)) {
+        if (g.corpses.size() > 600) g.corpses.erase(g.corpses.begin(), g.corpses.begin() + 200);
+        g.corpses.push_back({t.x, t.y, g.tick, STATS[t.type].glyph});
+    }
+    // Watching a comrade fall shakes the men around him.
+    if (isUnit(t.type) && t.owner < MAX_PLAYERS) {
+        for (auto& o : g.entities) {
+            if (!o.alive || o.owner != t.owner || !hasMorale(o.type)) continue;
+            if (o.state == S_GARRISONED || o.prisoner) continue;
+            if (dist(o.x, o.y, t.x, t.y) <= 4) o.morale = std::max(0, o.morale - 12);
+        }
+    }
     // A depot dies with its stores: the share vanishes from the realm's
     // totals, and ~60% scatters onto the footprint as loot — for whoever
     // is standing over the ashes. Ale burns outright.

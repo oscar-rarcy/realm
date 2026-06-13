@@ -20,6 +20,7 @@ static const char* stateName(EntityState s) {
         case S_DEAD:       return "Dead";
         case S_ENTERING:   return "Boarding";
         case S_GARRISONED: return "Garrisoned";
+        case S_ROUTING:    return "ROUTING!";
     }
     return "Unknown";
 }
@@ -266,6 +267,21 @@ void renderUI() {
                     stDesc = stateName(sel->state);
                 }
                 attron(COLOR_PAIR(CP_UI_ACCENT)); mvprintw(iy++, panelX+1, "%s", stDesc.c_str()); attroff(COLOR_PAIR(CP_UI_ACCENT));
+                // Combat feel: a soldier's morale/stamina, veterancy, captivity.
+                if (hasMorale(sel->type)) {
+                    int mc = sel->morale >= 60 ? CP_HP_GREEN : (sel->morale >= 25 ? CP_HP_YELLOW : CP_HP_RED);
+                    attron(COLOR_PAIR(mc));
+                    mvprintw(iy++, panelX+1, "Morale %-3d Stam %-3d", sel->morale, sel->stamina);
+                    attroff(COLOR_PAIR(mc));
+                    if (sel->type == E_MILITIA && sel->kills >= 3) {
+                        attron(COLOR_PAIR(CP_UI_HIGH)); mvprintw(iy++, panelX+1, "Veteran banner (%d kills)", sel->kills); attroff(COLOR_PAIR(CP_UI_HIGH));
+                    } else if (sel->kills > 0) {
+                        attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(iy++, panelX+1, "Kills: %d", sel->kills); attroff(COLOR_PAIR(CP_UI_DIM));
+                    }
+                }
+                if (sel->prisoner) {
+                    attron(COLOR_PAIR(CP_HP_RED)|A_BOLD); mvprintw(iy++, panelX+1, "PRISONER"); attroff(COLOR_PAIR(CP_HP_RED)|A_BOLD);
+                }
                 if (sel->carrying > 0) {
                     const char* what = (sel->gatherType==0) ? "gold"
                                      : (sel->gatherType==1) ? "wood" : "food";
