@@ -287,7 +287,14 @@ void handleInput(int ch) {
             if (me.bstate & (BUTTON1_CLICKED | BUTTON1_RELEASED)) {
                 if (inMap) {
                     pushCmd(CMD_BUILD, {sel->id}, mapX, mapY, -1, g.buildPending);
-                    g.mode = M_NORMAL; g.buildPending = E_NONE;
+                    // Hold Shift to lay down a chain of the same structure (e.g.
+                    // a row of houses) without reopening the build menu each time.
+                    if (me.bstate & BUTTON_SHIFT) {
+                        setStatus(std::string("Place another ") + STATS[g.buildPending].name
+                                  + " — release Shift / right-click / Esc to stop");
+                    } else {
+                        g.mode = M_NORMAL; g.buildPending = E_NONE;
+                    }
                 }
             } else if (me.bstate & (BUTTON3_CLICKED | BUTTON3_PRESSED)) {
                 g.mode = M_NORMAL; g.buildPending = E_NONE;

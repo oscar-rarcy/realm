@@ -818,7 +818,7 @@ void tickEntity(Entity& e) {
                     if (o.owner == e.owner) friends++;
                     else if (o.owner < OWNER_NATURE) foes++;
                 }
-                if (foes > friends + 1) e.morale = std::max(0, e.morale - 2*(foes-friends));
+                if (foes > friends + 1) e.morale = std::max(0, e.morale - (foes-friends));
             }
             // Broken: drop everything and run.
             if (e.morale <= 0 && e.state != S_ROUTING) beginRout(e);
@@ -840,6 +840,15 @@ void tickEntity(Entity& e) {
             if (o.alive && o.owner==e.owner && o.type==E_BLACKSMITH && !o.underConstruction) { bonus=1; break; }
         e.prodProgress += 1 + bonus;
         if (e.prodProgress >= e.prodTime) {
+          // Pop-cap muster gate: a finished unit waits at the threshold until a
+          // house raises the supply ceiling — same hold-and-retry idea as the
+          // "no free tile to spawn on" case just below.
+          Player& sp = g.players[e.owner];
+          if (sp.supply + STATS[e.producing].supplyUsed > sp.supplyMax) {
+            e.prodProgress = e.prodTime;
+            if (e.owner == 0 && (g.tick + e.id) % 100 == 0)
+                setStatus("Trained unit waiting on supply — build more houses!");
+          } else {
             auto& bs = STATS[e.type]; bool placed = false;
             bool produceNaval = isNaval(e.producing);
             int newId = -1;
@@ -874,6 +883,7 @@ void tickEntity(Entity& e) {
                     e.prodTime = STATS[next].trainTime; e.state = S_TRAINING;
                 }
             }
+          }
         }
     }
     // Research progress (Blacksmith). Independent of unit production.
@@ -1199,8 +1209,8 @@ void tickEntity(Entity& e) {
                 e.alertTicks = 12; t->alertTicks = 12;
                 // A wound shakes resolve; a charge shakes it harder.
                 if (hasMorale(t->type)) {
-                    int md = 3 + dmg * 25 / std::max(1, t->maxHp);
-                    if (charged) md += 15;
+                    int md = 2 + dmg * 15 / std::max(1, t->maxHp);
+                    if (charged) md += 10;
                     t->morale = std::max(0, t->morale - md);
                 }
                 // Charge knockback + stun: shove the target back a free tile.

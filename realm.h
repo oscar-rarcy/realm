@@ -80,7 +80,8 @@ enum EntityType {
     E_WOLF_DEN,     // neutral: spawns wolves until destroyed
     E_RUIN,    // neutral ruined keep: garrison to capture (shelter + vision)
     E_BRIDGE,  // construction scaffold; completion converts the tile to T_BRIDGE
-    E_DEER, E_WOLF, E_SHEEP, E_BOAR
+    E_DEER, E_WOLF, E_SHEEP, E_BOAR,
+    E_BEAR          // rare forest predator: tough, hits hard, doesn't fear settlements
 };
 
 // Food is a larder, not a number: each kind stores, spoils, and is eaten
@@ -158,7 +159,7 @@ struct EntityStats {
 };
 extern const EntityStats STATS[];
 
-inline bool isUnit(EntityType t)     { return (t>=E_PEASANT&&t<=E_WAGON)||(t>=E_DEER&&t<=E_BOAR); }
+inline bool isUnit(EntityType t)     { return (t>=E_PEASANT&&t<=E_WAGON)||(t>=E_DEER&&t<=E_BEAR); }
 inline bool isBuilding(EntityType t) { return t>=E_TOWNHALL&&t<=E_BRIDGE; }
 inline bool isRanged(EntityType t)   { return t==E_ARCHER||t==E_CATAPULT||t==E_TREBUCHET||t==E_WARSHIP||t==E_CROSSBOWMAN; }
 inline bool isNaval(EntityType t)    { return t==E_FISHING_BOAT||t==E_WARSHIP||t==E_TRANSPORT; }

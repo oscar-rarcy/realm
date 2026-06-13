@@ -38,6 +38,15 @@ int unitAtk(const Entity& e) {
     }
     // Spent legs, weak arms: a winded soldier swings 25% softer.
     if (hasMorale(e.type) && e.stamina < 30 && a > 1) a = std::max(1, a * 3 / 4);
+    // Tangled in the trees: bowmen can't get a clean line and cavalry can't
+    // build any momentum, so both fight ~25% worse while standing in a forest
+    // (this stacks on top of the movement penalty in moveAlongPath).
+    if (a > 1 && inBounds(e.x, e.y)) {
+        Terrain ft = g.map[e.y][e.x].terrain;
+        if ((ft==T_FOREST||ft==T_PINE||ft==T_PALM||ft==T_DEAD_TREE)
+            && (e.type==E_ARCHER||e.type==E_CROSSBOWMAN||e.type==E_KNIGHT||e.type==E_HUSSAR))
+            a = std::max(1, a * 3 / 4);
+    }
     return a;
 }
 // ============================================================
@@ -120,8 +129,10 @@ Entity* findNearestEnemy(Entity& e, int range) {
     for (auto& o : g.entities) {
         if (!o.alive || o.owner == e.owner) continue;
         if (o.state == S_GARRISONED) continue;
-        // Non-nature units do not auto-attack nature entities (deer/wolf/sheep)
-        if (e.owner != OWNER_NATURE && o.owner == OWNER_NATURE) continue;
+        // Non-nature units ignore livestock/game (deer/sheep/boar) but DO fight
+        // back against predators — wolves and bears are fair auto-attack targets.
+        if (e.owner != OWNER_NATURE && o.owner == OWNER_NATURE
+                && o.type != E_WOLF && o.type != E_BEAR) continue;
         // Cloaking: enemy hidden if (a) night/storm and not close-detected, or
         // (b) standing in wheat and not close-detected. Buildings can't hide.
         bool inCrop = !isBuilding(o.type) && g.map[o.y][o.x].terrain == T_WHEAT;
@@ -322,9 +333,12 @@ void orderTrain(Entity& bld, EntityType ut) {
     if (p.gold < STATS[ut].costGold || p.wood < STATS[ut].costWood) {
         if (bld.owner==0) setStatus("Not enough resources!"); return;
     }
-    if (reservedSupply(bld.owner) + STATS[ut].supplyUsed > p.supplyMax) {
-        if (bld.owner==0) setStatus("Need more houses!"); return;
-    }
+    // Pop cap: the AI bounces here (it shouldn't tie up gold in a unit it can't
+    // house — it goes and builds houses instead). The human is allowed to queue
+    // past the cap; the finished unit then waits at the muster gate (see the
+    // production block in tickEntity) until a new house raises the ceiling.
+    bool overCap = reservedSupply(bld.owner) + STATS[ut].supplyUsed > p.supplyMax;
+    if (overCap && bld.owner != 0) return;
     int foodCost = trainFoodCost(ut);
     if (p.food < foodCost) { if (bld.owner==0) setStatus("Need more food!"); return; }
     spendPlayerFood(bld.owner, foodCost);
@@ -332,9 +346,10 @@ void orderTrain(Entity& bld, EntityType ut) {
     if (bld.producing == E_NONE) {
         bld.producing = ut; bld.prodProgress = 0; bld.prodTime = STATS[ut].trainTime;
         bld.state = S_TRAINING;
+        if (overCap && bld.owner == 0) setStatus("Training — build houses to muster it.");
     } else {
         bld.queue.push_back((int)ut);
-        if (bld.owner == 0) setStatus("Queued.");
+        if (bld.owner == 0) setStatus(overCap ? "Queued — needs more houses." : "Queued.");
     }
 }
 
@@ -508,7 +523,7 @@ void killEntity(Entity& t) {
         for (auto& o : g.entities) {
             if (!o.alive || o.owner != t.owner || !hasMorale(o.type)) continue;
             if (o.state == S_GARRISONED || o.prisoner) continue;
-            if (dist(o.x, o.y, t.x, t.y) <= 4) o.morale = std::max(0, o.morale - 12);
+            if (dist(o.x, o.y, t.x, t.y) <= 4) o.morale = std::max(0, o.morale - 8);
         }
     }
     // A depot dies with its stores: the share vanishes from the realm's

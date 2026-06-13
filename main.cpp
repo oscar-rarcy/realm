@@ -354,13 +354,22 @@ void initGame(int numAIs, unsigned long long seed) {
             }
         }
     }
-    // Wolves in forested areas — must spawn well clear of every player base.
+    // Wolves den in the forests exclusively — must spawn well clear of bases.
     for (int i = 0, t = 0; i < 7 && t < 600; t++) {
         int ax = 10 + simRand()%(MAP_W-20), ay = 10 + simRand()%(MAP_H-20);
         Terrain tr = g.map[ay][ax].terrain;
-        if ((tr==T_FOREST||tr==T_PINE||tr==T_TALL_GRASS) && !entityAt(ax,ay)
+        if ((tr==T_FOREST||tr==T_PINE||tr==T_PALM||tr==T_DEAD_TREE) && !entityAt(ax,ay)
             && farFromAnyBase(ax, ay, 16))
             { spawnEntity(E_WOLF, OWNER_NATURE, ax, ay); i++; }
+    }
+    // Bears: rare, solitary and serious — a handful haunt the deepest woods,
+    // kept well away from any starting base so they're a hazard, not a death.
+    for (int i = 0, t = 0; i < 3 && t < 800; t++) {
+        int ax = 10 + simRand()%(MAP_W-20), ay = 10 + simRand()%(MAP_H-20);
+        Terrain tr = g.map[ay][ax].terrain;
+        if ((tr==T_FOREST||tr==T_PINE||tr==T_PALM||tr==T_DEAD_TREE) && !entityAt(ax,ay)
+            && farFromAnyBase(ax, ay, 20))
+            { spawnEntity(E_BEAR, OWNER_NATURE, ax, ay); i++; }
     }
     // Boars: same buffer as wolves — these are the biggest early-game peasant hazard.
     for (int i = 0, t = 0; i < 18 && t < 800; t++) {

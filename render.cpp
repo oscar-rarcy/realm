@@ -610,11 +610,13 @@ static bool shouldShowSeasonAt(int x, int y, float threshold) {
     return (float)hash / 65535.0f < threshold;
 }
 
-void getTerrainVisual(Terrain t, int x, int y, char& ch, int& cp) {
+void getTerrainVisual(Terrain t, int x, int y, char& ch, int& cp, bool lit) {
     Season season = getSeason();
     float sprog   = getSeasonProgress();
     float bright  = getBrightness();
-    bool  night   = bright < 0.3f;
+    // Torchlight from a nearby building holds the night back on this tile, so it
+    // keeps its daytime colours (see the lit-mask built in renderMap).
+    bool  night   = (bright < 0.3f) && !lit;
     Biome biome   = g.map[y][x].biome;
 
     switch (t) {
@@ -822,6 +824,23 @@ void renderMap() {
 
     bool night = isNight();
 
+    // Torchlight: at night every standing building casts a small pool of light
+    // onto the tiles immediately around it (all owners — a global world effect),
+    // so bases and outposts glow warmly against the dark instead of vanishing.
+    // Lit tiles render in their daytime colours (see getTerrainVisual).
+    static bool litMask[MAP_H][MAP_W];
+    memset(litMask, 0, sizeof(litMask));
+    if (night) {
+        const int R = 3;
+        for (auto& b : g.entities) {
+            if (!b.alive || !isBuilding(b.type) || b.underConstruction) continue;
+            int bx2 = b.x + STATS[b.type].sizeW - 1, by2 = b.y + STATS[b.type].sizeH - 1;
+            for (int yy = b.y - R; yy <= by2 + R; yy++)
+                for (int xx = b.x - R; xx <= bx2 + R; xx++)
+                    if (inBounds(xx, yy)) litMask[yy][xx] = true;
+        }
+    }
+
     // Selected ranged unit/tower: precompute range-ring centre + radius.
     int ringX = -1, ringY = -1, ringR = 0;
     Entity* selR = findEntity(g.selectedId);
@@ -888,7 +907,7 @@ void renderMap() {
             }
 
             char ch; int cp;
-            getTerrainVisual(tile.terrain, mx, my, ch, cp);
+            getTerrainVisual(tile.terrain, mx, my, ch, cp, litMask[my][mx]);
             // Cliff rim: a highland tile bordering lower ground renders as an
             // escarpment so plateau edges read as hard walls. Ramps (T_HILLS)
             // keep their own look — they're the way up.
@@ -951,7 +970,7 @@ void renderMap() {
                     if (!leftCloaked) {
                         bool bodyIsSel = (leftEnt->id == g.selectedId);
                         if (!bodyIsSel) for (int sid : g.selectedIds) if (sid == leftEnt->id) { bodyIsSel = true; break; }
-                        int bcp = ownerColorPair(leftEnt->owner, night);
+                        int bcp = ownerColorPair(leftEnt->owner, night && !litMask[my][mx]);
                         char sc;
                         if      (leftEnt->type == E_CATAPULT)  sc = 'c';
                         else if (leftEnt->type == E_RAM)       sc = 'r';
@@ -1016,7 +1035,7 @@ void renderMap() {
                         else                           cp = CP_DEER;
                     }
                 } else {
-                    cp = ownerColorPair(ent->owner, night);
+                    cp = ownerColorPair(ent->owner, night && !litMask[my][mx]);
                 }
                 // All boats get a wood-brown deck regardless of display mode.
                 // Glyph colour is per-player so each side's fleet is identifiable.

@@ -56,9 +56,10 @@ static const char* ENTITY_EMOJI[] = {
     u8"🐺",     // E_WOLF
     u8"🐑",     // E_SHEEP
     u8"🐗",     // E_BOAR
+    u8"🐻",     // E_BEAR
 };
-static_assert(sizeof(ENTITY_EMOJI)/sizeof(ENTITY_EMOJI[0]) == (size_t)E_BOAR + 1,
-    "ENTITY_EMOJI must have an entry for every EntityType (0..E_BOAR)");
+static_assert(sizeof(ENTITY_EMOJI)/sizeof(ENTITY_EMOJI[0]) == (size_t)E_BEAR + 1,
+    "ENTITY_EMOJI must have an entry for every EntityType (0..E_BEAR)");
 
 const char* getCharEmoji(char ch) {
     if (displayMode == DM_ASCII) {

@@ -802,6 +802,17 @@ void tickAnimals() {
             }
         }
 
+        // Bears: solitary forest predators. Unlike wolves they have no fear of
+        // settlements and a longer reach — anything that strays into the deep
+        // woods gets mauled. They don't roam far from the trees (see wander).
+        if (e.type == E_BEAR && (e.state==S_IDLE || (e.state==S_MOVING && e.path.empty()))) {
+            for (auto& o : g.entities) {
+                if (!o.alive || o.owner==OWNER_NATURE || !isUnit(o.type)) continue;
+                if (o.state == S_GARRISONED) continue;
+                if (dist(e.x, e.y, o.x, o.y) <= 6) { orderAttack(e, o.id); break; }
+            }
+        }
+
         // Wolf dens breed: while fewer than 2 wolves prowl within 10 tiles,
         // the den whelps a new one every ~600 ticks. Burn it out to stop them.
         if (e.type == E_WOLF_DEN && g.tick % 600 == 0) {
@@ -819,12 +830,19 @@ void tickAnimals() {
             }
         }
 
-        // Random wander when idle (animals only — dens stay put)
+        // Random wander when idle (animals only — dens stay put). Wolves and
+        // bears keep to the trees: they only drift to a forest tile, so they
+        // live in the woods rather than spilling out onto open ground.
         if (isUnit(e.type) && e.state == S_IDLE && atick % (35 + (e.id%25)) == 0) {
             int wx = e.x + (simRand()%9)-4, wy = e.y + (simRand()%9)-4;
             wx = std::max(1, std::min(wx, MAP_W-2));
             wy = std::max(1, std::min(wy, MAP_H-2));
-            if (isPassable(wx, wy)) orderMove(e, wx, wy);
+            bool ok = isPassable(wx, wy);
+            if (e.type==E_WOLF || e.type==E_BEAR) {
+                Terrain wt = g.map[wy][wx].terrain;
+                ok = ok && (wt==T_FOREST||wt==T_PINE||wt==T_PALM||wt==T_DEAD_TREE);
+            }
+            if (ok) orderMove(e, wx, wy);
         }
     }
 }
