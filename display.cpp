@@ -4,6 +4,7 @@
 #include <cstdint>
 
 DisplayMode displayMode = DM_ASCII;
+GameSpeed   gameSpeed   = GS_NORMAL;
 
 // Type-level default glyphs. render.cpp overrides peasants on the map with
 // state/owner-specific standing/walking/kneeling/working people.

@@ -51,10 +51,12 @@ static int showSplash(unsigned long long& outSeed) {
         "Highlands","Deep Woods","River","Random"
     };
     const int RANDOM_IDX = 9;
-    static const char* diffNames[] = { "Easy", "Normal", "Hard" };
+    static const char* diffNames[]  = { "Easy", "Normal", "Hard" };
+    static const char* speedNames[] = { "Slow", "Normal", "Fast" };
     int numAIs = 1;
     int biomeIdx = RANDOM_IDX; // random
     int diffIdx = 1;  // Normal
+    int speedIdx = GS_NORMAL;  // wall-clock pace; doesn't affect the sim
     unsigned long long pickedSeed = 0; // non-zero once a specific map is chosen in the picker
 
     static const char* banner[] = {
@@ -121,6 +123,7 @@ static int showSplash(unsigned long long& outSeed) {
         sel(row+3, col+2, "Difficulty", diffNames[diffIdx],   "E/N/H");
         sel(row+4, col+2, "Map",        biomeNames[biomeIdx], "T/D/S/W/F/C/M/0");
         sel(row+5, col+2, "Display",    displayMode == DM_EMOJI ? "Emoji" : "ASCII", "4/5");
+        sel(row+6, col+2, "Speed",      speedNames[speedIdx], "G");
         attron(COLOR_PAIR(CP_UI_DIM));
         if (pickedSeed)
             pr(row+7, col+2, "Battlefield chosen — previewed seed locked.  [V] re-pick");
@@ -178,8 +181,10 @@ static int showSplash(unsigned long long& outSeed) {
         else if (ch=='h'||ch=='H') diffIdx=2;
         else if (ch=='4') displayMode = DM_ASCII;
         else if (ch=='5') displayMode = DM_EMOJI;
+        else if (ch=='g'||ch=='G') speedIdx = (speedIdx + 1) % 3;
     }
     g.difficulty = diffIdx;
+    gameSpeed = (GameSpeed)speedIdx;
     // Menu indices 0-8 line up 1:1 with the Biome enum; RANDOM_IDX means mixed.
     g.biomeChoice = (biomeIdx == RANDOM_IDX) ? -1 : biomeIdx;
     outSeed = pickedSeed;   // 0 = let initGame roll a fresh seed for this type
@@ -626,7 +631,7 @@ static void runMatch() {
     using Clock = std::chrono::steady_clock;
     using Ms    = std::chrono::milliseconds;
 
-    auto nextTick = Clock::now() + Ms(TICK_MS);
+    auto nextTick = Clock::now() + Ms(tickPeriodMs());
     int lastCx = g.cursorX, lastCy = g.cursorY;
     bool lastDrag = g.dragging;
 
@@ -646,7 +651,7 @@ static void runMatch() {
         // Tick and render at fixed rate regardless of input volume
         bool ticked = false;
         if (Clock::now() >= nextTick) {
-            nextTick += Ms(TICK_MS);
+            nextTick += Ms(tickPeriodMs());
             if (g.mode != M_PAUSED && g.mode != M_GAME_OVER && g.mode != M_HELP && g.mode != M_SAVELOAD) simTick();
             render();
             ticked = true;

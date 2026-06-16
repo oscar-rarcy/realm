@@ -1258,7 +1258,7 @@ void tickEntity(Entity& e) {
                 // Winded attackers hit softer (stamina also bites in unitAtk).
                 dmg = shieldBuilding(*t, dmg);
                 t->hp -= dmg;
-                e.atkCd = STATS[e.type].atkSpeed;
+                e.atkCd = STATS[e.type].atkSpeed * COMBAT_PACE / 100;
                 e.chargeSteps = 0;   // the charge (if any) is spent on this blow
                 if (hasMorale(e.type)) e.stamina = std::max(0, e.stamina - 2);
                 e.alertTicks = 12; t->alertTicks = 12;
@@ -1270,7 +1270,7 @@ void tickEntity(Entity& e) {
                 }
                 // Charge knockback + stun: shove the target back a free tile.
                 if (charged) {
-                    t->atkCd = std::max(t->atkCd, STATS[t->type].atkSpeed);
+                    t->atkCd = std::max(t->atkCd, STATS[t->type].atkSpeed * COMBAT_PACE / 100);
                     int kx = t->x + ((t->x>e.x)-(t->x<e.x));
                     int ky = t->y + ((t->y>e.y)-(t->y<e.y));
                     if (inBounds(kx,ky) && isPassable(kx,ky) && !entityAt(kx,ky)

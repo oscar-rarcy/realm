@@ -80,10 +80,53 @@ void applyCommand(const Command& c) {
 
     case CMD_GATHER: {
         if (!inBounds(c.x, c.y)) return;
-        for (int id : cmdUnits(c)) {
+        std::vector<int> ids = cmdUnits(c);
+        // Same-kind classifier so a mass-assign can fan the group out to
+        // neighbouring resource tiles (AoE2-style) instead of stacking on one.
+        auto resClass = [](Terrain t) -> int {
+            if (t == T_GOLD)                                                return 0;
+            if (t==T_FOREST||t==T_PINE||t==T_PALM||t==T_DEAD_TREE)          return 1;
+            if (t == T_FISH)                                               return 2;
+            if (t == T_BERRY)                                              return 3;
+            return -1;
+        };
+        int cls = resClass(g.map[c.y][c.x].terrain);
+        auto gatherAllAtTarget = [&]() {
+            for (int id : ids) { Entity& u = *findEntity(id); clearQueued(u); orderGather(u, c.x, c.y); }
+        };
+        if (ids.size() <= 1 || cls < 0) { gatherAllAtTarget(); break; }
+
+        // Collect same-class resource tiles around the click, nearest-first.
+        int owner = findEntity(ids[0])->owner;
+        struct Cand { int x, y, d; };
+        std::vector<Cand> cand;
+        const int R = 7;
+        for (int dy = -R; dy <= R; dy++) for (int dx = -R; dx <= R; dx++) {
+            int nx = c.x+dx, ny = c.y+dy;
+            if (!inBounds(nx,ny)) continue;
+            if (owner >= 0 && owner < OWNER_NATURE && !g.map[ny][nx].explored[owner]) continue;
+            if (g.map[ny][nx].resources <= 0) continue;
+            if (resClass(g.map[ny][nx].terrain) != cls) continue;
+            cand.push_back({nx, ny, std::abs(dx) + std::abs(dy)});
+        }
+        if (cand.empty()) { gatherAllAtTarget(); break; }
+        std::sort(cand.begin(), cand.end(), [](const Cand& a, const Cand& b) {
+            return a.d != b.d ? a.d < b.d : (a.y != b.y ? a.y < b.y : a.x < b.x);
+        });
+        // Fill nearest tiles first up to a soft cap before spilling to farther
+        // ones — keeps the group clustered around the click but not stacked.
+        std::vector<int> load(cand.size(), 0);
+        int cap = 1;
+        for (int id : ids) {
             Entity& u = *findEntity(id);
+            int pick = -1;
+            while (pick < 0) {
+                for (size_t k = 0; k < cand.size(); k++) if (load[k] < cap) { pick = (int)k; break; }
+                if (pick < 0) cap++;
+            }
+            load[pick]++;
             clearQueued(u);
-            orderGather(u, c.x, c.y);
+            orderGather(u, cand[pick].x, cand[pick].y);
         }
         break;
     }

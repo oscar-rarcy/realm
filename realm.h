@@ -26,7 +26,8 @@
 // ============================================================
 const int MAP_W        = 180;
 const int MAP_H        = 110;
-const int TICK_MS      = 80;
+const int TICK_MS      = 80;   // base sim period; the splash speed knob scales it
+const int COMBAT_PACE  = 150;  // attack-cooldown scale (%). >100 = slower, more readable fights
 const int FOG_RADIUS   = 7;
 const int GATHER_RATE  = 8;
 const int GATHER_TICKS = 15;
