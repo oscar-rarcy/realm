@@ -64,14 +64,39 @@ fix_refs "$EXE"
 install_name_tool -add_rpath "@executable_path/../Frameworks" "$EXE" 2>/dev/null || true
 
 # --- Optional app icon -------------------------------------------------------
-# To set the icon, drop ONE of these in the repo root and re-run:
-#   * icon.png    — a square PNG (1024x1024 ideal); it's converted to .icns
+# To set the icon, drop ONE of these in the repo root and re-run (checked in
+# this order):
+#   * *.icon      — an Icon Composer document; compiled with actool so its
+#                   gradient/glass/shadow effects are baked in (and a layered
+#                   Assets.car is emitted for Liquid Glass on macOS 26+).
 #   * Realm.icns  — a ready-made macOS icon, used as-is
-# With neither present the app keeps the generic icon.
-ICON_SET=0
-if [ -f Realm.icns ]; then
-  cp Realm.icns "$APP/Contents/Resources/Realm.icns"; ICON_SET=1
-elif [ -f icon.png ]; then
+#   * icon.png    — a square PNG (1024x1024 ideal); it's converted to .icns
+# With none present the app keeps the generic icon.
+ICON_SET=0          # 1 once an icon is installed
+ICON_NAME=""        # basename used for CFBundleIconFile / CFBundleIconName
+ICON_HAS_CAR=0      # 1 if an Assets.car was produced (needs CFBundleIconName)
+if ls *.icon >/dev/null 2>&1; then
+  SRC_ICON="$(ls -1d *.icon | head -1)"
+  ICON_NAME="$(basename "${SRC_ICON%.icon}")"
+  echo "==> Compiling $SRC_ICON with actool ..."
+  ICONOUT="$(mktemp -d)"
+  if xcrun actool "$SRC_ICON" --compile "$ICONOUT" --platform macosx \
+       --minimum-deployment-target 11.0 --app-icon "$ICON_NAME" \
+       --output-partial-info-plist "$ICONOUT/icon.plist" >/dev/null 2>&1 \
+     && [ -f "$ICONOUT/$ICON_NAME.icns" ]; then
+    cp "$ICONOUT/$ICON_NAME.icns" "$APP/Contents/Resources/$ICON_NAME.icns"
+    if [ -f "$ICONOUT/Assets.car" ]; then
+      cp "$ICONOUT/Assets.car" "$APP/Contents/Resources/Assets.car"; ICON_HAS_CAR=1
+    fi
+    ICON_SET=1
+  else
+    echo "   actool failed; falling back to Realm.icns / icon.png if present."
+    ICON_NAME=""
+  fi
+fi
+if [ "$ICON_SET" = 0 ] && [ -f Realm.icns ]; then
+  cp Realm.icns "$APP/Contents/Resources/Realm.icns"; ICON_NAME="Realm"; ICON_SET=1
+elif [ "$ICON_SET" = 0 ] && [ -f icon.png ]; then
   echo "==> Building Realm.icns from icon.png ..."
   ICONSET="$(mktemp -d)/Realm.iconset"; mkdir -p "$ICONSET"
   for sz in 16 32 128 256 512; do
@@ -79,7 +104,7 @@ elif [ -f icon.png ]; then
     sips -z $((sz*2)) $((sz*2)) icon.png --out "$ICONSET/icon_${sz}x${sz}@2x.png" >/dev/null
   done
   iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/Realm.icns"
-  ICON_SET=1
+  ICON_NAME="Realm"; ICON_SET=1
 fi
 
 cat > "$APP/Contents/Info.plist" <<'PLIST'
@@ -101,11 +126,18 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 PLIST
 
 # Point the bundle at the icon (only if one was produced). Signing happens
-# after this, so the icon is covered by the signature.
+# after this, so the icon is covered by the signature. CFBundleIconFile names
+# the .icns; CFBundleIconName points at the Assets.car icon (preferred by the
+# system when present).
 if [ "$ICON_SET" = 1 ]; then
-  sed -i '' 's#<key>CFBundleExecutable</key><string>Realm</string>#&\
-  <key>CFBundleIconFile</key><string>Realm</string>#' "$APP/Contents/Info.plist"
-  echo "==> App icon set from $( [ -f Realm.icns ] && echo Realm.icns || echo icon.png )."
+  ICON_KEYS="  <key>CFBundleIconFile</key><string>$ICON_NAME</string>"
+  if [ "$ICON_HAS_CAR" = 1 ]; then
+    ICON_KEYS="$ICON_KEYS\\
+  <key>CFBundleIconName</key><string>$ICON_NAME</string>"
+  fi
+  sed -i '' "s#<key>CFBundleExecutable</key><string>Realm</string>#&\\
+$ICON_KEYS#" "$APP/Contents/Info.plist"
+  echo "==> App icon set ($ICON_NAME$( [ "$ICON_HAS_CAR" = 1 ] && echo ", with Assets.car" ))."
 fi
 
 # Ad-hoc sign the dylibs, then the whole bundle. This lets a friend right-click
