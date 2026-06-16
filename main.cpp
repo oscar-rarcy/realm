@@ -45,16 +45,15 @@ static void forceUtf8Locale() {
 static bool showMapPreview(unsigned long long& outSeed);   // visual battlefield picker, below
 
 static int showSplash(unsigned long long& outSeed) {
-    // Index order matches the Biome enum (0-8); the trailing entry is Random.
-    static const char* biomeNames[] = {
-        "Temperate","Desert","Snow","Swamp","Forest","Ocean",
-        "Highlands","Deep Woods","River","Random"
-    };
-    const int RANDOM_IDX = 9;
+    // Two independent axes: climate (0-4 + Random) and layout (0-4 + Random).
+    static const char* climateNames[] = { "Temperate","Desert","Snow","Swamp","Forest","Random" };
+    static const char* layoutNames[]  = { "Continental","Highlands","Deep Woods","River","Islands","Random" };
+    const int CLIM_RANDOM = 5, LAYOUT_RANDOM = 5;
     static const char* diffNames[]  = { "Easy", "Normal", "Hard" };
     static const char* speedNames[] = { "Slow", "Normal", "Fast" };
     int numAIs = 1;
-    int biomeIdx = RANDOM_IDX; // random
+    int climIdx   = CLIM_RANDOM;    // mixed climate bands
+    int layoutIdx = LAYOUT_RANDOM;  // random topology
     int diffIdx = 1;  // Normal
     int speedIdx = GS_NORMAL;  // wall-clock pace; doesn't affect the sim
     unsigned long long pickedSeed = 0; // non-zero once a specific map is chosen in the picker
@@ -109,7 +108,7 @@ static int showSplash(unsigned long long& outSeed) {
             mvaddstr(r+h-1, c+w-1, u8"┘");
         };
 
-        int bw = 38, bh = 9;
+        int bw = 38, bh = 10;
         box(row, col,        bw, bh, "THE WAR");
         box(row, col + bw+2, bw, bh, "COMMANDS");
 
@@ -119,16 +118,17 @@ static int showSplash(unsigned long long& outSeed) {
             attron(COLOR_PAIR(CP_UI_DIM)); pr(r, c+22, "%s", keys); attroff(COLOR_PAIR(CP_UI_DIM));
         };
         char opp[8]; snprintf(opp, sizeof opp, "%d", numAIs);
-        sel(row+2, col+2, "Opponents",  opp,                  "1/2/3");
-        sel(row+3, col+2, "Difficulty", diffNames[diffIdx],   "E/N/H");
-        sel(row+4, col+2, "Map",        biomeNames[biomeIdx], "T/D/S/W/F/C/M/0");
-        sel(row+5, col+2, "Display",    displayMode == DM_EMOJI ? "Emoji" : "ASCII", "4/5");
-        sel(row+6, col+2, "Speed",      speedNames[speedIdx], "G");
+        sel(row+2, col+2, "Opponents",  opp,                    "1/2/3");
+        sel(row+3, col+2, "Difficulty", diffNames[diffIdx],     "E/N/H");
+        sel(row+4, col+2, "Climate",    climateNames[climIdx],  "T/D/S/W/F/0");
+        sel(row+5, col+2, "Layout",     layoutNames[layoutIdx], "L");
+        sel(row+6, col+2, "Speed",      speedNames[speedIdx],   "G");
+        sel(row+7, col+2, "Display",    displayMode == DM_EMOJI ? "Emoji" : "ASCII", "4/5");
         attron(COLOR_PAIR(CP_UI_DIM));
         if (pickedSeed)
-            pr(row+7, col+2, "Battlefield chosen — previewed seed locked.  [V] re-pick");
+            pr(row+8, col+2, "Battlefield chosen — seed locked.   [V] re-pick");
         else
-            pr(row+7, col+2, "M cycles layouts   [V] browse battlefields   0=random");
+            pr(row+8, col+2, "[L] cycles layout   [V] browse battlefields");
         attroff(COLOR_PAIR(CP_UI_DIM));
 
         int c2 = col + bw + 4;
@@ -159,22 +159,25 @@ static int showSplash(unsigned long long& outSeed) {
         if (ch=='1') numAIs=1;
         else if (ch=='2') numAIs=2;
         else if (ch=='3') numAIs=3;
-        // Changing the map type discards any specific previewed seed.
-        else if (ch=='0') { biomeIdx=RANDOM_IDX; pickedSeed=0; }
-        else if (ch=='t'||ch=='T') { biomeIdx=0; pickedSeed=0; }
-        else if (ch=='d'||ch=='D') { biomeIdx=1; pickedSeed=0; }
-        else if (ch=='s'||ch=='S') { biomeIdx=2; pickedSeed=0; }
-        else if (ch=='w'||ch=='W') { biomeIdx=3; pickedSeed=0; }
-        else if (ch=='f'||ch=='F') { biomeIdx=4; pickedSeed=0; }
-        else if (ch=='c'||ch=='C') { biomeIdx=5; pickedSeed=0; }
-        // M cycles through the three layout maps (enum indices 6-8).
-        else if (ch=='m'||ch=='M') { biomeIdx = (biomeIdx>=6 && biomeIdx<=8) ? (6 + (biomeIdx-6+1)%3) : 6; pickedSeed=0; }
+        // Changing climate or layout discards any specific previewed seed.
+        else if (ch=='0') { climIdx=CLIM_RANDOM; pickedSeed=0; }
+        else if (ch=='t'||ch=='T') { climIdx=0; pickedSeed=0; }
+        else if (ch=='d'||ch=='D') { climIdx=1; pickedSeed=0; }
+        else if (ch=='s'||ch=='S') { climIdx=2; pickedSeed=0; }
+        else if (ch=='w'||ch=='W') { climIdx=3; pickedSeed=0; }
+        else if (ch=='f'||ch=='F') { climIdx=4; pickedSeed=0; }
+        else if (ch=='l'||ch=='L') { layoutIdx=(layoutIdx+1)%(LAYOUT_RANDOM+1); pickedSeed=0; }
         // V opens the visual battlefield picker; committing a thumbnail there
-        // locks its exact type + seed for [Enter].
+        // locks its exact climate + layout + seed for [Enter].
         else if (ch=='v'||ch=='V') {
-            g.biomeChoice = (biomeIdx == RANDOM_IDX) ? -1 : biomeIdx;  // open the grid on the current type
+            g.biomeChoice  = (climIdx   == CLIM_RANDOM)   ? -1 : climIdx;
+            g.layoutChoice = (layoutIdx == LAYOUT_RANDOM) ? -1 : layoutIdx;
             unsigned long long s = 0;
-            if (showMapPreview(s)) { pickedSeed = s; biomeIdx = g.biomeChoice; }
+            if (showMapPreview(s)) {
+                pickedSeed = s;
+                climIdx   = (g.biomeChoice  < 0) ? CLIM_RANDOM   : g.biomeChoice;
+                layoutIdx = (g.layoutChoice < 0) ? LAYOUT_RANDOM : g.layoutChoice;
+            }
         }
         else if (ch=='e'||ch=='E') diffIdx=0;
         else if (ch=='n'||ch=='N') diffIdx=1;
@@ -185,9 +188,9 @@ static int showSplash(unsigned long long& outSeed) {
     }
     g.difficulty = diffIdx;
     gameSpeed = (GameSpeed)speedIdx;
-    // Menu indices 0-8 line up 1:1 with the Biome enum; RANDOM_IDX means mixed.
-    g.biomeChoice = (biomeIdx == RANDOM_IDX) ? -1 : biomeIdx;
-    outSeed = pickedSeed;   // 0 = let initGame roll a fresh seed for this type
+    g.biomeChoice  = (climIdx   == CLIM_RANDOM)   ? -1 : climIdx;     // climate (or mixed)
+    g.layoutChoice = (layoutIdx == LAYOUT_RANDOM) ? -1 : layoutIdx;   // layout  (or random)
+    outSeed = pickedSeed;   // 0 = let initGame roll a fresh seed
     return numAIs;
 }
 
@@ -215,8 +218,9 @@ static void previewGlyph(Terrain t, char& ch, int& cp) {
 }
 
 // AoE2-style battlefield picker: a grid of real generated minimaps. Browse
-// seeds, cycle the map type, reroll. The exact seed of the chosen thumbnail is
-// handed back so the map you previewed is the map you play. Sets g.biomeChoice.
+// seeds, cycle layout ([ ]) and climate (< >), reroll (R). The exact seed of
+// the chosen thumbnail is handed back so the map you preview is the map you
+// play; g.layoutChoice and g.biomeChoice are set to the committed combo.
 // Returns false if the player backs out to the splash screen.
 static bool showMapPreview(unsigned long long& outSeed) {
     int maxY0, maxX0; getmaxyx(stdscr, maxY0, maxX0);
@@ -224,12 +228,13 @@ static bool showMapPreview(unsigned long long& outSeed) {
     const int TW = std::max(16, std::min(30, (maxX0 - (COLS+1)*2)/COLS));
     const int TH = std::max(9,  std::min(14, (maxY0 - 9)/ROWS - 2));
 
-    static const char* typeName[] = {"Temperate","Desert","Snow","Swamp","Forest",
-                                     "Ocean","Highlands","Deep Woods","River"};
-    struct Cand { unsigned long long seed; int type; std::vector<char> ch; std::vector<int> cp; };
+    static const char* layName[]  = {"Continental","Highlands","Deep Woods","River","Islands"};
+    static const char* climName[] = {"Temperate","Desert","Snow","Swamp","Forest"};
+    struct Cand { unsigned long long seed; int lay, clim; std::vector<char> ch; std::vector<int> cp; };
     std::vector<Cand> cand(N);
-    int typeChoice = g.biomeChoice;                 // -1 = random/mixed
-    int savedChoice = g.biomeChoice;                // restored if the player backs out
+    int layFilter  = g.layoutChoice;                 // -1 = random
+    int climFilter = g.biomeChoice;                  // -1 = mixed
+    int savedLay = g.layoutChoice, savedClim = g.biomeChoice;   // restored on back-out
     unsigned long long base = (unsigned long long)time(nullptr) * 2654435761ull + 1;
     int sel = 0;
 
@@ -237,14 +242,12 @@ static bool showMapPreview(unsigned long long& outSeed) {
         for (int i = 0; i < N; i++) {
             unsigned long long s = base + (unsigned long long)(i+1)*0x9E3779B97F4A7C15ull;
             if (s == 0) s = 1;
-            int ty = typeChoice;
-            if (ty < 0) {                            // mixed: one concrete type per cell
-                static const int pool[] = {B_TEMPERATE,B_DESERT,B_SNOW,B_SWAMP,B_FOREST,
-                                           B_OCEAN,B_HIGHLANDS,B_DEEPWOODS,B_RIVER};
-                ty = pool[(unsigned)(s>>17) % (sizeof(pool)/sizeof(pool[0]))];
-            }
-            g.biomeChoice = ty; seedSimRng(s); generateMap();
-            cand[i].seed = s; cand[i].type = ty;
+            int lay  = (layFilter  < 0) ? (int)((s>>17) % LAYOUT_COUNT) : layFilter;   // resolve random
+            int clim = climFilter;                                                      // -1 stays mixed
+            if (clim < 0 && (s & 8)) clim = (int)((s>>21) % 5);   // mixed: some cells force a climate for variety
+            g.layoutChoice = lay; g.biomeChoice = clim;
+            seedSimRng(s); generateMap();
+            cand[i].seed = s; cand[i].lay = lay; cand[i].clim = clim;
             cand[i].ch.assign(TW*TH, '.'); cand[i].cp.assign(TW*TH, CP_GRASS);
             for (int yy = 0; yy < TH; yy++) for (int xx = 0; xx < TW; xx++) {
                 char c; int cp; previewGlyph(g.map[yy*MAP_H/TH][xx*MAP_W/TW].terrain, c, cp);
@@ -264,7 +267,7 @@ static bool showMapPreview(unsigned long long& outSeed) {
         mvprintw(oy-3, ox, "CHOOSE YOUR BATTLEFIELD");
         attroff(A_TITLE|COLOR_PAIR(CP_UI_ACCENT));
         attron(COLOR_PAIR(CP_UI_DIM));
-        mvprintw(oy-2, ox, "Arrows/HJKL move   [ ] type   R reroll   Enter begin   Q back");
+        mvprintw(oy-2, ox, "HJKL move   [ ] layout   < > climate   R reroll   Enter begin   Q back");
         attroff(COLOR_PAIR(CP_UI_DIM));
         for (int i = 0; i < N; i++) {
             int cx = ox + (i%COLS)*(TW+2) + 1, cy = oy + (i/COLS)*(TH+2) + 1;
@@ -279,24 +282,29 @@ static bool showMapPreview(unsigned long long& outSeed) {
                 attron(COLOR_PAIR(cp)); mvaddch(cy+r, cx+c, cand[i].ch[r*TW+c]); attroff(COLOR_PAIR(cp));
             }
             attron(isSel ? (COLOR_PAIR(CP_UI_HIGH)|A_BOLD) : COLOR_PAIR(CP_UI_TEXT));
-            mvprintw(cy+TH, cx+1, " %s ", typeName[cand[i].type]);
+            mvprintw(cy+TH, cx+1, " %s / %s ", layName[cand[i].lay],
+                     cand[i].clim < 0 ? "Mixed" : climName[cand[i].clim]);
             attroff(isSel ? (COLOR_PAIR(CP_UI_HIGH)|A_BOLD) : COLOR_PAIR(CP_UI_TEXT));
         }
         attron(COLOR_PAIR(CP_UI_DIM));
-        mvprintw(oy + gridH + 1, ox, "Filter: %s", typeChoice < 0 ? "Random (mixed)" : typeName[typeChoice]);
+        mvprintw(oy + gridH + 1, ox, "Filter: %s layout, %s climate",
+                 layFilter < 0 ? "Random" : layName[layFilter],
+                 climFilter < 0 ? "Mixed" : climName[climFilter]);
         attroff(COLOR_PAIR(CP_UI_DIM));
         refresh();
 
         int c = getch();
-        if (c=='q'||c=='Q')                       { g.biomeChoice = savedChoice; return false; }
-        else if (c=='\n'||c==KEY_ENTER||c=='\r')  { g.biomeChoice = cand[sel].type; outSeed = cand[sel].seed; return true; }
+        if (c=='q'||c=='Q')                       { g.layoutChoice = savedLay; g.biomeChoice = savedClim; return false; }
+        else if (c=='\n'||c==KEY_ENTER||c=='\r')  { g.layoutChoice = cand[sel].lay; g.biomeChoice = cand[sel].clim; outSeed = cand[sel].seed; return true; }
         else if (c==KEY_RIGHT||c=='l'||c=='L')    sel = (sel+1)%N;
         else if (c==KEY_LEFT ||c=='h'||c=='H')    sel = (sel+N-1)%N;
         else if (c==KEY_DOWN ||c=='j'||c=='J')    sel = (sel+COLS)%N;
         else if (c==KEY_UP   ||c=='k'||c=='K')    sel = (sel+N-COLS)%N;
         else if (c=='r'||c=='R')                  { base = base*6364136223846793005ull + 1442695040888963407ull; regen(); }
-        else if (c==']')                          { typeChoice = (typeChoice >= B_RIVER) ? -1 : typeChoice+1; regen(); }
-        else if (c=='[')                          { typeChoice = (typeChoice < 0) ? B_RIVER : typeChoice-1; regen(); }
+        else if (c==']')                          { layFilter  = (layFilter  >= LAYOUT_COUNT-1) ? -1 : layFilter+1;  regen(); }
+        else if (c=='[')                          { layFilter  = (layFilter  < 0) ? LAYOUT_COUNT-1 : layFilter-1;    regen(); }
+        else if (c=='.'||c=='>')                  { climFilter = (climFilter >= B_FOREST)      ? -1 : climFilter+1; regen(); }
+        else if (c==','||c=='<')                  { climFilter = (climFilter < 0) ? B_FOREST   : climFilter-1;      regen(); }
     }
 }
 
@@ -306,6 +314,11 @@ void initGame(int numAIs, unsigned long long seed) {
     if (seed == 0) seed = (unsigned long long)time(nullptr) * 2654435761ull + 1;
     g.simSeed = seed;
     seedSimRng(seed);
+    // Resolve a random layout to a concrete one (deterministic from the seed,
+    // without touching the sim RNG) so the AI and replay header see the real
+    // topology. Climate may stay -1 (genuinely mixed bands).
+    if (g.layoutChoice < 0 || g.layoutChoice >= LAYOUT_COUNT)
+        g.layoutChoice = (int)(seed % LAYOUT_COUNT);
     g.pendingCmds.clear();
     // Critical: wipe every piece of per-match state so a new game can't see
     // entities, projectiles, IDs, or cached fog from the previous match.
@@ -666,9 +679,10 @@ static void runMatch() {
 // Headless determinism check: run N ticks from a fixed seed with no human
 // commands and print the final state hash. Run it twice; identical hashes
 // mean the sim is reproducible — the property lockstep multiplayer needs.
-static int runVerify(unsigned long long seed, int ticks, int numAIs, int biome) {
-    g.biomeChoice = biome;   // fixed biome + difficulty: no menu dependence
-    g.difficulty  = 1;
+static int runVerify(unsigned long long seed, int ticks, int numAIs, int biome, int layout) {
+    g.biomeChoice  = biome;   // climate; -1 = mixed
+    g.layoutChoice = layout;  // -1 = random (resolved in initGame)
+    g.difficulty   = 1;
     initGame(numAIs, seed);
     for (int i = 0; i < ticks; i++) simTick();
     printf("seed=%llu ticks=%d ais=%d hash=%016llx\n",
@@ -684,21 +698,23 @@ int main(int argc, char** argv) {
         unsigned long long seed = (argc >= 3) ? strtoull(argv[2], nullptr, 10) : 12345;
         int ticks  = (argc >= 4) ? atoi(argv[3]) : 5000;
         int numAIs = (argc >= 5) ? atoi(argv[4]) : 3;
-        int biome  = (argc >= 6) ? atoi(argv[5]) : 0;   // optional: Biome enum / -1 random
-        return runVerify(seed, std::max(1, ticks), std::max(1, std::min(3, numAIs)), biome);
+        int biome  = (argc >= 6) ? atoi(argv[5]) : 0;   // climate: Biome 0-4 / -1 mixed
+        int layout = (argc >= 7) ? atoi(argv[6]) : 0;   // layout: Layout 0-4 / -1 random
+        return runVerify(seed, std::max(1, ticks), std::max(1, std::min(3, numAIs)), biome, layout);
     }
 
     // --verify-replay: headless playback of a recorded match. Run it twice
     // and compare hashes — a recorded game that replays identically is the
     // end-to-end proof the funnel + sim are deterministic.
     if (argc >= 3 && strcmp(argv[1], "--verify-replay") == 0) {
-        unsigned long long seed; int ais, biome, diffc;
-        if (!replayLoadFile(argv[2], seed, ais, biome, diffc)) {
+        unsigned long long seed; int ais, biome, layout, diffc;
+        if (!replayLoadFile(argv[2], seed, ais, biome, layout, diffc)) {
             fprintf(stderr, "Can't read replay '%s'.\n", argv[2]);
             return 1;
         }
-        g.biomeChoice = biome;
-        g.difficulty  = diffc;
+        g.biomeChoice  = biome;
+        g.layoutChoice = layout;
+        g.difficulty   = diffc;
         initGame(ais, seed);
         int ticks = (argc >= 4) ? std::max(1, atoi(argv[3])) : 5000;
         for (int i = 0; i < ticks; i++) simTick();
@@ -709,9 +725,9 @@ int main(int argc, char** argv) {
     // --replay: load header before touching the screen so a bad file can
     // fail to stderr instead of into a half-initialised terminal.
     bool replay = false;
-    unsigned long long repSeed = 0; int repAIs = 1, repBiome = -1, repDiff = 1;
+    unsigned long long repSeed = 0; int repAIs = 1, repBiome = -1, repLayout = -1, repDiff = 1;
     if (argc >= 3 && strcmp(argv[1], "--replay") == 0) {
-        if (!replayLoadFile(argv[2], repSeed, repAIs, repBiome, repDiff)) {
+        if (!replayLoadFile(argv[2], repSeed, repAIs, repBiome, repLayout, repDiff)) {
             fprintf(stderr, "Can't read replay '%s' (missing, wrong version, or corrupt).\n", argv[2]);
             return 1;
         }
@@ -744,8 +760,9 @@ int main(int argc, char** argv) {
     initColors();
 
     if (replay) {
-        g.biomeChoice = repBiome;
-        g.difficulty  = repDiff;
+        g.biomeChoice  = repBiome;
+        g.layoutChoice = repLayout;
+        g.difficulty   = repDiff;
         initGame(repAIs, repSeed);
         setStatus("REPLAY — commands come from the recording. Camera/selection are yours; [Q][Q] to quit.");
         runMatch();

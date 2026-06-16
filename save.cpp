@@ -14,7 +14,7 @@
 //   - Skips garbage corrupt files via fread return-value checks
 
 static constexpr char MAGIC[4] = {'R','L','M','2'};
-static constexpr int  SAVE_VERSION = 8;  // v8: combat-feel (morale/stamina/rout/charge/kills/prisoners/entrench)
+static constexpr int  SAVE_VERSION = 9;  // v9: split map layout vs climate (g.layoutChoice)
 static constexpr int  MAX_ENTITIES = 100000;
 static constexpr int  MAX_VEC_LEN  = 50000;
 
@@ -84,7 +84,7 @@ bool saveGame(const char* path) {
     wr(f, g.prevSeason); wr(f, g.prevTimePhase);
     wr(f, g.attackNotifyCd);
     wr(f, g.weather); wr(f, g.weatherTimer);
-    wr(f, g.biomeChoice);
+    wr(f, g.biomeChoice); wr(f, g.layoutChoice);
     wr(f, g.winner); wr(f, g.aiTimer); wr(f, g.farmTimer);
     wr(f, g.rngState);
     wr(f, g.difficulty); wr(f, g.winterSeverity);
@@ -160,7 +160,7 @@ bool loadGame(const char* path) {
     rd(f, g.prevSeason); rd(f, g.prevTimePhase);
     rd(f, g.attackNotifyCd);
     rd(f, g.weather); rd(f, g.weatherTimer);
-    rd(f, g.biomeChoice);
+    rd(f, g.biomeChoice); rd(f, g.layoutChoice);
     rd(f, g.winner); rd(f, g.aiTimer); rd(f, g.farmTimer);
     rd(f, g.rngState);
     rd(f, g.difficulty); rd(f, g.winterSeverity);

@@ -519,7 +519,7 @@ static void tickAIForOwner(int o) {
         if (aiCount(o,E_FISHING_BOAT) < 3 && p.gold >= 80 && p.wood >= 50) { aiTrain(o, dk, E_FISHING_BOAT); continue; }
         if (aiCount(o,E_WARSHIP) < 2 && p.gold >= 150 && p.wood >= 80 && p.food >= 20) { aiTrain(o, dk, E_WARSHIP); continue; }
         // Coastal maps: build a transport for amphibious assault on enemies on other islands.
-        if (g.biomeChoice == B_OCEAN && aiCount(o,E_TRANSPORT) < 1
+        if (g.layoutChoice == L_ISLANDS && aiCount(o,E_TRANSPORT) < 1
                 && p.gold >= 80 && p.wood >= 40 && p.food >= 10) {
             aiTrain(o, dk, E_TRANSPORT); continue;
         }
@@ -603,7 +603,7 @@ static void tickAIForOwner(int o) {
     // === COASTAL BEACHHEAD: any peasant landed near the enemy starts a forward base.
     // A peasant marooned across the sea is the AI's signal to colonise — build a
     // Castle near them so trained units spawn on the enemy island.
-    if (g.biomeChoice == B_OCEAN && intel.playerTH && p.gold >= STATS[E_CASTLE].costGold && p.wood >= STATS[E_CASTLE].costWood) {
+    if (g.layoutChoice == L_ISLANDS && intel.playerTH && p.gold >= STATS[E_CASTLE].costGold && p.wood >= STATS[E_CASTLE].costWood) {
         Entity* myHome = aiBldg(o, E_TOWNHALL);
         if (!myHome) myHome = aiBldg(o, E_CASTLE);
         for (auto& u : g.entities) {
@@ -739,7 +739,7 @@ static void tickAIForOwner(int o) {
     aiTickTrebuchets(o);
 
     // Coastal maps: AI transports ferry troops across the sea.
-    if (g.biomeChoice == B_OCEAN) aiTickTransports(o);
+    if (g.layoutChoice == L_ISLANDS) aiTickTransports(o);
 }
 
 void tickAI() {

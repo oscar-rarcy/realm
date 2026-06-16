@@ -428,7 +428,7 @@ void applyCommand(const Command& c) {
 // (same caveat as save files).
 // ============================================================
 static constexpr char REP_MAGIC[4] = {'R','L','R','P'};
-static constexpr int  REP_VERSION  = 5;   // v5: combat-feel sim (morale/rout/charge/capture) (v4: stockpile economy)
+static constexpr int  REP_VERSION  = 6;   // v6: map layout vs climate split (g.layoutChoice in header)
 
 static FILE* recF  = nullptr;   // recording
 static FILE* playF = nullptr;   // playback
@@ -459,6 +459,7 @@ bool replayStartRecording(int numAIs) {
     wrU64(recF, g.simSeed);
     wrI(recF, numAIs);
     wrI(recF, g.biomeChoice);
+    wrI(recF, g.layoutChoice);
     wrI(recF, g.difficulty);
     fflush(recF);
     return true;
@@ -497,14 +498,14 @@ static bool replayReadNext() {
 }
 
 bool replayLoadFile(const char* path, unsigned long long& seed, int& numAIs,
-                    int& biomeChoice, int& difficulty) {
+                    int& biomeChoice, int& layoutChoice, int& difficulty) {
     playF = fopen(path, "rb");
     if (!playF) return false;
     char magic[4]; int ver;
     if (fread(magic, 4, 1, playF) != 1 || memcmp(magic, REP_MAGIC, 4) != 0
         || !rdI(playF, ver) || ver != REP_VERSION
         || !rdU64(playF, seed) || !rdI(playF, numAIs) || !rdI(playF, biomeChoice)
-        || !rdI(playF, difficulty)) {
+        || !rdI(playF, layoutChoice) || !rdI(playF, difficulty)) {
         fclose(playF); playF = nullptr; return false;
     }
     playbackMode = true;

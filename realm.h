@@ -99,10 +99,15 @@ enum GameMode  { M_NORMAL, M_BUILD_SELECT, M_BUILD_PLACE, M_TRAIN_SELECT, M_WALL
 
 // Research bits stored in Player.research
 enum Research { R_IRON_WEAPONS = 1, R_CROSSBOWS = 2, R_PIKES = 4, R_COUNTERWEIGHT = 8, R_PLATE_HELM = 16 };
-// 0-4 are climates (tile palettes); 5-8 are whole-map *layouts* that dispatch
-// to their own generators (like Ocean always has). B_VOLCANIC was removed.
+// Climate = the tile palette (what open ground / trees / etc. look like). This
+// is the per-tile `biome` and the climate axis of map setup. Values 5-8 are
+// legacy and no longer used as climates — topology now lives in `Layout`.
 enum Biome     { B_TEMPERATE, B_DESERT, B_SNOW, B_SWAMP, B_FOREST,
                  B_OCEAN, B_HIGHLANDS, B_DEEPWOODS, B_RIVER };
+// Layout = the map topology, independent of climate. Each layout emits a
+// neutral terrain template that applyClimateSkin() then themes to the chosen
+// climate, so e.g. Highlands+Snow = alpine, Riverlands+Desert = a Nile.
+enum Layout    { L_CONTINENTAL, L_HIGHLANDS, L_DEEPWOODS, L_RIVER, L_ISLANDS, LAYOUT_COUNT };
 enum Season    { SPRING = 0, SUMMER, AUTUMN, WINTER };
 enum Weather   { W_CLEAR = 0, W_RAIN, W_STORM, W_SNOW };
 
@@ -310,7 +315,8 @@ struct Game {
     int attackNotifyCd;  // ticks until next "Under attack" message is allowed
     int weather;          // current Weather state
     int weatherTimer;     // ticks until next weather change roll
-    int biomeChoice;      // -1 = random, else Biome enum value forced on whole map
+    int biomeChoice;      // CLIMATE: -1 = mixed climate bands, else a forced Biome (0-4)
+    int layoutChoice;     // LAYOUT: -1 = random (resolved in initGame), else a Layout
     bool returnToMenu;    // set on game-over to break back to splash screen
     bool cursorByMouse;   // last cursor move came from the mouse: render must
                           // NOT auto-pan the view to chase it (that pan changes
@@ -481,7 +487,7 @@ void applyPendingCommands();          // drain g.pendingCmds at tick start; reco
 // commands.cpp — replays (seed + command stream)
 bool replayStartRecording(int numAIs);          // uses g.simSeed/g.biomeChoice; new file per match
 void replayStopRecording();
-bool replayLoadFile(const char* path, unsigned long long& seed, int& numAIs, int& biomeChoice, int& difficulty);
+bool replayLoadFile(const char* path, unsigned long long& seed, int& numAIs, int& biomeChoice, int& layoutChoice, int& difficulty);
 void replayInjectCommands();          // playback: queue recorded commands for the current tick
 bool replayPlaying();
 

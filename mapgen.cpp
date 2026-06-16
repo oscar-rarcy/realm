@@ -70,6 +70,80 @@ static float edist(int x1, int y1, int x2, int y2) {
     return std::sqrt((float)(dx*dx + dy*dy));
 }
 
+// --- Climate skinning + ecotones --------------------------------------------
+// Layouts paint a neutral template (grass / tall grass / forest / water / rock);
+// these passes then theme it to the match climate and soften the borders, so
+// any layout reads correctly in any climate (Highlands+Snow = alpine, etc.).
+
+// The climate for one tile: a forced choice, or latitude-banded when mixed (-1).
+static Biome pickClimate(int x, int y) {
+    if (g.biomeChoice >= 0 && g.biomeChoice <= B_FOREST) return (Biome)g.biomeChoice;
+    float n1 = sampleNoise(x*0.028f, y*0.028f);
+    float n2 = sampleNoise(x*0.020f+10, y*0.020f+10);
+    float climate = (float)y / MAP_H * 0.55f + n1 * 0.45f;   // cold(north)..hot(south)
+    if      (climate < 0.24f)               return B_SNOW;
+    else if (climate > 0.76f)               return B_DESERT;
+    else if (n2 > 0.72f)                     return B_SWAMP;
+    else if (climate < 0.45f && n2 < 0.40f) return B_FOREST;
+    return B_TEMPERATE;
+}
+
+// Repaint the neutral template into the chosen climate. Water, rock, gold,
+// roads, ruins and bridges are climate-independent and pass through untouched.
+static void applyClimateSkin() {
+    for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
+        Tile& t = g.map[y][x];
+        Biome c = pickClimate(x, y);
+        t.biome = c;
+        switch (t.terrain) {
+        case T_GRASS: case T_MEADOW: case T_FLOWERS:
+            if      (c == B_DESERT) t.terrain = T_SAND;
+            else if (c == B_SNOW)   t.terrain = T_SNOW;
+            else if (c == B_SWAMP)  t.terrain = T_TALL_GRASS;
+            break;
+        case T_TALL_GRASS:
+            if      (c == B_DESERT) t.terrain = T_DUNES;
+            else if (c == B_SNOW)   t.terrain = T_SNOW;
+            else if (c == B_SWAMP)  t.terrain = T_REEDS;
+            break;
+        case T_FOREST: case T_PINE: case T_PALM: case T_DEAD_TREE:
+            if      (c == B_DESERT) t.terrain = T_PALM;
+            else if (c == B_SNOW)   t.terrain = T_PINE;
+            else if (c == B_SWAMP)  t.terrain = T_DEAD_TREE;
+            else if (c == B_FOREST && t.terrain == T_FOREST && simRand()%4 == 0) t.terrain = T_PINE;
+            break;
+        default: break;
+        }
+    }
+}
+
+// Soften borders: sandy/reedy beaches where land meets water, scrubby treelines
+// at forest edges, and palm-ringed greenery where desert holds water.
+static void applyEcotones() {
+    static const int d4[4][2] = {{1,0},{-1,0},{0,1},{0,-1}};
+    auto isWater = [](Terrain t){ return t==T_WATER||t==T_SHALLOWS||t==T_FISH; };
+    auto isOpen  = [](Terrain t){ return t==T_GRASS||t==T_TALL_GRASS||t==T_MEADOW||t==T_SAND||t==T_DUNES||t==T_SNOW; };
+    auto isTree  = [](Terrain t){ return t==T_FOREST||t==T_PINE||t==T_PALM||t==T_DEAD_TREE; };
+    for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
+        Tile& t = g.map[y][x];
+        bool nearWater = false;
+        for (auto& d : d4) { int nx=x+d[0], ny=y+d[1]; if (inBounds(nx,ny) && isWater(g.map[ny][nx].terrain)) { nearWater=true; break; } }
+        if (!nearWater) continue;
+        if (isOpen(t.terrain) && t.biome != B_SNOW && t.resources == 0 && simRand()%100 < 60)
+            t.terrain = (t.biome == B_SWAMP) ? T_REEDS : T_SAND;          // beach / reed fringe
+        if (t.biome == B_DESERT && (t.terrain==T_SAND || t.terrain==T_DUNES) && simRand()%100 < 45) {
+            if (simRand()%3 == 0) { t.terrain = T_PALM; t.resources = 60 + simRand()%40; }  // oasis palm
+            else                  t.terrain = T_GRASS;                                       // oasis green
+        }
+    }
+    for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
+        if (!isTree(g.map[y][x].terrain)) continue;
+        int open = 0;
+        for (auto& d : d4) { int nx=x+d[0], ny=y+d[1]; if (inBounds(nx,ny) && isOpen(g.map[ny][nx].terrain)) open++; }
+        if (open >= 2 && simRand()%100 < 30) { g.map[y][x].terrain = T_TALL_GRASS; g.map[y][x].resources = 0; }
+    }
+}
+
 // Coastal map: 2-3 large landmasses separated by sea channels, with a few
 // small islands in between. Replaces the noise-soup archipelago.
 static void generateContinentMap() {
@@ -192,6 +266,10 @@ static void generateContinentMap() {
     // One castle ruin per continent — a landmark on each landmass.
     for (auto& s : seeds) placeCastleRuin(s.first - 3, s.second - 3, 6);
 
+    // Theme the islands to the match climate and soften their coasts.
+    applyClimateSkin();
+    applyEcotones();
+
     // Snapshot for winter thaw cycle.
     for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++)
         g.map[y][x].preWinterTerrain = g.map[y][x].terrain;
@@ -207,6 +285,9 @@ static void generateContinentMap() {
 // Shared resource + landmark scatter for the layout maps. Keeps them
 // economically playable without duplicating the climate generator's long tail.
 static void finishLayout() {
+    // Theme the neutral template to the chosen climate, then soften the borders.
+    applyClimateSkin();
+    applyEcotones();
     for (int i = 0; i < 16; i++)
         placeGoldCluster(15 + simRand()%(MAP_W-30), 15 + simRand()%(MAP_H-30), 3 + simRand()%3);
     // Berry patches on open grass.
@@ -380,11 +461,16 @@ static void generateRiverMap() {
 
 void generateMap() {
     initNoise();
-    // Coastal maps get their own special generator with proper continents.
-    if (g.biomeChoice == B_OCEAN)     { generateContinentMap();  return; }
-    if (g.biomeChoice == B_HIGHLANDS) { generateHighlandsMap();  return; }
-    if (g.biomeChoice == B_DEEPWOODS) { generateDeepWoodsMap();  return; }
-    if (g.biomeChoice == B_RIVER)     { generateRiverMap();      return; }
+    // Topology is chosen by the (climate-independent) Layout axis; each special
+    // layout owns its own generator and themes itself via applyClimateSkin().
+    int lay = (g.layoutChoice >= 0 && g.layoutChoice < LAYOUT_COUNT) ? g.layoutChoice : L_CONTINENTAL;
+    switch (lay) {
+        case L_ISLANDS:     generateContinentMap(); return;
+        case L_HIGHLANDS:   generateHighlandsMap(); return;
+        case L_DEEPWOODS:   generateDeepWoodsMap(); return;
+        case L_RIVER:       generateRiverMap();     return;
+        case L_CONTINENTAL: default: break;   // the inline land generator below
+    }
 
     for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
         // Two noise channels at different scales give organic biome regions.
@@ -598,17 +684,14 @@ void generateMap() {
             cy = std::max(0, std::min(cy, MAP_H-1));
         }
     };
-    // Ocean maps are mostly water — roads on water tiles look wrong; skip them.
-    if (g.biomeChoice != B_OCEAN) {
-        // Crossroads through the middle so spawn-to-spawn travel has natural paths.
-        makeRoad(15,        15,         midX,    midY);
-        makeRoad(MAP_W-15,  MAP_H-15,   midX,    midY);
-        makeRoad(midX,      5,          midX,    MAP_H-5);
-        makeRoad(5,         midY,       MAP_W-5, midY);
-    }
+    // Crossroads through the middle so spawn-to-spawn travel has natural paths.
+    makeRoad(15,        15,         midX,    midY);
+    makeRoad(MAP_W-15,  MAP_H-15,   midX,    midY);
+    makeRoad(midX,      5,          midX,    MAP_H-5);
+    makeRoad(5,         midY,       MAP_W-5, midY);
     // Mountain pass — a horizontal wall of mountains across one band of the map,
-    // with a 3-tile gap forming a strategic choke point. Skip on ocean maps.
-    if (g.biomeChoice != B_OCEAN && simRand() % 2 == 0) {
+    // with a 3-tile gap forming a strategic choke point.
+    if (simRand() % 2 == 0) {
         int passY = MAP_H/2 + (simRand() % 20) - 10;
         int gapX  = MAP_W/4 + simRand() % (MAP_W/2);
         for (int x = 5; x < MAP_W - 5; x++) {
@@ -734,6 +817,9 @@ void generateMap() {
             t.resources = 0;
         }
     }
+
+    // Continental already paints climate per tile; just soften the coastlines.
+    applyEcotones();
 
     // Baseline snapshot used by the winter→spring thaw cycle.
     for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++)
