@@ -197,10 +197,194 @@ static void generateContinentMap() {
         g.map[y][x].preWinterTerrain = g.map[y][x].terrain;
 }
 
+// ============================================================================
+// HAND-SHAPED LAYOUT MAPS — Highlands / Deep Woods / Riverlands.
+// Like the Ocean generator, each owns its whole topology and dispatches from
+// generateMap(). They set tile.biome to a real *climate* (so the renderer
+// colours them), while g.biomeChoice carries the layout id for dispatch/AI.
+// ============================================================================
+
+// Shared resource + landmark scatter for the layout maps. Keeps them
+// economically playable without duplicating the climate generator's long tail.
+static void finishLayout() {
+    for (int i = 0; i < 16; i++)
+        placeGoldCluster(15 + simRand()%(MAP_W-30), 15 + simRand()%(MAP_H-30), 3 + simRand()%3);
+    // Berry patches on open grass.
+    for (int i = 0; i < 18; i++) {
+        int bx = 10 + simRand()%(MAP_W-20), by = 10 + simRand()%(MAP_H-20), sz = 1 + simRand()%3;
+        for (int dy=-sz; dy<=sz; dy++) for (int dx=-sz; dx<=sz; dx++) {
+            int nx=bx+dx, ny=by+dy;
+            if (inBounds(nx,ny) && g.map[ny][nx].terrain==T_GRASS && simRand()%3!=0) {
+                g.map[ny][nx].terrain = T_BERRY; g.map[ny][nx].resources = 50 + simRand()%40;
+            }
+        }
+    }
+    // Wheat fields on open grass.
+    for (int i = 0; i < 14; i++) {
+        int wx = 10 + simRand()%(MAP_W-20), wy = 10 + simRand()%(MAP_H-20), sz = 2 + simRand()%3;
+        for (int dy=-sz; dy<=sz; dy++) for (int dx=-sz; dx<=sz; dx++) {
+            int nx=wx+dx, ny=wy+dy;
+            if (inBounds(nx,ny) && g.map[ny][nx].terrain==T_GRASS && simRand()%2==0)
+                g.map[ny][nx].terrain = T_WHEAT;
+        }
+    }
+    // Capturable keeps + a couple of sightline monoliths.
+    placeCastleRuin(MAP_W/4,   MAP_H/4,   6);
+    placeCastleRuin(3*MAP_W/4, 3*MAP_H/4, 6);
+    for (int i = 0; i < 3; i++) {
+        int sx = 15 + simRand()%(MAP_W-30), sy = 15 + simRand()%(MAP_H-30);
+        if (isPassable(sx,sy) && g.map[sy][sx].terrain != T_GOLD) {
+            g.map[sy][sx].terrain = T_MONOLITH; g.map[sy][sx].resources = 0;
+        }
+    }
+    // Baseline snapshot for the winter->spring thaw cycle.
+    for (int y=0; y<MAP_H; y++) for (int x=0; x<MAP_W; x++)
+        g.map[y][x].preWinterTerrain = g.map[y][x].terrain;
+}
+
+// Draw one mountain range across the map with `gaps` clear passes so a region
+// is never sealed off. Crest is impassable mountain; flanks are stone with a
+// climbable T_HILLS ramp on the outer edge.
+static void drawRidge(bool horizontal, int pos, int gaps) {
+    int along = horizontal ? MAP_W : MAP_H;
+    std::vector<int> gapAt;
+    for (int k = 0; k < gaps; k++)
+        gapAt.push_back(along*(k+1)/(gaps+1) + (simRand()%(along/6) - along/12));
+    for (int i = 6; i < along-6; i++) {
+        bool inGap = false;
+        for (int gc : gapAt) if (std::abs(i - gc) < 4) { inGap = true; break; }
+        if (inGap) continue;
+        int center = pos + (int)(sampleNoise(i*0.35f, pos*0.35f + 70) * 4.0f) - 2;
+        int thick  = 1 + (sampleNoise(i*0.5f, 30) > 0.5f ? 1 : 0);
+        for (int d = -thick; d <= thick; d++) {
+            int x = horizontal ? i : center + d;
+            int y = horizontal ? center + d : i;
+            if (!inBounds(x,y) || g.map[y][x].terrain == T_GOLD) continue;
+            g.map[y][x].terrain   = (d == 0) ? T_MOUNTAIN
+                                  : (std::abs(d) == thick ? T_HILLS : T_STONE);
+            g.map[y][x].resources = 0;
+        }
+    }
+}
+
+// Highlands: rugged temperate plateau carved by mountain ranges into valleys
+// and choke points. Gold favours the rock.
+static void generateHighlandsMap() {
+    for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
+        Tile& t = g.map[y][x];
+        t.biome = B_TEMPERATE; t.resources = 0; t.elev = 0;
+        float n = sampleNoise(x*0.18f+11, y*0.18f+11);
+        int r = simRand()%24;
+        if      (n > 0.82f) t.terrain = T_GRAVEL;                                  // rocky, passable
+        else if (r < 3)     { t.terrain = T_PINE; t.resources = 80 + simRand()%60; }
+        else if (r < 6)     t.terrain = T_HILLS;
+        else if (r < 8)     t.terrain = T_TALL_GRASS;
+        else                t.terrain = T_GRASS;
+    }
+    int ridges = 3 + simRand()%2;
+    for (int i = 0; i < ridges; i++) {
+        bool horiz = (simRand()%2 == 0);
+        int sp = horiz ? MAP_H : MAP_W;
+        int pos = sp*(i+1)/(ridges+1) + (simRand()%(sp/6) - sp/12);
+        drawRidge(horiz, pos, 1 + simRand()%2);
+    }
+    for (int i = 0; i < 10; i++) {
+        int gx = 12 + simRand()%(MAP_W-24), gy = 12 + simRand()%(MAP_H-24);
+        Terrain o = g.map[gy][gx].terrain;
+        if (o == T_GRAVEL || o == T_HILLS || o == T_STONE) placeGoldCluster(gx, gy, 3 + simRand()%3);
+    }
+    finishLayout();
+}
+
+// Deep Woods: wall-to-wall forest (passable but slow & sight-blocking, wood
+// rich) with open glades to settle in, linked by cleared lanes.
+static void generateDeepWoodsMap() {
+    for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
+        Tile& t = g.map[y][x];
+        t.biome = B_FOREST; t.elev = 0;
+        if (sampleNoise(x*0.16f+21, y*0.16f+21) > 0.55f) { t.terrain = T_FOREST; t.resources = 100 + simRand()%100; }
+        else                                              { t.terrain = T_PINE;   t.resources = 80  + simRand()%60;  }
+    }
+    int glades = 6 + simRand()%3;
+    std::vector<std::pair<int,int>> centers;
+    for (int i = 0; i < glades; i++) {
+        int cx = 16 + simRand()%(MAP_W-32), cy = 14 + simRand()%(MAP_H-28), rad = 6 + simRand()%4;
+        centers.push_back({cx,cy});
+        for (int dy=-rad; dy<=rad; dy++) for (int dx=-rad; dx<=rad; dx++) {
+            int nx=cx+dx, ny=cy+dy;
+            if (!inBounds(nx,ny) || dx*dx+dy*dy > rad*rad) continue;
+            g.map[ny][nx].terrain = T_GRASS; g.map[ny][nx].resources = 0; g.map[ny][nx].biome = B_TEMPERATE;
+        }
+    }
+    // Cleared lanes link the glades in a loop so armies have open routes.
+    auto lane = [&](int x0,int y0,int x1,int y1) {
+        int x=x0, y=y0;
+        while (x!=x1 || y!=y1) {
+            for (int w=-1; w<=1; w++) {
+                int ax=x, ay=y+w, bx=x+w, by=y;
+                if (inBounds(ax,ay)) { g.map[ay][ax].terrain=T_GRASS; g.map[ay][ax].resources=0; g.map[ay][ax].biome=B_TEMPERATE; }
+                if (inBounds(bx,by)) { g.map[by][bx].terrain=T_GRASS; g.map[by][bx].resources=0; g.map[by][bx].biome=B_TEMPERATE; }
+            }
+            if (x<x1) x++; else if (x>x1) x--;
+            if (y<y1) y++; else if (y>y1) y--;
+        }
+    };
+    for (size_t i=0; i+1<centers.size(); i++) lane(centers[i].first,centers[i].second,centers[i+1].first,centers[i+1].second);
+    if (centers.size() > 2) lane(centers.back().first,centers.back().second,centers.front().first,centers.front().second);
+    finishLayout();
+}
+
+// Riverlands (River/Fortress): temperate country split by a great meandering
+// river with a handful of bridge crossings — a natural front line.
+static void generateRiverMap() {
+    for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
+        Tile& t = g.map[y][x];
+        t.biome = B_TEMPERATE; t.resources = 0; t.elev = 0;
+        int r = simRand()%20;
+        if      (r < 4) { t.terrain = T_FOREST; t.resources = 90 + simRand()%80; }
+        else if (r < 6) t.terrain = T_TALL_GRASS;
+        else            t.terrain = T_GRASS;
+    }
+    bool vertical = (simRand()%2 == 0);
+    int span   = vertical ? MAP_H : MAP_W;
+    int center = (vertical ? MAP_W : MAP_H) / 2;
+    auto axisAt = [&](int i){ return center + (int)(sampleNoise(i*0.12f, 7.0f)*18.0f) - 9; };
+    auto halfAt = [&](int i){ return 2 + (sampleNoise(i*0.08f, 23.0f) > 0.5f ? 1 : 0); };
+    for (int i = 0; i < span; i++) {
+        int axis = axisAt(i), hw = halfAt(i);
+        for (int w = -hw-1; w <= hw+1; w++) {
+            int x = vertical ? axis+w : i, y = vertical ? i : axis+w;
+            if (!inBounds(x,y)) continue;
+            g.map[y][x].terrain = (std::abs(w) > hw) ? T_SHALLOWS : T_WATER;
+            g.map[y][x].resources = 0;
+        }
+    }
+    for (int y=0; y<MAP_H; y++) for (int x=0; x<MAP_W; x++)
+        if (g.map[y][x].terrain==T_WATER && simRand()%22==0) { g.map[y][x].terrain=T_FISH; g.map[y][x].resources=80+simRand()%70; }
+    // Bridges: 2-3 guaranteed land crossings (block boats, pass armies).
+    int crossings = 2 + simRand()%2;
+    for (int k = 0; k < crossings; k++) {
+        int i = span*(k+1)/(crossings+1) + (simRand()%9 - 4);
+        if (i < 2 || i >= span-2) continue;
+        int axis = axisAt(i), hw = halfAt(i);
+        for (int w = -hw-2; w <= hw+2; w++) for (int t2 = -1; t2 <= 1; t2++) {
+            int ii = i + t2;
+            int x = vertical ? axis+w : ii, y = vertical ? ii : axis+w;
+            if (!inBounds(x,y)) continue;
+            Terrain o = g.map[y][x].terrain;
+            if (o==T_WATER||o==T_SHALLOWS||o==T_FISH) { g.map[y][x].terrain=T_BRIDGE; g.map[y][x].resources=0; }
+        }
+    }
+    finishLayout();
+}
+
 void generateMap() {
     initNoise();
     // Coastal maps get their own special generator with proper continents.
-    if (g.biomeChoice == B_OCEAN) { generateContinentMap(); return; }
+    if (g.biomeChoice == B_OCEAN)     { generateContinentMap();  return; }
+    if (g.biomeChoice == B_HIGHLANDS) { generateHighlandsMap();  return; }
+    if (g.biomeChoice == B_DEEPWOODS) { generateDeepWoodsMap();  return; }
+    if (g.biomeChoice == B_RIVER)     { generateRiverMap();      return; }
 
     for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
         // Two noise channels at different scales give organic biome regions.
@@ -276,11 +460,6 @@ void generateMap() {
             else if (r<65) t.terrain = T_TALL_GRASS;
             else           t.terrain = T_GRASS;
             break;
-        case B_VOLCANIC:
-            // Deprecated — biome remains in the enum but is never generated.
-            // Falls through to a temperate-default tile for safety.
-            t.terrain = T_GRASS;
-            break;
         case B_OCEAN:
             // Archipelago: mostly water with scattered island terrain.
             if (r<50)      t.terrain = T_WATER;
@@ -291,6 +470,9 @@ void generateMap() {
             else if (r<87) t.terrain = T_TALL_GRASS;
             else if (r<93) { t.terrain = T_FOREST; t.resources = 80 + simRand()%60; }
             else           t.terrain = T_GRASS;
+            break;
+        default:  // layout biomes (Highlands/Deep Woods/River) never reach here
+            t.terrain = T_GRASS;
             break;
         }
     }

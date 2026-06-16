@@ -438,7 +438,6 @@ static int emojiTerrainColorPair(const Tile& tile, int x, int y, bool night) {
             case B_SNOW:     return CP_SNOW_GROUND;
             case B_SWAMP:    return CP_MARSH;
             case B_FOREST:   return CP_FOREST;
-            case B_VOLCANIC: return CP_ASH;
             case B_OCEAN:    return CP_WATER;
             case B_TEMPERATE:
             default:         return CP_GRASS;
@@ -491,10 +490,6 @@ static int emojiTerrainColorPair(const Tile& tile, int x, int y, bool night) {
             else if (season == WINTER && hash01(x,y,61) < 0.35f) return CP_EMOJI_SNOW_1 + std::min(2, shade % 3);
             else if (season == SPRING) shade = std::min(3, shade + 1);
             return CP_EMOJI_FOREST_0 + clampShade(shade, 5);
-
-        case B_VOLCANIC:
-            shade = paintedShadeFor(tile, x, y, 3);
-            return CP_EMOJI_VOLCANIC_0 + shade;
 
         case B_OCEAN:
             shade = paintedShadeFor(tile, x, y, 3);

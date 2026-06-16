@@ -43,12 +43,15 @@ static void forceUtf8Locale() {
 // Returns numAIs. Banner is block-art; headers use A_TITLE, which the SDL
 // build renders in a blackletter face (Luminari) — the terminal gets bold.
 static int showSplash() {
+    // Index order matches the Biome enum (0-8); the trailing entry is Random.
     static const char* biomeNames[] = {
-        "Temperate","Desert","Snow","Swamp","Forest","Ocean","Random"
+        "Temperate","Desert","Snow","Swamp","Forest","Ocean",
+        "Highlands","Deep Woods","River","Random"
     };
+    const int RANDOM_IDX = 9;
     static const char* diffNames[] = { "Easy", "Normal", "Hard" };
     int numAIs = 1;
-    int biomeIdx = 6; // 6 = random
+    int biomeIdx = RANDOM_IDX; // random
     int diffIdx = 1;  // Normal
 
     static const char* banner[] = {
@@ -113,10 +116,10 @@ static int showSplash() {
         char opp[8]; snprintf(opp, sizeof opp, "%d", numAIs);
         sel(row+2, col+2, "Opponents",  opp,                  "1/2/3");
         sel(row+3, col+2, "Difficulty", diffNames[diffIdx],   "E/N/H");
-        sel(row+4, col+2, "Biome",      biomeNames[biomeIdx], "T/D/S/W/F/C/0");
+        sel(row+4, col+2, "Map",        biomeNames[biomeIdx], "T/D/S/W/F/C/M/0");
         sel(row+5, col+2, "Display",    displayMode == DM_EMOJI ? "Emoji" : "ASCII", "4/5");
         attron(COLOR_PAIR(CP_UI_DIM));
-        pr(row+7, col+2, "0=random map with climate bands");
+        pr(row+7, col+2, "M cycles Highlands/Deep Woods/River   0=random   then preview");
         attroff(COLOR_PAIR(CP_UI_DIM));
 
         int c2 = col + bw + 4;
@@ -147,13 +150,15 @@ static int showSplash() {
         if (ch=='1') numAIs=1;
         else if (ch=='2') numAIs=2;
         else if (ch=='3') numAIs=3;
-        else if (ch=='0') biomeIdx=6;
+        else if (ch=='0') biomeIdx=RANDOM_IDX;
         else if (ch=='t'||ch=='T') biomeIdx=0;
         else if (ch=='d'||ch=='D') biomeIdx=1;
         else if (ch=='s'||ch=='S') biomeIdx=2;
         else if (ch=='w'||ch=='W') biomeIdx=3;
         else if (ch=='f'||ch=='F') biomeIdx=4;
         else if (ch=='c'||ch=='C') biomeIdx=5;
+        // M cycles through the three layout maps (enum indices 6-8).
+        else if (ch=='m'||ch=='M') biomeIdx = (biomeIdx>=6 && biomeIdx<=8) ? (6 + (biomeIdx-6+1)%3) : 6;
         else if (ch=='e'||ch=='E') diffIdx=0;
         else if (ch=='n'||ch=='N') diffIdx=1;
         else if (ch=='h'||ch=='H') diffIdx=2;
@@ -161,12 +166,117 @@ static int showSplash() {
         else if (ch=='5') displayMode = DM_EMOJI;
     }
     g.difficulty = diffIdx;
-    // 6 = Random/mixed; otherwise pass index 0..5 (Ocean is 5 in the local list,
-    // but B_OCEAN is enum value 6; remap so the engine sees the right Biome enum).
-    if (biomeIdx == 6)      g.biomeChoice = -1;
-    else if (biomeIdx == 5) g.biomeChoice = B_OCEAN;  // was index 6 before volcanic removal
-    else                    g.biomeChoice = biomeIdx;
+    // Menu indices 0-8 line up 1:1 with the Biome enum; RANDOM_IDX means mixed.
+    g.biomeChoice = (biomeIdx == RANDOM_IDX) ? -1 : biomeIdx;
     return numAIs;
+}
+
+// One terrain -> minimap glyph/colour, shared by every preview thumbnail. Full
+// visibility (no fog), so it reads as a map illustration, not the in-game radar.
+static void previewGlyph(Terrain t, char& ch, int& cp) {
+    switch (t) {
+        case T_WATER: case T_SHALLOWS: case T_REEDS: case T_MARSH:
+                                       ch='~'; cp=CP_MM_WATER;  break;
+        case T_FISH:                   ch='*'; cp=CP_MM_WATER;  break;
+        case T_MOUNTAIN: case T_STONE: ch='^'; cp=CP_MM_MTN;    break;
+        case T_HILLS: case T_GRAVEL:   ch='n'; cp=CP_MM_MTN;    break;
+        case T_FOREST: case T_PINE: case T_PALM: case T_DEAD_TREE:
+                                       ch='*'; cp=CP_MM_FOREST; break;
+        case T_GOLD:                   ch='$'; cp=CP_MM_GOLD;   break;
+        case T_SAND: case T_DUNES:     ch='.'; cp=CP_MM_SAND;   break;
+        case T_SNOW: case T_ICE:       ch='.'; cp=CP_MM_SNOW;   break;
+        case T_CASTLE_WALL: case T_CASTLE_GATE: case T_CASTLE_FLOOR: case T_RUINS:
+                                       ch='#'; cp=CP_MM_CASTLE; break;
+        case T_BRIDGE:                 ch='='; cp=CP_MM_CASTLE; break;
+        case T_MONOLITH:               ch='I'; cp=CP_MM_CASTLE; break;
+        case T_WHEAT: case T_BERRY:    ch=':'; cp=CP_GRASS_DRY; break;
+        default:                       ch='.'; cp=CP_GRASS;     break;  // grass & friends
+    }
+}
+
+// AoE2-style battlefield picker: a grid of real generated minimaps. Browse
+// seeds, cycle the map type, reroll. The exact seed of the chosen thumbnail is
+// handed back so the map you previewed is the map you play. Sets g.biomeChoice.
+// Returns false if the player backs out to the splash screen.
+static bool showMapPreview(unsigned long long& outSeed) {
+    int maxY0, maxX0; getmaxyx(stdscr, maxY0, maxX0);
+    const int COLS = (maxX0 >= 92) ? 3 : 2, ROWS = 2, N = COLS*ROWS;
+    const int TW = std::max(16, std::min(30, (maxX0 - (COLS+1)*2)/COLS));
+    const int TH = std::max(9,  std::min(14, (maxY0 - 9)/ROWS - 2));
+
+    static const char* typeName[] = {"Temperate","Desert","Snow","Swamp","Forest",
+                                     "Ocean","Highlands","Deep Woods","River"};
+    struct Cand { unsigned long long seed; int type; std::vector<char> ch; std::vector<int> cp; };
+    std::vector<Cand> cand(N);
+    int typeChoice = g.biomeChoice;                 // -1 = random/mixed
+    unsigned long long base = (unsigned long long)time(nullptr) * 2654435761ull + 1;
+    int sel = 0;
+
+    auto regen = [&]() {
+        for (int i = 0; i < N; i++) {
+            unsigned long long s = base + (unsigned long long)(i+1)*0x9E3779B97F4A7C15ull;
+            if (s == 0) s = 1;
+            int ty = typeChoice;
+            if (ty < 0) {                            // mixed: one concrete type per cell
+                static const int pool[] = {B_TEMPERATE,B_DESERT,B_SNOW,B_SWAMP,B_FOREST,
+                                           B_OCEAN,B_HIGHLANDS,B_DEEPWOODS,B_RIVER};
+                ty = pool[(unsigned)(s>>17) % (sizeof(pool)/sizeof(pool[0]))];
+            }
+            g.biomeChoice = ty; seedSimRng(s); generateMap();
+            cand[i].seed = s; cand[i].type = ty;
+            cand[i].ch.assign(TW*TH, '.'); cand[i].cp.assign(TW*TH, CP_GRASS);
+            for (int yy = 0; yy < TH; yy++) for (int xx = 0; xx < TW; xx++) {
+                char c; int cp; previewGlyph(g.map[yy*MAP_H/TH][xx*MAP_W/TW].terrain, c, cp);
+                cand[i].ch[yy*TW+xx] = c; cand[i].cp[yy*TW+xx] = cp;
+            }
+        }
+        g.entities.clear();   // discard any ruins spawned while generating previews
+    };
+    regen();
+
+    while (true) {
+        int maxY, maxX; getmaxyx(stdscr, maxY, maxX);
+        erase();
+        int gridW = COLS*(TW+2), gridH = ROWS*(TH+2);
+        int ox = std::max(1, maxX/2 - gridW/2), oy = std::max(3, maxY/2 - gridH/2);
+        attron(A_TITLE|COLOR_PAIR(CP_UI_ACCENT));
+        mvprintw(oy-3, ox, "CHOOSE YOUR BATTLEFIELD");
+        attroff(A_TITLE|COLOR_PAIR(CP_UI_ACCENT));
+        attron(COLOR_PAIR(CP_UI_DIM));
+        mvprintw(oy-2, ox, "Arrows/HJKL move   [ ] type   R reroll   Enter begin   Q back");
+        attroff(COLOR_PAIR(CP_UI_DIM));
+        for (int i = 0; i < N; i++) {
+            int cx = ox + (i%COLS)*(TW+2) + 1, cy = oy + (i/COLS)*(TH+2) + 1;
+            bool isSel = (i == sel);
+            int bc = isSel ? (COLOR_PAIR(CP_UI_HIGH)|A_BOLD) : COLOR_PAIR(CP_UI_DIM);
+            attron(bc);
+            mvhline(cy-1, cx, isSel?'=':'-', TW); mvhline(cy+TH, cx, isSel?'=':'-', TW);
+            for (int r=0; r<TH; r++) { mvaddch(cy+r, cx-1, '|'); mvaddch(cy+r, cx+TW, '|'); }
+            attroff(bc);
+            for (int r=0; r<TH; r++) for (int c=0; c<TW; c++) {
+                int cp = cand[i].cp[r*TW+c];
+                attron(COLOR_PAIR(cp)); mvaddch(cy+r, cx+c, cand[i].ch[r*TW+c]); attroff(COLOR_PAIR(cp));
+            }
+            attron(isSel ? (COLOR_PAIR(CP_UI_HIGH)|A_BOLD) : COLOR_PAIR(CP_UI_TEXT));
+            mvprintw(cy+TH, cx+1, " %s ", typeName[cand[i].type]);
+            attroff(isSel ? (COLOR_PAIR(CP_UI_HIGH)|A_BOLD) : COLOR_PAIR(CP_UI_TEXT));
+        }
+        attron(COLOR_PAIR(CP_UI_DIM));
+        mvprintw(oy + gridH + 1, ox, "Filter: %s", typeChoice < 0 ? "Random (mixed)" : typeName[typeChoice]);
+        attroff(COLOR_PAIR(CP_UI_DIM));
+        refresh();
+
+        int c = getch();
+        if (c=='q'||c=='Q')                       { return false; }
+        else if (c=='\n'||c==KEY_ENTER||c=='\r')  { g.biomeChoice = cand[sel].type; outSeed = cand[sel].seed; return true; }
+        else if (c==KEY_RIGHT||c=='l'||c=='L')    sel = (sel+1)%N;
+        else if (c==KEY_LEFT ||c=='h'||c=='H')    sel = (sel+N-1)%N;
+        else if (c==KEY_DOWN ||c=='j'||c=='J')    sel = (sel+COLS)%N;
+        else if (c==KEY_UP   ||c=='k'||c=='K')    sel = (sel+N-COLS)%N;
+        else if (c=='r'||c=='R')                  { base = base*6364136223846793005ull + 1442695040888963407ull; regen(); }
+        else if (c==']')                          { typeChoice = (typeChoice >= B_RIVER) ? -1 : typeChoice+1; regen(); }
+        else if (c=='[')                          { typeChoice = (typeChoice < 0) ? B_RIVER : typeChoice-1; regen(); }
+    }
 }
 
 void initGame(int numAIs, unsigned long long seed) {
@@ -535,8 +645,8 @@ static void runMatch() {
 // Headless determinism check: run N ticks from a fixed seed with no human
 // commands and print the final state hash. Run it twice; identical hashes
 // mean the sim is reproducible — the property lockstep multiplayer needs.
-static int runVerify(unsigned long long seed, int ticks, int numAIs) {
-    g.biomeChoice = 0;   // fixed biome + difficulty: no menu dependence
+static int runVerify(unsigned long long seed, int ticks, int numAIs, int biome) {
+    g.biomeChoice = biome;   // fixed biome + difficulty: no menu dependence
     g.difficulty  = 1;
     initGame(numAIs, seed);
     for (int i = 0; i < ticks; i++) simTick();
@@ -553,7 +663,8 @@ int main(int argc, char** argv) {
         unsigned long long seed = (argc >= 3) ? strtoull(argv[2], nullptr, 10) : 12345;
         int ticks  = (argc >= 4) ? atoi(argv[3]) : 5000;
         int numAIs = (argc >= 5) ? atoi(argv[4]) : 3;
-        return runVerify(seed, std::max(1, ticks), std::max(1, std::min(3, numAIs)));
+        int biome  = (argc >= 6) ? atoi(argv[5]) : 0;   // optional: Biome enum / -1 random
+        return runVerify(seed, std::max(1, ticks), std::max(1, std::min(3, numAIs)), biome);
     }
 
     // --verify-replay: headless playback of a recorded match. Run it twice
@@ -629,7 +740,12 @@ int main(int argc, char** argv) {
         // ASCII mode keeps the original mostly-transparent look.
         initColors();
 
-        initGame(numAIs);
+        // Visual map picker. Backing out (Q) returns to the splash. The chosen
+        // thumbnail's exact seed is replayed by initGame so it matches.
+        unsigned long long pickedSeed = 0;
+        if (!showMapPreview(pickedSeed)) continue;
+
+        initGame(numAIs, pickedSeed);
         replayStartRecording(numAIs);   // every match is recorded; replays/ dir
         setStatus("Dawn breaks over the realm. Select peasants [Space] and gather [Enter]. [A]=select all military.");
 

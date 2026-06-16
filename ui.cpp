@@ -39,7 +39,8 @@ static const char* terrName(Terrain t) {
     return ((int)t >= 0 && (int)t <= (int)T_MONOLITH) ? tn[t] : "?";
 }
 static const char* biomeName(Biome b) {
-    static const char* bn[] = {"Temperate","Desert","Tundra","Swamp","Woodland","Volcanic","Ocean"};
+    static const char* bn[] = {"Temperate","Desert","Tundra","Swamp","Woodland","Ocean",
+                               "Highlands","Deep Woods","Riverlands"};
     return ((int)b >= 0 && (int)b < (int)(sizeof(bn)/sizeof(bn[0]))) ? bn[b] : "?";
 }
 
