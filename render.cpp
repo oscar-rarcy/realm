@@ -677,6 +677,23 @@ void getTerrainVisual(Terrain t, int x, int y, char& ch, int& cp, bool lit) {
         cp = (frame < 2) ? CP_GOLD_SHIMMER : CP_GOLD;
     }
 
+    // Wind: a gust front sweeps across the map (phase moves with tick and shifts
+    // by position, so the ripple visibly travels), swaying open vegetation. Only
+    // the glyph leans — colour is left to the seasonal pass below.
+    {
+        int windPhase = (g.tick / 3) - (x * 2 + y);
+        bool gust = ((windPhase & 7) < 2);   // ~25% of the cycle is "leaning"
+        switch (t) {
+            case T_GRASS:      ch = gust ? ',' : '.';   break;
+            case T_TALL_GRASS: ch = gust ? '\'' : '"';  break;
+            case T_MEADOW:     ch = gust ? '`' : ',';   break;
+            case T_WHEAT:      ch = gust ? '*' : '%';   break;  // ears nodding
+            case T_REEDS:      if (gust) ch = '\\';     break;  // adds to the reed wave
+            case T_FOREST:     if ((windPhase & 31) < 2) ch = 'Y'; break;  // occasional canopy rustle
+            default: break;
+        }
+    }
+
     if (biome != B_DESERT && biome != B_SNOW) {
         switch (season) {
         case SPRING:
@@ -1271,6 +1288,62 @@ void renderMap() {
             if (displayMode == DM_ASCII) mvaddch(sy+2, sx * tileW, '.');
             else                         mvprintw(sy+2, sx * tileW, u8"·");
             attroff(COLOR_PAIR(CP_RAIN)|A_BOLD);
+        }
+    }
+
+    // Ambient birds: a small flock drifts east across the sky. Render-only
+    // flavour — never drawn over units or fog.
+    {
+        const int FLOCK = 5;
+        for (int b = 0; b < FLOCK; b++) {
+            int mx = (g.tick/5 + b*53) % (MAP_W + 24) - 12;       // drift + wrap
+            int my = 5 + (b*MAP_H)/FLOCK + ((g.tick/40 + b) % 5) - 2;
+            if (!inBounds(mx,my) || !g.map[my][mx].visible[0] || entityAt(mx,my)) continue;
+            int sx = mx - g.viewX, sy = my - g.viewY;
+            if (sx < 0 || sy < 0 || sx >= g.viewW || sy >= g.viewH) continue;
+            bool flap = ((g.tick/3 + b) & 1);
+            attron(COLOR_PAIR(CP_UI_DIM));
+            if (displayMode == DM_ASCII) mvaddch(sy+2, sx*tileW, flap ? 'v' : '^');
+            else                         mvprintw(sy+2, sx*tileW, flap ? u8"ᵛ" : u8"ʌ");
+            attroff(COLOR_PAIR(CP_UI_DIM));
+        }
+    }
+
+    // Hearth smoke by day, torch flicker by night — life around settled homes.
+    {
+        bool night = getBrightness() < 0.3f;
+        for (auto& e : g.entities) {
+            if (!e.alive || !isBuilding(e.type) || e.underConstruction) continue;
+            bool hearth = (e.type==E_HOUSE || e.type==E_TOWNHALL || e.type==E_MANOR ||
+                           e.type==E_TAVERN || e.type==E_BLACKSMITH);
+            if (!hearth || !inBounds(e.x,e.y) || !g.map[e.y][e.x].visible[0]) continue;
+            int sx = e.x - g.viewX, sy = e.y - g.viewY;
+            if (sx < 0 || sy < 1 || sx >= g.viewW || sy >= g.viewH) continue;  // need a row above
+            if (night) {
+                if (((g.tick/2 + e.id) % 7) < 4) {                 // flicker on/off
+                    int pmx = e.x, pmy = e.y - 1;
+                    if (inBounds(pmx,pmy) && !entityAt(pmx,pmy)) {
+                        attron(COLOR_PAIR(CP_SUN)|A_BOLD);
+                        if (displayMode == DM_ASCII) mvaddch(sy-1+2, sx*tileW, ((g.tick+e.id)&1)?'\'':'.');
+                        else                         mvprintw(sy-1+2, sx*tileW, u8"˙");
+                        attroff(COLOR_PAIR(CP_SUN)|A_BOLD);
+                    }
+                }
+            } else {
+                int ph = (g.tick/6 + e.id*3);
+                if ((ph % 4) < 3) {                                 // intermittent puffs
+                    int puffX = sx + (((ph/8) % 3) - 1);            // drift with the wind
+                    int puffY = sy - 1 - ((ph/4) % 2);             // rise one-two rows
+                    int pmx = g.viewX + puffX, pmy = g.viewY + puffY;
+                    if (puffX >= 0 && puffY >= 0 && puffX < g.viewW &&
+                        inBounds(pmx,pmy) && !entityAt(pmx,pmy)) {
+                        attron(COLOR_PAIR(CP_UI_DIM));
+                        if (displayMode == DM_ASCII) mvaddch(puffY+2, puffX*tileW, ((ph/4)&1)?'%':'*');
+                        else                         mvprintw(puffY+2, puffX*tileW, u8"°");
+                        attroff(COLOR_PAIR(CP_UI_DIM));
+                    }
+                }
+            }
         }
     }
 
