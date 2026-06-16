@@ -42,7 +42,9 @@ static void forceUtf8Locale() {
 // Full splash screen. Sets g.biomeChoice, g.difficulty and displayMode.
 // Returns numAIs. Banner is block-art; headers use A_TITLE, which the SDL
 // build renders in a blackletter face (Luminari) — the terminal gets bold.
-static int showSplash() {
+static bool showMapPreview(unsigned long long& outSeed);   // visual battlefield picker, below
+
+static int showSplash(unsigned long long& outSeed) {
     // Index order matches the Biome enum (0-8); the trailing entry is Random.
     static const char* biomeNames[] = {
         "Temperate","Desert","Snow","Swamp","Forest","Ocean",
@@ -53,6 +55,7 @@ static int showSplash() {
     int numAIs = 1;
     int biomeIdx = RANDOM_IDX; // random
     int diffIdx = 1;  // Normal
+    unsigned long long pickedSeed = 0; // non-zero once a specific map is chosen in the picker
 
     static const char* banner[] = {
         u8"██████╗ ███████╗ █████╗ ██╗     ███╗   ███╗",
@@ -119,7 +122,10 @@ static int showSplash() {
         sel(row+4, col+2, "Map",        biomeNames[biomeIdx], "T/D/S/W/F/C/M/0");
         sel(row+5, col+2, "Display",    displayMode == DM_EMOJI ? "Emoji" : "ASCII", "4/5");
         attron(COLOR_PAIR(CP_UI_DIM));
-        pr(row+7, col+2, "M cycles Highlands/Deep Woods/River   0=random   then preview");
+        if (pickedSeed)
+            pr(row+7, col+2, "Battlefield chosen — previewed seed locked.  [V] re-pick");
+        else
+            pr(row+7, col+2, "M cycles layouts   [V] browse battlefields   0=random");
         attroff(COLOR_PAIR(CP_UI_DIM));
 
         int c2 = col + bw + 4;
@@ -140,7 +146,7 @@ static int showSplash() {
 
         // ---- footer ----
         attron(A_BOLD | COLOR_PAIR(CP_UI_HIGH));
-        pr(row, col + (W-40)/2, "[Enter] Begin the conquest    [Q] Quit");
+        pr(row, col + (W-52)/2, "[Enter] Begin    [V] Browse battlefields    [Q] Quit");
         attroff(A_BOLD | COLOR_PAIR(CP_UI_HIGH));
 
         refresh();
@@ -150,15 +156,23 @@ static int showSplash() {
         if (ch=='1') numAIs=1;
         else if (ch=='2') numAIs=2;
         else if (ch=='3') numAIs=3;
-        else if (ch=='0') biomeIdx=RANDOM_IDX;
-        else if (ch=='t'||ch=='T') biomeIdx=0;
-        else if (ch=='d'||ch=='D') biomeIdx=1;
-        else if (ch=='s'||ch=='S') biomeIdx=2;
-        else if (ch=='w'||ch=='W') biomeIdx=3;
-        else if (ch=='f'||ch=='F') biomeIdx=4;
-        else if (ch=='c'||ch=='C') biomeIdx=5;
+        // Changing the map type discards any specific previewed seed.
+        else if (ch=='0') { biomeIdx=RANDOM_IDX; pickedSeed=0; }
+        else if (ch=='t'||ch=='T') { biomeIdx=0; pickedSeed=0; }
+        else if (ch=='d'||ch=='D') { biomeIdx=1; pickedSeed=0; }
+        else if (ch=='s'||ch=='S') { biomeIdx=2; pickedSeed=0; }
+        else if (ch=='w'||ch=='W') { biomeIdx=3; pickedSeed=0; }
+        else if (ch=='f'||ch=='F') { biomeIdx=4; pickedSeed=0; }
+        else if (ch=='c'||ch=='C') { biomeIdx=5; pickedSeed=0; }
         // M cycles through the three layout maps (enum indices 6-8).
-        else if (ch=='m'||ch=='M') biomeIdx = (biomeIdx>=6 && biomeIdx<=8) ? (6 + (biomeIdx-6+1)%3) : 6;
+        else if (ch=='m'||ch=='M') { biomeIdx = (biomeIdx>=6 && biomeIdx<=8) ? (6 + (biomeIdx-6+1)%3) : 6; pickedSeed=0; }
+        // V opens the visual battlefield picker; committing a thumbnail there
+        // locks its exact type + seed for [Enter].
+        else if (ch=='v'||ch=='V') {
+            g.biomeChoice = (biomeIdx == RANDOM_IDX) ? -1 : biomeIdx;  // open the grid on the current type
+            unsigned long long s = 0;
+            if (showMapPreview(s)) { pickedSeed = s; biomeIdx = g.biomeChoice; }
+        }
         else if (ch=='e'||ch=='E') diffIdx=0;
         else if (ch=='n'||ch=='N') diffIdx=1;
         else if (ch=='h'||ch=='H') diffIdx=2;
@@ -168,6 +182,7 @@ static int showSplash() {
     g.difficulty = diffIdx;
     // Menu indices 0-8 line up 1:1 with the Biome enum; RANDOM_IDX means mixed.
     g.biomeChoice = (biomeIdx == RANDOM_IDX) ? -1 : biomeIdx;
+    outSeed = pickedSeed;   // 0 = let initGame roll a fresh seed for this type
     return numAIs;
 }
 
@@ -209,6 +224,7 @@ static bool showMapPreview(unsigned long long& outSeed) {
     struct Cand { unsigned long long seed; int type; std::vector<char> ch; std::vector<int> cp; };
     std::vector<Cand> cand(N);
     int typeChoice = g.biomeChoice;                 // -1 = random/mixed
+    int savedChoice = g.biomeChoice;                // restored if the player backs out
     unsigned long long base = (unsigned long long)time(nullptr) * 2654435761ull + 1;
     int sel = 0;
 
@@ -267,7 +283,7 @@ static bool showMapPreview(unsigned long long& outSeed) {
         refresh();
 
         int c = getch();
-        if (c=='q'||c=='Q')                       { return false; }
+        if (c=='q'||c=='Q')                       { g.biomeChoice = savedChoice; return false; }
         else if (c=='\n'||c==KEY_ENTER||c=='\r')  { g.biomeChoice = cand[sel].type; outSeed = cand[sel].seed; return true; }
         else if (c==KEY_RIGHT||c=='l'||c=='L')    sel = (sel+1)%N;
         else if (c==KEY_LEFT ||c=='h'||c=='H')    sel = (sel+N-1)%N;
@@ -733,17 +749,16 @@ int main(int argc, char** argv) {
     }
 
     while (true) {
-        int numAIs = showSplash();
+        // The splash is the hub: opponents, difficulty, map, display. Pressing
+        // [V] there opens the visual battlefield picker; a committed pick comes
+        // back as a locked seed (0 = roll a fresh map of the chosen type).
+        unsigned long long pickedSeed = 0;
+        int numAIs = showSplash(pickedSeed);
 
         // Display mode is selected on the splash screen. Reinitialise colour
         // pairs here so emoji mode can use filled terrain backgrounds while
         // ASCII mode keeps the original mostly-transparent look.
         initColors();
-
-        // Visual map picker. Backing out (Q) returns to the splash. The chosen
-        // thumbnail's exact seed is replayed by initGame so it matches.
-        unsigned long long pickedSeed = 0;
-        if (!showMapPreview(pickedSeed)) continue;
 
         initGame(numAIs, pickedSeed);
         replayStartRecording(numAIs);   // every match is recorded; replays/ dir
