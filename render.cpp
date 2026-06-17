@@ -605,6 +605,44 @@ static bool shouldShowSeasonAt(int x, int y, float threshold) {
     return (float)hash / 65535.0f < threshold;
 }
 
+// --- Gentle tides on large open seas (render-only, never touches the sim) ----
+// Rivers and small lakes keep their lively shimmer; only large *blobby* bodies
+// of deep water — i.e. seas / open salt water — get a slow tidal swell. A body
+// must be both big in area and wide in both dimensions, so a long thin river
+// doesn't qualify. The mask is cached and rebuilt once per match.
+static bool gSeaMask[MAP_H][MAP_W];
+static unsigned long long gSeaMaskSeed = ~0ull;
+
+static void rebuildSeaMask() {
+    static bool seen[MAP_H][MAP_W];
+    for (int y=0; y<MAP_H; y++) for (int x=0; x<MAP_W; x++) { gSeaMask[y][x]=false; seen[y][x]=false; }
+    const int   SEA_MIN_AREA = 500;   // tiles
+    const int   SEA_MIN_SPAN = 28;    // must be wide in BOTH dims (excludes rivers)
+    static const int d4[4][2] = {{1,0},{-1,0},{0,1},{0,-1}};
+    std::vector<std::pair<int,int>> stack, body;
+    for (int sy=0; sy<MAP_H; sy++) for (int sx=0; sx<MAP_W; sx++) {
+        if (seen[sy][sx]) continue;
+        if (g.map[sy][sx].terrain != T_WATER) { seen[sy][sx]=true; continue; }
+        body.clear(); stack.clear(); stack.push_back({sx,sy}); seen[sy][sx]=true;
+        int minx=sx, maxx=sx, miny=sy, maxy=sy;
+        while (!stack.empty()) {
+            auto [cx,cy] = stack.back(); stack.pop_back(); body.push_back({cx,cy});
+            minx=std::min(minx,cx); maxx=std::max(maxx,cx); miny=std::min(miny,cy); maxy=std::max(maxy,cy);
+            for (auto& d : d4) { int nx=cx+d[0], ny=cy+d[1];
+                if (inBounds(nx,ny) && !seen[ny][nx] && g.map[ny][nx].terrain==T_WATER) { seen[ny][nx]=true; stack.push_back({nx,ny}); } }
+        }
+        if ((int)body.size() >= SEA_MIN_AREA && (maxx-minx) >= SEA_MIN_SPAN && (maxy-miny) >= SEA_MIN_SPAN)
+            for (auto& p : body) gSeaMask[p.second][p.first] = true;
+    }
+}
+static inline bool isSeaTile(int x, int y) {
+    if (gSeaMaskSeed != g.simSeed) { rebuildSeaMask(); gSeaMaskSeed = g.simSeed; }
+    return inBounds(x,y) && gSeaMask[y][x];
+}
+static inline bool bordersSea(int x, int y) {
+    return isSeaTile(x+1,y) || isSeaTile(x-1,y) || isSeaTile(x,y+1) || isSeaTile(x,y-1);
+}
+
 void getTerrainVisual(Terrain t, int x, int y, char& ch, int& cp, bool lit) {
     Season season = getSeason();
     float sprog   = getSeasonProgress();
@@ -664,12 +702,29 @@ void getTerrainVisual(Terrain t, int x, int y, char& ch, int& cp, bool lit) {
 
     // Water animation
     if (t == T_WATER) {
-        int frame = (g.tick/6 + x + y) % 6;
-        const char wc[] = {'~','~','-','~','~','-'};
-        ch = wc[frame];
-        cp = (frame==2||frame==5) ? CP_WATER_SHIMMER : CP_WATER;
+        if (isSeaTile(x, y)) {
+            // Open sea: a slow tidal swell — long wavelength, one soft crest
+            // band drifting through. Calmer than the choppy lake/river shimmer.
+            int phase = ((g.tick/16) + (x + y)/10) % 10;
+            ch = (phase==4 || phase==5) ? '-' : '~';
+            cp = (phase==5) ? CP_WATER_SHIMMER : CP_WATER;
+        } else {
+            int frame = (g.tick/6 + x + y) % 6;
+            const char wc[] = {'~','~','-','~','~','-'};
+            ch = wc[frame];
+            cp = (frame==2||frame==5) ? CP_WATER_SHIMMER : CP_WATER;
+        }
     }
-    if (t == T_SHALLOWS) { int f=(g.tick/8+x*3)%4; const char sc[]={'~','-','~','-'}; ch=sc[f]; }
+    if (t == T_SHALLOWS) {
+        if (bordersSea(x, y)) {
+            // Tide lapping the shore: a gentle, slow wash in and out.
+            int f = (g.tick/14 + x + y) % 8;
+            ch = (f < 1) ? '-' : '~';
+            if (f == 0) cp = CP_WATER_SHIMMER;
+        } else {
+            int f=(g.tick/8+x*3)%4; const char sc[]={'~','-','~','-'}; ch=sc[f];
+        }
+    }
     if (t == T_MARSH)    { int f=(g.tick/10+x)%3;  const char mc[]={'=','-','='};     ch=mc[f]; }
     if (t == T_REEDS)    { int f=(g.tick/12+x+y*3)%4; const char rc[]={'|','/','|','\\'}; ch=rc[f]; }
     if (t == T_GOLD) {
@@ -677,22 +732,6 @@ void getTerrainVisual(Terrain t, int x, int y, char& ch, int& cp, bool lit) {
         cp = (frame < 2) ? CP_GOLD_SHIMMER : CP_GOLD;
     }
 
-    // Wind: a gust front sweeps across the map (phase moves with tick and shifts
-    // by position, so the ripple visibly travels), swaying open vegetation. Only
-    // the glyph leans — colour is left to the seasonal pass below.
-    {
-        int windPhase = (g.tick / 3) - (x * 2 + y);
-        bool gust = ((windPhase & 7) < 2);   // ~25% of the cycle is "leaning"
-        switch (t) {
-            case T_GRASS:      ch = gust ? ',' : '.';   break;
-            case T_TALL_GRASS: ch = gust ? '\'' : '"';  break;
-            case T_MEADOW:     ch = gust ? '`' : ',';   break;
-            case T_WHEAT:      ch = gust ? '*' : '%';   break;  // ears nodding
-            case T_REEDS:      if (gust) ch = '\\';     break;  // adds to the reed wave
-            case T_FOREST:     if ((windPhase & 31) < 2) ch = 'Y'; break;  // occasional canopy rustle
-            default: break;
-        }
-    }
 
     if (biome != B_DESERT && biome != B_SNOW) {
         switch (season) {
