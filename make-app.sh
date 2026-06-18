@@ -24,13 +24,6 @@ mkdir -p "$APP/Contents/MacOS" "$FW" "$APP/Contents/Resources"
 cp realm-gui "$EXE"
 chmod +x "$EXE"
 
-# Bundle the looping soundtrack (loaded at runtime via SDL_GetBasePath). The
-# game runs fine without it, so this is best-effort.
-if [ -f the_old_tower_inn.ogg ]; then
-  cp the_old_tower_inn.ogg "$APP/Contents/Resources/the_old_tower_inn.ogg"
-  echo "==> Bundled soundtrack the_old_tower_inn.ogg."
-fi
-
 # Recursively gather every non-system dylib the binary needs. (Plain arrays +
 # a newline-delimited "seen" string, so this works on macOS's stock bash 3.2.)
 queue=()
