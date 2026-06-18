@@ -20,6 +20,7 @@
 #include "sdl_shim.h"
 #include <SDL.h>
 #include <SDL_ttf.h>
+#include <SDL_mixer.h>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -38,6 +39,8 @@ struct Pair { short fg = -1, bg = -1; };
 
 SDL_Window*   win = nullptr;
 SDL_Renderer* ren = nullptr;
+Mix_Music*    music = nullptr;    // looping background score (gui build only)
+bool          audioReady = false;
 TTF_Font*     font = nullptr;
 TTF_Font*     fontBold = nullptr;
 TTF_Font*     fontTitle = nullptr;   // decorative blackletter for A_TITLE
@@ -575,6 +578,33 @@ const char* findFont() {
     return nullptr;
 }
 
+// Start the looping background score. Looks for the track next to the
+// executable (dev) or in the .app's Resources/ (bundle) via SDL_GetBasePath.
+// Entirely best-effort: any failure (no audio device, missing file, no codec)
+// leaves the game running silently. Set REALM_NO_MUSIC=1 to disable.
+void startMusic() {
+    if (getenv("REALM_NO_MUSIC")) return;
+    if (SDL_InitSubSystem(SDL_INIT_AUDIO) != 0) return;
+    if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) != 0) return;
+    std::string path = "the_old_tower_inn.ogg";
+    if (char* base = SDL_GetBasePath()) { path = std::string(base) + path; SDL_free(base); }
+    music = Mix_LoadMUS(path.c_str());
+    if (!music) { Mix_CloseAudio(); return; }
+    const char* volEnv = getenv("REALM_MUSIC_VOL");   // 0-100, default 65
+    int vol = volEnv ? atoi(volEnv) : 65;
+    Mix_VolumeMusic(MIX_MAX_VOLUME * (vol < 0 ? 0 : vol > 100 ? 100 : vol) / 100);
+    Mix_PlayMusic(music, -1);   // -1 = loop forever
+    audioReady = true;
+}
+
+void stopMusic() {
+    if (!audioReady) return;
+    Mix_HaltMusic();
+    if (music) { Mix_FreeMusic(music); music = nullptr; }
+    Mix_CloseAudio();
+    audioReady = false;
+}
+
 } // namespace
 
 // ============================================================
@@ -586,6 +616,7 @@ WINDOW* initscr() {
         exit(1);
     }
     TTF_Init();
+    startMusic();   // best-effort looping score; silent if audio is unavailable
     mouseDebug = getenv("REALM_MOUSE_DEBUG") ? atoi(getenv("REALM_MOUSE_DEBUG")) : 0;
     if (getenv("REALM_MOUSE_DEBUG") && mouseDebug == 0) mouseDebug = 1;
     dumpPath   = getenv("REALM_DUMP_GRID");
@@ -622,6 +653,7 @@ WINDOW* initscr() {
 }
 
 int endwin() {
+    stopMusic();
     clearGlyphCache();
     if (font)      { TTF_CloseFont(font); font = nullptr; }
     if (fontBold)  { TTF_CloseFont(fontBold); fontBold = nullptr; }

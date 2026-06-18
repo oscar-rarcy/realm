@@ -27,8 +27,8 @@ obj:
 # --- Standalone GUI build: same sources, SDL shim backend ---
 GUI_TARGET := realm-gui
 GUI_OBJS   := $(addprefix gui/,$(OBJ_NAMES)) gui/sdl_shim.o
-SDL_CFLAGS := $(shell $(PKG_CONFIG) --cflags sdl2 SDL2_ttf 2>/dev/null)
-SDL_LIBS   := $(shell $(PKG_CONFIG) --libs sdl2 SDL2_ttf 2>/dev/null)
+SDL_CFLAGS := $(shell $(PKG_CONFIG) --cflags sdl2 SDL2_ttf SDL2_mixer 2>/dev/null)
+SDL_LIBS   := $(shell $(PKG_CONFIG) --libs sdl2 SDL2_ttf SDL2_mixer 2>/dev/null)
 
 gui-build: $(GUI_TARGET)
 
