@@ -1,4 +1,86 @@
 #include "realm.h"
+#include <cctype>
+
+// ============================================================================
+// BATTLEFIELD NAMING — every map gets an evocative, AoE2-style name derived
+// purely from its seed (so the same seed always reads the same), lightly
+// flavoured by climate. Names are deliberately decoupled from the biome: a
+// "Black Fen" can be desert, a "Sunscorch Reach" can be tundra — the layout is
+// what's unique, exactly like AoE2's named maps. No simRand here: naming must
+// not perturb the deterministic sim/replay stream.
+// ============================================================================
+static unsigned long long nameMix(unsigned long long& s) {
+    s += 0x9E3779B97F4A7C15ull;
+    unsigned long long z = s;
+    z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ull;
+    z = (z ^ (z >> 27)) * 0x94D049BB133111EBull;
+    return z ^ (z >> 31);
+}
+
+std::string makeMapName(unsigned long long seed, int layout, int climate) {
+    // Climate-flavoured adjectives blended with a generic evocative pool, so a
+    // name hints at the land without ever being locked to it.
+    static const char* adjGeneric[] = {
+        "Shattered","Forgotten","Whispering","Hollow","Silent","Wandering",
+        "Broken","Golden","Twin","Last","Old","Savage","Endless","Lost",
+        "Wayward","Distant","Quiet","Crimson","Iron","Grey" };
+    static const char* adjDesert[] = {
+        "Scorched","Ashen","Burning","Sunbaked","Parched","Bleached","Amber","Blistering" };
+    static const char* adjSnow[]   = {
+        "Frozen","Bitter","Pale","Bleak","Frostbound","Glittering","White","Hoar" };
+    static const char* adjSwamp[]  = {
+        "Sunken","Drowned","Weeping","Misty","Rotten","Murky","Black","Fevered" };
+    static const char* adjForest[] = {
+        "Verdant","Emerald","Tangled","Shadowed","Wildwood","Deepgreen","Mossy","Thorny" };
+    static const char* adjTemp[]   = {
+        "Rolling","Sunlit","Windswept","Fair","Green","Bountiful","Gilded","Wide" };
+    static const char* nouns[] = {
+        "Vale","Reach","Hollow","Expanse","Marches","Frontier","Basin","Steppe",
+        "Moor","Fen","Wold","Heath","Downs","Crossing","Pass","Plains","Coast",
+        "Delta","Wastes","Gorge","Plateau","Mire","Glen","Barrens","Fields",
+        "Hollows","Range","Hinterland","Flats","Run" };
+    static const char* roots[] = {
+        "Rav","Mor","Dun","Cael","Thar","Brae","Esk","Vorn","Wyck","Grim",
+        "Ald","Hald","Kern","Dol","Bryn","Tor","Ash","Black","Fel","Gan",
+        "Hel","Keb","Orm","Ryn" };
+    static const char* sufx[] = {
+        "moor","wick","ford","holm","gard","mere","fell","dale","march","helm",
+        "stead","reach","watch","crag","wold","haven","barrow","ridge","glen","hold" };
+
+    unsigned long long s = seed ^ (0xD1B54A32D192ED03ull * (unsigned)(layout + 1));
+    auto pick = [&](const char** arr, int n) { return arr[nameMix(s) % n]; };
+    auto cnt  = [](auto& a){ return (int)(sizeof(a)/sizeof(a[0])); };
+
+    // Choose the climate-flavoured adjective pool (or generic).
+    const char** adjC = adjTemp; int adjCn = cnt(adjTemp);
+    switch (climate) {
+        case B_DESERT: adjC = adjDesert; adjCn = cnt(adjDesert); break;
+        case B_SNOW:   adjC = adjSnow;   adjCn = cnt(adjSnow);   break;
+        case B_SWAMP:  adjC = adjSwamp;  adjCn = cnt(adjSwamp);  break;
+        case B_FOREST: adjC = adjForest; adjCn = cnt(adjForest); break;
+        default: break;   // temperate / ocean / mixed -> adjTemp
+    }
+    // Half the time use the flavoured pool, half the generic — keeps names
+    // surprising rather than every desert map sounding the same.
+    auto adj = [&]() -> const char* {
+        return (nameMix(s) & 1) ? pick(adjC, adjCn)
+                                : pick(adjGeneric, cnt(adjGeneric));
+    };
+    auto proper = [&]() {
+        std::string p = roots[nameMix(s) % cnt(roots)];
+        p += sufx[nameMix(s) % cnt(sufx)];
+        p[0] = toupper(p[0]);
+        return p;
+    };
+
+    switch (nameMix(s) % 5) {
+        case 0: return std::string(adj()) + " " + pick(nouns, cnt(nouns));
+        case 1: return "The " + std::string(pick(nouns, cnt(nouns))) + " of " + proper();
+        case 2: return proper() + "'s " + pick(nouns, cnt(nouns));
+        case 3: return proper();
+        default: return std::string(adj()) + " " + proper();
+    }
+}
 
 static float noiseGrid[32][32];
 
@@ -144,6 +226,115 @@ static void applyEcotones() {
     }
 }
 
+// ============================================================================
+// DESERT CHARACTER — turn flat sand into a real desert: coherent dune seas and
+// stony badlands, green oases, dry wadi beds, rocky mesas, and bleached salt
+// flats. Runs over any B_DESERT region (random climate OR a desert-skinned
+// layout), so a Riverlands+Desert reads as a Nile, Highlands+Desert as mesas.
+// Deterministic (simRand), so it's part of the seed and survives replays.
+// ============================================================================
+static void applyDesertFeatures() {
+    auto isSand = [](Terrain t){
+        return t==T_SAND||t==T_DUNES||t==T_GRAVEL||t==T_DIRT||t==T_MUD;
+    };
+    auto desertAt = [&](int x,int y){
+        return inBounds(x,y) && g.map[y][x].biome==B_DESERT;
+    };
+    // Bail out cheaply if there's no desert on this map.
+    int desertCount = 0;
+    for (int y=0;y<MAP_H;y++) for (int x=0;x<MAP_W;x++) if (g.map[y][x].biome==B_DESERT) desertCount++;
+    if (desertCount < 200) return;
+
+    // 1) Coherent zones. Two slow noise channels carve the open desert into
+    //    rolling dune seas, broken stony badlands, and cracked salt flats —
+    //    far more characterful than per-tile salt-and-pepper.
+    for (int y=0;y<MAP_H;y++) for (int x=0;x<MAP_W;x++) {
+        Tile& t = g.map[y][x];
+        if (t.biome!=B_DESERT || !isSand(t.terrain) || t.resources>0) continue;
+        float dn = sampleNoise(x*0.045f+200, y*0.045f+200);   // dune field
+        float rn = sampleNoise(x*0.060f+311, y*0.060f+311);   // rocky badlands
+        if      (rn > 0.78f) { t.terrain = T_STONE;  t.resources = 0; }
+        else if (rn > 0.68f) t.terrain = T_GRAVEL;
+        else if (dn > 0.66f) t.terrain = T_DUNES;
+        else if (dn < 0.26f) t.terrain = T_DIRT;              // bleached salt flat
+        else                 t.terrain = T_SAND;
+    }
+
+    // 2) Oases — the lifelines. A little water, ringed by green grass, date
+    //    palms (wood!) and the odd berry. Worth fighting over in a wasteland.
+    int oases = 2 + simRand()%3;
+    for (int k=0;k<oases;k++) {
+        int cx = 18 + simRand()%(MAP_W-36), cy = 14 + simRand()%(MAP_H-28);
+        if (!desertAt(cx,cy)) continue;
+        int pr = 1 + simRand()%2;                              // pool radius
+        int gr = pr + 2 + simRand()%2;                         // green ring radius
+        for (int dy=-gr;dy<=gr;dy++) for (int dx=-gr;dx<=gr;dx++) {
+            int nx=cx+dx, ny=cy+dy; if (!desertAt(nx,ny)) continue;
+            Terrain o = g.map[ny][nx].terrain;
+            if (o==T_GOLD||o==T_MOUNTAIN) continue;
+            int r2 = dx*dx+dy*dy;
+            if (r2 <= pr*pr)            { g.map[ny][nx].terrain=T_WATER; g.map[ny][nx].resources=0; }
+            else if (r2 <= (pr+1)*(pr+1)){ g.map[ny][nx].terrain=T_SHALLOWS; g.map[ny][nx].resources=0; }
+            else if (r2 <= gr*gr) {
+                int rr = simRand()%100;
+                if      (rr<35) { g.map[ny][nx].terrain=T_PALM;  g.map[ny][nx].resources=60+simRand()%50; }
+                else if (rr<48) { g.map[ny][nx].terrain=T_BERRY; g.map[ny][nx].resources=40+simRand()%40; }
+                else            { g.map[ny][nx].terrain=T_GRASS; g.map[ny][nx].resources=0; }
+            }
+        }
+    }
+
+    // 3) Wadis — dry riverbeds of cracked earth with gravel banks and a few
+    //    palms clinging to the moisture. Snaking lines across the sand.
+    int wadis = 1 + simRand()%2;
+    for (int k=0;k<wadis;k++) {
+        int x = 10 + simRand()%(MAP_W-20), y = 10 + simRand()%(MAP_H-20);
+        float ang = (simRand()%628)/100.0f;
+        int len = 50 + simRand()%50;
+        for (int i=0;i<len;i++) {
+            ang += ((simRand()%100)-50)/180.0f;
+            x += (int)roundf(cosf(ang)); y += (int)roundf(sinf(ang));
+            for (int w=-1;w<=1;w++) for (int u=-1;u<=1;u++) {
+                int nx=x+w, ny=y+u; if (!desertAt(nx,ny)) continue;
+                Terrain o = g.map[ny][nx].terrain;
+                if (o==T_GOLD||o==T_WATER||o==T_SHALLOWS) continue;
+                if (w==0||u==0) { g.map[ny][nx].terrain = (simRand()%5==0)?T_MUD:T_DIRT; }
+                else if (g.map[ny][nx].terrain!=T_DIRT && simRand()%2==0) g.map[ny][nx].terrain = T_GRAVEL;
+            }
+            if (simRand()%9==0 && desertAt(x,y) && g.map[y][x].terrain==T_DIRT)
+                { g.map[y][x].terrain=T_PALM; g.map[y][x].resources=50+simRand()%40; }
+        }
+    }
+
+    // 4) Mesas / buttes — abrupt rocky outcrops: an impassable stone heart with
+    //    a gravel skirt, sometimes hiding a gold seam in the rock.
+    int mesas = 3 + simRand()%4;
+    for (int k=0;k<mesas;k++) {
+        int cx = 16 + simRand()%(MAP_W-32), cy = 12 + simRand()%(MAP_H-24);
+        if (!desertAt(cx,cy)) continue;
+        int rad = 2 + simRand()%3;
+        for (int dy=-rad-1;dy<=rad+1;dy++) for (int dx=-rad-1;dx<=rad+1;dx++) {
+            int nx=cx+dx, ny=cy+dy; if (!desertAt(nx,ny)) continue;
+            if (g.map[ny][nx].terrain==T_GOLD) continue;
+            int r2 = dx*dx+dy*dy;
+            if      (r2 <= rad*rad)         { g.map[ny][nx].terrain=T_STONE; g.map[ny][nx].resources=0; }
+            else if (r2 <= (rad+1)*(rad+1)) g.map[ny][nx].terrain=T_GRAVEL;
+        }
+        if (simRand()%2==0) placeGoldCluster(cx, cy, 2 + simRand()%2);
+    }
+
+    // 5) Bleaching bones & wind-worn ruins scattered across the flats.
+    for (int i=0;i<14;i++) {
+        int x = 8 + simRand()%(MAP_W-16), y = 8 + simRand()%(MAP_H-16);
+        if (!desertAt(x,y)) continue;
+        Terrain o = g.map[y][x].terrain;
+        if (o==T_SAND||o==T_DUNES||o==T_DIRT) {
+            g.map[y][x].terrain = (simRand()%3==0) ? T_PALM : T_RUINS;
+            if (g.map[y][x].terrain==T_PALM) g.map[y][x].resources = 40+simRand()%40;
+        }
+    }
+}
+
 // Coastal map: 2-3 large landmasses separated by sea channels, with a few
 // small islands in between. Replaces the noise-soup archipelago.
 static void generateContinentMap() {
@@ -269,6 +460,7 @@ static void generateContinentMap() {
     // Theme the islands to the match climate and soften their coasts.
     applyClimateSkin();
     applyEcotones();
+    applyDesertFeatures();
 
     // Snapshot for winter thaw cycle.
     for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++)
@@ -288,6 +480,7 @@ static void finishLayout() {
     // Theme the neutral template to the chosen climate, then soften the borders.
     applyClimateSkin();
     applyEcotones();
+    applyDesertFeatures();
     for (int i = 0; i < 16; i++)
         placeGoldCluster(15 + simRand()%(MAP_W-30), 15 + simRand()%(MAP_H-30), 3 + simRand()%3);
     // Berry patches on open grass.
@@ -520,11 +713,12 @@ void generateMap() {
             else           t.terrain = T_GRASS;
             break;
         case B_DESERT:
-            if (r<60)      t.terrain = T_SAND;
-            else if (r<75) t.terrain = T_DUNES;
-            else if (r<80) t.terrain = T_GRAVEL;
-            else if (r<85) { t.terrain = T_PALM; t.resources = 60 + simRand() % 40; }
-            else           t.terrain = T_SAND;
+            // Mostly plain sand here; applyDesertFeatures() carves the dune
+            // seas, badlands, oases and mesas that give the desert its shape.
+            if (r<84)      t.terrain = T_SAND;
+            else if (r<92) t.terrain = T_DUNES;
+            else if (r<96) t.terrain = T_GRAVEL;
+            else           { t.terrain = T_PALM; t.resources = 50 + simRand() % 40; }
             break;
         case B_SNOW:
             if (r<60)      t.terrain = T_SNOW;
@@ -820,6 +1014,7 @@ void generateMap() {
 
     // Continental already paints climate per tile; just soften the coastlines.
     applyEcotones();
+    applyDesertFeatures();
 
     // Baseline snapshot used by the winter→spring thaw cycle.
     for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++)

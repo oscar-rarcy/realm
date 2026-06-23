@@ -317,6 +317,7 @@ struct Game {
     int weatherTimer;     // ticks until next weather change roll
     int biomeChoice;      // CLIMATE: -1 = mixed climate bands, else a forced Biome (0-4)
     int layoutChoice;     // LAYOUT: -1 = random (resolved in initGame), else a Layout
+    std::string mapName;  // evocative battlefield name (display only; derived from seed)
     bool returnToMenu;    // set on game-over to break back to splash screen
     bool cursorByMouse;   // last cursor move came from the mouse: render must
                           // NOT auto-pan the view to chase it (that pan changes
@@ -358,6 +359,9 @@ int  simRand();   // uniform 0..2^31-1, drop-in for rand()
 
 // mapgen.cpp
 void generateMap();
+// Evocative, AoE2-style battlefield name derived purely from the seed (and
+// flavoured by layout/climate). Deterministic; never touches the sim RNG.
+std::string makeMapName(unsigned long long seed, int layout, int climate);
 void clearStartArea(int cx, int cy, int radius);
 void placeGoldCluster(int cx, int cy, int count);
 

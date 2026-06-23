@@ -14,7 +14,7 @@
 //   - Skips garbage corrupt files via fread return-value checks
 
 static constexpr char MAGIC[4] = {'R','L','M','2'};
-static constexpr int  SAVE_VERSION = 9;  // v9: split map layout vs climate (g.layoutChoice)
+static constexpr int  SAVE_VERSION = 10; // v10: persist g.simSeed (battlefield name)
 static constexpr int  MAX_ENTITIES = 100000;
 static constexpr int  MAX_VEC_LEN  = 50000;
 
@@ -85,6 +85,7 @@ bool saveGame(const char* path) {
     wr(f, g.attackNotifyCd);
     wr(f, g.weather); wr(f, g.weatherTimer);
     wr(f, g.biomeChoice); wr(f, g.layoutChoice);
+    wr(f, g.simSeed);
     wr(f, g.winner); wr(f, g.aiTimer); wr(f, g.farmTimer);
     wr(f, g.rngState);
     wr(f, g.difficulty); wr(f, g.winterSeverity);
@@ -161,9 +162,12 @@ bool loadGame(const char* path) {
     rd(f, g.attackNotifyCd);
     rd(f, g.weather); rd(f, g.weatherTimer);
     rd(f, g.biomeChoice); rd(f, g.layoutChoice);
+    rd(f, g.simSeed);
     rd(f, g.winner); rd(f, g.aiTimer); rd(f, g.farmTimer);
     rd(f, g.rngState);
     rd(f, g.difficulty); rd(f, g.winterSeverity);
+    // Re-derive the battlefield name from the persisted seed/layout/climate.
+    g.mapName = makeMapName(g.simSeed, g.layoutChoice, g.biomeChoice);
     // Commands queued against the pre-load world would mis-target ids in
     // the loaded one. The queue is transient, never saved — just drop it.
     g.pendingCmds.clear();

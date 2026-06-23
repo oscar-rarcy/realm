@@ -39,7 +39,7 @@ static void forceUtf8Locale() {
 }
 
 
-// Full splash screen. Sets g.biomeChoice, g.difficulty and displayMode.
+// Full splash screen. Sets g.biomeChoice, g.difficulty and game speed.
 // Returns numAIs. Banner is block-art; headers use A_TITLE, which the SDL
 // build renders in a blackletter face (Luminari) — the terminal gets bold.
 static bool showMapPreview(unsigned long long& outSeed);   // visual battlefield picker, below
@@ -123,12 +123,11 @@ static int showSplash(unsigned long long& outSeed) {
         sel(row+4, col+2, "Climate",    climateNames[climIdx],  "T/D/S/W/F/0");
         sel(row+5, col+2, "Layout",     layoutNames[layoutIdx], "L");
         sel(row+6, col+2, "Speed",      speedNames[speedIdx],   "G");
-        sel(row+7, col+2, "Display",    displayMode == DM_EMOJI ? "Emoji" : "ASCII", "4/5");
         attron(COLOR_PAIR(CP_UI_DIM));
         if (pickedSeed)
-            pr(row+8, col+2, "Battlefield chosen — seed locked.   [V] re-pick");
+            pr(row+7, col+2, "Battlefield chosen — seed locked.   [V] re-pick");
         else
-            pr(row+8, col+2, "[L] cycles layout   [V] browse battlefields");
+            pr(row+7, col+2, "[L] cycles layout   [V] browse battlefields");
         attroff(COLOR_PAIR(CP_UI_DIM));
 
         int c2 = col + bw + 4;
@@ -182,8 +181,6 @@ static int showSplash(unsigned long long& outSeed) {
         else if (ch=='e'||ch=='E') diffIdx=0;
         else if (ch=='n'||ch=='N') diffIdx=1;
         else if (ch=='h'||ch=='H') diffIdx=2;
-        else if (ch=='4') displayMode = DM_ASCII;
-        else if (ch=='5') displayMode = DM_EMOJI;
         else if (ch=='g'||ch=='G') speedIdx = (speedIdx + 1) % 3;
     }
     g.difficulty = diffIdx;
@@ -207,6 +204,7 @@ static void previewGlyph(Terrain t, char& ch, int& cp) {
                                        ch='*'; cp=CP_MM_FOREST; break;
         case T_GOLD:                   ch='$'; cp=CP_MM_GOLD;   break;
         case T_SAND: case T_DUNES:     ch='.'; cp=CP_MM_SAND;   break;
+        case T_DIRT: case T_MUD:       ch=','; cp=CP_MM_SAND;   break;  // cracked flats / wadi beds
         case T_SNOW: case T_ICE:       ch='.'; cp=CP_MM_SNOW;   break;
         case T_CASTLE_WALL: case T_CASTLE_GATE: case T_CASTLE_FLOOR: case T_RUINS:
                                        ch='#'; cp=CP_MM_CASTLE; break;
@@ -230,7 +228,7 @@ static bool showMapPreview(unsigned long long& outSeed) {
 
     static const char* layName[]  = {"Continental","Highlands","Deep Woods","River","Islands"};
     static const char* climName[] = {"Temperate","Desert","Snow","Swamp","Forest"};
-    struct Cand { unsigned long long seed; int lay, clim; std::vector<char> ch; std::vector<int> cp; };
+    struct Cand { unsigned long long seed; int lay, clim; std::string name; std::vector<char> ch; std::vector<int> cp; };
     std::vector<Cand> cand(N);
     int layFilter  = g.layoutChoice;                 // -1 = random
     int climFilter = g.biomeChoice;                  // -1 = mixed
@@ -239,15 +237,25 @@ static bool showMapPreview(unsigned long long& outSeed) {
     int sel = 0;
 
     auto regen = [&]() {
+        // No two thumbnails should look alike. When the layout filter is
+        // "random", deal every cell a DISTINCT layout; likewise spread the
+        // climates (including one genuinely mixed/banded map) when unfiltered.
+        // AoE2 never shows you the same map twice on the picker, and neither do we.
+        int layOrder[LAYOUT_COUNT];
+        for (int i = 0; i < LAYOUT_COUNT; i++) layOrder[i] = i;
+        for (int i = LAYOUT_COUNT-1; i > 0; i--) { int j=(int)((base>>(i*3+1))%(i+1)); std::swap(layOrder[i],layOrder[j]); }
+        int climOrder[6] = { -1, B_TEMPERATE, B_DESERT, B_FOREST, B_SNOW, B_SWAMP };
+        for (int i = 5; i > 0; i--) { int j=(int)((base>>(i*5+2))%(i+1)); std::swap(climOrder[i],climOrder[j]); }
+
         for (int i = 0; i < N; i++) {
             unsigned long long s = base + (unsigned long long)(i+1)*0x9E3779B97F4A7C15ull;
             if (s == 0) s = 1;
-            int lay  = (layFilter  < 0) ? (int)((s>>17) % LAYOUT_COUNT) : layFilter;   // resolve random
-            int clim = climFilter;                                                      // -1 stays mixed
-            if (clim < 0 && (s & 8)) clim = (int)((s>>21) % 5);   // mixed: some cells force a climate for variety
+            int lay  = (layFilter  < 0) ? layOrder[i % LAYOUT_COUNT] : layFilter;
+            int clim = (climFilter < 0) ? climOrder[i % 6]           : climFilter;
             g.layoutChoice = lay; g.biomeChoice = clim;
             seedSimRng(s); generateMap();
             cand[i].seed = s; cand[i].lay = lay; cand[i].clim = clim;
+            cand[i].name = makeMapName(s, lay, clim);
             cand[i].ch.assign(TW*TH, '.'); cand[i].cp.assign(TW*TH, CP_GRASS);
             for (int yy = 0; yy < TH; yy++) for (int xx = 0; xx < TW; xx++) {
                 char c; int cp; previewGlyph(g.map[yy*MAP_H/TH][xx*MAP_W/TW].terrain, c, cp);
@@ -281,13 +289,24 @@ static bool showMapPreview(unsigned long long& outSeed) {
                 int cp = cand[i].cp[r*TW+c];
                 attron(COLOR_PAIR(cp)); mvaddch(cy+r, cx+c, cand[i].ch[r*TW+c]); attroff(COLOR_PAIR(cp));
             }
+            // Headline the map's evocative name on the bottom border (AoE2 style).
+            char title[64];
+            snprintf(title, sizeof title, " %s ", cand[i].name.c_str());
+            title[std::min((int)strlen(title), TW)] = '\0';   // keep inside the frame
             attron(isSel ? (COLOR_PAIR(CP_UI_HIGH)|A_BOLD) : COLOR_PAIR(CP_UI_TEXT));
-            mvprintw(cy+TH, cx+1, " %s / %s ", layName[cand[i].lay],
-                     cand[i].clim < 0 ? "Mixed" : climName[cand[i].clim]);
+            mvprintw(cy+TH, cx+1, "%s", title);
             attroff(isSel ? (COLOR_PAIR(CP_UI_HIGH)|A_BOLD) : COLOR_PAIR(CP_UI_TEXT));
         }
+        // Selected map's full billing: name + layout · climate.
+        attron(COLOR_PAIR(CP_UI_HIGH)|A_BOLD);
+        mvprintw(oy + gridH + 1, ox, "%s", cand[sel].name.c_str());
+        attroff(COLOR_PAIR(CP_UI_HIGH)|A_BOLD);
+        attron(COLOR_PAIR(CP_UI_TEXT));
+        mvprintw(oy + gridH + 1, ox + (int)cand[sel].name.size() + 2, "— %s · %s",
+                 layName[cand[sel].lay], cand[sel].clim < 0 ? "Mixed lands" : climName[cand[sel].clim]);
+        attroff(COLOR_PAIR(CP_UI_TEXT));
         attron(COLOR_PAIR(CP_UI_DIM));
-        mvprintw(oy + gridH + 1, ox, "Filter: %s layout, %s climate",
+        mvprintw(oy + gridH + 2, ox, "Filter: %s layout, %s climate",
                  layFilter < 0 ? "Random" : layName[layFilter],
                  climFilter < 0 ? "Mixed" : climName[climFilter]);
         attroff(COLOR_PAIR(CP_UI_DIM));
@@ -319,6 +338,9 @@ void initGame(int numAIs, unsigned long long seed) {
     // topology. Climate may stay -1 (genuinely mixed bands).
     if (g.layoutChoice < 0 || g.layoutChoice >= LAYOUT_COUNT)
         g.layoutChoice = (int)(seed % LAYOUT_COUNT);
+    // Name the battlefield from its final seed/layout/climate (same inputs the
+    // picker used, so a previewed map keeps the exact name you chose).
+    g.mapName = makeMapName(g.simSeed, g.layoutChoice, g.biomeChoice);
     g.pendingCmds.clear();
     // Critical: wipe every piece of per-match state so a new game can't see
     // entities, projectiles, IDs, or cached fog from the previous match.
@@ -777,14 +799,12 @@ int main(int argc, char** argv) {
         unsigned long long pickedSeed = 0;
         int numAIs = showSplash(pickedSeed);
 
-        // Display mode is selected on the splash screen. Reinitialise colour
-        // pairs here so emoji mode can use filled terrain backgrounds while
-        // ASCII mode keeps the original mostly-transparent look.
+        // Reinitialise colour pairs in case the splash changed anything.
         initColors();
 
         initGame(numAIs, pickedSeed);
         replayStartRecording(numAIs);   // every match is recorded; replays/ dir
-        setStatus("Dawn breaks over the realm. Select peasants [Space] and gather [Enter]. [A]=select all military.");
+        setStatus(g.mapName + " — dawn breaks. Select peasants [Space] and gather [Enter]. [A]=select all military.");
 
         runMatch();
         replayStopRecording();

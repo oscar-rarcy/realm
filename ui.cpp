@@ -68,11 +68,11 @@ void renderUI() {
     int iconX = maxX - 22;
     if (getBrightness() > 0.5f) {
         attron(COLOR_PAIR(CP_SUN)|A_BOLD);
-        mvprintw(0, iconX, (displayMode == DM_EMOJI) ? "☀️" : "*");
+        mvprintw(0, iconX, "*");
         attroff(COLOR_PAIR(CP_SUN)|A_BOLD);
     } else {
         attron(COLOR_PAIR(CP_MOON));
-        mvprintw(0, iconX, (displayMode == DM_EMOJI) ? "🌙" : "o");
+        mvprintw(0, iconX, "o");
         attroff(COLOR_PAIR(CP_MOON));
     }
     attron(COLOR_PAIR(CP_UI_BAR));
@@ -205,12 +205,12 @@ void renderUI() {
         mvprintw(iy++, panelX+1, "Group: %d units", (int)g.selectedIds.size());
         attroff(COLOR_PAIR(CP_OWN_P0)|A_BOLD);
         attron(COLOR_PAIR(CP_UI_TEXT));
-        // Use the entity glyph/emoji for each unit type in the group summary.
-        if (counts[0]) mvprintw(iy++, panelX+1, "  %s x%d Peasant",  getEntityEmoji(E_PEASANT),  counts[0]);
-        if (counts[1]) mvprintw(iy++, panelX+1, "  %s x%d Militia",  getEntityEmoji(E_MILITIA),  counts[1]);
-        if (counts[2]) mvprintw(iy++, panelX+1, "  %s x%d Archer",   getEntityEmoji(E_ARCHER),   counts[2]);
-        if (counts[3]) mvprintw(iy++, panelX+1, "  %s x%d Knight",   getEntityEmoji(E_KNIGHT),   counts[3]);
-        if (counts[4]) mvprintw(iy++, panelX+1, "  %s x%d Catapult", getEntityEmoji(E_CATAPULT), counts[4]);
+        // Use the entity glyph for each unit type in the group summary.
+        if (counts[0]) mvprintw(iy++, panelX+1, "  %s x%d Peasant",  entityGlyphStr(E_PEASANT),  counts[0]);
+        if (counts[1]) mvprintw(iy++, panelX+1, "  %s x%d Militia",  entityGlyphStr(E_MILITIA),  counts[1]);
+        if (counts[2]) mvprintw(iy++, panelX+1, "  %s x%d Archer",   entityGlyphStr(E_ARCHER),   counts[2]);
+        if (counts[3]) mvprintw(iy++, panelX+1, "  %s x%d Knight",   entityGlyphStr(E_KNIGHT),   counts[3]);
+        if (counts[4]) mvprintw(iy++, panelX+1, "  %s x%d Catapult", entityGlyphStr(E_CATAPULT), counts[4]);
         if (counts[5]) mvprintw(iy++, panelX+1, "  + x%d Other",    counts[5]);
         attroff(COLOR_PAIR(CP_UI_TEXT));
         iy++;
@@ -326,13 +326,8 @@ void renderUI() {
                 attron(COLOR_PAIR(CP_UI_DIM));
                 mvprintw(iy++, panelX+1, "Queue: %d", (int)sel->queue.size());
                 int n = std::min((int)sel->queue.size(), panelW-4);
-                int qStep = (displayMode == DM_EMOJI) ? 2 : 1;
-                for (int i = 0; i < n; i++) {
-                    if (displayMode == DM_ASCII)
-                        mvaddch(iy, panelX+1+i*qStep, STATS[(EntityType)sel->queue[i]].glyph);
-                    else
-                        mvprintw(iy, panelX+1+i*qStep, "%s", getEntityEmoji(sel->queue[i]));
-                }
+                for (int i = 0; i < n; i++)
+                    mvaddch(iy, panelX+1+i, STATS[(EntityType)sel->queue[i]].glyph);
                 iy++;
                 attroff(COLOR_PAIR(CP_UI_DIM));
             }
@@ -439,8 +434,8 @@ void renderUI() {
                 attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(iy, panelX+1, "Unexplored"); attroff(COLOR_PAIR(CP_UI_DIM));
                 iy += 2;
             }
-            if (displayMode == DM_ASCII) {
-                attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(iy++, panelX+1, "-- Legend (ASCII) --"); attroff(COLOR_PAIR(CP_UI_DIM));
+            {
+                attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(iy++, panelX+1, "-- Legend --"); attroff(COLOR_PAIR(CP_UI_DIM));
                 attron(COLOR_PAIR(CP_UI_TEXT));
                 mvprintw(iy++, panelX+1, "$ Gold   T Oak");
                 mvprintw(iy++, panelX+1, "^ Mtn    Y Pine");
@@ -457,44 +452,6 @@ void renderUI() {
                 mvprintw(iy++, panelX+1, "d Deer  s Sheep");
                 mvprintw(iy++, panelX+1, "w Wolf  o Boar");
                 attroff(COLOR_PAIR(CP_DEER));
-            } else {
-                // Emoji legend: resources/useful things get emojis; decorative
-                // terrain stays symbolic on biome-coloured backgrounds.
-                attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(iy++, panelX+1, "-- Legend (Emoji) --"); attroff(COLOR_PAIR(CP_UI_DIM));
-                attron(COLOR_PAIR(CP_UI_TEXT));
-                mvprintw(iy,   panelX+1,  "🪙 Gold");
-                mvprintw(iy++, panelX+10, "🌳 Wood");
-                mvprintw(iy,   panelX+1,  "🫐 Berry");
-                mvprintw(iy++, panelX+10, "🌾 Wheat");
-                mvprintw(iy,   panelX+1,  "≈ Water");
-                mvprintw(iy++, panelX+10, "▲ Mtn");
-                mvprintw(iy,   panelX+1,  "· Grass");
-                mvprintw(iy++, panelX+10, "⌂ Ruins");
-                attroff(COLOR_PAIR(CP_UI_TEXT)); iy++;
-                attron(COLOR_PAIR(CP_OWN_P0)|A_BOLD);
-                mvprintw(iy,   panelX+1,  "🧍‍♂️ Peas");
-                mvprintw(iy++, panelX+12, "🤺 Mil");
-                mvprintw(iy,   panelX+1,  "🏹 Arch");
-                mvprintw(iy++, panelX+12, "🐎 Cav");
-                mvprintw(iy++, panelX+1,  "🛞 Catapult");
-                attroff(COLOR_PAIR(CP_OWN_P0)|A_BOLD); iy++;
-                attron(COLOR_PAIR(CP_UI_TEXT));
-                mvprintw(iy,   panelX+1,  "🦌 Deer");
-                mvprintw(iy++, panelX+10, "🐑 Sheep");
-                mvprintw(iy,   panelX+1,  "🐺 Wolf");
-                mvprintw(iy++, panelX+10, "🐗 Boar");
-                attroff(COLOR_PAIR(CP_UI_TEXT)); iy++;
-                attron(COLOR_PAIR(CP_UI_DIM));
-                mvprintw(iy++, panelX+1, "Bg=biome; units=owner");
-                attroff(COLOR_PAIR(CP_UI_DIM));
-                attron(COLOR_PAIR(CP_OWN_P0)); mvprintw(iy, panelX+1, "You"); attroff(COLOR_PAIR(CP_OWN_P0));
-                attron(COLOR_PAIR(CP_OWN_P1)); mvprintw(iy, panelX+5, "P2");  attroff(COLOR_PAIR(CP_OWN_P1));
-                attron(COLOR_PAIR(CP_OWN_P2)); mvprintw(iy, panelX+8, "P3");  attroff(COLOR_PAIR(CP_OWN_P2));
-                attron(COLOR_PAIR(CP_OWN_P3)); mvprintw(iy, panelX+11,"P4");  attroff(COLOR_PAIR(CP_OWN_P3));
-                iy++;
-                attron(COLOR_PAIR(CP_UI_DIM));
-                mvprintw(iy++, panelX+1, "Sel=reversed bg");
-                attroff(COLOR_PAIR(CP_UI_DIM));
             }
         }
     }

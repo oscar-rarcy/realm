@@ -325,7 +325,7 @@ void handleInput(int ch) {
         if (ch == KEY_MOUSE) {
             MEVENT me;
             if (getmouse(&me) != OK) goto clamp;
-            int tileW = (displayMode == DM_EMOJI) ? 2 : 1;
+            int tileW = 1;
             int mapSY = me.y - 2;
             int mapSX = me.x / tileW;
             int mapX  = g.viewX + mapSX;
@@ -366,7 +366,7 @@ void handleInput(int ch) {
         } else if (ch == KEY_MOUSE) {
             MEVENT me;
             if (getmouse(&me) != OK) goto clamp;
-            int tileW = (displayMode == DM_EMOJI) ? 2 : 1;
+            int tileW = 1;
             int mapSY = me.y - 2;
             int mapSX = me.x / tileW;
             int mapX  = g.viewX + mapSX;
@@ -451,7 +451,7 @@ void handleInput(int ch) {
         if (ch == KEY_MOUSE) {
             MEVENT me;
             if (getmouse(&me) != OK) goto clamp;
-            int tileW = (displayMode == DM_EMOJI) ? 2 : 1;
+            int tileW = 1;
             int mapSY = me.y - 2;
             int mapSX = me.x / tileW;
             int mapX  = g.viewX + mapSX;
@@ -492,7 +492,7 @@ void handleInput(int ch) {
         if (ch == '\n' || ch == '\r' || ch == KEY_ENTER) { commit(g.cursorX, g.cursorY); goto clamp; }
         if (ch == KEY_MOUSE) {
             MEVENT me; if (getmouse(&me) != OK) goto clamp;
-            int tileW = (displayMode == DM_EMOJI) ? 2 : 1;
+            int tileW = 1;
             int mapSY = me.y - 2;
             int mapSX = me.x / tileW;
             int mapX = g.viewX + mapSX, mapY = g.viewY + mapSY;
@@ -523,7 +523,7 @@ void handleInput(int ch) {
         if (ch == '\n' || ch == '\r' || ch == KEY_ENTER) { commit(g.cursorX, g.cursorY); goto clamp; }
         if (ch == KEY_MOUSE) {
             MEVENT me; if (getmouse(&me) != OK) goto clamp;
-            int tileW = (displayMode == DM_EMOJI) ? 2 : 1;
+            int tileW = 1;
             int mapSY = me.y - 2;
             int mapSX = me.x / tileW;
             int mapX = g.viewX + mapSX, mapY = g.viewY + mapSY;
@@ -875,7 +875,7 @@ void handleInput(int ch) {
     case KEY_MOUSE: {
         MEVENT me;
         if (getmouse(&me) != OK) break;
-        int tileW = (displayMode == DM_EMOJI) ? 2 : 1;
+        int tileW = 1;
         int mapSY = me.y - 2;
         int mapSX = me.x / tileW;
         int mapX  = g.viewX + mapSX;
