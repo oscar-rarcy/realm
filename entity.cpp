@@ -546,6 +546,25 @@ int spawnEntity(EntityType type, int owner, int x, int y, bool built) {
     return e.id;
 }
 
+// Does a cliff (or any tile higher than the viewer) sit on the line between the
+// viewer and a higher target tile? If so the viewer is standing under a cliff
+// looking up, and the ground above it stays hidden. Walks the Bresenham line
+// between the two points, ignoring both endpoints (the viewer's own tile and
+// the target). Only the near lip of a plateau — the first raised tile on the
+// ray — is ever revealed from below; the surface behind it is occluded.
+static bool sightBlockedByCliff(int x0, int y0, int x1, int y1, int viewerElev) {
+    int dx = std::abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
+    int dy = -std::abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+    int err = dx + dy, x = x0, y = y0;
+    while (true) {
+        int e2 = 2 * err;
+        if (e2 >= dy) { err += dy; x += sx; }
+        if (e2 <= dx) { err += dx; y += sy; }
+        if (x == x1 && y == y1) return false;          // reached target, clear line
+        if (inBounds(x, y) && g.map[y][x].elev > viewerElev) return true;
+    }
+}
+
 void updateFog() {
     for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++)
         for (int p = 0; p < MAX_PLAYERS; p++) g.map[y][x].visible[p] = false;
@@ -574,12 +593,17 @@ void updateFog() {
         if (r < 3) r = 3;
         auto& s = STATS[e.type];
         int cx = e.x + s.sizeW/2, cy = e.y + s.sizeH/2;
+        int viewerElev = inBounds(cx,cy) ? g.map[cy][cx].elev : 0;
         for (int dy = -r; dy <= r; dy++) for (int dx = -r; dx <= r; dx++) {
             int nx = cx+dx, ny = cy+dy;
-            if (inBounds(nx,ny) && dx*dx+dy*dy <= r*r) {
-                g.map[ny][nx].visible[e.owner]  = true;
-                g.map[ny][nx].explored[e.owner] = true;
-            }
+            if (!inBounds(nx,ny) || dx*dx+dy*dy > r*r) continue;
+            // Under a cliff looking up: higher ground hidden behind the cliff
+            // edge stays fogged. Same/lower ground in radius is always seen, so
+            // this only ever trims the plateau you can't actually see onto.
+            if (g.map[ny][nx].elev > viewerElev
+                && sightBlockedByCliff(cx, cy, nx, ny, viewerElev)) continue;
+            g.map[ny][nx].visible[e.owner]  = true;
+            g.map[ny][nx].explored[e.owner] = true;
         }
     }
 }
