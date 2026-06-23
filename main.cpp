@@ -43,8 +43,65 @@ static void forceUtf8Locale() {
 // Returns numAIs. Banner is block-art; headers use A_TITLE, which the SDL
 // build renders in a blackletter face (Luminari) — the terminal gets bold.
 static bool showMapPreview(unsigned long long& outSeed);   // visual battlefield picker, below
+static int  showLoadMenu();                                // saved-game browser, below
 
-static int showSplash(unsigned long long& outSeed) {
+// Saved-game browser reachable straight from the splash ([O]) — no function
+// keys, no need to start a match first. Returns a 1-based slot to load, or 0
+// if the player backs out.
+static int showLoadMenu() {
+    static const char* seasons[] = {"Spring","Summer","Autumn","Winter"};
+    auto slotUsed = [](int s, SaveSlotInfo& info) {
+        char path[64]; saveSlotPath(s+1, path, sizeof path); return peekSave(path, info);
+    };
+    int selSlot = 0;
+    for (int s = 0; s < NUM_SAVE_SLOTS; s++) { SaveSlotInfo i; if (slotUsed(s,i)) { selSlot = s; break; } }
+
+    while (true) {
+        int maxY, maxX; getmaxyx(stdscr, maxY, maxX);
+        erase();
+        const int rowH = 3, hw = 60, hh = 6 + NUM_SAVE_SLOTS * rowH;
+        int hx = std::max(1, (maxX - hw)/2), hy = std::max(2, (maxY - hh)/2);
+        attron(A_TITLE|COLOR_PAIR(CP_UI_ACCENT));
+        mvprintw(hy, hx, "LOAD SAVED GAME");
+        attroff(A_TITLE|COLOR_PAIR(CP_UI_ACCENT));
+        attron(COLOR_PAIR(CP_UI_DIM));
+        mvprintw(hy+1, hx, "Up/Down pick   Enter load   D delete   Esc/Q back");
+        attroff(COLOR_PAIR(CP_UI_DIM));
+        int rowY0 = hy + 3;
+        for (int s = 0; s < NUM_SAVE_SLOTS; s++) {
+            int ry = rowY0 + s*rowH;
+            bool sel = (s == selSlot);
+            SaveSlotInfo info; bool used = slotUsed(s, info);
+            attron(sel ? (COLOR_PAIR(CP_UI_HIGH)|A_BOLD) : COLOR_PAIR(CP_UI_TEXT));
+            mvprintw(ry, hx, "%s Slot %d%s", sel ? ">" : " ", s+1, (s==0 ? "  (quicksave)" : ""));
+            if (used) {
+                char when[40] = "";
+                time_t t = (time_t)info.saveTime; struct tm* lt = localtime(&t);
+                if (lt) strftime(when, sizeof when, "%b %d  %H:%M", lt);
+                mvprintw(ry+1, hx+4, "Year %d, %-6s   saved %s", info.year, seasons[info.season & 3], when);
+            } else {
+                mvprintw(ry+1, hx+4, "- empty -");
+            }
+            attroff(sel ? (COLOR_PAIR(CP_UI_HIGH)|A_BOLD) : COLOR_PAIR(CP_UI_TEXT));
+        }
+        refresh();
+
+        int c = getch();
+        if      (c=='q'||c=='Q'||c==27)                 return 0;
+        else if (c==KEY_UP   ||c=='k'||c=='K')          selSlot = (selSlot + NUM_SAVE_SLOTS - 1) % NUM_SAVE_SLOTS;
+        else if (c==KEY_DOWN ||c=='j'||c=='J')          selSlot = (selSlot + 1) % NUM_SAVE_SLOTS;
+        else if (c=='d'||c=='D') {
+            SaveSlotInfo info; char path[64]; saveSlotPath(selSlot+1, path, sizeof path);
+            if (peekSave(path, info)) remove(path);
+        }
+        else if (c=='\n'||c=='\r'||c==KEY_ENTER) {
+            SaveSlotInfo info;
+            if (slotUsed(selSlot, info)) return selSlot + 1;   // only load a used slot
+        }
+    }
+}
+
+static int showSplash(unsigned long long& outSeed, int& outLoadSlot) {
     // Two independent axes: climate (0-4 + Random) and layout (0-4 + Random).
     static const char* climateNames[] = { "Temperate","Desert","Snow","Swamp","Forest","Random" };
     static const char* layoutNames[]  = { "Continental","Highlands","Deep Woods","River","Islands","Random" };
@@ -135,7 +192,7 @@ static int showSplash(unsigned long long& outSeed) {
         pr(row+3, c2, "B build  T train  A all military");
         pr(row+4, c2, "Z patrol  X hold  1-9/G groups");
         pr(row+5, c2, "U eject  R rally  P pause");
-        pr(row+6, c2, "F5-F8 save  F9-F12 load");
+        pr(row+6, c2, "P in-game: save / load");
         pr(row+7, c2, "? in-game help   QQ to menu");
         row += bh + 1;
 
@@ -148,13 +205,16 @@ static int showSplash(unsigned long long& outSeed) {
 
         // ---- footer ----
         attron(A_BOLD | COLOR_PAIR(CP_UI_HIGH));
-        pr(row, col + (W-52)/2, "[Enter] Begin    [V] Browse battlefields    [Q] Quit");
+        pr(row, col + (W-64)/2, "[Enter] Begin   [V] Battlefields   [O] Load game   [Q] Quit");
         attroff(A_BOLD | COLOR_PAIR(CP_UI_HIGH));
 
         refresh();
         int ch = getch();
         if (ch=='q'||ch=='Q') { endwin(); exit(0); }
         if (ch=='\n'||ch==KEY_ENTER||ch=='\r') break;
+        // [O] opens the saved-game browser; a chosen slot ends the splash and
+        // signals main() to load it instead of generating a fresh match.
+        if (ch=='o'||ch=='O') { int sl = showLoadMenu(); if (sl > 0) { outLoadSlot = sl; break; } }
         if (ch=='1') numAIs=1;
         else if (ch=='2') numAIs=2;
         else if (ch=='3') numAIs=3;
@@ -222,72 +282,92 @@ static void previewGlyph(Terrain t, char& ch, int& cp) {
 // Returns false if the player backs out to the splash screen.
 static bool showMapPreview(unsigned long long& outSeed) {
     int maxY0, maxX0; getmaxyx(stdscr, maxY0, maxX0);
-    const int COLS = (maxX0 >= 92) ? 3 : 2, ROWS = 2, N = COLS*ROWS;
+    // A scrollable wall of battlefields. We show a grid window and let the
+    // player scroll through a much larger pool (a dozen to a few dozen maps).
+    const int COLS = (maxX0 >= 128) ? 4 : (maxX0 >= 92) ? 3 : 2;
+    const int VIS_ROWS = (maxY0 >= 30) ? 3 : 2;       // rows visible at once
+    const int N = COLS * VIS_ROWS;                    // cells on screen
+    const int PAGES = 3;
+    const int POOL = N * PAGES;                        // total options to browse
+    const int TOTAL_ROWS = (POOL + COLS - 1) / COLS;
     const int TW = std::max(16, std::min(30, (maxX0 - (COLS+1)*2)/COLS));
-    const int TH = std::max(9,  std::min(14, (maxY0 - 9)/ROWS - 2));
+    const int TH = std::max(7,  std::min(13, (maxY0 - 8)/VIS_ROWS - 2));
 
     static const char* layName[]  = {"Continental","Highlands","Deep Woods","River","Islands"};
     static const char* climName[] = {"Temperate","Desert","Snow","Swamp","Forest"};
-    struct Cand { unsigned long long seed; int lay, clim; std::string name; std::vector<char> ch; std::vector<int> cp; };
-    std::vector<Cand> cand(N);
+    struct Cand { bool ready=false; unsigned long long seed=0; int lay=0, clim=0; std::string name; std::vector<char> ch; std::vector<int> cp; };
+    std::vector<Cand> cand(POOL);
     int layFilter  = g.layoutChoice;                 // -1 = random
     int climFilter = g.biomeChoice;                  // -1 = mixed
     int savedLay = g.layoutChoice, savedClim = g.biomeChoice;   // restored on back-out
     unsigned long long base = (unsigned long long)time(nullptr) * 2654435761ull + 1;
-    int sel = 0;
+    int sel = 0, top = 0;
 
-    auto regen = [&]() {
-        // No two thumbnails should look alike. When the layout filter is
-        // "random", deal every cell a DISTINCT layout; likewise spread the
-        // climates (including one genuinely mixed/banded map) when unfiltered.
-        // AoE2 never shows you the same map twice on the picker, and neither do we.
-        int layOrder[LAYOUT_COUNT];
+    // Distinct-layout / distinct-climate orderings (incl. one Mixed), reshuffled
+    // each reroll, so consecutive thumbnails never look alike.
+    int layOrder[LAYOUT_COUNT], climOrder[6];
+    auto reshuffle = [&]() {
         for (int i = 0; i < LAYOUT_COUNT; i++) layOrder[i] = i;
         for (int i = LAYOUT_COUNT-1; i > 0; i--) { int j=(int)((base>>(i*3+1))%(i+1)); std::swap(layOrder[i],layOrder[j]); }
-        int climOrder[6] = { -1, B_TEMPERATE, B_DESERT, B_FOREST, B_SNOW, B_SWAMP };
+        int seed6[6] = { -1, B_TEMPERATE, B_DESERT, B_FOREST, B_SNOW, B_SWAMP };
+        for (int i = 0; i < 6; i++) climOrder[i] = seed6[i];
         for (int i = 5; i > 0; i--) { int j=(int)((base>>(i*5+2))%(i+1)); std::swap(climOrder[i],climOrder[j]); }
-
-        for (int i = 0; i < N; i++) {
-            unsigned long long s = base + (unsigned long long)(i+1)*0x9E3779B97F4A7C15ull;
-            if (s == 0) s = 1;
-            int lay  = (layFilter  < 0) ? layOrder[i % LAYOUT_COUNT] : layFilter;
-            int clim = (climFilter < 0) ? climOrder[i % 6]           : climFilter;
-            g.layoutChoice = lay; g.biomeChoice = clim;
-            seedSimRng(s); generateMap();
-            cand[i].seed = s; cand[i].lay = lay; cand[i].clim = clim;
-            cand[i].name = makeMapName(s, lay, clim);
-            cand[i].ch.assign(TW*TH, '.'); cand[i].cp.assign(TW*TH, CP_GRASS);
-            for (int yy = 0; yy < TH; yy++) for (int xx = 0; xx < TW; xx++) {
-                char c; int cp; previewGlyph(g.map[yy*MAP_H/TH][xx*MAP_W/TW].terrain, c, cp);
-                cand[i].ch[yy*TW+xx] = c; cand[i].cp[yy*TW+xx] = cp;
-            }
+    };
+    // Generate one thumbnail on demand (lazy — only maps you actually scroll to
+    // are built, so a 24-map wall stays snappy).
+    auto ensure = [&](int i) {
+        if (i < 0 || i >= POOL || cand[i].ready) return;
+        unsigned long long s = base + (unsigned long long)(i+1)*0x9E3779B97F4A7C15ull;
+        if (s == 0) s = 1;
+        int lay  = (layFilter  < 0) ? layOrder[i % LAYOUT_COUNT] : layFilter;
+        int clim = (climFilter < 0) ? climOrder[i % 6]           : climFilter;
+        g.layoutChoice = lay; g.biomeChoice = clim;
+        seedSimRng(s); generateMap();
+        cand[i].seed = s; cand[i].lay = lay; cand[i].clim = clim;
+        cand[i].name = makeMapName(s, lay, clim);
+        cand[i].ch.assign(TW*TH, '.'); cand[i].cp.assign(TW*TH, CP_GRASS);
+        for (int yy = 0; yy < TH; yy++) for (int xx = 0; xx < TW; xx++) {
+            char c; int cp; previewGlyph(g.map[yy*MAP_H/TH][xx*MAP_W/TW].terrain, c, cp);
+            cand[i].ch[yy*TW+xx] = c; cand[i].cp[yy*TW+xx] = cp;
         }
         g.entities.clear();   // discard any ruins spawned while generating previews
+        cand[i].ready = true;
     };
-    regen();
+    auto invalidate = [&]() { for (auto& cd : cand) cd.ready = false; sel = 0; top = 0; reshuffle(); };
+    reshuffle();
 
     while (true) {
         int maxY, maxX; getmaxyx(stdscr, maxY, maxX);
+        // Keep the selected cell inside the visible window.
+        int selRow = sel / COLS;
+        if (selRow < top)             top = selRow;
+        if (selRow >= top + VIS_ROWS) top = selRow - VIS_ROWS + 1;
+        top = std::max(0, std::min(top, std::max(0, TOTAL_ROWS - VIS_ROWS)));
+
         erase();
-        int gridW = COLS*(TW+2), gridH = ROWS*(TH+2);
-        int ox = std::max(1, maxX/2 - gridW/2), oy = std::max(3, maxY/2 - gridH/2);
+        int gridW = COLS*(TW+2), gridH = VIS_ROWS*(TH+2);
+        int ox = std::max(1, maxX/2 - gridW/2), oy = std::max(4, maxY/2 - gridH/2);
         attron(A_TITLE|COLOR_PAIR(CP_UI_ACCENT));
         mvprintw(oy-3, ox, "CHOOSE YOUR BATTLEFIELD");
         attroff(A_TITLE|COLOR_PAIR(CP_UI_ACCENT));
         attron(COLOR_PAIR(CP_UI_DIM));
-        mvprintw(oy-2, ox, "HJKL move   [ ] layout   < > climate   R reroll   Enter begin   Q back");
+        mvprintw(oy-2, ox, "Arrows/HJKL move   PgUp/Dn scroll   [ ] layout   < > climate   R reroll   Enter begin   Q back");
         attroff(COLOR_PAIR(CP_UI_DIM));
-        for (int i = 0; i < N; i++) {
-            int cx = ox + (i%COLS)*(TW+2) + 1, cy = oy + (i/COLS)*(TH+2) + 1;
+
+        for (int vr = 0; vr < VIS_ROWS; vr++) for (int c = 0; c < COLS; c++) {
+            int i = (top + vr)*COLS + c;
+            if (i >= POOL) continue;
+            ensure(i);
+            int cx = ox + c*(TW+2) + 1, cy = oy + vr*(TH+2) + 1;
             bool isSel = (i == sel);
             int bc = isSel ? (COLOR_PAIR(CP_UI_HIGH)|A_BOLD) : COLOR_PAIR(CP_UI_DIM);
             attron(bc);
             mvhline(cy-1, cx, isSel?'=':'-', TW); mvhline(cy+TH, cx, isSel?'=':'-', TW);
             for (int r=0; r<TH; r++) { mvaddch(cy+r, cx-1, '|'); mvaddch(cy+r, cx+TW, '|'); }
             attroff(bc);
-            for (int r=0; r<TH; r++) for (int c=0; c<TW; c++) {
-                int cp = cand[i].cp[r*TW+c];
-                attron(COLOR_PAIR(cp)); mvaddch(cy+r, cx+c, cand[i].ch[r*TW+c]); attroff(COLOR_PAIR(cp));
+            for (int r=0; r<TH; r++) for (int cc=0; cc<TW; cc++) {
+                int cp = cand[i].cp[r*TW+cc];
+                attron(COLOR_PAIR(cp)); mvaddch(cy+r, cx+cc, cand[i].ch[r*TW+cc]); attroff(COLOR_PAIR(cp));
             }
             // Headline the map's evocative name on the bottom border (AoE2 style).
             char title[64];
@@ -297,13 +377,22 @@ static bool showMapPreview(unsigned long long& outSeed) {
             mvprintw(cy+TH, cx+1, "%s", title);
             attroff(isSel ? (COLOR_PAIR(CP_UI_HIGH)|A_BOLD) : COLOR_PAIR(CP_UI_TEXT));
         }
-        // Selected map's full billing: name + layout · climate.
+
+        // Scroll hints: show which rows have more above/below.
+        attron(COLOR_PAIR(CP_UI_DIM));
+        if (top > 0)                        mvprintw(oy-1,        ox + gridW + 1, "^");
+        if (top + VIS_ROWS < TOTAL_ROWS)    mvprintw(oy+gridH-1,  ox + gridW + 1, "v");
+        attroff(COLOR_PAIR(CP_UI_DIM));
+
+        // Selected map's full billing: name + layout · climate, and its index.
+        ensure(sel);
         attron(COLOR_PAIR(CP_UI_HIGH)|A_BOLD);
         mvprintw(oy + gridH + 1, ox, "%s", cand[sel].name.c_str());
         attroff(COLOR_PAIR(CP_UI_HIGH)|A_BOLD);
         attron(COLOR_PAIR(CP_UI_TEXT));
-        mvprintw(oy + gridH + 1, ox + (int)cand[sel].name.size() + 2, "— %s · %s",
-                 layName[cand[sel].lay], cand[sel].clim < 0 ? "Mixed lands" : climName[cand[sel].clim]);
+        mvprintw(oy + gridH + 1, ox + (int)cand[sel].name.size() + 2, "— %s · %s   (%d/%d)",
+                 layName[cand[sel].lay], cand[sel].clim < 0 ? "Mixed lands" : climName[cand[sel].clim],
+                 sel+1, POOL);
         attroff(COLOR_PAIR(CP_UI_TEXT));
         attron(COLOR_PAIR(CP_UI_DIM));
         mvprintw(oy + gridH + 2, ox, "Filter: %s layout, %s climate",
@@ -314,16 +403,18 @@ static bool showMapPreview(unsigned long long& outSeed) {
 
         int c = getch();
         if (c=='q'||c=='Q')                       { g.layoutChoice = savedLay; g.biomeChoice = savedClim; return false; }
-        else if (c=='\n'||c==KEY_ENTER||c=='\r')  { g.layoutChoice = cand[sel].lay; g.biomeChoice = cand[sel].clim; outSeed = cand[sel].seed; return true; }
-        else if (c==KEY_RIGHT||c=='l'||c=='L')    sel = (sel+1)%N;
-        else if (c==KEY_LEFT ||c=='h'||c=='H')    sel = (sel+N-1)%N;
-        else if (c==KEY_DOWN ||c=='j'||c=='J')    sel = (sel+COLS)%N;
-        else if (c==KEY_UP   ||c=='k'||c=='K')    sel = (sel+N-COLS)%N;
-        else if (c=='r'||c=='R')                  { base = base*6364136223846793005ull + 1442695040888963407ull; regen(); }
-        else if (c==']')                          { layFilter  = (layFilter  >= LAYOUT_COUNT-1) ? -1 : layFilter+1;  regen(); }
-        else if (c=='[')                          { layFilter  = (layFilter  < 0) ? LAYOUT_COUNT-1 : layFilter-1;    regen(); }
-        else if (c=='.'||c=='>')                  { climFilter = (climFilter >= B_FOREST)      ? -1 : climFilter+1; regen(); }
-        else if (c==','||c=='<')                  { climFilter = (climFilter < 0) ? B_FOREST   : climFilter-1;      regen(); }
+        else if (c=='\n'||c==KEY_ENTER||c=='\r')  { ensure(sel); g.layoutChoice = cand[sel].lay; g.biomeChoice = cand[sel].clim; outSeed = cand[sel].seed; return true; }
+        else if (c==KEY_RIGHT||c=='l'||c=='L')    sel = std::min(POOL-1, sel+1);
+        else if (c==KEY_LEFT ||c=='h'||c=='H')    sel = std::max(0, sel-1);
+        else if (c==KEY_DOWN ||c=='j'||c=='J')    sel = std::min(POOL-1, sel+COLS);
+        else if (c==KEY_UP   ||c=='k'||c=='K')    sel = std::max(0, sel-COLS);
+        else if (c==KEY_NPAGE)                    sel = std::min(POOL-1, sel + COLS*VIS_ROWS);
+        else if (c==KEY_PPAGE)                    sel = std::max(0,      sel - COLS*VIS_ROWS);
+        else if (c=='r'||c=='R')                  { base = base*6364136223846793005ull + 1442695040888963407ull; invalidate(); }
+        else if (c==']')                          { layFilter  = (layFilter  >= LAYOUT_COUNT-1) ? -1 : layFilter+1;  invalidate(); }
+        else if (c=='[')                          { layFilter  = (layFilter  < 0) ? LAYOUT_COUNT-1 : layFilter-1;    invalidate(); }
+        else if (c=='.'||c=='>')                  { climFilter = (climFilter >= B_FOREST)      ? -1 : climFilter+1; invalidate(); }
+        else if (c==','||c=='<')                  { climFilter = (climFilter < 0) ? B_FOREST   : climFilter-1;      invalidate(); }
     }
 }
 
@@ -797,14 +888,28 @@ int main(int argc, char** argv) {
         // [V] there opens the visual battlefield picker; a committed pick comes
         // back as a locked seed (0 = roll a fresh map of the chosen type).
         unsigned long long pickedSeed = 0;
-        int numAIs = showSplash(pickedSeed);
+        int loadSlot = 0;
+        int numAIs = showSplash(pickedSeed, loadSlot);
 
         // Reinitialise colour pairs in case the splash changed anything.
         initColors();
 
-        initGame(numAIs, pickedSeed);
-        replayStartRecording(numAIs);   // every match is recorded; replays/ dir
-        setStatus(g.mapName + " — dawn breaks. Select peasants [Space] and gather [Enter]. [A]=select all military.");
+        if (loadSlot > 0) {
+            // Resume a saved game chosen straight from the splash. Loaded state
+            // can't be reproduced from a seed, so it isn't recorded as a replay.
+            char path[64]; saveSlotPath(loadSlot, path, sizeof path);
+            if (loadGame(path)) {
+                setStatus(g.mapName + " — saved game resumed (slot " + std::to_string(loadSlot) + ").");
+            } else {
+                initGame(numAIs, 0);
+                replayStartRecording(numAIs);
+                setStatus("Load failed (wrong version or corrupt) — started a fresh match instead.");
+            }
+        } else {
+            initGame(numAIs, pickedSeed);
+            replayStartRecording(numAIs);   // every match is recorded; replays/ dir
+            setStatus(g.mapName + " — dawn breaks. Select peasants [Space] and gather [Enter]. [A]=select all military.");
+        }
 
         runMatch();
         replayStopRecording();
