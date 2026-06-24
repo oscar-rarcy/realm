@@ -104,8 +104,8 @@ static int showLoadMenu() {
 static int showSplash(unsigned long long& outSeed, int& outLoadSlot) {
     // Two independent axes: climate (0-4 + Random) and layout (0-4 + Random).
     static const char* climateNames[] = { "Temperate","Desert","Snow","Swamp","Forest","Random" };
-    static const char* layoutNames[]  = { "Continental","Highlands","Deep Woods","River","Islands","Random" };
-    const int CLIM_RANDOM = 5, LAYOUT_RANDOM = 5;
+    static const char* layoutNames[]  = { "Continental","Highlands","Deep Woods","River","Islands","Plains","Random" };
+    const int CLIM_RANDOM = 5, LAYOUT_RANDOM = 6;
     static const char* diffNames[]  = { "Easy", "Normal", "Hard" };
     static const char* speedNames[] = { "Slow", "Normal", "Fast" };
     int numAIs = 1;
@@ -296,7 +296,7 @@ static bool showMapPreview(unsigned long long& outSeed) {
     const int TW = std::max(16, std::min(30, (maxX0 - (COLS+1)*2)/COLS));
     const int TH = std::max(7,  std::min(13, (maxY0 - 8)/VIS_ROWS - 2));
 
-    static const char* layName[]  = {"Continental","Highlands","Deep Woods","River","Islands"};
+    static const char* layName[]  = {"Continental","Highlands","Deep Woods","River","Islands","Plains"};
     static const char* climName[] = {"Temperate","Desert","Snow","Swamp","Forest"};
     struct Cand { bool ready=false; unsigned long long seed=0; int lay=0, clim=0; std::string name; std::vector<char> ch; std::vector<int> cp; };
     std::vector<Cand> cand(POOL);

@@ -652,6 +652,65 @@ static void generateRiverMap() {
     finishLayout();
 }
 
+// Open Plains / Steppe: a near-treeless sea of grass broken only by scattered
+// straggler trees, the odd copse, a watering hole and a low stone outcrop —
+// wide sightlines and nothing to break a charge, the natural home of cavalry.
+// As a neutral template it skins to steppe (temperate), tundra (snow), or open
+// desert; applyDesertFeatures then dunes/oases the desert variant.
+static void generatePlainsMap() {
+    for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
+        Tile& t = g.map[y][x];
+        t.biome = B_TEMPERATE; t.resources = 0; t.elev = 0;
+        float n = sampleNoise(x*0.10f+41, y*0.10f+41);
+        int r = simRand()%100;
+        if      (n > 0.88f) t.terrain = T_HILLS;        // occasional rolling rise
+        else if (r < 6)     t.terrain = T_TALL_GRASS;
+        else if (r < 9)     t.terrain = T_MEADOW;
+        else if (r < 11)    t.terrain = T_FLOWERS;
+        else                t.terrain = T_GRASS;
+    }
+    // Straggler trees dotted across the steppe — enough wood to play, far too
+    // sparse to obstruct a cavalry line.
+    for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++) {
+        if (g.map[y][x].terrain == T_GRASS && simRand()%100 < 3) {
+            g.map[y][x].terrain = T_FOREST; g.map[y][x].resources = 60 + simRand()%50;
+        }
+    }
+    // A handful of small copses for concentrated wood — ragged, never walls.
+    int copses = 8 + simRand()%4;
+    for (int i = 0; i < copses; i++) {
+        int cx = 14 + simRand()%(MAP_W-28), cy = 12 + simRand()%(MAP_H-24);
+        int rad = 2 + simRand()%2;
+        for (int dy=-rad; dy<=rad; dy++) for (int dx=-rad; dx<=rad; dx++) {
+            int nx=cx+dx, ny=cy+dy;
+            if (!inBounds(nx,ny) || dx*dx+dy*dy > rad*rad) continue;
+            if (simRand()%4 == 0) continue;             // ragged edge
+            g.map[ny][nx].terrain = T_FOREST; g.map[ny][nx].resources = 90 + simRand()%70;
+        }
+    }
+    // A couple of watering holes — light fishing/naval, never a barrier.
+    int ponds = 1 + simRand()%2;
+    for (int i = 0; i < ponds; i++) {
+        int cx = 25 + simRand()%(MAP_W-50), cy = 20 + simRand()%(MAP_H-40);
+        int sz = 3 + simRand()%3;
+        for (int dy=-sz; dy<=sz; dy++) for (int dx=-sz; dx<=sz; dx++) {
+            int nx=cx+dx, ny=cy+dy, r2 = dx*dx+dy*dy;
+            if (!inBounds(nx,ny) || r2 > sz*sz) continue;
+            g.map[ny][nx].terrain = (r2 < (sz-1)*(sz-1)) ? T_WATER : T_SHALLOWS;
+            g.map[ny][nx].resources = 0;
+        }
+    }
+    // Low stone outcrops — sparse landmarks and bits of cover.
+    for (int i = 0; i < 5; i++) {
+        int cx = 12 + simRand()%(MAP_W-24), cy = 12 + simRand()%(MAP_H-24);
+        for (int j = 0; j < 3; j++) {
+            int nx=cx+simRand()%4-2, ny=cy+simRand()%4-2;
+            if (inBounds(nx,ny) && g.map[ny][nx].terrain==T_GRASS) g.map[ny][nx].terrain = T_STONE;
+        }
+    }
+    finishLayout();
+}
+
 void generateMap() {
     initNoise();
     // Topology is chosen by the (climate-independent) Layout axis; each special
@@ -662,6 +721,7 @@ void generateMap() {
         case L_HIGHLANDS:   generateHighlandsMap(); return;
         case L_DEEPWOODS:   generateDeepWoodsMap(); return;
         case L_RIVER:       generateRiverMap();     return;
+        case L_PLAINS:      generatePlainsMap();    return;
         case L_CONTINENTAL: default: break;   // the inline land generator below
     }
 

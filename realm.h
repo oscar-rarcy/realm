@@ -107,7 +107,7 @@ enum Biome     { B_TEMPERATE, B_DESERT, B_SNOW, B_SWAMP, B_FOREST,
 // Layout = the map topology, independent of climate. Each layout emits a
 // neutral terrain template that applyClimateSkin() then themes to the chosen
 // climate, so e.g. Highlands+Snow = alpine, Riverlands+Desert = a Nile.
-enum Layout    { L_CONTINENTAL, L_HIGHLANDS, L_DEEPWOODS, L_RIVER, L_ISLANDS, LAYOUT_COUNT };
+enum Layout    { L_CONTINENTAL, L_HIGHLANDS, L_DEEPWOODS, L_RIVER, L_ISLANDS, L_PLAINS, LAYOUT_COUNT };
 enum Season    { SPRING = 0, SUMMER, AUTUMN, WINTER };
 enum Weather   { W_CLEAR = 0, W_RAIN, W_STORM, W_SNOW };
 
