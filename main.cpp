@@ -255,7 +255,7 @@ static bool skirmishSetup(unsigned long long& outSeed) {
         refresh();
 
         int ch = getch();
-        if (ch==27 || ch=='q' || ch=='Q' || ch==KEY_BACKSPACE || ch==127) return false;
+        if (ch==27 || ch=='q' || ch=='Q' || ch==8 || ch==127) return false;   // Esc/Q/Backspace
         else if (ch==KEY_UP)    sel = (sel + R_COUNT - 1) % R_COUNT;
         else if (ch==KEY_DOWN)  sel = (sel + 1) % R_COUNT;
         else if (ch==KEY_LEFT)  adjust(sel, -1);
