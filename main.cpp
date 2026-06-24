@@ -180,11 +180,13 @@ static int showSplash(unsigned long long& outSeed, int& outLoadSlot) {
         sel(row+4, col+2, "Climate",    climateNames[climIdx],  "T/D/S/W/F/0");
         sel(row+5, col+2, "Layout",     layoutNames[layoutIdx], "L");
         sel(row+6, col+2, "Speed",      speedNames[speedIdx],   "G");
+        sel(row+7, col+2, "Colour",     teamColorName(g.playerColor), "C");
+        attron(COLOR_PAIR(CP_MM_PLAYER)|A_BOLD); pr(row+7, col+2+24, "##"); attroff(COLOR_PAIR(CP_MM_PLAYER)|A_BOLD);
         attron(COLOR_PAIR(CP_UI_DIM));
         if (pickedSeed)
-            pr(row+7, col+2, "Battlefield chosen — seed locked.   [V] re-pick");
+            pr(row+8, col+2, "Battlefield chosen — seed locked.   [V] re-pick");
         else
-            pr(row+7, col+2, "[L] cycles layout   [V] browse battlefields");
+            pr(row+8, col+2, "[L] cycles layout   [V] browse battlefields");
         attroff(COLOR_PAIR(CP_UI_DIM));
 
         int c2 = col + bw + 4;
@@ -242,6 +244,7 @@ static int showSplash(unsigned long long& outSeed, int& outLoadSlot) {
         else if (ch=='n'||ch=='N') diffIdx=1;
         else if (ch=='h'||ch=='H') diffIdx=2;
         else if (ch=='g'||ch=='G') speedIdx = (speedIdx + 1) % 3;
+        else if (ch=='c'||ch=='C') { g.playerColor = (g.playerColor + 1) % numTeamColors(); applyTeamColors(); }
     }
     g.difficulty = diffIdx;
     gameSpeed = (GameSpeed)speedIdx;

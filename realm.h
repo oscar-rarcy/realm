@@ -318,6 +318,7 @@ struct Game {
     int biomeChoice;      // CLIMATE: -1 = mixed climate bands, else a forced Biome (0-4)
     int layoutChoice;     // LAYOUT: -1 = random (resolved in initGame), else a Layout
     std::string mapName;  // evocative battlefield name (display only; derived from seed)
+    int playerColor;      // chosen team-colour index (0=Blue); AI colours avoid it
     bool returnToMenu;    // set on game-over to break back to splash screen
     bool cursorByMouse;   // last cursor move came from the mouse: render must
                           // NOT auto-pan the view to chase it (that pan changes
@@ -476,6 +477,11 @@ void    tickAI();
 
 // render.cpp — world/terrain; ui.cpp — HUD, panel, minimap, menus
 void initColors();
+// Re-skin the per-owner colour pairs from g.playerColor: player slot 0 takes
+// the chosen colour, AI slots take distinct colours that are never the player's.
+void applyTeamColors();
+const char* teamColorName(int idx);   // "Blue", "Red", ... for the splash
+int  numTeamColors();
 void renderMap();
 void renderUI();
 void render();

@@ -14,7 +14,7 @@
 //   - Skips garbage corrupt files via fread return-value checks
 
 static constexpr char MAGIC[4] = {'R','L','M','2'};
-static constexpr int  SAVE_VERSION = 10; // v10: persist g.simSeed (battlefield name)
+static constexpr int  SAVE_VERSION = 11; // v11: persist g.playerColor (team colour)
 static constexpr int  MAX_ENTITIES = 100000;
 static constexpr int  MAX_VEC_LEN  = 50000;
 
@@ -85,7 +85,7 @@ bool saveGame(const char* path) {
     wr(f, g.attackNotifyCd);
     wr(f, g.weather); wr(f, g.weatherTimer);
     wr(f, g.biomeChoice); wr(f, g.layoutChoice);
-    wr(f, g.simSeed);
+    wr(f, g.simSeed); wr(f, g.playerColor);
     wr(f, g.winner); wr(f, g.aiTimer); wr(f, g.farmTimer);
     wr(f, g.rngState);
     wr(f, g.difficulty); wr(f, g.winterSeverity);
@@ -162,7 +162,7 @@ bool loadGame(const char* path) {
     rd(f, g.attackNotifyCd);
     rd(f, g.weather); rd(f, g.weatherTimer);
     rd(f, g.biomeChoice); rd(f, g.layoutChoice);
-    rd(f, g.simSeed);
+    rd(f, g.simSeed); rd(f, g.playerColor);
     rd(f, g.winner); rd(f, g.aiTimer); rd(f, g.farmTimer);
     rd(f, g.rngState);
     rd(f, g.difficulty); rd(f, g.winterSeverity);
@@ -235,6 +235,7 @@ bool loadGame(const char* path) {
     g.groupAssignPending = false;
     g.returnToMenu = false;
     resetDetectMapCache();
+    applyTeamColors();   // re-skin owner pairs from the loaded g.playerColor
     for (int p = 0; p < MAX_PLAYERS; p++) updateSupply(p);
     updateFog();
     return true;

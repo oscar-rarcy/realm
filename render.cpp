@@ -227,6 +227,58 @@ void initColors() {
     init_pair(CP_OWN_P2_NIGHT, C::NEAR_BLACK,   C::AMBER);
     init_pair(CP_OWN_P3,       C::SNOW_WHITE,   C::DUSK_PURPLE);
     init_pair(CP_OWN_P3_NIGHT, C::LIGHT_GRAY,   C::GRAY);
+
+    // Overlay the player's chosen team colour (and AI colours that avoid it).
+    applyTeamColors();
+}
+
+// ============================================================
+// TEAM COLOURS — the player picks one on the splash; opponents are dealt
+// distinct colours that are never the player's. The owner→colour mapping is
+// re-skinned into the existing CP_OWN_P*/CP_SHIP_P*/CP_MM_* pairs, so the rest
+// of the renderer (ownerColorPair etc.) is untouched.
+// ============================================================
+struct TeamColor { const char* name; int day, night, text; };
+static const TeamColor TEAM_COLORS[] = {
+    {"Blue",    C::PLAYER_CYAN, C::PLAYER_DIM, C::SNOW_WHITE},
+    {"Red",     C::ENEMY_RED,   C::ENEMY_DIM,  C::SNOW_WHITE},
+    {"Green",   40,             22,            C::NEAR_BLACK},
+    {"Gold",    C::GOLD,        C::DARK_GOLD,  C::NEAR_BLACK},
+    {"Purple",  99,             54,            C::SNOW_WHITE},
+    {"Magenta", 170,            90,            C::SNOW_WHITE},
+};
+static const int NUM_TEAM_COLORS = (int)(sizeof(TEAM_COLORS)/sizeof(TEAM_COLORS[0]));
+
+int  numTeamColors()          { return NUM_TEAM_COLORS; }
+const char* teamColorName(int i){ return (i >= 0 && i < NUM_TEAM_COLORS) ? TEAM_COLORS[i].name : "?"; }
+
+void applyTeamColors() {
+    int pc = g.playerColor; if (pc < 0 || pc >= NUM_TEAM_COLORS) pc = 0;
+    // The non-player colours, in palette order — AIs draw from these.
+    int others[NUM_TEAM_COLORS], no = 0;
+    for (int i = 0; i < NUM_TEAM_COLORS; i++) if (i != pc) others[no++] = i;
+    int ownerTeam[MAX_PLAYERS];
+    ownerTeam[0] = pc;
+    for (int o = 1; o < MAX_PLAYERS; o++) ownerTeam[o] = others[(o-1) % no];
+
+    const int bg = C::NEAR_BLACK;
+    for (int o = 0; o < MAX_PLAYERS; o++) {
+        const TeamColor& t = TEAM_COLORS[ownerTeam[o]];
+        init_pair(CP_OWN_P0 + o,       t.text, t.day);     // glyph on owner-coloured bg
+        int nfg = (t.text == C::NEAR_BLACK) ? C::NEAR_BLACK : C::LIGHT_GRAY;
+        init_pair(CP_OWN_P0_NIGHT + o, nfg, t.night);
+        init_pair(CP_SHIP_P0 + o,      t.day, C::BROWN);    // owner-coloured hull glyph
+    }
+    const TeamColor& pt = TEAM_COLORS[pc];
+    const TeamColor& et = TEAM_COLORS[others[0]];           // generic "enemy" tint
+    init_pair(CP_PLAYER,       pt.day,   bg);
+    init_pair(CP_PLAYER_NIGHT, pt.night, bg);
+    init_pair(CP_ENEMY,        et.day,   bg);
+    init_pair(CP_ENEMY_NIGHT,  et.night, bg);
+    init_pair(CP_SHIP_PLAYER,  pt.day,   C::BROWN);
+    init_pair(CP_SHIP_ENEMY,   et.day,   C::BROWN);
+    init_pair(CP_MM_PLAYER,    pt.day,   bg);
+    init_pair(CP_MM_ENEMY,     et.day,   bg);
 }
 
 // ============================================================
