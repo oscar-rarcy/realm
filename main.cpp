@@ -421,10 +421,11 @@ static bool showMapPreview(unsigned long long& outSeed) {
     }
 }
 
-void initGame(int numAIs, unsigned long long seed) {
-    // Seed the deterministic sim RNG. Replays pass the recorded seed; a
-    // future multiplayer lobby shares the host's seed with every client.
-    if (seed == 0) seed = (unsigned long long)time(nullptr) * 2654435761ull + 1;
+struct Spawn { int thX, thY; };
+
+// Wipe every piece of per-match state, reseed the sim RNG, resolve the layout
+// and battlefield name, and reset the players to their starting treasuries.
+static void resetMatchState(unsigned long long seed) {
     g.simSeed = seed;
     seedSimRng(seed);
     // Resolve a random layout to a concrete one (deterministic from the seed,
@@ -468,15 +469,11 @@ void initGame(int numAIs, unsigned long long seed) {
     for (int p = 0; p < MAX_PLAYERS; p++)
         g.players[p] = {300, 200, 100, 0, 0, true, 0, 0};
     g.players[OWNER_NATURE] = {0, 0, 0, 0, 0, true, 0, 0};
+}
 
-    generateMap();
-
-    // === SPAWN PLACEMENT ===
-    // Build a candidate pool of well-spaced positions across the map (not just
-    // corners). Each candidate is scored by spawn-friendliness — open ground,
-    // not in mountains/water — and the top-scoring positions are chosen such
-    // that no two are within MIN_SPAWN_DIST tiles of each other.
-    struct Spawn { int thX, thY; };
+// Score and space out player spawns, place each side's Town Hall + peasants,
+// and centre the camera on the human. Fills `spawns` for later wildlife/sheep.
+static void placeStartingPositions(int numAIs, std::vector<Spawn>& spawns) {
     const int needed = 1 + numAIs;
     const int MIN_SPAWN_DIST = std::min(MAP_W, MAP_H) * 2 / 3; // ~73 on 110x180
     const int EDGE = 12;
@@ -527,7 +524,6 @@ void initGame(int numAIs, unsigned long long seed) {
 
     // Greedily pick `needed` spawns, requiring each new pick to be at least
     // MIN_SPAWN_DIST away from already-picked spawns.
-    std::vector<Spawn> spawns;
     for (auto& c : candidates) {
         if ((int)spawns.size() >= needed) break;
         bool ok = true;
@@ -577,7 +573,11 @@ void initGame(int numAIs, unsigned long long seed) {
 
     g.cursorX = spawns[0].thX + 2; g.cursorY = spawns[0].thY + 2;
     g.viewX = std::max(0, spawns[0].thX - 10); g.viewY = std::max(0, spawns[0].thY - 5);
+}
 
+// Scatter wildlife (deer/wolves/bears/boars), neutral structures, and a starter
+// sheep cluster by each player base.
+static void spawnWildlifeAndNeutrals(const std::vector<Spawn>& spawns) {
     // Spawn-safety: hostile/neutral wildlife must keep clear of every player
     // base so peasants don't get gored before they can react.
     auto farFromAnyBase = [](int ax, int ay, int radius) {
@@ -705,7 +705,17 @@ void initGame(int numAIs, unsigned long long seed) {
             if (isPassable(ax,ay) && !entityAt(ax,ay)) { spawnEntity(E_SHEEP, OWNER_NATURE, ax, ay); i++; }
         }
     }
+}
 
+void initGame(int numAIs, unsigned long long seed) {
+    // Seed the deterministic sim RNG. Replays pass the recorded seed; a
+    // future multiplayer lobby shares the host's seed with every client.
+    if (seed == 0) seed = (unsigned long long)time(nullptr) * 2654435761ull + 1;
+    resetMatchState(seed);
+    generateMap();
+    std::vector<Spawn> spawns;
+    placeStartingPositions(numAIs, spawns);
+    spawnWildlifeAndNeutrals(spawns);
     updateFog();
 }
 
