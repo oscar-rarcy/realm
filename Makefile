@@ -5,7 +5,7 @@ PKG_CONFIG ?= pkg-config
 TARGET := realm
 # Object basenames, shared by both backends. Terminal objects build into
 # obj/, the SDL-shim objects into gui/ — so the repo root stays clean.
-OBJ_NAMES := main.o globals.o mapgen.o entity.o combat.o world.o ai.o render.o ui.o input.o display.o save.o commands.o
+OBJ_NAMES := main.o globals.o mapgen.o entity.o pathfind.o combat.o world.o ai.o render.o ui.o input.o display.o save.o commands.o
 OBJS := $(addprefix obj/,$(OBJ_NAMES))
 
 # Use wide ncurses for UTF-8/Unicode glyph output. Falls back to -lncursesw
