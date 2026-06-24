@@ -101,20 +101,37 @@ static int showLoadMenu() {
     }
 }
 
-static int showSplash(unsigned long long& outSeed, int& outLoadSlot) {
-    // Two independent axes: climate (0-4 + Random) and layout (0-4 + Random).
-    static const char* climateNames[] = { "Temperate","Desert","Snow","Swamp","Forest","Random" };
-    static const char* layoutNames[]  = { "Continental","Highlands","Deep Woods","River","Islands","Plains","Random" };
-    const int CLIM_RANDOM = 5, LAYOUT_RANDOM = 6;
-    static const char* diffNames[]  = { "Easy", "Normal", "Hard" };
-    static const char* speedNames[] = { "Slow", "Normal", "Fast" };
-    int numAIs = 1;
-    int climIdx   = CLIM_RANDOM;    // mixed climate bands
-    int layoutIdx = LAYOUT_RANDOM;  // random topology
-    int diffIdx = 1;  // Normal
-    int speedIdx = GS_NORMAL;  // wall-clock pace; doesn't affect the sim
-    unsigned long long pickedSeed = 0; // non-zero once a specific map is chosen in the picker
+// ---- Splash configuration, remembered across menu visits and matches ----
+static const char* kClimateNames[] = { "Temperate","Desert","Snow","Swamp","Forest","Random" };
+static const char* kLayoutNames[]  = { "Continental","Highlands","Deep Woods","River","Islands","Plains","Random" };
+static const char* kDiffNames[]    = { "Easy","Normal","Hard" };
+static const char* kSpeedNames[]   = { "Slow","Normal","Fast" };
+static const int   kClimCount = 5;             // climates 0..4; index 5 = Random/mixed
+// layouts 0..LAYOUT_COUNT-1; index LAYOUT_COUNT = Random
 
+static int cfgNumAIs = 1;
+static int cfgDiff   = 1;                 // Normal
+static int cfgClim   = kClimCount;        // Random/mixed
+static int cfgLayout = LAYOUT_COUNT;      // Random
+static int cfgSpeed  = GS_NORMAL;
+static unsigned long long cfgSeed = 0;    // non-zero once a specific map is picked
+
+// Titled box frame (reused by the setup screen).
+static void drawFrame(int r, int c, int w, int h, const char* title) {
+    mvaddstr(r, c, u8"┌─ ");
+    attron(A_TITLE); mvaddstr(r, c+3, title); attroff(A_TITLE);
+    int tl = (int)strlen(title);
+    mvaddstr(r, c+3+tl, " ");
+    for (int x = c+4+tl; x < c+w-1; x++) mvaddstr(r, x, u8"─");
+    mvaddstr(r, c+w-1, u8"┐");
+    for (int y = r+1; y < r+h-1; y++) { mvaddstr(y, c, u8"│"); mvaddstr(y, c+w-1, u8"│"); }
+    mvaddstr(r+h-1, c, u8"└");
+    for (int x = c+1; x < c+w-1; x++) mvaddstr(r+h-1, x, u8"─");
+    mvaddstr(r+h-1, c+w-1, u8"┘");
+}
+
+// The REALM block banner + subtitle, centred, with its top at `topRow`.
+static void drawRealmBanner(int maxX, int topRow) {
     static const char* banner[] = {
         u8"██████╗ ███████╗ █████╗ ██╗     ███╗   ███╗",
         u8"██╔══██╗██╔════╝██╔══██╗██║     ████╗ ████║",
@@ -123,135 +140,179 @@ static int showSplash(unsigned long long& outSeed, int& outLoadSlot) {
         u8"██║  ██║███████╗██║  ██║███████╗██║ ╚═╝ ██║",
         u8"╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝",
     };
+    const int W = 78;
+    int col = std::max(1, maxX/2 - W/2);
+    attron(COLOR_PAIR(CP_GOLD) | A_BOLD);
+    for (int i = 0; i < 6; i++) mvaddstr(topRow + i, col + (W-43)/2, banner[i]);
+    attroff(COLOR_PAIR(CP_GOLD) | A_BOLD);
+    attron(A_TITLE | COLOR_PAIR(CP_UI_ACCENT));
+    const char* sub = "~  Medieval Warlord  ~";
+    mvprintw(topRow + 6, maxX/2 - (int)strlen(sub)/2, "%s", sub);
+    attroff(A_TITLE | COLOR_PAIR(CP_UI_ACCENT));
+}
 
-    int maxY, maxX;
+// In-game control reference, moved off the main menu onto its own screen.
+static void showControlsScreen() {
     while (true) {
-        getmaxyx(stdscr, maxY, maxX);
+        int maxY, maxX; getmaxyx(stdscr, maxY, maxX);
         erase();
-
-        const int W = 78;
-        int col = std::max(1, maxX/2 - W/2);
-        int row = std::max(0, maxY/2 - 16);
-
-        auto pr = [&](int r, int c, const char* fmt, ...) {
-            va_list ap; va_start(ap, fmt);
-            char buf[256]; vsnprintf(buf, sizeof(buf), fmt, ap); va_end(ap);
-            mvprintw(r, c, "%s", buf);
-        };
-
-        // ---- banner ----
-        attron(COLOR_PAIR(CP_GOLD) | A_BOLD);
-        for (int i = 0; i < 6; i++) mvaddstr(row + i, col + (W-43)/2, banner[i]);
-        attroff(COLOR_PAIR(CP_GOLD) | A_BOLD);
-        attron(A_TITLE | COLOR_PAIR(CP_UI_ACCENT));
-        pr(row + 6, col + (W-22)/2, "~  Medieval Warlord  ~");
-        attroff(A_TITLE | COLOR_PAIR(CP_UI_ACCENT));
-        row += 8;
-
-        // ---- two columns: war setup | commands ----
-        auto box = [&](int r, int c, int w, int h, const char* titleTxt) {
-            mvaddstr(r, c, u8"┌─ ");
-            attron(A_TITLE); mvaddstr(r, c+3, titleTxt); attroff(A_TITLE);
-            int tl = (int)strlen(titleTxt);
-            mvaddstr(r, c+3+tl, " ");
-            for (int x = c+4+tl; x < c+w-1; x++) mvaddstr(r, x, u8"─");
-            mvaddstr(r, c+w-1, u8"┐");
-            for (int y = r+1; y < r+h-1; y++) {
-                mvaddstr(y, c,     u8"│");
-                mvaddstr(y, c+w-1, u8"│");
-            }
-            mvaddstr(r+h-1, c, u8"└");
-            for (int x = c+1; x < c+w-1; x++) mvaddstr(r+h-1, x, u8"─");
-            mvaddstr(r+h-1, c+w-1, u8"┘");
-        };
-
-        int bw = 38, bh = 10;
-        box(row, col,        bw, bh, "THE WAR");
-        box(row, col + bw+2, bw, bh, "COMMANDS");
-
-        auto sel = [&](int r, int c, const char* label, const char* value, const char* keys) {
-            pr(r, c, "%-11s", label);
-            attron(A_BOLD | COLOR_PAIR(CP_UI_HIGH)); pr(r, c+11, "%-10s", value); attroff(A_BOLD | COLOR_PAIR(CP_UI_HIGH));
-            attron(COLOR_PAIR(CP_UI_DIM)); pr(r, c+22, "%s", keys); attroff(COLOR_PAIR(CP_UI_DIM));
-        };
-        char opp[8]; snprintf(opp, sizeof opp, "%d", numAIs);
-        sel(row+2, col+2, "Opponents",  opp,                    "1/2/3");
-        sel(row+3, col+2, "Difficulty", diffNames[diffIdx],     "E/N/H");
-        sel(row+4, col+2, "Climate",    climateNames[climIdx],  "T/D/S/W/F/0");
-        sel(row+5, col+2, "Layout",     layoutNames[layoutIdx], "L");
-        sel(row+6, col+2, "Speed",      speedNames[speedIdx],   "G");
-        sel(row+7, col+2, "Colour",     teamColorName(g.playerColor), "C");
-        attron(COLOR_PAIR(CP_MM_PLAYER)|A_BOLD); pr(row+7, col+2+24, "##"); attroff(COLOR_PAIR(CP_MM_PLAYER)|A_BOLD);
-        attron(COLOR_PAIR(CP_UI_DIM));
-        if (pickedSeed)
-            pr(row+8, col+2, "Battlefield chosen — seed locked.   [V] re-pick");
-        else
-            pr(row+8, col+2, "[L] cycles layout   [V] browse battlefields");
-        attroff(COLOR_PAIR(CP_UI_DIM));
-
-        int c2 = col + bw + 4;
-        pr(row+2, c2, "Space/Click sel   Enter/RClick act");
-        pr(row+3, c2, "B build  T train  A all military");
-        pr(row+4, c2, "Z patrol  X hold  1-9/G groups");
-        pr(row+5, c2, "U eject  R rally  P pause");
-        pr(row+6, c2, "P in-game: save / load");
-        pr(row+7, c2, "? in-game help   QQ to menu");
-        row += bh + 1;
-
-        // ---- tips ----
-        attron(COLOR_PAIR(CP_UI_DIM));
-        pr(row++, col+1, "Sow farms on wild wheat. Harvest doubles in autumn; stockpile before the");
-        pr(row++, col+1, "freeze. Mud slows siege in spring. Garrison ruined keeps to claim them.");
-        attroff(COLOR_PAIR(CP_UI_DIM));
-        row++;
-
-        // ---- footer ----
-        attron(A_BOLD | COLOR_PAIR(CP_UI_HIGH));
-        pr(row, col + (W-64)/2, "[Enter] Begin   [V] Battlefields   [O] Load game   [Q] Quit");
-        attroff(A_BOLD | COLOR_PAIR(CP_UI_HIGH));
-
+        drawRealmBanner(maxX, std::max(0, maxY/2 - 13));
+        int c = std::max(2, maxX/2 - 26), r = std::max(9, maxY/2 - 4);
+        attron(A_TITLE | COLOR_PAIR(CP_UI_ACCENT)); mvprintw(r-2, c, "CONTROLS"); attroff(A_TITLE | COLOR_PAIR(CP_UI_ACCENT));
+        attron(COLOR_PAIR(CP_UI_TEXT));
+        mvprintw(r+0, c, "Space / Left-click    Select");
+        mvprintw(r+1, c, "Enter / Right-click   Move / attack / gather / act");
+        mvprintw(r+2, c, "B build   T train     A  select all military");
+        mvprintw(r+3, c, "Z patrol  X hold       1-9 / G  control groups");
+        mvprintw(r+4, c, "U eject   R rally      P  pause (also save / load)");
+        mvprintw(r+5, c, "Tab cycle units        H  jump to town hall");
+        mvprintw(r+6, c, "Arrows pan   drag = marquee-select");
+        mvprintw(r+7, c, "?  in-game help        Q Q  back to menu");
+        attroff(COLOR_PAIR(CP_UI_TEXT));
+        attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(r+9, c, "Press any key to go back"); attroff(COLOR_PAIR(CP_UI_DIM));
         refresh();
         int ch = getch();
-        if (ch=='q'||ch=='Q') { endwin(); exit(0); }
-        if (ch=='\n'||ch==KEY_ENTER||ch=='\r') break;
-        // [O] opens the saved-game browser; a chosen slot ends the splash and
-        // signals main() to load it instead of generating a fresh match.
-        if (ch=='o'||ch=='O') { int sl = showLoadMenu(); if (sl > 0) { outLoadSlot = sl; break; } }
-        if (ch=='1') numAIs=1;
-        else if (ch=='2') numAIs=2;
-        else if (ch=='3') numAIs=3;
-        // Changing climate or layout discards any specific previewed seed.
-        else if (ch=='0') { climIdx=CLIM_RANDOM; pickedSeed=0; }
-        else if (ch=='t'||ch=='T') { climIdx=0; pickedSeed=0; }
-        else if (ch=='d'||ch=='D') { climIdx=1; pickedSeed=0; }
-        else if (ch=='s'||ch=='S') { climIdx=2; pickedSeed=0; }
-        else if (ch=='w'||ch=='W') { climIdx=3; pickedSeed=0; }
-        else if (ch=='f'||ch=='F') { climIdx=4; pickedSeed=0; }
-        else if (ch=='l'||ch=='L') { layoutIdx=(layoutIdx+1)%(LAYOUT_RANDOM+1); pickedSeed=0; }
-        // V opens the visual battlefield picker; committing a thumbnail there
-        // locks its exact climate + layout + seed for [Enter].
-        else if (ch=='v'||ch=='V') {
-            g.biomeChoice  = (climIdx   == CLIM_RANDOM)   ? -1 : climIdx;
-            g.layoutChoice = (layoutIdx == LAYOUT_RANDOM) ? -1 : layoutIdx;
-            unsigned long long s = 0;
-            if (showMapPreview(s)) {
-                pickedSeed = s;
-                climIdx   = (g.biomeChoice  < 0) ? CLIM_RANDOM   : g.biomeChoice;
-                layoutIdx = (g.layoutChoice < 0) ? LAYOUT_RANDOM : g.layoutChoice;
-            }
-        }
-        else if (ch=='e'||ch=='E') diffIdx=0;
-        else if (ch=='n'||ch=='N') diffIdx=1;
-        else if (ch=='h'||ch=='H') diffIdx=2;
-        else if (ch=='g'||ch=='G') speedIdx = (speedIdx + 1) % 3;
-        else if (ch=='c'||ch=='C') { g.playerColor = (g.playerColor + 1) % numTeamColors(); applyTeamColors(); }
+        if (ch != ERR && ch != KEY_MOUSE) return;
     }
-    g.difficulty = diffIdx;
-    gameSpeed = (GameSpeed)speedIdx;
-    g.biomeChoice  = (climIdx   == CLIM_RANDOM)   ? -1 : climIdx;     // climate (or mixed)
-    g.layoutChoice = (layoutIdx == LAYOUT_RANDOM) ? -1 : layoutIdx;   // layout  (or random)
-    outSeed = pickedSeed;   // 0 = let initGame roll a fresh seed
-    return numAIs;
+}
+
+// Grouped, cursor-navigable skirmish setup. Returns true to begin (config
+// committed to g.* + outSeed), false to back out to the main menu.
+static bool skirmishSetup(unsigned long long& outSeed) {
+    enum { R_OPP, R_DIFF, R_LAYOUT, R_CLIM, R_BROWSE, R_COLOUR, R_SPEED, R_BEGIN, R_COUNT };
+    int sel = R_OPP;
+
+    auto adjust = [&](int row, int d) {
+        switch (row) {
+            case R_OPP:    cfgNumAIs = ((cfgNumAIs - 1 + d + 3) % 3) + 1; break;
+            case R_DIFF:   cfgDiff   = (cfgDiff + d + 3) % 3; break;
+            case R_LAYOUT: cfgLayout = (cfgLayout + d + (LAYOUT_COUNT+1)) % (LAYOUT_COUNT+1); cfgSeed = 0; break;
+            case R_CLIM:   cfgClim   = (cfgClim + d + (kClimCount+1)) % (kClimCount+1); cfgSeed = 0; break;
+            case R_COLOUR: g.playerColor = (g.playerColor + d + numTeamColors()) % numTeamColors(); applyTeamColors(); break;
+            case R_SPEED:  cfgSpeed  = (cfgSpeed + d + 3) % 3; break;
+            default: break;
+        }
+    };
+    auto openPicker = [&]() {
+        g.biomeChoice  = (cfgClim   >= kClimCount)   ? -1 : cfgClim;
+        g.layoutChoice = (cfgLayout >= LAYOUT_COUNT) ? -1 : cfgLayout;
+        unsigned long long s = 0;
+        if (showMapPreview(s)) {
+            cfgSeed = s;
+            cfgClim   = (g.biomeChoice  < 0) ? kClimCount   : g.biomeChoice;
+            cfgLayout = (g.layoutChoice < 0) ? LAYOUT_COUNT : g.layoutChoice;
+        }
+    };
+
+    while (true) {
+        int maxY, maxX; getmaxyx(stdscr, maxY, maxX);
+        erase();
+        int top = std::max(0, maxY/2 - 13);
+        drawRealmBanner(maxX, top);
+        const int bw = 42, bh = 14;
+        int c = std::max(2, maxX/2 - bw/2);
+        int r0 = top + 8;
+        drawFrame(r0, c, bw, bh, "NEW SKIRMISH");
+        int ix = c + 3, iy = r0 + 1;
+
+        auto header = [&](const char* h) {
+            attron(COLOR_PAIR(CP_UI_DIM) | A_BOLD); mvprintw(iy++, ix, "%s", h); attroff(COLOR_PAIR(CP_UI_DIM) | A_BOLD);
+        };
+        auto field = [&](int rowId, const char* label, const char* value) {
+            bool f = (sel == rowId);
+            mvaddstr(iy, ix-2, f ? u8"›" : " ");
+            int a = f ? (COLOR_PAIR(CP_UI_HIGH) | A_BOLD) : COLOR_PAIR(CP_UI_TEXT);
+            attron(a); mvprintw(iy, ix, "%-12s", label); attroff(a);
+            int va = f ? (COLOR_PAIR(CP_UI_HIGH) | A_BOLD) : COLOR_PAIR(CP_UI_HIGH);
+            attron(va); mvprintw(iy, ix+12, "%s", value); attroff(va);
+            iy++;
+        };
+
+        char opp[20]; snprintf(opp, sizeof opp, "%d  (vs AI)", cfgNumAIs);
+        header("OPPONENTS");
+        field(R_OPP,  "Opponents",  opp);
+        field(R_DIFF, "Difficulty", kDiffNames[cfgDiff]);
+        header("BATTLEFIELD");
+        field(R_LAYOUT, "Layout",  kLayoutNames[cfgLayout]);
+        field(R_CLIM,   "Climate", kClimateNames[cfgClim]);
+        field(R_BROWSE, "Browse maps", cfgSeed ? u8"chosen ▸" : u8"▸");
+        header("PLAYER");
+        int colourRow = iy;
+        field(R_COLOUR, "Colour", teamColorName(g.playerColor));
+        attron(COLOR_PAIR(CP_MM_PLAYER) | A_BOLD); mvaddstr(colourRow, ix+22, "##"); attroff(COLOR_PAIR(CP_MM_PLAYER) | A_BOLD);
+        field(R_SPEED,  "Game speed", kSpeedNames[cfgSpeed]);
+
+        // Begin action — last row inside the frame.
+        bool bf = (sel == R_BEGIN);
+        mvaddstr(iy+1, ix-2, bf ? u8"›" : " ");
+        attron(bf ? (COLOR_PAIR(CP_GOLD) | A_BOLD) : COLOR_PAIR(CP_UI_TEXT));
+        mvprintw(iy+1, ix, "Begin battle");
+        attroff(bf ? (COLOR_PAIR(CP_GOLD) | A_BOLD) : COLOR_PAIR(CP_UI_TEXT));
+
+        attron(COLOR_PAIR(CP_UI_DIM));
+        mvprintw(r0 + bh, c, "↑↓ select   ←→ change   Enter choose   Esc back");
+        attroff(COLOR_PAIR(CP_UI_DIM));
+        refresh();
+
+        int ch = getch();
+        if (ch==27 || ch=='q' || ch=='Q' || ch==KEY_BACKSPACE || ch==127) return false;
+        else if (ch==KEY_UP)    sel = (sel + R_COUNT - 1) % R_COUNT;
+        else if (ch==KEY_DOWN)  sel = (sel + 1) % R_COUNT;
+        else if (ch==KEY_LEFT)  adjust(sel, -1);
+        else if (ch==KEY_RIGHT) adjust(sel, +1);
+        else if (ch=='v' || ch=='V') openPicker();
+        else if (ch=='\n' || ch=='\r' || ch==KEY_ENTER) {
+            if      (sel == R_BROWSE) openPicker();
+            else if (sel == R_BEGIN) {
+                g.difficulty   = cfgDiff;
+                gameSpeed      = (GameSpeed)cfgSpeed;
+                g.biomeChoice  = (cfgClim   >= kClimCount)   ? -1 : cfgClim;
+                g.layoutChoice = (cfgLayout >= LAYOUT_COUNT) ? -1 : cfgLayout;
+                outSeed = cfgSeed;
+                return true;
+            }
+            else adjust(sel, +1);   // Enter on a value row cycles it forward
+        }
+    }
+}
+
+// Top-level main menu (AoE2/BW style): a vertical list of choices. Skirmish
+// opens the grouped setup; Load opens the slot browser; Controls shows the
+// key reference. Returns the AI count to play; sets outSeed / outLoadSlot.
+static int showSplash(unsigned long long& outSeed, int& outLoadSlot) {
+    static const char* items[] = { "SKIRMISH", "LOAD GAME", "CONTROLS", "QUIT" };
+    const int N = 4;
+    int sel = 0;
+    while (true) {
+        int maxY, maxX; getmaxyx(stdscr, maxY, maxX);
+        erase();
+        int top = std::max(0, maxY/2 - 9);
+        drawRealmBanner(maxX, top);
+        int my0 = top + 9, c = maxX/2 - 7;
+        for (int i = 0; i < N; i++) {
+            bool f = (i == sel);
+            int a = f ? (COLOR_PAIR(CP_UI_HIGH) | A_BOLD) : COLOR_PAIR(CP_UI_TEXT);
+            attron(a);
+            mvprintw(my0 + i, c, "%s  %s", f ? u8"›" : " ", items[i]);
+            attroff(a);
+        }
+        attron(COLOR_PAIR(CP_UI_DIM));
+        const char* hint = "↑↓ select    Enter choose    Q quit";
+        mvprintw(my0 + N + 2, maxX/2 - (int)strlen(hint)/2, "%s", hint);
+        attroff(COLOR_PAIR(CP_UI_DIM));
+        refresh();
+
+        int ch = getch();
+        if (ch=='q' || ch=='Q') { endwin(); exit(0); }
+        else if (ch==KEY_UP)    sel = (sel + N - 1) % N;
+        else if (ch==KEY_DOWN)  sel = (sel + 1) % N;
+        else if (ch=='\n' || ch=='\r' || ch==KEY_ENTER) {
+            if      (sel == 0) { if (skirmishSetup(outSeed)) return cfgNumAIs; }
+            else if (sel == 1) { int s = showLoadMenu(); if (s > 0) { outLoadSlot = s; return cfgNumAIs; } }
+            else if (sel == 2) { showControlsScreen(); }
+            else               { endwin(); exit(0); }
+        }
+    }
 }
 
 // One terrain -> minimap glyph/colour, shared by every preview thumbnail. Full
