@@ -344,35 +344,24 @@ static int aiPickSiegeTarget(int o, Entity* attacker) {
     return best ? best->id : -1;
 }
 
-static void tickAIForOwner(int o) {
-    Player& p = g.players[o];
-    // Difficulty pacing (0 easy / 1 normal / 2 hard). Hard is the original
-    // tuning; normal blunts the snowball; easy gives a sandbox-ish opponent.
-    const int diff = g.difficulty;
+// Per-owner AI snapshot: counts/caps frozen once per tick so the phases below
+// all see the same numbers (the original monolithic tick read them once too).
+// Live resources (p.gold/wood/food/supply) are read fresh from g.players[o].
+struct AICtx {
+    int o, diff;
+    int peas, mil, arch, kni, spr, xbow, hus, cat, treb, hous, bar, stb;
+    AIIntel intel;
+    int peasCap, milCap, archCap, kniCap, towerCap;
+};
 
-    int peas = aiCount(o,E_PEASANT), mil = aiCount(o,E_MILITIA);
-    int arch = aiCount(o,E_ARCHER),  kni = aiCount(o,E_KNIGHT);
-    int spr  = aiCount(o,E_SPEARMAN);
-    int xbow = aiCount(o,E_CROSSBOWMAN), hus = aiCount(o,E_HUSSAR);
-    int cat  = aiCountAll(o,E_CATAPULT);
-    int treb = aiCountAll(o,E_TREBUCHET);
-    int hous = aiCountAll(o,E_HOUSE), bar = aiCount(o,E_BARRACKS), stb = aiCount(o,E_STABLE);
-
-    AIIntel intel = aiScout(o);
-
-    aiGather(o);
-
-    // Caps scale with what opponents have fielded — match and exceed.
-    // Peasant cap softens late-game: once economy is set, more peasants is wasted supply.
-    int peasCap = std::max(12, intel.playerPeasants + 4);
-    if (g.tick > 9000) peasCap = std::min(peasCap, 18);   // late-game hard cap
-    if (g.tick > 15000) peasCap = std::min(peasCap, 14);  // end-game even tighter
-    int capPad  = (diff==2) ? 4 : (diff==1) ? 2 : 0;
-    int milCap  = std::max(8,  intel.playerArmy + capPad);
-    int archCap = std::max(6,  intel.playerArmy/2 + 1 + diff);
-    int kniCap  = std::max(4,  intel.playerArmy/3 + diff);
-    int towerCap= (intel.playerArmy >= 6 || intel.playerCastles > 0) ? 4 : 2;
-
+// Phase 1 — economy buildings, supply, military buildings, research, training.
+static void aiProduceAndTrain(const AICtx& cx) {
+    const int o = cx.o; Player& p = g.players[o]; const int diff = cx.diff;
+    const AIIntel& intel = cx.intel;
+    const int peas=cx.peas, mil=cx.mil, arch=cx.arch, kni=cx.kni, spr=cx.spr,
+              xbow=cx.xbow, hus=cx.hus, cat=cx.cat, treb=cx.treb, hous=cx.hous,
+              bar=cx.bar, stb=cx.stb, peasCap=cx.peasCap, milCap=cx.milCap,
+              archCap=cx.archCap, kniCap=cx.kniCap;
     // === ECONOMY: peasants from every TH/Castle ===
     if (peas < peasCap) {
         for (auto& th : g.entities) {
@@ -465,7 +454,12 @@ static void tickAIForOwner(int o) {
         if (wantTreb && treb < 2 && p.gold >= 200 && p.wood >= 250 && p.food >= 40)
             aiTrain(o, cs, E_TREBUCHET);
     }
+}
 
+// Phase 2 — defensive towers, food economy (mill/granary/farms), naval.
+static void aiInfraAndNaval(const AICtx& cx) {
+    const int o = cx.o; Player& p = g.players[o];
+    const int peas=cx.peas, mil=cx.mil, towerCap=cx.towerCap;
     // === DEFENSE: towers scaled to threat ===
     if (aiCountAll(o,E_TOWER) < towerCap && mil >= 2 && p.wood >= 100 && p.gold >= 50) {
         Entity* b = aiWorker(o);
@@ -524,7 +518,13 @@ static void tickAIForOwner(int o) {
             aiTrain(o, dk, E_TRANSPORT); continue;
         }
     }
+}
 
+// Phase 3 — expansion town halls, forward aggression, coastal beachheads.
+static void aiExpand(const AICtx& cx) {
+    const int o = cx.o; Player& p = g.players[o];
+    const AIIntel& intel = cx.intel;
+    const int peas=cx.peas, mil=cx.mil, arch=cx.arch, kni=cx.kni, spr=cx.spr, towerCap=cx.towerCap;
     // === EXPANSION: forward TH halfway to the nearest opponent ===
     if (aiCountAll(o,E_TOWNHALL) + aiCountAll(o,E_CASTLE) < 2
         && peas >= 9 && p.wood >= 260 && intel.playerTH) {
@@ -626,7 +626,13 @@ static void tickAIForOwner(int o) {
             if (bx >= 0) { aiBuildAt(o, u, E_CASTLE, bx, by); break; }
         }
     }
+}
 
+// Phase 4 — garrisoning, attack waves, base/worker defence, siege & transports.
+static void aiCommandArmy(const AICtx& cx) {
+    const int o = cx.o; Player& p = g.players[o]; const int diff = cx.diff;
+    const AIIntel& intel = cx.intel;
+    const int mil=cx.mil, arch=cx.arch, kni=cx.kni, cat=cx.cat;
     // === GARRISON: pack archers into towers and TH/Castle only.
     // Cap at 2 per tower, 3 per TH/Castle. Don't absorb every archer —
     // the field needs a ranged component too.
@@ -740,6 +746,36 @@ static void tickAIForOwner(int o) {
 
     // Coastal maps: AI transports ferry troops across the sea.
     if (g.layoutChoice == L_ISLANDS) aiTickTransports(o);
+}
+
+static void tickAIForOwner(int o) {
+    const int diff = g.difficulty;
+    AICtx cx;
+    cx.o = o; cx.diff = diff;
+    cx.peas = aiCount(o,E_PEASANT);     cx.mil  = aiCount(o,E_MILITIA);
+    cx.arch = aiCount(o,E_ARCHER);      cx.kni  = aiCount(o,E_KNIGHT);
+    cx.spr  = aiCount(o,E_SPEARMAN);
+    cx.xbow = aiCount(o,E_CROSSBOWMAN); cx.hus  = aiCount(o,E_HUSSAR);
+    cx.cat  = aiCountAll(o,E_CATAPULT); cx.treb = aiCountAll(o,E_TREBUCHET);
+    cx.hous = aiCountAll(o,E_HOUSE);    cx.bar  = aiCount(o,E_BARRACKS); cx.stb = aiCount(o,E_STABLE);
+    cx.intel = aiScout(o);
+    aiGather(o);
+
+    // Caps scale with what opponents have fielded — match and exceed.
+    int peasCap = std::max(12, cx.intel.playerPeasants + 4);
+    if (g.tick > 9000)  peasCap = std::min(peasCap, 18);
+    if (g.tick > 15000) peasCap = std::min(peasCap, 14);
+    int capPad = (diff==2) ? 4 : (diff==1) ? 2 : 0;
+    cx.peasCap  = peasCap;
+    cx.milCap   = std::max(8, cx.intel.playerArmy + capPad);
+    cx.archCap  = std::max(6, cx.intel.playerArmy/2 + 1 + diff);
+    cx.kniCap   = std::max(4, cx.intel.playerArmy/3 + diff);
+    cx.towerCap = (cx.intel.playerArmy >= 6 || cx.intel.playerCastles > 0) ? 4 : 2;
+
+    aiProduceAndTrain(cx);
+    aiInfraAndNaval(cx);
+    aiExpand(cx);
+    aiCommandArmy(cx);
 }
 
 void tickAI() {
