@@ -568,6 +568,266 @@ void getTerrainVisual(Terrain t, int x, int y, char& ch, int& cp, bool lit) {
 // ============================================================
 // MAP RENDER
 // ============================================================
+// Render-only overlays drawn on top of the map: corpses, hearth smoke,
+// weather, birds, the drag-selection box, and off-screen battle arrows.
+static void drawMapOverlays(int tileW) {
+    // The fallen linger on the field a while — a dim '%' on the death tile,
+    // fading after ~200 ticks (g.corpses; render-only, never sim state).
+    attron(COLOR_PAIR(CP_CORPSE)|A_DIM);
+    for (auto& c : g.corpses) {
+        if (g.tick - c.tick > 200) continue;
+        if (!inBounds(c.x, c.y) || !g.map[c.y][c.x].visible[0]) continue;
+        int sx = c.x - g.viewX, sy = c.y - g.viewY;
+        if (sx < 0 || sx >= g.viewW || sy < 0 || sy >= g.viewH) continue;
+        if (entityAt(c.x, c.y)) continue;   // don't paint under the living
+        mvaddch(sy+2, sx * tileW, '%');
+    }
+    attroff(COLOR_PAIR(CP_CORPSE)|A_DIM);
+
+    // Hearth smoke rises from finished houses — a two-cell plume that drifts
+    // and curls each second (render-only). Strongest at dawn/dusk when the
+    // fires are stoked; a faint wisp persists through the night.
+    if (isDawn() || isDusk() || isNight()) {
+        bool stoked = isDawn() || isDusk();
+        attron(COLOR_PAIR(CP_UI_DIM));
+        for (auto& e : g.entities) {
+            if (!e.alive || e.underConstruction || e.owner >= MAX_PLAYERS) continue;
+            if (e.type != E_HOUSE && e.type != E_TAVERN && e.type != E_MANOR) continue;
+            // Lower puff sits just above the roof; a higher wisp trails it when stoked.
+            int phase = (g.tick / 8 + e.id);
+            for (int h = 0; h < (stoked ? 2 : 1); h++) {
+                int smx = e.x + ((phase + h) % 3 == 0 ? (((phase>>1)&1) ? 1 : -1) : 0);
+                int smy = e.y - 1 - h;
+                if (!inBounds(smx, smy) || !g.map[smy][smx].visible[0]) continue;
+                int sx = smx - g.viewX, sy = smy - g.viewY;
+                if (sx < 0 || sx >= g.viewW || sy < 0 || sy >= g.viewH) continue;
+                if (entityAt(smx, smy)) continue;
+                char puff = (h == 0)
+                    ? ((phase % 2) ? '~' : '\'')
+                    : ((phase % 2) ? '.'  : '`');
+                mvaddch(sy+2, sx * tileW, puff);
+            }
+        }
+        attroff(COLOR_PAIR(CP_UI_DIM));
+    }
+
+    // Snowflakes: drawn every tick; hash seed changes every 12 ticks (~1 second)
+    // so each flake stays visible for roughly a second before positions reshuffle.
+    if (g.weather == W_SNOW) {
+        int frame = g.tick / 12;
+        for (int sy = 0; sy < g.viewH; sy++) for (int sx = 0; sx < g.viewW; sx++) {
+            int mx = g.viewX + sx, my = g.viewY + sy;
+            if (!inBounds(mx,my) || !g.map[my][mx].visible[0]) continue;
+            if (entityAt(mx, my)) continue;
+            unsigned h = ((unsigned)(mx*73856093u) ^ (unsigned)(my*19349663u) ^ (unsigned)(frame*83492791u));
+            if ((int)(h % 100) >= 1) continue;
+            attron(COLOR_PAIR(CP_SNOW_FALL)|A_BOLD);
+            mvaddch(sy+2, sx * tileW, '*');
+            attroff(COLOR_PAIR(CP_SNOW_FALL)|A_BOLD);
+        }
+    }
+
+    // Rain / storm: fast flicker kept on a short interval for patter effect.
+    if ((g.weather == W_RAIN || g.weather == W_STORM) && (g.tick % 4) == 0) {
+        int density = (g.weather == W_STORM) ? 2 : 1;
+        for (int sy = 0; sy < g.viewH; sy++) for (int sx = 0; sx < g.viewW; sx++) {
+            int mx = g.viewX + sx, my = g.viewY + sy;
+            if (!inBounds(mx,my) || !g.map[my][mx].visible[0]) continue;
+            if (entityAt(mx, my)) continue;
+            unsigned h = ((unsigned)(mx*73856093u) ^ (unsigned)(my*19349663u) ^ (unsigned)(g.tick*83492791u));
+            if ((int)(h % 100) >= density) continue;
+            attron(COLOR_PAIR(CP_RAIN)|A_BOLD);
+            mvaddch(sy+2, sx * tileW, '.');
+            attroff(COLOR_PAIR(CP_RAIN)|A_BOLD);
+        }
+    }
+
+    // Ambient birds: a small flock drifts east across the sky. Render-only
+    // flavour — never drawn over units or fog.
+    {
+        const int FLOCK = 5;
+        for (int b = 0; b < FLOCK; b++) {
+            int mx = (g.tick/5 + b*53) % (MAP_W + 24) - 12;       // drift + wrap
+            int my = 5 + (b*MAP_H)/FLOCK + ((g.tick/40 + b) % 5) - 2;
+            if (!inBounds(mx,my) || !g.map[my][mx].visible[0] || entityAt(mx,my)) continue;
+            int sx = mx - g.viewX, sy = my - g.viewY;
+            if (sx < 0 || sy < 0 || sx >= g.viewW || sy >= g.viewH) continue;
+            bool flap = ((g.tick/3 + b) & 1);
+            attron(COLOR_PAIR(CP_UI_DIM));
+            mvaddch(sy+2, sx*tileW, flap ? 'v' : '^');
+            attroff(COLOR_PAIR(CP_UI_DIM));
+        }
+    }
+
+    // Hearth smoke by day, torch flicker by night — life around settled homes.
+    {
+        bool night = getBrightness() < 0.3f;
+        for (auto& e : g.entities) {
+            if (!e.alive || !isBuilding(e.type) || e.underConstruction) continue;
+            bool hearth = (e.type==E_HOUSE || e.type==E_TOWNHALL || e.type==E_MANOR ||
+                           e.type==E_TAVERN || e.type==E_BLACKSMITH);
+            if (!hearth || !inBounds(e.x,e.y) || !g.map[e.y][e.x].visible[0]) continue;
+            int sx = e.x - g.viewX, sy = e.y - g.viewY;
+            if (sx < 0 || sy < 1 || sx >= g.viewW || sy >= g.viewH) continue;  // need a row above
+            if (night) {
+                if (((g.tick/2 + e.id) % 7) < 4) {                 // flicker on/off
+                    int pmx = e.x, pmy = e.y - 1;
+                    if (inBounds(pmx,pmy) && !entityAt(pmx,pmy)) {
+                        attron(COLOR_PAIR(CP_SUN)|A_BOLD);
+                        mvaddch(sy-1+2, sx*tileW, ((g.tick+e.id)&1)?'\'':'.');
+                        attroff(COLOR_PAIR(CP_SUN)|A_BOLD);
+                    }
+                }
+            } else {
+                int ph = (g.tick/6 + e.id*3);
+                if ((ph % 4) < 3) {                                 // intermittent puffs
+                    int puffX = sx + (((ph/8) % 3) - 1);            // drift with the wind
+                    int puffY = sy - 1 - ((ph/4) % 2);             // rise one-two rows
+                    int pmx = g.viewX + puffX, pmy = g.viewY + puffY;
+                    if (puffX >= 0 && puffY >= 0 && puffX < g.viewW &&
+                        inBounds(pmx,pmy) && !entityAt(pmx,pmy)) {
+                        attron(COLOR_PAIR(CP_UI_DIM));
+                        mvaddch(puffY+2, puffX*tileW, ((ph/4)&1)?'%':'*');
+                        attroff(COLOR_PAIR(CP_UI_DIM));
+                    }
+                }
+            }
+        }
+    }
+
+    // Drag-selection box: screen-space overlay drawn on top of everything,
+    // like AoE/StarCraft — visible over fog, units, weather, the lot.
+    // (It used to be a per-tile branch, which the fog early-out skipped,
+    // so boxes dragged across unexplored ground were invisible.)
+    if (g.dragging && g.mode != M_WALL_DRAG) {
+        int bx0 = std::min(g.dragStartX, g.cursorX), bx1 = std::max(g.dragStartX, g.cursorX);
+        int by0 = std::min(g.dragStartY, g.cursorY), by1 = std::max(g.dragStartY, g.cursorY);
+        // Clamp to the visible map viewport (screen-cell coords).
+        int sx0 = std::max(0, bx0 - g.viewX), sx1 = std::min(g.viewW - 1, bx1 - g.viewX);
+        int sy0 = std::max(0, by0 - g.viewY), sy1 = std::min(g.viewH - 1, by1 - g.viewY);
+        if (sx0 <= sx1 && sy0 <= sy1) {
+#ifdef USE_SDL_SHIM
+            // GUI: a soft translucent gold marquee with a crisp thin border —
+            // the modern RTS look, instead of a chunky one-cell block ring.
+            shimOverlayRect(sx0 * tileW, sy0 + 2, sx1 * tileW + (tileW - 1), sy1 + 2,
+                            255, 205, 60, 46, 230);
+#else
+            // Terminal: a thin gold line outline (box-drawing glyphs) rather
+            // than solid reversed blocks — reads as a slim marquee.
+            attron(COLOR_PAIR(CP_SUN) | A_BOLD);
+            auto put = [&](int sx, int sy, chtype acs, char ascii) {
+                if (sx < 0 || sx >= g.viewW || sy < 0 || sy >= g.viewH) return;
+                (void)acs;
+                mvaddch(sy + 2, sx * tileW, (chtype)ascii);
+            };
+            for (int sx = sx0; sx <= sx1; sx++) { put(sx, sy0, ACS_HLINE, '-'); put(sx, sy1, ACS_HLINE, '-'); }
+            for (int sy = sy0; sy <= sy1; sy++) { put(sx0, sy, ACS_VLINE, '|'); put(sx1, sy, ACS_VLINE, '|'); }
+            put(sx0, sy0, ACS_ULCORNER, '+'); put(sx1, sy0, ACS_URCORNER, '+');
+            put(sx0, sy1, ACS_LLCORNER, '+'); put(sx1, sy1, ACS_LRCORNER, '+');
+            attroff(COLOR_PAIR(CP_SUN) | A_BOLD);
+#endif
+        }
+    }
+
+    // Off-screen alert arrows: a blinking edge marker pointing toward any of the
+    // player's units/buildings that are fighting or routing out of view — so a
+    // battle you can't see still announces itself. (Render-only.)
+    if ((g.tick % 12) < 9) {
+        int vx0 = g.viewX, vy0 = g.viewY, vx1 = g.viewX + g.viewW - 1, vy1 = g.viewY + g.viewH - 1;
+        int edgeX[16], edgeY[16], nd = 0, drawn = 0;
+        attron(COLOR_PAIR(CP_UI_HIGH) | A_BOLD);
+        for (auto& e : g.entities) {
+            if (drawn >= 8) break;
+            if (!e.alive || e.owner != 0) continue;
+            if (!(e.alertTicks > 0 || e.state == S_ROUTING)) continue;     // only trouble
+            if (e.x >= vx0 && e.x <= vx1 && e.y >= vy0 && e.y <= vy1) continue;  // on-screen
+            int cxm = std::max(vx0, std::min(e.x, vx1));
+            int cym = std::max(vy0, std::min(e.y, vy1));
+            int sx = cxm - g.viewX, sy = cym - g.viewY;
+            char arrow = (e.y < vy0) ? '^' : (e.y > vy1) ? 'v' : (e.x < vx0) ? '<' : '>';
+            bool dup = false;
+            for (int i = 0; i < nd; i++) if (edgeX[i]==sx && edgeY[i]==sy) { dup = true; break; }
+            if (dup) continue;
+            if (nd < 16) { edgeX[nd]=sx; edgeY[nd]=sy; nd++; }
+            if (sx >= 0 && sx < g.viewW && sy >= 0 && sy < g.viewH) {
+                mvaddch(sy + 2, sx * tileW, (chtype)arrow);
+                drawn++;
+            }
+        }
+        attroff(COLOR_PAIR(CP_UI_HIGH) | A_BOLD);
+    }
+}
+
+static bool          litMask[MAP_H][MAP_W];
+static unsigned char bldPrev[MAP_H][MAP_W];
+static bool          wallPrev[MAP_H][MAP_W];
+
+// Per-frame precompute: the night torch-light mask, the selected ranged
+// unit/tower range ring, and the build / wall-drag placement previews.
+// Fills the file-static masks the map loop reads below.
+static void rmPreparePass(bool night, int& ringX, int& ringY, int& ringR) {
+    // Torchlight: at night every standing building casts a small pool of light
+    // onto the tiles immediately around it (all owners — a global world effect),
+    // so bases and outposts glow warmly against the dark instead of vanishing.
+    // Lit tiles render in their daytime colours (see getTerrainVisual).
+    memset(litMask, 0, sizeof(litMask));
+    if (night) {
+        const int R = 3;
+        for (auto& b : g.entities) {
+            if (!b.alive || !isBuilding(b.type) || b.underConstruction) continue;
+            int bx2 = b.x + STATS[b.type].sizeW - 1, by2 = b.y + STATS[b.type].sizeH - 1;
+            for (int yy = b.y - R; yy <= by2 + R; yy++)
+                for (int xx = b.x - R; xx <= bx2 + R; xx++)
+                    if (inBounds(xx, yy)) litMask[yy][xx] = true;
+        }
+    }
+
+    // Selected ranged unit/tower: precompute range-ring centre + radius.
+    ringX = -1; ringY = -1; ringR = 0;
+    Entity* selR = findEntity(g.selectedId);
+    if (selR && selR->alive && selR->owner == 0) {
+        int rng = STATS[selR->type].range;
+        if (selR->type == E_ARCHER && (g.players[0].research & R_CROSSBOWS)) rng += 2;
+        if (rng > 1) {
+            auto& ss = STATS[selR->type];
+            ringX = selR->x + ss.sizeW/2; ringY = selR->y + ss.sizeH/2; ringR = rng;
+        }
+    }
+
+    // Precompute building footprint preview for M_BUILD_PLACE.
+    // bldPrev[y][x] = 0 not in footprint, 1 valid, 2 blocked.
+    memset(bldPrev, 0, sizeof(bldPrev));
+    if (g.mode == M_BUILD_PLACE && g.buildPending != E_NONE) {
+        Entity* sel = findEntity(g.selectedId);
+        int ignoreId = (sel && sel->alive) ? sel->id : -1;
+        bool ok = canPlace(g.buildPending, g.cursorX, g.cursorY, 0, ignoreId);
+        auto& s = STATS[g.buildPending];
+        // Castle previews its full 7x7 compound, not just the keep.
+        int pw = s.sizeW, ph = s.sizeH;
+        if (g.buildPending == E_CASTLE) { pw = 7; ph = 7; }
+        for (int dy = 0; dy < ph; dy++) for (int dx = 0; dx < pw; dx++) {
+            int nx = g.cursorX+dx, ny = g.cursorY+dy;
+            if (inBounds(nx, ny)) bldPrev[ny][nx] = ok ? 1 : 2;
+        }
+    }
+
+    // Precompute wall drag preview line (Bresenham)
+    memset(wallPrev, 0, sizeof(wallPrev));
+    if (g.mode == M_WALL_DRAG && g.dragging) {
+        int x0=g.wallDragX, y0=g.wallDragY, x1=g.cursorX, y1=g.cursorY;
+        int dx=std::abs(x1-x0), sx=x0<x1?1:-1;
+        int dy=-std::abs(y1-y0), sy2=y0<y1?1:-1;
+        int err=dx+dy;
+        while (true) {
+            if (inBounds(x0,y0)) wallPrev[y0][x0] = true;
+            if (x0==x1 && y0==y1) break;
+            int e2=2*err;
+            if (e2>=dy){err+=dy; x0+=sx;}
+            if (e2<=dx){err+=dx; y0+=sy2;}
+        }
+    }
+}
+
 void renderMap() {
     int maxY, maxX; getmaxyx(stdscr, maxY, maxX);
     int panelW = 24;
@@ -593,69 +853,8 @@ void renderMap() {
 
     bool night = isNight();
 
-    // Torchlight: at night every standing building casts a small pool of light
-    // onto the tiles immediately around it (all owners — a global world effect),
-    // so bases and outposts glow warmly against the dark instead of vanishing.
-    // Lit tiles render in their daytime colours (see getTerrainVisual).
-    static bool litMask[MAP_H][MAP_W];
-    memset(litMask, 0, sizeof(litMask));
-    if (night) {
-        const int R = 3;
-        for (auto& b : g.entities) {
-            if (!b.alive || !isBuilding(b.type) || b.underConstruction) continue;
-            int bx2 = b.x + STATS[b.type].sizeW - 1, by2 = b.y + STATS[b.type].sizeH - 1;
-            for (int yy = b.y - R; yy <= by2 + R; yy++)
-                for (int xx = b.x - R; xx <= bx2 + R; xx++)
-                    if (inBounds(xx, yy)) litMask[yy][xx] = true;
-        }
-    }
-
-    // Selected ranged unit/tower: precompute range-ring centre + radius.
-    int ringX = -1, ringY = -1, ringR = 0;
-    Entity* selR = findEntity(g.selectedId);
-    if (selR && selR->alive && selR->owner == 0) {
-        int rng = STATS[selR->type].range;
-        if (selR->type == E_ARCHER && (g.players[0].research & R_CROSSBOWS)) rng += 2;
-        if (rng > 1) {
-            auto& ss = STATS[selR->type];
-            ringX = selR->x + ss.sizeW/2; ringY = selR->y + ss.sizeH/2; ringR = rng;
-        }
-    }
-
-    // Precompute building footprint preview for M_BUILD_PLACE.
-    // bldPrev[y][x] = 0 not in footprint, 1 valid, 2 blocked.
-    static unsigned char bldPrev[MAP_H][MAP_W];
-    memset(bldPrev, 0, sizeof(bldPrev));
-    if (g.mode == M_BUILD_PLACE && g.buildPending != E_NONE) {
-        Entity* sel = findEntity(g.selectedId);
-        int ignoreId = (sel && sel->alive) ? sel->id : -1;
-        bool ok = canPlace(g.buildPending, g.cursorX, g.cursorY, 0, ignoreId);
-        auto& s = STATS[g.buildPending];
-        // Castle previews its full 7x7 compound, not just the keep.
-        int pw = s.sizeW, ph = s.sizeH;
-        if (g.buildPending == E_CASTLE) { pw = 7; ph = 7; }
-        for (int dy = 0; dy < ph; dy++) for (int dx = 0; dx < pw; dx++) {
-            int nx = g.cursorX+dx, ny = g.cursorY+dy;
-            if (inBounds(nx, ny)) bldPrev[ny][nx] = ok ? 1 : 2;
-        }
-    }
-
-    // Precompute wall drag preview line (Bresenham)
-    static bool wallPrev[MAP_H][MAP_W];
-    memset(wallPrev, 0, sizeof(wallPrev));
-    if (g.mode == M_WALL_DRAG && g.dragging) {
-        int x0=g.wallDragX, y0=g.wallDragY, x1=g.cursorX, y1=g.cursorY;
-        int dx=std::abs(x1-x0), sx=x0<x1?1:-1;
-        int dy=-std::abs(y1-y0), sy2=y0<y1?1:-1;
-        int err=dx+dy;
-        while (true) {
-            if (inBounds(x0,y0)) wallPrev[y0][x0] = true;
-            if (x0==x1 && y0==y1) break;
-            int e2=2*err;
-            if (e2>=dy){err+=dy; x0+=sx;}
-            if (e2<=dx){err+=dx; y0+=sy2;}
-        }
-    }
+    int ringX, ringY, ringR;
+    rmPreparePass(night, ringX, ringY, ringR);
 
     for (int sy = 0; sy < g.viewH; sy++) { int my = g.viewY + sy;
         for (int sx = 0; sx < g.viewW; sx++) { int mx = g.viewX + sx;
@@ -922,192 +1121,7 @@ void renderMap() {
             }
         }
     }
-
-    // The fallen linger on the field a while — a dim '%' on the death tile,
-    // fading after ~200 ticks (g.corpses; render-only, never sim state).
-    attron(COLOR_PAIR(CP_CORPSE)|A_DIM);
-    for (auto& c : g.corpses) {
-        if (g.tick - c.tick > 200) continue;
-        if (!inBounds(c.x, c.y) || !g.map[c.y][c.x].visible[0]) continue;
-        int sx = c.x - g.viewX, sy = c.y - g.viewY;
-        if (sx < 0 || sx >= g.viewW || sy < 0 || sy >= g.viewH) continue;
-        if (entityAt(c.x, c.y)) continue;   // don't paint under the living
-        mvaddch(sy+2, sx * tileW, '%');
-    }
-    attroff(COLOR_PAIR(CP_CORPSE)|A_DIM);
-
-    // Hearth smoke rises from finished houses — a two-cell plume that drifts
-    // and curls each second (render-only). Strongest at dawn/dusk when the
-    // fires are stoked; a faint wisp persists through the night.
-    if (isDawn() || isDusk() || isNight()) {
-        bool stoked = isDawn() || isDusk();
-        attron(COLOR_PAIR(CP_UI_DIM));
-        for (auto& e : g.entities) {
-            if (!e.alive || e.underConstruction || e.owner >= MAX_PLAYERS) continue;
-            if (e.type != E_HOUSE && e.type != E_TAVERN && e.type != E_MANOR) continue;
-            // Lower puff sits just above the roof; a higher wisp trails it when stoked.
-            int phase = (g.tick / 8 + e.id);
-            for (int h = 0; h < (stoked ? 2 : 1); h++) {
-                int smx = e.x + ((phase + h) % 3 == 0 ? (((phase>>1)&1) ? 1 : -1) : 0);
-                int smy = e.y - 1 - h;
-                if (!inBounds(smx, smy) || !g.map[smy][smx].visible[0]) continue;
-                int sx = smx - g.viewX, sy = smy - g.viewY;
-                if (sx < 0 || sx >= g.viewW || sy < 0 || sy >= g.viewH) continue;
-                if (entityAt(smx, smy)) continue;
-                char puff = (h == 0)
-                    ? ((phase % 2) ? '~' : '\'')
-                    : ((phase % 2) ? '.'  : '`');
-                mvaddch(sy+2, sx * tileW, puff);
-            }
-        }
-        attroff(COLOR_PAIR(CP_UI_DIM));
-    }
-
-    // Snowflakes: drawn every tick; hash seed changes every 12 ticks (~1 second)
-    // so each flake stays visible for roughly a second before positions reshuffle.
-    if (g.weather == W_SNOW) {
-        int frame = g.tick / 12;
-        for (int sy = 0; sy < g.viewH; sy++) for (int sx = 0; sx < g.viewW; sx++) {
-            int mx = g.viewX + sx, my = g.viewY + sy;
-            if (!inBounds(mx,my) || !g.map[my][mx].visible[0]) continue;
-            if (entityAt(mx, my)) continue;
-            unsigned h = ((unsigned)(mx*73856093u) ^ (unsigned)(my*19349663u) ^ (unsigned)(frame*83492791u));
-            if ((int)(h % 100) >= 1) continue;
-            attron(COLOR_PAIR(CP_SNOW_FALL)|A_BOLD);
-            mvaddch(sy+2, sx * tileW, '*');
-            attroff(COLOR_PAIR(CP_SNOW_FALL)|A_BOLD);
-        }
-    }
-
-    // Rain / storm: fast flicker kept on a short interval for patter effect.
-    if ((g.weather == W_RAIN || g.weather == W_STORM) && (g.tick % 4) == 0) {
-        int density = (g.weather == W_STORM) ? 2 : 1;
-        for (int sy = 0; sy < g.viewH; sy++) for (int sx = 0; sx < g.viewW; sx++) {
-            int mx = g.viewX + sx, my = g.viewY + sy;
-            if (!inBounds(mx,my) || !g.map[my][mx].visible[0]) continue;
-            if (entityAt(mx, my)) continue;
-            unsigned h = ((unsigned)(mx*73856093u) ^ (unsigned)(my*19349663u) ^ (unsigned)(g.tick*83492791u));
-            if ((int)(h % 100) >= density) continue;
-            attron(COLOR_PAIR(CP_RAIN)|A_BOLD);
-            mvaddch(sy+2, sx * tileW, '.');
-            attroff(COLOR_PAIR(CP_RAIN)|A_BOLD);
-        }
-    }
-
-    // Ambient birds: a small flock drifts east across the sky. Render-only
-    // flavour — never drawn over units or fog.
-    {
-        const int FLOCK = 5;
-        for (int b = 0; b < FLOCK; b++) {
-            int mx = (g.tick/5 + b*53) % (MAP_W + 24) - 12;       // drift + wrap
-            int my = 5 + (b*MAP_H)/FLOCK + ((g.tick/40 + b) % 5) - 2;
-            if (!inBounds(mx,my) || !g.map[my][mx].visible[0] || entityAt(mx,my)) continue;
-            int sx = mx - g.viewX, sy = my - g.viewY;
-            if (sx < 0 || sy < 0 || sx >= g.viewW || sy >= g.viewH) continue;
-            bool flap = ((g.tick/3 + b) & 1);
-            attron(COLOR_PAIR(CP_UI_DIM));
-            mvaddch(sy+2, sx*tileW, flap ? 'v' : '^');
-            attroff(COLOR_PAIR(CP_UI_DIM));
-        }
-    }
-
-    // Hearth smoke by day, torch flicker by night — life around settled homes.
-    {
-        bool night = getBrightness() < 0.3f;
-        for (auto& e : g.entities) {
-            if (!e.alive || !isBuilding(e.type) || e.underConstruction) continue;
-            bool hearth = (e.type==E_HOUSE || e.type==E_TOWNHALL || e.type==E_MANOR ||
-                           e.type==E_TAVERN || e.type==E_BLACKSMITH);
-            if (!hearth || !inBounds(e.x,e.y) || !g.map[e.y][e.x].visible[0]) continue;
-            int sx = e.x - g.viewX, sy = e.y - g.viewY;
-            if (sx < 0 || sy < 1 || sx >= g.viewW || sy >= g.viewH) continue;  // need a row above
-            if (night) {
-                if (((g.tick/2 + e.id) % 7) < 4) {                 // flicker on/off
-                    int pmx = e.x, pmy = e.y - 1;
-                    if (inBounds(pmx,pmy) && !entityAt(pmx,pmy)) {
-                        attron(COLOR_PAIR(CP_SUN)|A_BOLD);
-                        mvaddch(sy-1+2, sx*tileW, ((g.tick+e.id)&1)?'\'':'.');
-                        attroff(COLOR_PAIR(CP_SUN)|A_BOLD);
-                    }
-                }
-            } else {
-                int ph = (g.tick/6 + e.id*3);
-                if ((ph % 4) < 3) {                                 // intermittent puffs
-                    int puffX = sx + (((ph/8) % 3) - 1);            // drift with the wind
-                    int puffY = sy - 1 - ((ph/4) % 2);             // rise one-two rows
-                    int pmx = g.viewX + puffX, pmy = g.viewY + puffY;
-                    if (puffX >= 0 && puffY >= 0 && puffX < g.viewW &&
-                        inBounds(pmx,pmy) && !entityAt(pmx,pmy)) {
-                        attron(COLOR_PAIR(CP_UI_DIM));
-                        mvaddch(puffY+2, puffX*tileW, ((ph/4)&1)?'%':'*');
-                        attroff(COLOR_PAIR(CP_UI_DIM));
-                    }
-                }
-            }
-        }
-    }
-
-    // Drag-selection box: screen-space overlay drawn on top of everything,
-    // like AoE/StarCraft — visible over fog, units, weather, the lot.
-    // (It used to be a per-tile branch, which the fog early-out skipped,
-    // so boxes dragged across unexplored ground were invisible.)
-    if (g.dragging && g.mode != M_WALL_DRAG) {
-        int bx0 = std::min(g.dragStartX, g.cursorX), bx1 = std::max(g.dragStartX, g.cursorX);
-        int by0 = std::min(g.dragStartY, g.cursorY), by1 = std::max(g.dragStartY, g.cursorY);
-        // Clamp to the visible map viewport (screen-cell coords).
-        int sx0 = std::max(0, bx0 - g.viewX), sx1 = std::min(g.viewW - 1, bx1 - g.viewX);
-        int sy0 = std::max(0, by0 - g.viewY), sy1 = std::min(g.viewH - 1, by1 - g.viewY);
-        if (sx0 <= sx1 && sy0 <= sy1) {
-#ifdef USE_SDL_SHIM
-            // GUI: a soft translucent gold marquee with a crisp thin border —
-            // the modern RTS look, instead of a chunky one-cell block ring.
-            shimOverlayRect(sx0 * tileW, sy0 + 2, sx1 * tileW + (tileW - 1), sy1 + 2,
-                            255, 205, 60, 46, 230);
-#else
-            // Terminal: a thin gold line outline (box-drawing glyphs) rather
-            // than solid reversed blocks — reads as a slim marquee.
-            attron(COLOR_PAIR(CP_SUN) | A_BOLD);
-            auto put = [&](int sx, int sy, chtype acs, char ascii) {
-                if (sx < 0 || sx >= g.viewW || sy < 0 || sy >= g.viewH) return;
-                (void)acs;
-                mvaddch(sy + 2, sx * tileW, (chtype)ascii);
-            };
-            for (int sx = sx0; sx <= sx1; sx++) { put(sx, sy0, ACS_HLINE, '-'); put(sx, sy1, ACS_HLINE, '-'); }
-            for (int sy = sy0; sy <= sy1; sy++) { put(sx0, sy, ACS_VLINE, '|'); put(sx1, sy, ACS_VLINE, '|'); }
-            put(sx0, sy0, ACS_ULCORNER, '+'); put(sx1, sy0, ACS_URCORNER, '+');
-            put(sx0, sy1, ACS_LLCORNER, '+'); put(sx1, sy1, ACS_LRCORNER, '+');
-            attroff(COLOR_PAIR(CP_SUN) | A_BOLD);
-#endif
-        }
-    }
-
-    // Off-screen alert arrows: a blinking edge marker pointing toward any of the
-    // player's units/buildings that are fighting or routing out of view — so a
-    // battle you can't see still announces itself. (Render-only.)
-    if ((g.tick % 12) < 9) {
-        int vx0 = g.viewX, vy0 = g.viewY, vx1 = g.viewX + g.viewW - 1, vy1 = g.viewY + g.viewH - 1;
-        int edgeX[16], edgeY[16], nd = 0, drawn = 0;
-        attron(COLOR_PAIR(CP_UI_HIGH) | A_BOLD);
-        for (auto& e : g.entities) {
-            if (drawn >= 8) break;
-            if (!e.alive || e.owner != 0) continue;
-            if (!(e.alertTicks > 0 || e.state == S_ROUTING)) continue;     // only trouble
-            if (e.x >= vx0 && e.x <= vx1 && e.y >= vy0 && e.y <= vy1) continue;  // on-screen
-            int cxm = std::max(vx0, std::min(e.x, vx1));
-            int cym = std::max(vy0, std::min(e.y, vy1));
-            int sx = cxm - g.viewX, sy = cym - g.viewY;
-            char arrow = (e.y < vy0) ? '^' : (e.y > vy1) ? 'v' : (e.x < vx0) ? '<' : '>';
-            bool dup = false;
-            for (int i = 0; i < nd; i++) if (edgeX[i]==sx && edgeY[i]==sy) { dup = true; break; }
-            if (dup) continue;
-            if (nd < 16) { edgeX[nd]=sx; edgeY[nd]=sy; nd++; }
-            if (sx >= 0 && sx < g.viewW && sy >= 0 && sy < g.viewH) {
-                mvaddch(sy + 2, sx * tileW, (chtype)arrow);
-                drawn++;
-            }
-        }
-        attroff(COLOR_PAIR(CP_UI_HIGH) | A_BOLD);
-    }
+    drawMapOverlays(tileW);
 }
 
 void render() { erase(); renderMap(); renderUI(); refresh(); }
