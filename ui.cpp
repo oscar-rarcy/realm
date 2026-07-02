@@ -496,8 +496,8 @@ void renderUI() {
         mvprintw(botY2, 1, " SAVE / LOAD — Up/Down or click a slot   [Enter] Load   [S] Save   [D] Delete   [Esc] Back ");
     } else if (g.mode == M_GAME_OVER) {
         attron(A_BOLD);
-        if (g.winner==0) mvprintw(botY2, 1, " VICTORY! The realm is yours. [Enter] New game  [Q] Quit ");
-        else             mvprintw(botY2, 1, " DEFEAT! Your kingdom has fallen. [Enter] New game  [Q] Quit ");
+        if (g.winner==g.localPlayer) mvprintw(botY2, 1, " VICTORY! The realm is yours. [Enter] New game  [Q] Quit ");
+        else                         mvprintw(botY2, 1, " DEFEAT! Your kingdom has fallen. [Enter] New game  [Q] Quit ");
         attroff(A_BOLD);
     } else if (g.groupAssignPending) {
         attron(A_BOLD); mvprintw(botY2, 1, " GROUP ASSIGN: Press [1]-[9] to assign selection to group, [Esc] to cancel "); attroff(A_BOLD);
@@ -617,6 +617,29 @@ void renderUI() {
         }
         mvprintw(hy+hh-2, hx+2, "Up/Down or click: pick   Enter: Load   S: Save   D: Delete   Esc: Back");
         attroff(COLOR_PAIR(CP_UI_BAR));
+    }
+
+    // ---- Network-match banners: waiting / paused / lost / desync ----
+    if (netActive()) {
+        auto centreBanner = [&](const std::string& msg, int cp) {
+            int w = (int)msg.size() + 4;
+            int bx = std::max(0, (maxX - panelW - w) / 2), by = 3;
+            attron(COLOR_PAIR(cp) | A_BOLD);
+            mvhline(by,   bx, ' ', w);
+            mvprintw(by,  bx + 2, "%s", msg.c_str());
+            attroff(COLOR_PAIR(cp) | A_BOLD);
+        };
+        if (netDesynced()) {
+            centreBanner("DESYNC at tick " + std::to_string(netDesyncTick()) +
+                         " — the realities split. Replay saved. [Q] leave", CP_HP_RED);
+        } else if (netConnectionLost()) {
+            centreBanner("Connection to " + netPeerName() +
+                         " lost — [A] let their AI fight on   [Q] abandon match", CP_HP_RED);
+        } else if (netPeerPaused()) {
+            centreBanner(netPeerName() + " has paused the game", CP_UI_BAR);
+        } else if (netWaitingForPeer()) {
+            centreBanner("Waiting for " + netPeerName() + "...", CP_UI_BAR);
+        }
     }
 
     mvhline(botY1, 0, ' ', maxX);

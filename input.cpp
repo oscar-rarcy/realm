@@ -170,6 +170,18 @@ static void cmdAtTileGroup(int x, int y) {
 
 void handleInput(int ch) {
     if (ch == ERR) return;
+    // Network-match interruptions take the whole keyboard until resolved.
+    if (netActive() && (netConnectionLost() || netDesynced())) {
+        if (ch == 'q' || ch == 'Q') { g.returnToMenu = true; return; }
+        if (!netDesynced() && (ch == 'a' || ch == 'A')) {
+            // Peer is gone: the enemy AI inherits their realm and the match
+            // carries on locally (sole surviving sim — nothing to desync).
+            g.humanMask &= ~(1 << (1 - g.localPlayer));
+            netClose();
+            setStatus("The enemy AI seizes command of the abandoned realm!");
+        }
+        return;
+    }
     // Who owns the cursor decides whether render may auto-pan to it
     // (keyboard: yes; mouse: never — see renderMap). One place, all modes.
     if (ch == KEY_MOUSE) g.cursorByMouse = true;
@@ -197,7 +209,10 @@ void handleInput(int ch) {
         g.returnToMenu = true; return;
     }
     if ((ch=='p'||ch=='P') && (g.mode==M_NORMAL||g.mode==M_PAUSED)) {
-        g.mode = (g.mode==M_PAUSED) ? M_NORMAL : M_PAUSED; return;
+        g.mode = (g.mode==M_PAUSED) ? M_NORMAL : M_PAUSED;
+        // Tell the peer why our bundles stopped; their sim stalls in step.
+        if (netActive()) netSendPause(g.mode == M_PAUSED);
+        return;
     }
     // Help overlay: '?' opens (game pauses underneath); any key closes.
     if (g.mode == M_HELP) { if (ch != ERR && ch != KEY_MOUSE) g.mode = M_NORMAL; return; }
@@ -206,6 +221,7 @@ void handleInput(int ch) {
     // From the pause screen, S / L / Enter open the visual Save/Load menu.
     if (g.mode == M_PAUSED &&
         (ch=='s'||ch=='S'||ch=='l'||ch=='L'||ch=='\n'||ch=='\r'||ch==KEY_ENTER)) {
+        if (netActive()) { setStatus("No saving or loading in a network match."); return; }
         g.saveSlotSel = 0; g.mode = M_SAVELOAD; return;
     }
 
@@ -573,6 +589,7 @@ void handleInput(int ch) {
     // Save / load. F5-F8 = save slots 1-4, F9-F12 = load slots 1-4.
     // Slot 1 is the quicksave.
     case KEY_F(5): case KEY_F(6): case KEY_F(7): case KEY_F(8): {
+        if (netActive()) { setStatus("No saving in a network match."); break; }
         int slot = (ch - KEY_F(5)) + 1;
         char path[64]; snprintf(path, sizeof(path), "realm-slot%d.sav", slot);
         if (saveGame(path)) setStatus(std::string("Saved to slot ") + std::to_string(slot) + ".");
@@ -580,6 +597,7 @@ void handleInput(int ch) {
         break;
     }
     case KEY_F(9): case KEY_F(10): case KEY_F(11): case KEY_F(12): {
+        if (netActive()) { setStatus("No loading in a network match."); break; }
         if (replayPlaying()) { setStatus("Can't load a save during replay playback."); break; }
         int slot = (ch - KEY_F(9)) + 1;
         char path[64]; snprintf(path, sizeof(path), "realm-slot%d.sav", slot);

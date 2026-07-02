@@ -45,6 +45,18 @@ static void forceUtf8Locale() {
 static bool showMapPreview(unsigned long long& outSeed);   // visual battlefield picker, below
 static int  showLoadMenu();                                // saved-game browser, below
 
+// What the splash resolved to: a skirmish, a saved game, or a connected
+// network match (host seat 0 / client seat 1, config agreed in the lobby).
+struct SplashResult {
+    int numAIs = 1;
+    unsigned long long seed = 0;
+    int loadSlot = 0;
+    bool netPlay = false;
+    NetMatchConfig netCfg;
+    int netSlot = 0;
+};
+static bool showMultiplayerMenu(SplashResult& r);          // lobby flows, below
+
 // Saved-game browser reachable straight from the splash ([O]) — no function
 // keys, no need to start a match first. Returns a 1-based slot to load, or 0
 // if the player backs out.
@@ -256,8 +268,8 @@ static bool skirmishSetup(unsigned long long& outSeed) {
 
         int ch = getch();
         if (ch==27 || ch=='q' || ch=='Q' || ch==8 || ch==127) return false;   // Esc/Q/Backspace
-        else if (ch==KEY_UP)    sel = (sel + R_COUNT - 1) % R_COUNT;
-        else if (ch==KEY_DOWN)  sel = (sel + 1) % R_COUNT;
+        else if (ch==KEY_UP   || ch=='k') sel = (sel + R_COUNT - 1) % R_COUNT;
+        else if (ch==KEY_DOWN || ch=='j') sel = (sel + 1) % R_COUNT;
         else if (ch==KEY_LEFT)  adjust(sel, -1);
         else if (ch==KEY_RIGHT) adjust(sel, +1);
         else if (ch=='v' || ch=='V') openPicker();
@@ -277,11 +289,11 @@ static bool skirmishSetup(unsigned long long& outSeed) {
 }
 
 // Top-level main menu (AoE2/BW style): a vertical list of choices. Skirmish
-// opens the grouped setup; Load opens the slot browser; Controls shows the
-// key reference. Returns the AI count to play; sets outSeed / outLoadSlot.
-static int showSplash(unsigned long long& outSeed, int& outLoadSlot) {
-    static const char* items[] = { "SKIRMISH", "LOAD GAME", "CONTROLS", "QUIT" };
-    const int N = 4;
+// opens the grouped setup; Multiplayer the lobby flows; Load the slot
+// browser; Controls the key reference. Fills `r` with what to play.
+static void showSplash(SplashResult& r) {
+    static const char* items[] = { "SKIRMISH", "MULTIPLAYER", "LOAD GAME", "CONTROLS", "QUIT" };
+    const int N = 5;
     int sel = 0;
     while (true) {
         int maxY, maxX; getmaxyx(stdscr, maxY, maxX);
@@ -304,13 +316,388 @@ static int showSplash(unsigned long long& outSeed, int& outLoadSlot) {
 
         int ch = getch();
         if (ch=='q' || ch=='Q') { endwin(); exit(0); }
-        else if (ch==KEY_UP)    sel = (sel + N - 1) % N;
-        else if (ch==KEY_DOWN)  sel = (sel + 1) % N;
+        else if (ch==KEY_UP   || ch=='k' || ch=='K') sel = (sel + N - 1) % N;
+        else if (ch==KEY_DOWN || ch=='j' || ch=='J') sel = (sel + 1) % N;
         else if (ch=='\n' || ch=='\r' || ch==KEY_ENTER) {
-            if      (sel == 0) { if (skirmishSetup(outSeed)) return cfgNumAIs; }
-            else if (sel == 1) { int s = showLoadMenu(); if (s > 0) { outLoadSlot = s; return cfgNumAIs; } }
-            else if (sel == 2) { showControlsScreen(); }
+            if      (sel == 0) { if (skirmishSetup(r.seed)) { r.numAIs = cfgNumAIs; return; } }
+            else if (sel == 1) { if (showMultiplayerMenu(r)) return; }
+            else if (sel == 2) { int s = showLoadMenu(); if (s > 0) { r.loadSlot = s; return; } }
+            else if (sel == 3) { showControlsScreen(); }
             else               { endwin(); exit(0); }
+        }
+    }
+}
+
+// ============================================================
+// MULTIPLAYER LOBBIES — host a game, browse LAN lobbies, or join a
+// typed address (works across the internet via port-forward/Tailscale).
+// ============================================================
+
+// Bottom-line message helper for the lobby screens.
+static void lobbyNote(int row, int col, const char* msg, int cp = CP_UI_DIM) {
+    attron(COLOR_PAIR(cp)); mvprintw(row, col, "%s", msg); attroff(COLOR_PAIR(cp));
+}
+
+static int mpNumAIs = 0;   // extra AI seats on top of the two humans
+
+static NetMatchConfig mpCurrentCfg() {
+    NetMatchConfig c;
+    c.seed       = cfgSeed;   // 0 = rolled at Begin
+    c.numAIs     = mpNumAIs;
+    c.biome      = (cfgClim   >= kClimCount)   ? -1 : cfgClim;
+    c.layout     = (cfgLayout >= LAYOUT_COUNT) ? -1 : cfgLayout;
+    c.difficulty = cfgDiff;
+    c.speed      = cfgSpeed;
+    c.humanMask  = 3;         // host seat 0, challenger seat 1
+    return c;
+}
+
+// Host lobby: the skirmish settings plus a live connection panel. Any
+// change is pushed to a seated challenger immediately, AoE2-style.
+static bool hostLobby(SplashResult& r) {
+    if (!netHostOpen()) {
+        // Almost always a lingering socket from a lobby closed seconds ago.
+        timeout(-1);
+        int maxY, maxX; getmaxyx(stdscr, maxY, maxX);
+        erase(); drawRealmBanner(maxX, std::max(0, maxY/2 - 9));
+        lobbyNote(maxY/2 + 2, maxX/2 - 24, "Couldn't open the lobby port (another Realm hosting?)", CP_HP_RED);
+        lobbyNote(maxY/2 + 4, maxX/2 - 12, "Press any key to go back");
+        refresh(); getch();
+        return false;
+    }
+    netHostSetInfo(mpCurrentCfg());
+
+    enum { R_OPP, R_DIFF, R_LAYOUT, R_CLIM, R_BROWSE, R_COLOUR, R_SPEED, R_BEGIN, R_COUNT };
+    int sel = R_OPP;
+    bool dirty = false;
+    auto adjust = [&](int row, int d) {
+        switch (row) {
+            case R_OPP:    mpNumAIs = (mpNumAIs + d + 3) % 3; break;   // 0..2
+            case R_DIFF:   cfgDiff   = (cfgDiff + d + 3) % 3; break;
+            case R_LAYOUT: cfgLayout = (cfgLayout + d + (LAYOUT_COUNT+1)) % (LAYOUT_COUNT+1); cfgSeed = 0; break;
+            case R_CLIM:   cfgClim   = (cfgClim + d + (kClimCount+1)) % (kClimCount+1); cfgSeed = 0; break;
+            case R_COLOUR: g.playerColor = (g.playerColor + d + numTeamColors()) % numTeamColors(); applyTeamColors(); break;
+            case R_SPEED:  cfgSpeed  = (cfgSpeed + d + 3) % 3; break;
+            default: return;
+        }
+        dirty = true;
+    };
+    auto openPicker = [&]() {
+        g.biomeChoice  = (cfgClim   >= kClimCount)   ? -1 : cfgClim;
+        g.layoutChoice = (cfgLayout >= LAYOUT_COUNT) ? -1 : cfgLayout;
+        unsigned long long sd = 0;
+        if (showMapPreview(sd)) {
+            cfgSeed = sd;
+            cfgClim   = (g.biomeChoice  < 0) ? kClimCount   : g.biomeChoice;
+            cfgLayout = (g.layoutChoice < 0) ? LAYOUT_COUNT : g.layoutChoice;
+            dirty = true;
+        }
+    };
+
+    std::vector<std::string> addrs = netLocalAddresses();
+    while (true) {
+        bool wasSeated = netHostClientPresent();
+        netHostPoll();
+        if (wasSeated && netConnectionLost()) {
+            // Challenger left in the lobby: reopen and keep waiting.
+            netHostOpen();
+            netHostSetInfo(mpCurrentCfg());
+        }
+        if (dirty) { netHostSetInfo(mpCurrentCfg()); dirty = false; }
+
+        int maxY, maxX; getmaxyx(stdscr, maxY, maxX);
+        erase();
+        int top = std::max(0, maxY/2 - 15);
+        drawRealmBanner(maxX, top);
+        const int bw = 46, bh = 14;
+        int c = std::max(2, maxX/2 - bw/2);
+        int r0 = top + 8;
+        drawFrame(r0, c, bw, bh, "HOST A GAME");
+        int ix = c + 3, iy = r0 + 1;
+
+        auto header = [&](const char* h) {
+            attron(COLOR_PAIR(CP_UI_DIM) | A_BOLD); mvprintw(iy++, ix, "%s", h); attroff(COLOR_PAIR(CP_UI_DIM) | A_BOLD);
+        };
+        auto field = [&](int rowId, const char* label, const char* value) {
+            bool f = (sel == rowId);
+            mvaddstr(iy, ix-2, f ? u8"›" : " ");
+            int a = f ? (COLOR_PAIR(CP_UI_HIGH) | A_BOLD) : COLOR_PAIR(CP_UI_TEXT);
+            attron(a); mvprintw(iy, ix, "%-12s", label); attroff(a);
+            int va = f ? (COLOR_PAIR(CP_UI_HIGH) | A_BOLD) : COLOR_PAIR(CP_UI_HIGH);
+            attron(va); mvprintw(iy, ix+12, "%s", value); attroff(va);
+            iy++;
+        };
+
+        char opp[24]; snprintf(opp, sizeof opp, "%d extra AI%s", mpNumAIs, mpNumAIs==1?"":"s");
+        header("MATCH");
+        field(R_OPP,  "AI seats",   opp);
+        field(R_DIFF, "Difficulty", kDiffNames[cfgDiff]);
+        header("BATTLEFIELD");
+        field(R_LAYOUT, "Layout",  kLayoutNames[cfgLayout]);
+        field(R_CLIM,   "Climate", kClimateNames[cfgClim]);
+        field(R_BROWSE, "Browse maps", cfgSeed ? u8"chosen ▸" : u8"▸");
+        header("PLAYER");
+        int colourRow = iy;
+        field(R_COLOUR, "Colour", teamColorName(g.playerColor));
+        attron(COLOR_PAIR(CP_MM_PLAYER) | A_BOLD); mvaddstr(colourRow, ix+22, "##"); attroff(COLOR_PAIR(CP_MM_PLAYER) | A_BOLD);
+        field(R_SPEED,  "Game speed", kSpeedNames[cfgSpeed]);
+
+        bool seated = netHostClientPresent();
+        bool bf = (sel == R_BEGIN);
+        mvaddstr(iy+1, ix-2, bf ? u8"›" : " ");
+        attron(bf ? (COLOR_PAIR(seated ? CP_GOLD : CP_UI_DIM) | A_BOLD)
+                  : COLOR_PAIR(seated ? CP_UI_TEXT : CP_UI_DIM));
+        mvprintw(iy+1, ix, seated ? "Begin battle" : "Begin battle (waiting for a challenger)");
+        attroff(bf ? (COLOR_PAIR(seated ? CP_GOLD : CP_UI_DIM) | A_BOLD)
+                   : COLOR_PAIR(seated ? CP_UI_TEXT : CP_UI_DIM));
+
+        // Connection panel under the frame.
+        int py = r0 + bh + 1;
+        if (seated) {
+            attron(COLOR_PAIR(CP_HP_GREEN) | A_BOLD);
+            mvprintw(py, c, "%s has joined! Begin when ready.", netHostClientName().c_str());
+            attroff(COLOR_PAIR(CP_HP_GREEN) | A_BOLD);
+        } else {
+            attron(COLOR_PAIR(CP_UI_HIGH));
+            mvprintw(py, c, "Lobby open - waiting for a challenger...");
+            attroff(COLOR_PAIR(CP_UI_HIGH));
+        }
+        std::string addrLine = "LAN: friends pick Join via LAN. Direct: ";
+        for (size_t i = 0; i < addrs.size() && i < 2; i++)
+            addrLine += (i ? " or " : "") + addrs[i];
+        if (addrs.empty()) addrLine += "(no network?)";
+        lobbyNote(py+1, c, addrLine.c_str());
+        lobbyNote(py+2, c, "Internet play: forward TCP 7521 to this Mac, or share a Tailscale IP.");
+        lobbyNote(py+3, c, "↑↓ select   ←→ change   Enter choose   Esc back");
+        refresh();
+
+        timeout(90);
+        int ch = getch();
+        timeout(-1);
+        if (ch==27 || ch=='q' || ch=='Q') { netClose(); return false; }
+        else if (ch==KEY_UP   || ch=='k') sel = (sel + R_COUNT - 1) % R_COUNT;
+        else if (ch==KEY_DOWN || ch=='j') sel = (sel + 1) % R_COUNT;
+        else if (ch==KEY_LEFT)  adjust(sel, -1);
+        else if (ch==KEY_RIGHT) adjust(sel, +1);
+        else if (ch=='v' || ch=='V') openPicker();
+        else if (ch=='\n' || ch=='\r' || ch==KEY_ENTER) {
+            if      (sel == R_BROWSE) openPicker();
+            else if (sel == R_BEGIN && seated) {
+                if (cfgSeed == 0)
+                    cfgSeed = (unsigned long long)time(nullptr) * 2654435761ull + 1;
+                NetMatchConfig fin = mpCurrentCfg();
+                netHostSetInfo(fin);          // final settings incl. the real seed
+                if (!netHostStart()) { netClose(); return false; }
+                r.netPlay = true; r.netCfg = fin; r.netSlot = 0;
+                cfgSeed = 0;                  // next lobby rolls fresh again
+                return true;
+            }
+            else adjust(sel, +1);
+        }
+    }
+}
+
+// Client lobby: whatever the host settles on, mirrored live, plus a local
+// colour pick. Waits for the host's START.
+static bool clientLobby(SplashResult& r) {
+    NetMatchConfig cfgIn;
+    bool haveCfg = false;
+    while (true) {
+        int rc = netClientPoll(cfgIn);
+        if (rc == 1) haveCfg = true;
+        if (rc == 2) {
+            r.netPlay = true; r.netCfg = cfgIn; r.netSlot = 1;
+            return true;
+        }
+        if (rc < 0) {
+            timeout(-1);
+            int maxY, maxX; getmaxyx(stdscr, maxY, maxX);
+            erase(); drawRealmBanner(maxX, std::max(0, maxY/2 - 9));
+            lobbyNote(maxY/2 + 2, maxX/2 - 22, "Lost the host (they closed the lobby, or versions differ).", CP_HP_RED);
+            lobbyNote(maxY/2 + 4, maxX/2 - 12, "Press any key to go back");
+            refresh(); getch();
+            netClose();
+            return false;
+        }
+
+        int maxY, maxX; getmaxyx(stdscr, maxY, maxX);
+        erase();
+        int top = std::max(0, maxY/2 - 13);
+        drawRealmBanner(maxX, top);
+        const int bw = 44, bh = 10;
+        int c = std::max(2, maxX/2 - bw/2);
+        int r0 = top + 8;
+        char title[64];
+        snprintf(title, sizeof title, "%s'S GAME", netPeerName().c_str());
+        for (char* t = title; *t; t++) *t = toupper((unsigned char)*t);
+        drawFrame(r0, c, bw, bh, title);
+        int ix = c + 3, iy = r0 + 2;
+        attron(COLOR_PAIR(CP_UI_TEXT));
+        if (haveCfg) {
+            mvprintw(iy++, ix, "AI seats     %d", cfgIn.numAIs);
+            mvprintw(iy++, ix, "Difficulty   %s", kDiffNames[std::max(0,std::min(2,cfgIn.difficulty))]);
+            mvprintw(iy++, ix, "Layout       %s", kLayoutNames[(cfgIn.layout<0||cfgIn.layout>=LAYOUT_COUNT)?LAYOUT_COUNT:cfgIn.layout]);
+            mvprintw(iy++, ix, "Climate      %s", kClimateNames[(cfgIn.biome<0||cfgIn.biome>=kClimCount)?kClimCount:cfgIn.biome]);
+            mvprintw(iy++, ix, "Game speed   %s", kSpeedNames[std::max(0,std::min(2,cfgIn.speed))]);
+        } else {
+            mvprintw(iy++, ix, "Reading the host's settings...");
+        }
+        attroff(COLOR_PAIR(CP_UI_TEXT));
+        iy++;
+        attron(COLOR_PAIR(CP_UI_HIGH));
+        mvprintw(iy, ix, "Colour  <  %s  >", teamColorName(g.playerColor));
+        attroff(COLOR_PAIR(CP_UI_HIGH));
+        attron(COLOR_PAIR(CP_MM_PLAYER) | A_BOLD); mvaddstr(iy, ix+24, "##"); attroff(COLOR_PAIR(CP_MM_PLAYER) | A_BOLD);
+
+        lobbyNote(r0 + bh + 1, c, "Waiting for the host to begin...   Esc leave", CP_UI_HIGH);
+        refresh();
+
+        timeout(90);
+        int ch = getch();
+        timeout(-1);
+        if (ch==27 || ch=='q' || ch=='Q') { netSendBye(); netClose(); return false; }
+        else if (ch==KEY_LEFT)  { g.playerColor = (g.playerColor + numTeamColors() - 1) % numTeamColors(); applyTeamColors(); }
+        else if (ch==KEY_RIGHT) { g.playerColor = (g.playerColor + 1) % numTeamColors(); applyTeamColors(); }
+    }
+}
+
+// Type-an-address entry (long-distance play: the host's public IP with TCP
+// 7521 forwarded, or their Tailscale address).
+static bool joinByAddress(SplashResult& r) {
+    std::string addr;
+    std::string err;
+    while (true) {
+        int maxY, maxX; getmaxyx(stdscr, maxY, maxX);
+        erase();
+        int top = std::max(0, maxY/2 - 11);
+        drawRealmBanner(maxX, top);
+        const int bw = 52, bh = 6;
+        int c = std::max(2, maxX/2 - bw/2);
+        int r0 = top + 8;
+        drawFrame(r0, c, bw, bh, "JOIN BY ADDRESS");
+        attron(COLOR_PAIR(CP_UI_TEXT));
+        mvprintw(r0+2, c+3, "Host address:");
+        attroff(COLOR_PAIR(CP_UI_TEXT));
+        attron(COLOR_PAIR(CP_UI_HIGH) | A_BOLD);
+        mvprintw(r0+2, c+17, "%s_", addr.c_str());
+        attroff(COLOR_PAIR(CP_UI_HIGH) | A_BOLD);
+        if (!err.empty()) lobbyNote(r0+4, c+3, err.c_str(), CP_HP_RED);
+        lobbyNote(r0 + bh, c, "IP or hostname (Tailscale names work).  Enter connect  Esc back");
+        refresh();
+
+        timeout(-1);
+        int ch = getch();
+        if (ch == 27) return false;
+        else if (ch=='\n' || ch=='\r' || ch==KEY_ENTER) {
+            if (addr.empty()) continue;
+            erase(); drawRealmBanner(maxX, top);
+            lobbyNote(r0+2, c+3, ("Connecting to " + addr + "...").c_str(), CP_UI_HIGH);
+            refresh();
+            std::string why;
+            if (netJoinConnect(addr.c_str(), NET_TCP_PORT, why)) {
+                if (clientLobby(r)) return true;
+                return false;
+            }
+            err = why;
+        }
+        else if (
+#ifdef KEY_BACKSPACE
+                 ch==KEY_BACKSPACE ||   // terminal build; the SDL shim sends ASCII 8
+#endif
+                 ch==127 || ch==8) { if (!addr.empty()) addr.pop_back(); }
+        else if (ch >= 32 && ch < 127 && addr.size() < 40) addr.push_back((char)ch);
+    }
+}
+
+// LAN browser: broadcast-discovered lobbies, live-refreshed.
+static bool joinLanBrowse(SplashResult& r) {
+    netDiscoverStart();
+    std::vector<NetLobbyInfo> list;
+    int sel = 0;
+    while (true) {
+        netDiscoverPoll(list);
+        if (sel >= (int)list.size()) sel = list.empty() ? 0 : (int)list.size() - 1;
+
+        int maxY, maxX; getmaxyx(stdscr, maxY, maxX);
+        erase();
+        int top = std::max(0, maxY/2 - 12);
+        drawRealmBanner(maxX, top);
+        const int bw = 56, bh = 4 + std::max(3, (int)list.size() + 1);
+        int c = std::max(2, maxX/2 - bw/2);
+        int r0 = top + 8;
+        drawFrame(r0, c, bw, bh, "GAMES ON YOUR NETWORK");
+        int iy = r0 + 2;
+        if (list.empty()) {
+            attron(COLOR_PAIR(CP_UI_DIM));
+            mvprintw(iy,   c+3, "Searching...");
+            mvprintw(iy+1, c+3, "(the host must be sitting in their lobby)");
+            attroff(COLOR_PAIR(CP_UI_DIM));
+        }
+        for (int i = 0; i < (int)list.size(); i++) {
+            bool f = (i == sel);
+            int a = f ? (COLOR_PAIR(CP_UI_HIGH) | A_BOLD) : COLOR_PAIR(CP_UI_TEXT);
+            attron(a);
+            mvprintw(iy + i, c+3, "%s %-14s %-16s %s", f ? u8"›" : " ",
+                     list[i].host.c_str(), list[i].addr.c_str(), list[i].map.c_str());
+            attroff(a);
+        }
+        lobbyNote(r0 + bh, c, "Enter join   A type an address instead   Esc back");
+        refresh();
+
+        timeout(250);
+        int ch = getch();
+        timeout(-1);
+        if (ch==27 || ch=='q' || ch=='Q') { netDiscoverStop(); return false; }
+        else if (ch==KEY_UP   && !list.empty()) sel = (sel + (int)list.size() - 1) % (int)list.size();
+        else if (ch==KEY_DOWN && !list.empty()) sel = (sel + 1) % (int)list.size();
+        else if (ch=='a' || ch=='A') { netDiscoverStop(); return joinByAddress(r); }
+        else if ((ch=='\n' || ch=='\r' || ch==KEY_ENTER) && !list.empty()) {
+            NetLobbyInfo pick = list[sel];
+            netDiscoverStop();
+            std::string why;
+            if (netJoinConnect(pick.addr.c_str(), pick.port, why)) {
+                if (clientLobby(r)) return true;
+                netDiscoverStart();   // back to browsing
+            } else {
+                netDiscoverStart();
+            }
+        }
+    }
+}
+
+// The MULTIPLAYER entry on the splash.
+static bool showMultiplayerMenu(SplashResult& r) {
+    static const char* items[] = { "HOST A GAME", "JOIN VIA LAN", "JOIN BY ADDRESS", "BACK" };
+    const int N = 4;
+    int sel = 0;
+    while (true) {
+        int maxY, maxX; getmaxyx(stdscr, maxY, maxX);
+        erase();
+        int top = std::max(0, maxY/2 - 9);
+        drawRealmBanner(maxX, top);
+        int my0 = top + 9, c = maxX/2 - 8;
+        for (int i = 0; i < N; i++) {
+            bool f = (i == sel);
+            int a = f ? (COLOR_PAIR(CP_UI_HIGH) | A_BOLD) : COLOR_PAIR(CP_UI_TEXT);
+            attron(a);
+            mvprintw(my0 + i, c, "%s  %s", f ? u8"›" : " ", items[i]);
+            attroff(a);
+        }
+        attron(COLOR_PAIR(CP_UI_DIM));
+        const char* hint = "Host = your friend joins you (AoE2-style lobby)";
+        mvprintw(my0 + N + 2, maxX/2 - (int)strlen(hint)/2, "%s", hint);
+        attroff(COLOR_PAIR(CP_UI_DIM));
+        refresh();
+
+        int ch = getch();
+        if (ch==27 || ch=='q' || ch=='Q') return false;
+        else if (ch==KEY_UP   || ch=='k' || ch=='K') sel = (sel + N - 1) % N;
+        else if (ch==KEY_DOWN || ch=='j' || ch=='J') sel = (sel + 1) % N;
+        else if (ch=='\n' || ch=='\r' || ch==KEY_ENTER) {
+            if      (sel == 0) { if (hostLobby(r))     return true; }
+            else if (sel == 1) { if (joinLanBrowse(r)) return true; }
+            else if (sel == 2) { if (joinByAddress(r)) return true; }
+            else return false;
         }
     }
 }
@@ -855,8 +1242,25 @@ static void runMatch() {
         // Tick and render at fixed rate regardless of input volume
         bool ticked = false;
         if (Clock::now() >= nextTick) {
-            nextTick += Ms(tickPeriodMs());
-            if (g.mode != M_PAUSED && g.mode != M_GAME_OVER && g.mode != M_HELP && g.mode != M_SAVELOAD) simTick();
+            bool simAllowed = g.mode != M_PAUSED && g.mode != M_GAME_OVER
+                           && g.mode != M_HELP && g.mode != M_SAVELOAD;
+            if (!netActive()) {
+                nextTick += Ms(tickPeriodMs());
+                if (simAllowed) simTick();
+            } else {
+                // Lockstep: a tick may only run once BOTH sides' command
+                // bundles for it have arrived. Otherwise stall (input and
+                // rendering stay live) and retry shortly.
+                netPump();
+                if (simAllowed && !netConnectionLost() && !netDesynced() && netTickReady()) {
+                    simTick();
+                    netAfterTick();
+                    nextTick += Ms(tickPeriodMs());
+                    if (nextTick < Clock::now()) nextTick = Clock::now();  // don't spiral after a stall
+                } else {
+                    nextTick = Clock::now() + Ms(15);
+                }
+            }
             render();
             ticked = true;
         }
@@ -893,6 +1297,75 @@ int main(int argc, char** argv) {
         int biome  = (argc >= 6) ? atoi(argv[5]) : 0;   // climate: Biome 0-4 / -1 mixed
         int layout = (argc >= 7) ? atoi(argv[6]) : 0;   // layout: Layout 0-4 / -1 random
         return runVerify(seed, std::max(1, ticks), std::max(1, std::min(3, numAIs)), biome, layout);
+    }
+
+    // --net-host / --net-join: headless lockstep smoke test. Start a host in
+    // one process and a joiner in another (same machine or LAN); both run the
+    // full handshake + scheduler + scripted cross-wire commands and print the
+    // final state hash. Identical hashes = the wire preserves determinism.
+    bool netHost = argc >= 2 && strcmp(argv[1], "--net-host") == 0;
+    bool netJoinCli = argc >= 3 && strcmp(argv[1], "--net-join") == 0;
+    if (netHost || netJoinCli) {
+        int ticks = netHost ? ((argc >= 3) ? atoi(argv[2]) : 2000)
+                            : ((argc >= 4) ? atoi(argv[3]) : 2000);
+        ticks = std::max(NET_CMD_DELAY + 1, ticks);
+        int ais = (netHost && argc >= 4) ? std::max(0, std::min(2, atoi(argv[3]))) : 1;
+        NetMatchConfig nc;
+        int slot;
+        if (netHost) {
+            nc.seed = 424242; nc.numAIs = ais; nc.biome = 0; nc.layout = 0;
+            nc.difficulty = 1; nc.speed = 1; nc.humanMask = 3;
+            if (!netHostOpen()) { fprintf(stderr, "netHostOpen failed\n"); return 1; }
+            netHostSetInfo(nc);
+            fprintf(stderr, "hosting on :%d, waiting for joiner...\n", NET_TCP_PORT);
+            while (!netHostClientPresent()) {
+                if (!netHostPoll()) { fprintf(stderr, "lobby error\n"); return 1; }
+                usleep(10000);
+            }
+            if (!netHostStart()) { fprintf(stderr, "start failed\n"); return 1; }
+            slot = 0;
+        } else {
+            std::string err;
+            if (!netJoinConnect(argv[2], NET_TCP_PORT, err)) { fprintf(stderr, "%s\n", err.c_str()); return 1; }
+            int rc2;
+            while ((rc2 = netClientPoll(nc)) != 2) {
+                if (rc2 < 0) { fprintf(stderr, "lost host in lobby\n"); return 1; }
+                usleep(5000);
+            }
+            slot = 1;
+        }
+        g.difficulty = nc.difficulty; g.biomeChoice = nc.biome; g.layoutChoice = nc.layout;
+        g.humanMask = nc.humanMask; g.localPlayer = slot;
+        initGame(nc.numAIs, nc.seed);
+        netMatchBegin(slot);
+        int stall = 0;
+        while (g.tick < ticks) {
+            if (netConnectionLost()) { fprintf(stderr, "connection lost at tick %d\n", g.tick); return 1; }
+            if (netDesynced()) { fprintf(stderr, "DESYNC at tick %d\n", netDesyncTick()); return 1; }
+            // Scripted human traffic: each side periodically orders one of its
+            // own units around. Different phases so both directions carry load.
+            if (g.tick % 37 == (slot == 0 ? 0 : 5)) {
+                for (auto& e : g.entities) {
+                    if (!e.alive || e.owner != slot || !isUnit(e.type)) continue;
+                    Command mc;
+                    mc.type = CMD_MOVE; mc.player = slot;
+                    mc.x = std::max(1, std::min(MAP_W-2, e.x + (int)(g.tick % 13) - 6));
+                    mc.y = std::max(1, std::min(MAP_H-2, e.y + (int)(g.tick % 11) - 5));
+                    mc.units = {e.id};
+                    pushCommand(mc);
+                    break;
+                }
+            }
+            if (netTickReady()) { simTick(); netAfterTick(); stall = 0; }
+            else { usleep(2000); if (++stall > 5000) { fprintf(stderr, "stalled at tick %d\n", g.tick); return 1; } }
+        }
+        printf("net-%s ticks=%d hash=%016llx\n", netHost ? "host" : "join", g.tick, simStateHash());
+        // Linger so the slower side can finish and the final hashes cross.
+        for (int i = 0; i < 200 && !netConnectionLost() && !netDesynced(); i++) { netPump(); usleep(5000); }
+        if (netDesynced()) { fprintf(stderr, "DESYNC at tick %d\n", netDesyncTick()); return 1; }
+        netSendBye();
+        netClose();
+        return 0;
     }
 
     // --verify-replay: headless playback of a recorded match. Run it twice
@@ -965,16 +1438,41 @@ int main(int argc, char** argv) {
     }
 
     while (true) {
-        // The splash is the hub: opponents, difficulty, map, display. Pressing
-        // [V] there opens the visual battlefield picker; a committed pick comes
-        // back as a locked seed (0 = roll a fresh map of the chosen type).
-        unsigned long long pickedSeed = 0;
-        int loadSlot = 0;
-        int numAIs = showSplash(pickedSeed, loadSlot);
-        g.humanMask = 1; g.localPlayer = 0;   // solo seat; the MP lobby sets its own
+        // The splash is the hub: skirmish setup, multiplayer lobbies, saves.
+        SplashResult pick;
+        showSplash(pick);
 
         // Reinitialise colour pairs in case the splash changed anything.
         initColors();
+
+        if (pick.netPlay) {
+            // Network match: both machines build the identical world from the
+            // lobby-agreed config, then exchange nothing but commands.
+            const NetMatchConfig& nc = pick.netCfg;
+            g.difficulty   = nc.difficulty;
+            gameSpeed      = (GameSpeed)nc.speed;
+            g.biomeChoice  = nc.biome;
+            g.layoutChoice = nc.layout;
+            g.humanMask    = nc.humanMask;
+            g.localPlayer  = pick.netSlot;
+            applyTeamColors();
+            initGame(nc.numAIs, nc.seed);
+            netMatchBegin(pick.netSlot);
+            replayStartRecording(nc.numAIs);   // records BOTH players' streams
+            setStatus(g.mapName + " — " + netPeerName() +
+                      (pick.netSlot == 0 ? " marches against you. " : " awaits your challenge. ") +
+                      "The battle is joined!");
+            runMatch();
+            replayStopRecording();
+            netSendBye();
+            netClose();
+            continue;
+        }
+
+        g.humanMask = 1; g.localPlayer = 0;   // solo seat
+        int numAIs = pick.numAIs;
+        int loadSlot = pick.loadSlot;
+        unsigned long long pickedSeed = pick.seed;
 
         if (loadSlot > 0) {
             // Resume a saved game chosen straight from the splash. Loaded state

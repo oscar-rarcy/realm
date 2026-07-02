@@ -57,11 +57,13 @@ deterministic: same seed + same command stream ⇒ same game, bit for bit.
 
 ## Remaining
 
-5. **Networking**: exchange commands scheduled for tick T+delay
-   (classic lockstep), pause when a peer's commands haven't arrived.
-   Everything it needs now exists: commands are serialisable (replay
-   format), the sim is verified deterministic, and `simStateHash()` is
-   the in-game desync alarm. Open decisions before building it:
-   host/join UX on the splash screen, TCP vs ENet-style UDP, command
-   delay (2-4 ticks), and how the lobby shares seed + biome + AI count
-   (same fields as the replay header).
+(nothing — step 5 shipped 2026-07-02)
+
+5. **Networking — DONE** (`net.cpp`, docs/networking-plan.md has the
+   detail): TCP lockstep with D=3 command delay, empty bundles as
+   keepalive, hash piggyback every 100 ticks, UDP LAN lobby discovery,
+   direct-IP join for long-distance (port-forward or Tailscale), splash
+   MULTIPLAYER menu with AoE2-style host/join lobbies. The replay codec
+   is the wire codec (`encodeCommand`/`decodeCommand`); MP matches
+   record both players' streams, so every network game is a replay
+   (REP_VERSION 7 carries `humanMask`).

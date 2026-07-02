@@ -1,5 +1,14 @@
 # Networking plan — lockstep LAN duel (roadmap step 5)
 
+**STATUS: IMPLEMENTED (2026-07-02, net.cpp).** All six phases below shipped;
+deltas from the plan: pause travels as a control message (both sims freeze at
+the same tick anyway since bundles stop), LAN lobby discovery via UDP
+broadcast on 7522 shipped alongside direct-IP join rather than "later",
+and the desync alarm freezes into an on-screen banner (both replays are on
+disk as planned). Headless harness: `./realm --net-host <ticks> [ais]` +
+`./realm --net-join <addr> <ticks>` — run both, compare printed hashes.
+Verified: 10k ticks / 2 AIs / scripted cross-wire commands, hash-identical.
+
 Everything below builds on machinery that already exists and is verified:
 deterministic sim (`--verify`), the command funnel, the replay
 serialization format, and `simStateHash()`.

@@ -77,6 +77,14 @@ static void setNonBlocking(int fd) {
 
 static void closeFd(int& fd) { if (fd >= 0) { close(fd); fd = -1; } }
 
+// REALM_NET_DEBUG=1: log why the link died (stderr; harness only).
+static void netDbg(const char* where, int err) {
+    static int on = -1;
+    if (on < 0) { const char* e = getenv("REALM_NET_DEBUG"); on = (e && *e && *e != '0') ? 1 : 0; }
+    if (on) fprintf(stderr, "[net] connLost: %s (errno=%d %s) tick=%d\n", where, err, strerror(err), g.tick);
+}
+#define CONN_LOST(where) do { if (!connLost) netDbg(where, errno); connLost = true; } while (0)
+
 bool netActive() { return matchActive; }
 bool netConnectionLost() { return connLost; }
 bool netDesynced() { return desynced; }
@@ -336,7 +344,7 @@ static void handleFrame(unsigned char type, const unsigned char* p, unsigned len
     case MSG_HELLO:
         if (isHost && len >= 4 + 24) {
             unsigned proto; memcpy(&proto, p, 4);
-            if (proto != NET_PROTO_VERSION) { sendFrame(MSG_BYE, nullptr, 0); connLost = true; return; }
+            if (proto != NET_PROTO_VERSION) { sendFrame(MSG_BYE, nullptr, 0); CONN_LOST("proto"); return; }
             peerName.assign((const char*)p + 4);
             clientSeated = true;
             unsigned char re[4 + 24] = {0};
@@ -365,14 +373,14 @@ static void handleFrame(unsigned char type, const unsigned char* p, unsigned len
         if (len < 8) break;
         int execTick, nCmds;
         memcpy(&execTick, p, 4); memcpy(&nCmds, p + 4, 4);
-        if (nCmds < 0 || nCmds > 4096) { connLost = true; break; }
+        if (nCmds < 0 || nCmds > 4096) { CONN_LOST("bundle-count"); break; }
         const int* f = (const int*)(p + 8);
         int avail = (int)((len - 8) / 4);
         std::vector<Command> cmds;
         for (int i = 0; i < nCmds; i++) {
             Command c;
             int used = decodeCommand(f, avail, c);
-            if (used <= 0) { connLost = true; return; }
+            if (used <= 0) { CONN_LOST("bundle-decode"); return; }
             f += used; avail -= used;
             cmds.push_back(std::move(c));
         }
@@ -392,7 +400,7 @@ static void handleFrame(unsigned char type, const unsigned char* p, unsigned len
         peerPaused = (len >= 1 && p[0] != 0);
         break;
     case MSG_BYE:
-        connLost = true;
+        CONN_LOST("bye");
         break;
     }
 }
@@ -404,7 +412,7 @@ void netPump() {
         ssize_t n = send(sock, txBuf.data(), txBuf.size(), 0);
         if (n > 0) txBuf.erase(txBuf.begin(), txBuf.begin() + n);
         else if (n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) break;
-        else { connLost = true; break; }
+        else { CONN_LOST("pump-send"); break; }
     }
     // Drain the socket.
     unsigned char buf[4096];
@@ -413,13 +421,13 @@ void netPump() {
         rxBuf.insert(rxBuf.end(), buf, buf + n);
         lastRecvMs = nowMs();
     }
-    if (n == 0) connLost = true;                              // orderly shutdown
-    else if (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK) connLost = true;
+    if (n == 0) CONN_LOST("recv-eof");                        // orderly shutdown
+    else if (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK) CONN_LOST("recv-err");
     // Parse complete frames.
     size_t off = 0;
     while (rxBuf.size() - off >= 5) {
         unsigned len; memcpy(&len, rxBuf.data() + off, 4);
-        if (len > 1 << 20) { connLost = true; break; }        // insane frame: bail
+        if (len > 1 << 20) { CONN_LOST("frame-insane"); break; }        // insane frame: bail
         if (rxBuf.size() - off < 5 + len) break;
         handleFrame(rxBuf[off + 4], rxBuf.data() + off + 5, len);
         off += 5 + len;
@@ -427,7 +435,7 @@ void netPump() {
     if (off) rxBuf.erase(rxBuf.begin(), rxBuf.begin() + off);
     // Mid-match silence timeout: bundles double as keepalives at ~12.5/s,
     // so ten quiet seconds means the peer is gone (not just slow).
-    if (matchActive && !connLost && nowMs() - lastRecvMs > 10000) connLost = true;
+    if (matchActive && !connLost && nowMs() - lastRecvMs > 10000) CONN_LOST("silence");
 }
 
 // ============================================================
