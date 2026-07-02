@@ -17,28 +17,29 @@ shipped in commit f36d5e6 (+ follow-ons); **Open** items are recommendations.
 | "Rolling Hills" hid that hills are now the cliff ramps | "Hills (ramp)"; help sheet explains cliffs/ramps |
 | Emoji entity table 4 entries out of alignment with the enum | Rebuilt + static_assert (commit 1957697) |
 
-## Open recommendations (rough priority)
+## Open recommendations — status (updated 2026-07-02)
 
-1. **Message log.** One status line still loses information under message
-   bursts (combat + season + weather in the same minute). A 3-line fading
-   log above the bottom bar, or `L` to open recent history.
-2. **Idle-peasant button parity.** `,`/`.` cycles idle peasants but nothing
-   on screen advertises the idle count is clickable — make the top-bar
-   `Idle:` readout a click target.
-3. **Production rally visibility.** Rally points are invisible after
-   setting; draw a small flag glyph on the rally tile while the building
-   is selected.
-4. **Minimap viewport rectangle.** The minimap shows units but not the
-   current camera rectangle; a one-cell border makes orientation instant.
-5. **Consistent confirmation grammar.** Q-quit needs a double press but
-   F9 load (equally destructive to the current match) is instant —
-   consider arming F-loads the same way.
-6. **Selection panel scroll.** With the new depot/larder readouts a busy
-   selection can exceed panel height on short windows; clamp + "…more".
-7. **Colour audit for the colour-blind.** Player cyan vs P3 purple holds
-   up, but red/green build-preview (OK/blocked) is the classic trap —
-   add a glyph difference (`+`/`x`) not just colour.
-8. **Mode strings.** M_BUILD_PLACE/M_RALLY_SET/M_PATROL_SET all explain
-   themselves in the bar — good — but Esc behaviour differs subtly
-   (some clear selection, some keep it). Unify: Esc exits the mode,
-   second Esc clears selection.
+1. **Message log — DONE** (earlier pass): `g.eventLog`, six-line rolling
+   feed at the bottom of the side panel, newest highlighted.
+2. **Idle-peasant button — DONE**: the top-bar `Idle:` readout is a gold
+   reverse-video button while any peasant idles; clicking it jumps to the
+   next idle peasant (same as `,`). Yields to the clock cluster on narrow
+   terminals.
+3. **Production rally visibility — DONE**: a bold gold `>` marks the rally
+   tile while its building is selected (drawMapOverlays).
+4. **Minimap viewport rectangle — DONE**: camera rect shown as an
+   A_REVERSE border on the minimap.
+5. **Confirmation grammar — DONE**: F9-F12 loads arm like Q-quit (second
+   press within 40 ticks confirms).
+6. **Selection panel scroll.** OPEN — long readouts on short windows are
+   currently covered by the event log (drawn later); acceptable, revisit
+   if it bites.
+7. **Colour-blind build preview — DONE**: footprint glyphs are `+` (fits)
+   / `x` (blocked), colour is now reinforcement not information.
+8. **Mode strings / Esc.** Verified already unified since the audit: every
+   mode's Esc exits to M_NORMAL keeping selection; Esc in M_NORMAL clears
+   selection.
+
+New this pass (multiplayer): `C` opens a chat line in network matches
+(sent text lands in both event logs); network banners (waiting / paused /
+connection lost / desync) render centre-top.

@@ -168,10 +168,33 @@ static void cmdAtTileGroup(int x, int y) {
     pushCmd(CMD_MOVE, selectedUnitIds(), x, y);
 }
 
+// Jump the selection (and camera cursor) to the next idle peasant. Shared by
+// the ','/'.' keys and a click on the top-bar Idle button.
+static void selectNextIdlePeasant() {
+    int sid = g.selectedId; bool past = (sid < 0); Entity* pick = nullptr;
+    for (auto& e : g.entities) {
+        if (!e.alive || e.owner != g.localPlayer || e.type != E_PEASANT || e.state != S_IDLE) continue;
+        if (!past) { if (e.id == sid) past = true; continue; }
+        pick = &e; break;
+    }
+    if (!pick) for (auto& e : g.entities) {
+        if (!e.alive || e.owner != g.localPlayer || e.type != E_PEASANT || e.state != S_IDLE) continue;
+        pick = &e; break;
+    }
+    if (pick) {
+        g.selectedId = pick->id; g.selectedIds.clear();
+        g.cursorX = pick->x; g.cursorY = pick->y;
+        setStatus("Idle peasant selected");
+    } else setStatus("No idle peasants");
+}
+
 void handleInput(int ch) {
     if (ch == ERR) return;
     // Network-match interruptions take the whole keyboard until resolved.
     if (netActive() && (netConnectionLost() || netDesynced())) {
+        // Consume mouse events even while modal — an unread MEVENT would be
+        // replayed stale after the modal closes (the June queue-desync bug).
+        if (ch == KEY_MOUSE) { MEVENT me; getmouse(&me); return; }
         if (ch == 'q' || ch == 'Q') { g.returnToMenu = true; return; }
         if (!netDesynced() && (ch == 'a' || ch == 'A')) {
             // Peer is gone: the enemy AI inherits their realm and the match
@@ -190,6 +213,26 @@ void handleInput(int ch) {
           || ch == KEY_PPAGE || ch == KEY_NPAGE || ch == KEY_HOME || ch == KEY_END
           || ch == '\t' || ch == 'h' || ch == '.' || ch == ',')
         g.cursorByMouse = false;
+    // Multiplayer chat entry line: swallows the keyboard until sent/cancelled.
+    if (g.chatOpen) {
+        if (ch == KEY_MOUSE) { MEVENT me; getmouse(&me); return; }
+        if (ch == 27) { g.chatOpen = false; g.chatInput.clear(); return; }
+        if (ch == '\n' || ch == '\r' || ch == KEY_ENTER) {
+            if (!g.chatInput.empty()) {
+                netSendChat(g.chatInput);
+                setStatus("You: " + g.chatInput);
+            }
+            g.chatOpen = false; g.chatInput.clear(); return;
+        }
+        if (
+#ifdef KEY_BACKSPACE
+            ch == KEY_BACKSPACE ||
+#endif
+            ch == 127 || ch == 8) { if (!g.chatInput.empty()) g.chatInput.pop_back(); return; }
+        if (ch >= 32 && ch < 127 && g.chatInput.size() < 120) g.chatInput.push_back((char)ch);
+        return;
+    }
+
     if (ch == 'q' || ch == 'Q') {
         if (g.mode == M_GAME_OVER) { g.returnToMenu = true; return; }
         // Mid-game quit needs a confirming second press — one stray key
@@ -600,6 +643,15 @@ void handleInput(int ch) {
         if (netActive()) { setStatus("No loading in a network match."); break; }
         if (replayPlaying()) { setStatus("Can't load a save during replay playback."); break; }
         int slot = (ch - KEY_F(9)) + 1;
+        // Arm like Q-quit: an instant F-load is as destructive to the current
+        // match as quitting, so it takes a confirming second press too.
+        static int armSlot = -1, armTick = -1;
+        if (armSlot != slot || armTick < 0 || armTick > g.tick || g.tick - armTick >= 40) {
+            armSlot = slot; armTick = g.tick;
+            setStatus("Press again to load slot " + std::to_string(slot) + " — the current battle is abandoned!");
+            break;
+        }
+        armSlot = -1; armTick = -1;
         char path[64]; snprintf(path, sizeof(path), "realm-slot%d.sav", slot);
         if (loadGame(path)) {
             // The recording's command stream no longer reproduces this state
@@ -733,21 +785,13 @@ void handleInput(int ch) {
 
     // Cycle to the next idle peasant
     case '.': case ',': {
-        int sid = g.selectedId; bool past = (sid < 0); Entity* pick = nullptr;
-        for (auto& e : g.entities) {
-            if (!e.alive || e.owner != g.localPlayer || e.type != E_PEASANT || e.state != S_IDLE) continue;
-            if (!past) { if (e.id == sid) past = true; continue; }
-            pick = &e; break;
-        }
-        if (!pick) for (auto& e : g.entities) {
-            if (!e.alive || e.owner != g.localPlayer || e.type != E_PEASANT || e.state != S_IDLE) continue;
-            pick = &e; break;
-        }
-        if (pick) {
-            g.selectedId = pick->id; g.selectedIds.clear();
-            g.cursorX = pick->x; g.cursorY = pick->y;
-            setStatus("Idle peasant selected");
-        } else setStatus("No idle peasants");
+        selectNextIdlePeasant();
+        break;
+    }
+
+    // Multiplayer chat (the sent line shows in both event logs).
+    case 'c': case 'C': {
+        if (netActive()) { g.chatOpen = true; g.chatInput.clear(); }
         break;
     }
 
@@ -898,6 +942,13 @@ void handleInput(int ch) {
         int mapSX = me.x / tileW;
         int mapX  = g.viewX + mapSX;
         int mapY  = g.viewY + mapSY;
+        // Top-bar Idle button: click jumps to the next idle peasant.
+        if (me.y == 0 && g.idleBtnX >= 0
+            && me.x >= g.idleBtnX && me.x < g.idleBtnX + g.idleBtnW
+            && (me.bstate & (BUTTON1_CLICKED | BUTTON1_PRESSED))) {
+            selectNextIdlePeasant();
+            break;
+        }
         // Minimap click → jump viewport; click-and-drag scrubs it (AoE-style).
         // Minimap sits at panelX+1..+mmW, mmY..+mmH.
         {

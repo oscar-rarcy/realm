@@ -349,6 +349,13 @@ struct Game {
     int humanMask = 1;
     std::vector<Command> pendingCmds; // local player's queued commands; applied at tick start
     std::vector<std::string> eventLog; // rolling recent-events feed (UI only; not saved/hashed)
+    // Top-bar "Idle:" readout doubles as a click target (AoE2 idle-vill
+    // button). Geometry stashed by renderUI for input's mouse hit-test.
+    int idleBtnX = -1, idleBtnW = 0;
+    // Multiplayer chat: input line state (UI only; the sent text
+    // travels as a control message, never through the sim).
+    bool chatOpen = false;
+    std::string chatInput;
 };
 extern Game g;
 
@@ -572,6 +579,7 @@ bool netPeerPaused();
 bool netWaitingForPeer();               // stalled on the opponent's bundle
 std::string netPeerName();
 void netSendPause(bool paused);
+void netSendChat(const std::string& text);   // shows on both sides' event logs
 void netSendBye();
 
 // save.cpp

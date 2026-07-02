@@ -35,6 +35,7 @@ enum : unsigned char {
     MSG_BUNDLE  = 'B',   // both ways     i32 execTick, i32 nCmds, commands (codec ints)
     MSG_HASH    = 'A',   // both ways     i32 tick, u64 simStateHash
     MSG_PAUSE   = 'P',   // both ways     u8 paused
+    MSG_CHAT    = 'T',   // both ways     utf-8 text (control channel, never sim)
     MSG_BYE     = 'Y',   // either        clean leave
 };
 
@@ -399,6 +400,11 @@ static void handleFrame(unsigned char type, const unsigned char* p, unsigned len
     case MSG_PAUSE:
         peerPaused = (len >= 1 && p[0] != 0);
         break;
+    case MSG_CHAT: {
+        std::string text((const char*)p, std::min(len, 160u));
+        setStatus(netPeerName() + ": " + text);
+        break;
+    }
     case MSG_BYE:
         CONN_LOST("bye");
         break;
@@ -505,6 +511,11 @@ void netAfterTick() {
         for (auto m : {&localHashes, &remoteHashes})
             while (m->size() > 8) m->erase(m->begin());
     }
+}
+
+void netSendChat(const std::string& text) {
+    if (text.empty()) return;
+    sendFrame(MSG_CHAT, text.data(), (unsigned)std::min<size_t>(text.size(), 160));
 }
 
 void netSendPause(bool paused) {

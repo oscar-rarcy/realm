@@ -575,6 +575,22 @@ void getTerrainVisual(Terrain t, int x, int y, char& ch, int& cp, bool lit) {
 // Render-only overlays drawn on top of the map: corpses, hearth smoke,
 // weather, birds, the drag-selection box, and off-screen battle arrows.
 static void drawMapOverlays(int tileW) {
+    // Rally flag: while one of your production buildings is selected, its
+    // rally point shows as a bold '>' so a set rally is never invisible.
+    if (g.selectedIds.empty()) {
+        Entity* rsel = findEntity(g.selectedId);
+        if (rsel && rsel->alive && rsel->owner == g.localPlayer
+            && isBuilding(rsel->type) && rsel->rallySet) {
+            int sx = (rsel->rallyX - g.viewX) * tileW, sy = rsel->rallyY - g.viewY + 2;
+            if (rsel->rallyX >= g.viewX && rsel->rallyX < g.viewX + g.viewW
+                && rsel->rallyY >= g.viewY && rsel->rallyY < g.viewY + g.viewH) {
+                attron(COLOR_PAIR(CP_GOLD)|A_BOLD);
+                mvaddch(sy, sx, '>');
+                attroff(COLOR_PAIR(CP_GOLD)|A_BOLD);
+            }
+        }
+    }
+
     // The fallen linger on the field a while — a dim '%' on the death tile,
     // fading after ~200 ticks (g.corpses; render-only, never sim state).
     attron(COLOR_PAIR(CP_CORPSE)|A_DIM);
@@ -804,7 +820,7 @@ static void rmPreparePass(bool night, int& ringX, int& ringY, int& ringR) {
     if (g.mode == M_BUILD_PLACE && g.buildPending != E_NONE) {
         Entity* sel = findEntity(g.selectedId);
         int ignoreId = (sel && sel->alive) ? sel->id : -1;
-        bool ok = canPlace(g.buildPending, g.cursorX, g.cursorY, 0, ignoreId);
+        bool ok = canPlace(g.buildPending, g.cursorX, g.cursorY, g.localPlayer, ignoreId);
         auto& s = STATS[g.buildPending];
         // Castle previews its full 7x7 compound, not just the keep.
         int pw = s.sizeW, ph = s.sizeH;
@@ -1098,10 +1114,12 @@ void renderMap() {
             auto drawAt = [&](int y, int x, chtype dch) { mvaddch(y, x, dch); };
 
             if (bldPrev[my][mx]) {
-                // Footprint overlay wins over cursor so the build outline reads cleanly.
+                // Footprint overlay wins over cursor so the build outline reads
+                // cleanly. Glyph carries the verdict too ('+' fits / 'x' blocked)
+                // so the preview reads without red-green colour vision.
                 int cpFP = (bldPrev[my][mx] == 1) ? CP_BUILD_OK : CP_BUILD_BAD;
                 attron(COLOR_PAIR(cpFP)|A_BOLD);
-                drawAt(scY, scX, drawCh);
+                drawAt(scY, scX, (bldPrev[my][mx] == 1) ? '+' : 'x');
                 attroff(COLOR_PAIR(cpFP)|A_BOLD);
             } else if (isCur) {
                 attron(COLOR_PAIR(CP_CURSOR));

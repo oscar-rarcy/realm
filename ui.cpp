@@ -62,8 +62,28 @@ void renderUI() {
             for (int qt : e.queue) popForecast += STATS[(EntityType)qt].supplyUsed;
         }
     }
-    mvprintw(0, 9, "Gold:%-5d Wood:%-5d Food:%-5d Pop:%d/%d(+%d) Idle:%d/%d",
-             p.gold, p.wood, p.food, p.supply, p.supplyMax, popForecast, idleCount, idleBldg);
+    char resTxt[96];
+    snprintf(resTxt, sizeof resTxt, "Gold:%-5d Wood:%-5d Food:%-5d Pop:%d/%d(+%d)",
+             p.gold, p.wood, p.food, p.supply, p.supplyMax, popForecast);
+    mvprintw(0, 9, "%s", resTxt);
+    // The Idle readout is a button (AoE2 idle-villager bell): click it to jump
+    // to the next idle peasant. Geometry stashed for input's mouse hit-test.
+    char idleTxt[32];
+    snprintf(idleTxt, sizeof idleTxt, " Idle:%d/%d ", idleCount, idleBldg);
+    g.idleBtnX = 9 + (int)strlen(resTxt) + 1;
+    g.idleBtnW = (int)strlen(idleTxt);
+    // The day/season/weather cluster owns the bar's right edge; on a narrow
+    // terminal the button yields to it rather than colliding.
+    if (g.idleBtnX + g.idleBtnW >= maxX - 22) {
+        g.idleBtnX = -1; g.idleBtnW = 0;
+    } else if (idleCount > 0) {
+        attron(COLOR_PAIR(CP_GOLD) | A_REVERSE | A_BOLD);
+        mvprintw(0, g.idleBtnX, "%s", idleTxt);
+        attroff(COLOR_PAIR(CP_GOLD) | A_REVERSE | A_BOLD);
+        attron(COLOR_PAIR(CP_UI_BAR));
+    } else if (g.idleBtnX >= 0) {
+        mvprintw(0, g.idleBtnX, "%s", idleTxt);
+    }
 
     int iconX = maxX - 22;
     if (getBrightness() > 0.5f) {
@@ -96,6 +116,9 @@ void renderUI() {
     // Minimap
     attron(COLOR_PAIR(CP_UI_ACCENT)|A_BOLD); mvprintw(0, panelX+1, "Map"); attroff(COLOR_PAIR(CP_UI_ACCENT)|A_BOLD);
     int mmW = panelW-2, mmH = std::min(g.viewH/3, 14), mmY = 1;
+    // Camera rectangle: which slice of the world the main view shows.
+    int vx0 = g.viewX * mmW / MAP_W, vx1 = std::min(mmW-1, (g.viewX + g.viewW - 1) * mmW / MAP_W);
+    int vy0 = g.viewY * mmH / MAP_H, vy1 = std::min(mmH-1, (g.viewY + g.viewH - 1) * mmH / MAP_H);
     for (int my = 0; my < mmH; my++) for (int mx = 0; mx < mmW; mx++) {
         int mapX = mx*MAP_W/mmW, mapY = my*MAP_H/mmH;
         char mch = ' '; int mcp = CP_FOG;
@@ -129,7 +152,10 @@ void renderUI() {
                 else                                  mcp = CP_MM_ANIMAL;
             }
         }
-        attron(COLOR_PAIR(mcp)); mvaddch(mmY+my, panelX+1+mx, mch); attroff(COLOR_PAIR(mcp));
+        bool onRect = ((my==vy0 || my==vy1) && mx>=vx0 && mx<=vx1)
+                   || ((mx==vx0 || mx==vx1) && my>=vy0 && my<=vy1);
+        int mattr = COLOR_PAIR(mcp) | (onRect ? A_REVERSE : 0);
+        attron(mattr); mvaddch(mmY+my, panelX+1+mx, mch); attroff(mattr);
     }
 
     // Selection info panel
@@ -578,6 +604,7 @@ void renderUI() {
         mvprintw(r+12,c2, " F5-F8    quick-save slots 1-4");
         mvprintw(r+13,c2, " F9-F12   quick-load slots 1-4");
         mvprintw(r+14,c2, " Q Q      abandon to menu");
+        mvprintw(r+16,c2, " C        chat (multiplayer)");
         mvprintw(r+15,c2, " Shift+S  reveal map (debug)");
         mvprintw(hy+hh-2, c1, "Terrain: ramps 'n' climb cliffs '#'. High ground: +sight, +ranged dmg.");
         attroff(COLOR_PAIR(CP_UI_BAR));
@@ -650,4 +677,12 @@ void renderUI() {
         g.statusTimer--;
     }
     attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(botY1, maxX-12, "(%d,%d)", g.cursorX, g.cursorY); attroff(COLOR_PAIR(CP_UI_DIM));
+
+    // Multiplayer chat input line takes over the status row while open.
+    if (g.chatOpen) {
+        attron(COLOR_PAIR(CP_UI_HIGH) | A_BOLD);
+        mvhline(botY1, 0, ' ', maxX);
+        mvprintw(botY1, 1, "Say: %s_", g.chatInput.c_str());
+        attroff(COLOR_PAIR(CP_UI_HIGH) | A_BOLD);
+    }
 }
