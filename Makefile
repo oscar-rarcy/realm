@@ -46,8 +46,17 @@ gui:
 app:
 	./make-app.sh
 
+# Friend-ready zip on the Desktop: Realm/ = Realm.app + the Gatekeeper /
+# multiplayer READ ME (share/READ ME FIRST.txt is the source of truth).
+share: app
+	rm -rf /tmp/RealmShare && mkdir -p /tmp/RealmShare/Realm
+	ditto Realm.app /tmp/RealmShare/Realm/Realm.app
+	cp "share/READ ME FIRST.txt" "/tmp/RealmShare/Realm/READ ME FIRST.txt"
+	ditto -c -k --keepParent /tmp/RealmShare/Realm ~/Desktop/Realm-mac.zip
+	@echo "==> ~/Desktop/Realm-mac.zip refreshed."
+
 clean:
 	rm -f $(OBJS) $(TARGET) $(GUI_OBJS) $(GUI_TARGET)
 	rm -rf obj gui Realm.app Realm.zip
 
-.PHONY: all clean gui-build app
+.PHONY: all clean gui-build app share

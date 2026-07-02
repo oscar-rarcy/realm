@@ -1,0 +1,42 @@
+REALM — a medieval ASCII real-time strategy game
+=================================================
+
+Requirements: a Mac with an Apple chip (M1/M2/M3/M4...).
+(Intel Macs can't run this build — ask Oscar if you need one.)
+
+FIRST LAUNCH — read this bit, macOS will try to stop you
+---------------------------------------------------------
+This game isn't signed with a paid Apple developer account, so the
+first time you open it macOS will refuse with a scary message.
+It's a one-time thing. Two ways past it:
+
+EASY WAY
+  1. Double-click Realm.app (it will be blocked — that's expected).
+  2. Open  System Settings → Privacy & Security.
+  3. Scroll down: you'll see  "Realm.app was blocked..."  — click
+     "Open Anyway", then confirm. Done forever.
+
+IF macOS SAYS THE APP IS "DAMAGED"
+  It isn't — that's how newer macOS words the same block when the app
+  came from the internet. Fix it with one Terminal line:
+  1. Open Terminal (Cmd+Space, type "Terminal").
+  2. Type  xattr -rd com.apple.quarantine   then a space, then DRAG
+     Realm.app from Finder into the Terminal window, press Return.
+  3. Double-click Realm.app — it opens normally from now on.
+
+PLAYING WITH FRIENDS (yes, multiplayer!)
+----------------------------------------
+From the title screen choose MULTIPLAYER.
+ * Same wifi/LAN: one of you picks HOST A GAME, the other picks
+   JOIN VIA LAN — the game appears in the list automatically.
+ * Long distance: the host picks HOST A GAME and sends you their
+   address; you pick JOIN BY ADDRESS and type it in.
+   The painless way to get an address that works across the internet
+   is Tailscale (free, tailscale.com) on both Macs — then use the
+   host's Tailscale IP. (Alternative: the host forwards TCP port
+   7521 on their router and shares their public IP.)
+Everyone needs the SAME version of Realm — if you got this zip at a
+different time than your opponent, ask Oscar for a fresh one.
+
+Controls are on the title screen (CONTROLS) and on ? in-game.
+Have fun storming the castle!
