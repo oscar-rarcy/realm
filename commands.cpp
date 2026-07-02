@@ -40,7 +40,7 @@ static std::vector<int> cmdUnits(const Command& c, bool landOnly = false) {
 
 void applyCommand(const Command& c) {
     if (c.player < 0 || c.player >= MAX_PLAYERS) return;
-    bool human = (c.player == 0);
+    bool human = (c.player == g.localPlayer);
 
     switch (c.type) {
 
@@ -428,7 +428,32 @@ void applyCommand(const Command& c) {
 // (same caveat as save files).
 // ============================================================
 static constexpr char REP_MAGIC[4] = {'R','L','R','P'};
-static constexpr int  REP_VERSION  = 6;   // v6: map layout vs climate split (g.layoutChoice in header)
+static constexpr int  REP_VERSION  = 7;   // v7: humanMask in header (multiplayer replays)
+
+// ---- Command codec ----
+// One binary layout — a flat int32 field sequence — shared by the replay
+// file and the network wire. Playback of a multiplayer game re-derives the
+// AI seats and reads BOTH humans' streams from the same records.
+void encodeCommand(const Command& c, std::vector<int>& out) {
+    out.push_back(c.type); out.push_back(c.player);
+    out.push_back(c.x);  out.push_back(c.y);
+    out.push_back(c.x2); out.push_back(c.y2);
+    out.push_back(c.target); out.push_back(c.arg);
+    out.push_back((int)c.units.size());
+    for (int id : c.units) out.push_back(id);
+}
+
+int decodeCommand(const int* f, int avail, Command& c) {
+    if (avail < 9) return 0;
+    int n = f[8];
+    if (n < 0 || n > 10000) return -1;
+    if (avail < 9 + n) return 0;
+    c.type = f[0]; c.player = f[1];
+    c.x = f[2]; c.y = f[3]; c.x2 = f[4]; c.y2 = f[5];
+    c.target = f[6]; c.arg = f[7];
+    c.units.assign(f + 9, f + 9 + n);
+    return 9 + n;
+}
 
 static FILE* recF  = nullptr;   // recording
 static FILE* playF = nullptr;   // playback
@@ -461,6 +486,7 @@ bool replayStartRecording(int numAIs) {
     wrI(recF, g.biomeChoice);
     wrI(recF, g.layoutChoice);
     wrI(recF, g.difficulty);
+    wrI(recF, g.humanMask);
     fflush(recF);
     return true;
 }
@@ -471,26 +497,27 @@ void replayStopRecording() {
 
 static void replayRecord(const Command& c) {
     if (!recF) return;
-    wrI(recF, g.tick);
-    wrI(recF, c.type); wrI(recF, c.player);
-    wrI(recF, c.x); wrI(recF, c.y); wrI(recF, c.x2); wrI(recF, c.y2);
-    wrI(recF, c.target); wrI(recF, c.arg);
-    wrI(recF, (int)c.units.size());
-    for (int id : c.units) wrI(recF, id);
+    std::vector<int> f;
+    f.push_back(g.tick);
+    encodeCommand(c, f);
+    fwrite(f.data(), sizeof(int), f.size(), recF);
     fflush(recF);   // survive the mid-game exit(0) quit path
 }
 
 static bool replayReadNext() {
     havePendingRec = false;
     if (!playF) return false;
-    Command c; int tick, n;
+    Command c; int tick;
     if (!rdI(playF, tick)) { fclose(playF); playF = nullptr; return false; }
-    if (!rdI(playF, c.type) || !rdI(playF, c.player)) return false;
-    if (!rdI(playF, c.x) || !rdI(playF, c.y) || !rdI(playF, c.x2) || !rdI(playF, c.y2)) return false;
-    if (!rdI(playF, c.target) || !rdI(playF, c.arg) || !rdI(playF, n)) return false;
+    // Fixed fields + unit count first, then the unit ids — the same int32
+    // sequence decodeCommand expects, buffered so the codec stays shared.
+    std::vector<int> f(9);
+    if (fread(f.data(), sizeof(int), 9, playF) != 9) return false;
+    int n = f[8];
     if (n < 0 || n > 10000) return false;
-    c.units.resize(n);
-    for (int i = 0; i < n; i++) if (!rdI(playF, c.units[i])) return false;
+    f.resize(9 + n);
+    if (n > 0 && fread(f.data() + 9, sizeof(int), n, playF) != (size_t)n) return false;
+    if (decodeCommand(f.data(), (int)f.size(), c) <= 0) return false;
     pendingRec = std::move(c);
     pendingTick = tick;
     havePendingRec = true;
@@ -498,14 +525,14 @@ static bool replayReadNext() {
 }
 
 bool replayLoadFile(const char* path, unsigned long long& seed, int& numAIs,
-                    int& biomeChoice, int& layoutChoice, int& difficulty) {
+                    int& biomeChoice, int& layoutChoice, int& difficulty, int& humanMask) {
     playF = fopen(path, "rb");
     if (!playF) return false;
     char magic[4]; int ver;
     if (fread(magic, 4, 1, playF) != 1 || memcmp(magic, REP_MAGIC, 4) != 0
         || !rdI(playF, ver) || ver != REP_VERSION
         || !rdU64(playF, seed) || !rdI(playF, numAIs) || !rdI(playF, biomeChoice)
-        || !rdI(playF, layoutChoice) || !rdI(playF, difficulty)) {
+        || !rdI(playF, layoutChoice) || !rdI(playF, difficulty) || !rdI(playF, humanMask)) {
         fclose(playF); playF = nullptr; return false;
     }
     playbackMode = true;
@@ -526,6 +553,9 @@ void replayInjectCommands() {
 // ============================================================
 void pushCommand(const Command& c) {
     if (playbackMode) return;   // watching a replay: local orders are inert
+    // Network match: local commands travel to BOTH sims via the lockstep
+    // scheduler (they run D ticks later, here and on the peer).
+    if (netActive()) { netQueueLocal(c); return; }
     g.pendingCmds.push_back(c);
 }
 

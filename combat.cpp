@@ -151,28 +151,28 @@ Entity* findNearestEnemy(Entity& e, int range) {
 void orderMove(Entity& e, int tx, int ty) {
     // Broken men and captives don't take orders.
     if (e.prisoner || e.state == S_ROUTING) {
-        if (e.owner == 0) setStatus(e.prisoner ? "That soldier is a prisoner." : "They've broken — can't be ordered!");
+        if (e.owner == g.localPlayer) setStatus(e.prisoner ? "That soldier is a prisoner." : "They've broken — can't be ordered!");
         return;
     }
     // Deployed trebuchet is rooted — must be packed (press P) before moving.
     if (e.type == E_TREBUCHET && e.packed == 0) {
-        if (e.owner == 0) setStatus("Pack trebuchet first (D).");
+        if (e.owner == g.localPlayer) setStatus("Pack trebuchet first (D).");
         return;
     }
     if (e.type == E_TREBUCHET && e.packTicks > 0) {
-        if (e.owner == 0) setStatus("Trebuchet is mid-deploy.");
+        if (e.owner == g.localPlayer) setStatus("Trebuchet is mid-deploy.");
         return;
     }
     // Warn if the clicked tile is impassable for this unit type.
     bool targetOk = isNaval(e.type) ? isPassableWater(tx, ty) : isPassable(tx, ty);
-    if (!targetOk && e.owner == 0) setStatus("Can't move there.");
+    if (!targetOk && e.owner == g.localPlayer) setStatus("Can't move there.");
     e.state = S_MOVING; e.targetX = tx; e.targetY = ty; e.targetId = -1;
     e.stuckTicks = 0;
     e.attackMove = 0; e.holdPosition = 0; e.retreating = 0;
     e.path = findPathFor(e, tx, ty); e.pathIdx = 0;
     if (e.path.empty() && (e.x != tx || e.y != ty)) {
         e.state = S_IDLE;
-        if (e.owner == 0) setStatus("Can't reach there.");
+        if (e.owner == g.localPlayer) setStatus("Can't reach there.");
     }
 }
 
@@ -190,7 +190,7 @@ void orderAttack(Entity& e, int tid) {
     if (e.prisoner) return;             // prisoners don't fight
     if (e.state == S_ROUTING) return;   // broken men don't take orders
     if (e.type == E_TREBUCHET && e.packed == 1) {
-        if (e.owner == 0) setStatus("Deploy trebuchet first (D).");
+        if (e.owner == g.localPlayer) setStatus("Deploy trebuchet first (D).");
         return;
     }
     e.holdPosition = 0; e.retreating = 0;
@@ -233,10 +233,10 @@ void orderBuild(Entity& e, EntityType bt, int bx, int by) {
     if (e.type != E_PEASANT) return;
     Player& p = g.players[e.owner];
     if (p.gold < STATS[bt].costGold || p.wood < STATS[bt].costWood) {
-        if (e.owner == 0) setStatus("Not enough resources!"); return;
+        if (e.owner == g.localPlayer) setStatus("Not enough resources!"); return;
     }
     if (!canPlace(bt, bx, by, e.owner, e.id)) {
-        if (e.owner == 0) setStatus("Can't build there!"); return;
+        if (e.owner == g.localPlayer) setStatus("Can't build there!"); return;
     }
     drainStores(e.owner, STATS[bt].costGold, STATS[bt].costWood, bx, by);
     int bid;
@@ -263,7 +263,7 @@ void orderBuild(Entity& e, EntityType bt, int bx, int by) {
         }
         bid = spawnEntity(E_CASTLE, e.owner, bx+2, by+2, false);
         bx += 2; by += 2;   // the builder works on the keep
-        if (e.owner == 0) setStatus("The compound walls rise — now raise the keep.");
+        if (e.owner == g.localPlayer) setStatus("The compound walls rise — now raise the keep.");
     } else {
         bid = spawnEntity(bt, e.owner, bx, by, false);
     }
@@ -283,7 +283,7 @@ void orderBuild(Entity& e, EntityType bt, int bx, int by) {
     // Unreachable site (boxed-in builder, spot across water/walls): the order
     // used to fail silently — the peasant just stood there re-pathing forever,
     // which reads as a dead unit. Say so immediately instead.
-    if (e.path.empty() && mdist(e.x, e.y, bestAX, bestAY) > 1 && e.owner == 0)
+    if (e.path.empty() && mdist(e.x, e.y, bestAX, bestAY) > 1 && e.owner == g.localPlayer)
         setStatus("Builder can't reach the site!");
 }
 
@@ -320,7 +320,7 @@ void orderTrain(Entity& bld, EntityType ut) {
     if (!isBuilding(bld.type) || bld.underConstruction) return;
     // Queue if busy; reject only when queue is full.
     if (bld.producing != E_NONE && (int)bld.queue.size() >= 5) {
-        if (bld.owner==0) setStatus("Queue full!"); return;
+        if (bld.owner==g.localPlayer) setStatus("Queue full!"); return;
     }
     Player& p = g.players[bld.owner];
     // Workshop units need a working forge: no Blacksmith, no crossbows/petards.
@@ -328,28 +328,28 @@ void orderTrain(Entity& bld, EntityType ut) {
         bool smith = false;
         for (auto& e : g.entities)
             if (e.alive && e.owner==bld.owner && e.type==E_BLACKSMITH && !e.underConstruction) { smith = true; break; }
-        if (!smith) { if (bld.owner==0) setStatus("Requires a Blacksmith!"); return; }
+        if (!smith) { if (bld.owner==g.localPlayer) setStatus("Requires a Blacksmith!"); return; }
     }
     if (p.gold < STATS[ut].costGold || p.wood < STATS[ut].costWood) {
-        if (bld.owner==0) setStatus("Not enough resources!"); return;
+        if (bld.owner==g.localPlayer) setStatus("Not enough resources!"); return;
     }
     // Pop cap: the AI bounces here (it shouldn't tie up gold in a unit it can't
     // house — it goes and builds houses instead). The human is allowed to queue
     // past the cap; the finished unit then waits at the muster gate (see the
     // production block in tickEntity) until a new house raises the ceiling.
     bool overCap = reservedSupply(bld.owner) + STATS[ut].supplyUsed > p.supplyMax;
-    if (overCap && bld.owner != 0) return;
+    if (overCap && !((g.humanMask >> bld.owner) & 1)) return;   // humans may queue past cap
     int foodCost = trainFoodCost(ut);
-    if (p.food < foodCost) { if (bld.owner==0) setStatus("Need more food!"); return; }
+    if (p.food < foodCost) { if (bld.owner==g.localPlayer) setStatus("Need more food!"); return; }
     spendPlayerFood(bld.owner, foodCost);
     drainStores(bld.owner, STATS[ut].costGold, STATS[ut].costWood, bld.x, bld.y);
     if (bld.producing == E_NONE) {
         bld.producing = ut; bld.prodProgress = 0; bld.prodTime = STATS[ut].trainTime;
         bld.state = S_TRAINING;
-        if (overCap && bld.owner == 0) setStatus("Training — build houses to muster it.");
+        if (overCap && bld.owner == g.localPlayer) setStatus("Training — build houses to muster it.");
     } else {
         bld.queue.push_back((int)ut);
-        if (bld.owner == 0) setStatus(overCap ? "Queued — needs more houses." : "Queued.");
+        if (bld.owner == g.localPlayer) setStatus(overCap ? "Queued — needs more houses." : "Queued.");
     }
 }
 
@@ -414,7 +414,7 @@ static void groupMoveCore(const std::vector<int>& unitIds, int tx, int ty, bool 
         if (attackMove) orderAttackMove(*units[i], slots[i].first, slots[i].second);
         else            orderMove(*units[i], slots[i].first, slots[i].second);
     }
-    if (units[0]->owner == 0)
+    if (units[0]->owner == g.localPlayer)
         setStatus(attackMove ? "Attack-move in formation!" : "Group moving in formation...");
 }
 
@@ -427,7 +427,7 @@ void orderGroupAttack(const std::vector<int>& unitIds, int tid) {
         Entity* e = findEntity(id);
         if (e && e->alive && isUnit(e->type)) {
             orderAttack(*e, tid);
-            if (e->owner == 0) any0 = true;
+            if (e->owner == g.localPlayer) any0 = true;
         }
     }
     if (any0) setStatus("Group attacking!");
@@ -549,7 +549,7 @@ void killEntity(Entity& t) {
                 g.map[ny][nx].lootWood += sw;
                 g.map[ny][nx].lootFood += sf;
             }
-            if (t.owner == 0)
+            if (t.owner == g.localPlayer)
                 setStatus(std::string(STATS[t.type].name) + " destroyed — its stores burn and scatter!");
             t.storeGold = t.storeWood = 0;
             for (int k = 0; k < F_COUNT; k++) t.storeFood[k] = 0;
@@ -596,7 +596,7 @@ void orderGarrison(Entity& e, int buildingId) {
     // Naval units can't board buildings or each other.
     if (isNaval(e.type)) return;
     if ((int)bld->garrison.size() >= garrisonCap(bld->type)) {
-        if (e.owner == 0) setStatus(std::string(STATS[bld->type].name) + " is full");
+        if (e.owner == g.localPlayer) setStatus(std::string(STATS[bld->type].name) + " is full");
         return;
     }
     e.state = S_ENTERING; e.targetId = buildingId;

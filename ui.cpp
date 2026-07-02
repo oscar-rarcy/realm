@@ -46,14 +46,14 @@ static const char* biomeName(Biome b) {
 
 void renderUI() {
     int maxY, maxX; getmaxyx(stdscr, maxY, maxX);
-    Player& p = g.players[0]; int panelW = 24, panelX = maxX - panelW;
+    Player& p = g.players[g.localPlayer]; int panelW = 24, panelX = maxX - panelW;
 
     // Top bar
     attron(COLOR_PAIR(CP_UI_BAR)|A_BOLD); mvhline(0, 0, ' ', maxX);
     mvprintw(0, 1, " REALM "); attroff(A_BOLD);
     int idleCount = 0, idleBldg = 0, popForecast = 0;
     for (auto& e : g.entities) {
-        if (!e.alive || e.owner != 0) continue;
+        if (!e.alive || e.owner != g.localPlayer) continue;
         if (e.type == E_PEASANT && e.state == S_IDLE) idleCount++;
         if (isBuilding(e.type) && !e.underConstruction) {
             bool producer = (e.type==E_TOWNHALL||e.type==E_BARRACKS||e.type==E_STABLE||e.type==E_DOCK);
@@ -82,7 +82,7 @@ void renderUI() {
 
     // Terrain info bar
     attron(COLOR_PAIR(CP_UI_DIM)); mvhline(1, 0, '-', g.viewW); attroff(COLOR_PAIR(CP_UI_DIM));
-    if (inBounds(g.cursorX, g.cursorY) && g.map[g.cursorY][g.cursorX].explored[0]) {
+    if (inBounds(g.cursorX, g.cursorY) && g.map[g.cursorY][g.cursorX].explored[g.localPlayer]) {
         Tile& ct = g.map[g.cursorY][g.cursorX];
         attron(COLOR_PAIR(CP_UI_TEXT)); mvprintw(1, 1, "%-16s", terrName(ct.terrain)); attroff(COLOR_PAIR(CP_UI_TEXT));
         attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(1, 18, "[%s]", biomeName(ct.biome)); attroff(COLOR_PAIR(CP_UI_DIM));
@@ -99,7 +99,7 @@ void renderUI() {
     for (int my = 0; my < mmH; my++) for (int mx = 0; mx < mmW; mx++) {
         int mapX = mx*MAP_W/mmW, mapY = my*MAP_H/mmH;
         char mch = ' '; int mcp = CP_FOG;
-        if (g.map[mapY][mapX].explored[0]) {
+        if (g.map[mapY][mapX].explored[g.localPlayer]) {
             Terrain t = g.map[mapY][mapX].terrain;
             if (t==T_WATER||t==T_SHALLOWS)              { mch='~'; mcp=CP_MM_WATER;  }
             else if (t==T_MOUNTAIN||t==T_STONE)          { mch='^'; mcp=CP_MM_MTN;   }
@@ -110,21 +110,21 @@ void renderUI() {
             else if (t==T_CASTLE_WALL||t==T_CASTLE_GATE)  { mch='#'; mcp=CP_MM_CASTLE;}
             else { mch='.'; mcp=CP_FOG; }
         }
-        if (g.map[mapY][mapX].visible[0]) {
+        if (g.map[mapY][mapX].visible[g.localPlayer]) {
             Entity* ent = entityAt(mapX, mapY);
             // Hide cloaked enemies from the minimap as well.
-            if (ent && ent->alive && ent->owner != 0 && ent->owner < MAX_PLAYERS
-                && isConcealing() && !isDetectedBy(mapX, mapY, 0)) ent = nullptr;
+            if (ent && ent->alive && ent->owner != g.localPlayer && ent->owner < MAX_PLAYERS
+                && isConcealing() && !isDetectedBy(mapX, mapY, g.localPlayer)) ent = nullptr;
             if (ent && ent->alive) {
                 // Mirror main-map crop/cloaking on the minimap.
                 bool mmInCrop = !isBuilding(ent->type) && g.map[mapY][mapX].terrain == T_WHEAT;
-                if (ent->owner != 0 && ent->owner < MAX_PLAYERS
-                    && (isConcealing() || mmInCrop) && !isDetectedBy(mapX, mapY, 0))
+                if (ent->owner != g.localPlayer && ent->owner < MAX_PLAYERS
+                    && (isConcealing() || mmInCrop) && !isDetectedBy(mapX, mapY, g.localPlayer))
                     ent = nullptr;
             }
             if (ent && ent->alive) {
                 mch = isBuilding(ent->type) ? '#' : '*';
-                if      (ent->owner == 0)            mcp = CP_MM_PLAYER;
+                if      (ent->owner == g.localPlayer)            mcp = CP_MM_PLAYER;
                 else if (ent->owner < MAX_PLAYERS)   mcp = CP_MM_ENEMY;
                 else                                  mcp = CP_MM_ANIMAL;
             }
@@ -224,7 +224,7 @@ void renderUI() {
         Entity* sel = findEntity(g.selectedId);
         if (sel) {
             auto& st = STATS[sel->type];
-            int nc = (sel->owner == 0) ? CP_PLAYER : CP_ENEMY;
+            int nc = (sel->owner == g.localPlayer) ? CP_PLAYER : CP_ENEMY;
             attron(COLOR_PAIR(nc)|A_BOLD); mvprintw(iy++, panelX+1, "%-20s", st.name); attroff(COLOR_PAIR(nc)|A_BOLD);
             int barW = panelW-4, filled = sel->hp * barW / std::max(1, sel->maxHp);
             int pct = sel->hp * 100 / std::max(1, sel->maxHp);
@@ -297,7 +297,7 @@ void renderUI() {
                     mvprintw(iy++, panelX+1, "Carrying: %d %s", sel->carrying, what);
                     attroff(COLOR_PAIR(CP_UI_HIGH));
                 }
-                if (sel->type == E_TREBUCHET && sel->owner == 0) {
+                if (sel->type == E_TREBUCHET && sel->owner == g.localPlayer) {
                     attron(COLOR_PAIR(CP_UI_HIGH));
                     if      (sel->packTicks > 0) mvprintw(iy++, panelX+1, "%s... %d", sel->packed?"Packing":"Deploying", sel->packTicks);
                     else if (sel->packed)        mvprintw(iy++, panelX+1, "Packed (D to deploy)");
@@ -305,7 +305,7 @@ void renderUI() {
                     attroff(COLOR_PAIR(CP_UI_HIGH));
                 }
                 // Transport cargo display + unload hint
-                if (sel->type == E_TRANSPORT && sel->owner == 0) {
+                if (sel->type == E_TRANSPORT && sel->owner == g.localPlayer) {
                     attron(COLOR_PAIR(CP_UI_HIGH));
                     mvprintw(iy++, panelX+1, "Cargo: %d/%d", (int)sel->garrison.size(), garrisonCap(E_TRANSPORT));
                     attroff(COLOR_PAIR(CP_UI_HIGH));
@@ -349,7 +349,7 @@ void renderUI() {
                 attron(COLOR_PAIR(CP_UI_HIGH)); mvprintw(iy++, panelX+1, "Building: %d%%", bp); attroff(COLOR_PAIR(CP_UI_HIGH));
             }
             iy++;
-            if (sel->owner == 0) {
+            if (sel->owner == g.localPlayer) {
                 attron(COLOR_PAIR(CP_UI_DIM)); mvhline(iy-1, panelX, '-', panelW); attroff(COLOR_PAIR(CP_UI_DIM));
                 attron(COLOR_PAIR(CP_UI_ACCENT));
                 if (sel->type == E_PEASANT) { mvprintw(iy++, panelX+1, "[B] Build"); mvprintw(iy++, panelX+1, "[Enter] Move/Gather"); }
@@ -408,7 +408,7 @@ void renderUI() {
         } else {
             // Nothing selected → inspect the tile under the cursor in detail
             // (left-click empty ground to read it here).
-            if (inBounds(g.cursorX, g.cursorY) && g.map[g.cursorY][g.cursorX].explored[0]) {
+            if (inBounds(g.cursorX, g.cursorY) && g.map[g.cursorY][g.cursorX].explored[g.localPlayer]) {
                 Tile& ct = g.map[g.cursorY][g.cursorX];
                 attron(COLOR_PAIR(CP_UI_ACCENT)|A_BOLD);
                 mvprintw(iy++, panelX+1, "TILE (%d,%d)", g.cursorX, g.cursorY);
@@ -511,15 +511,15 @@ void renderUI() {
         bool group = g.selectedIds.size() > 1;
         if (group) {
             mvprintw(botY2, 1, " Enter:Move/Attack  a:Attack-move  X:Hold  s:Stop  Z:Patrol  G:Group  Shift+A:All Mil  ?:Help ");
-        } else if (cs && cs->owner == 0 && cs->type == E_PEASANT) {
+        } else if (cs && cs->owner == g.localPlayer && cs->type == E_PEASANT) {
             mvprintw(botY2, 1, " B:Build  Enter:Move/Gather/Repair  Shift+RClick:Waypoint  ,:Next idle  ?:Help  Q:Menu ");
-        } else if (cs && cs->owner == 0 && cs->type == E_WAGON) {
+        } else if (cs && cs->owner == g.localPlayer && cs->type == E_WAGON) {
             mvprintw(botY2, 1, " Enter/RClick on a depot: load or deliver cargo  ?:Help  Q:Menu ");
-        } else if (cs && cs->owner == 0 && cs->type == E_TREBUCHET) {
+        } else if (cs && cs->owner == g.localPlayer && cs->type == E_TREBUCHET) {
             mvprintw(botY2, 1, " D:Pack/Deploy  Enter:Move(packed)/Attack(deployed)  X:Hold  ?:Help ");
-        } else if (cs && cs->owner == 0 && isUnit(cs->type)) {
+        } else if (cs && cs->owner == g.localPlayer && isUnit(cs->type)) {
             mvprintw(botY2, 1, " Enter:Move/Attack  a:Attack-move  X:Hold  Z:Patrol  G:Group  Shift+A:All Mil  ?:Help ");
-        } else if (cs && cs->owner == 0 && isBuilding(cs->type) && !cs->underConstruction) {
+        } else if (cs && cs->owner == g.localPlayer && isBuilding(cs->type) && !cs->underConstruction) {
             bool trains = (cs->type==E_TOWNHALL||cs->type==E_BARRACKS||cs->type==E_STABLE
                         || cs->type==E_DOCK||cs->type==E_CASTLE||cs->type==E_CHURCH
                         || cs->type==E_MILL||cs->type==E_GRANARY);

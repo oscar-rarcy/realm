@@ -248,7 +248,7 @@ void tickPrisoners() {
             p.prisoner = 0; p.owner = p.origOwner; p.origOwner = -1;
             p.morale = 40; p.state = S_IDLE; p.path.clear(); p.pathIdx = 0;
             updateSupply(captor); updateSupply(p.owner);
-            if (p.owner == 0) setStatus("A captured soldier breaks free!");
+            if (p.owner == g.localPlayer) setStatus("A captured soldier breaks free!");
             continue;
         }
         // March to the captor's nearest hold; ransom on arrival.
@@ -263,7 +263,7 @@ void tickPrisoners() {
         if (bestD <= 2) {
             const int ransom = 25;
             g.players[p.owner].gold += ransom;
-            if (p.owner == 0) setStatus("Prisoner ransomed: +25 gold.");
+            if (p.owner == g.localPlayer) setStatus("Prisoner ransomed: +25 gold.");
             int captor = p.owner, orig = p.origOwner;
             p.alive = false; p.state = S_DEAD; p.prisoner = 0;
             updateSupply(captor); if (orig >= 0) updateSupply(orig);
@@ -363,7 +363,7 @@ void tickChurches() {
                     u.state = S_IDLE; u.path.clear(); u.pathIdx = 0;
                     updateSupply(oldOwner);
                     updateSupply(ch.owner);
-                    if (ch.owner == 0)
+                    if (ch.owner == g.localPlayer)
                         setStatus(std::string(STATS[u.type].name) + " converted to your cause!");
                     else if (oldOwner == 0)
                         setStatus("A unit has been turned against you!");
@@ -411,13 +411,13 @@ static void applyWinter() {
         if (e.type != E_DEER && e.type != E_SHEEP && e.type != E_BOAR) continue;
         if (simRand() % 100 < cullPct) killEntity(e);
     }
-    if (g.players[0].alive) {
+    if (g.players[g.localPlayer].alive) {
         if      (g.winterSeverity == 2) setStatus("A BRUTAL winter descends. The land turns to iron — pray your granaries hold.");
         else if (g.winterSeverity == 0) setStatus("Winter falls — a mild one, mercifully.");
         else                            setStatus("Winter falls. The land freezes over.");
         // Ice-locked fleets are worth a separate warning if anyone owns boats.
         for (auto& e : g.entities)
-            if (e.alive && e.owner == 0 && isNaval(e.type))
+            if (e.alive && e.owner == g.localPlayer && isNaval(e.type))
                 { setStatus("The waters freeze — your fleet is ice-locked until spring."); break; }
     }
 }
@@ -430,7 +430,7 @@ void tickSeasons() {
     int s = (int)getSeason();
     if (s != g.prevSeason) {
         if (s == WINTER) applyWinter();
-        if (g.players[0].alive) {
+        if (g.players[g.localPlayer].alive) {
             if (s == SPRING && g.prevSeason == WINTER)
                 setStatus("The frost retreats. Mud season — heavy wheels will struggle till summer.");
             else if (s == SUMMER)
@@ -444,7 +444,7 @@ void tickSeasons() {
     // Mid-winter hard freeze: rivers become marching routes at 25% progress.
     // (Static announce-once flag is presentation only — a save/load mid-winter
     // just repeats the horn, it can't desync anything.)
-    if (g.players[0].alive) {
+    if (g.players[g.localPlayer].alive) {
         static bool frozeAnnounced = false;
         if (s == WINTER && getSeasonProgress() > 0.25f && !frozeAnnounced) {
             setStatus("The rivers freeze solid. New paths open across the ice.");
@@ -454,7 +454,7 @@ void tickSeasons() {
     }
 
     // Time-of-day transitions (fire once per phase crossing, not every tick).
-    if (g.players[0].alive) {
+    if (g.players[g.localPlayer].alive) {
         int phase;
         if (isDawn())       phase = 3;
         else if (isDusk())  phase = 1;
@@ -640,14 +640,14 @@ void tickWeather() {
     if (s == WINTER && (g.weather == W_RAIN || g.weather == W_STORM)) {
         g.weather = W_SNOW;
         g.weatherTimer = 300;
-        if (g.players[0].alive) setStatus("The rain turns to snow.");
+        if (g.players[g.localPlayer].alive) setStatus("The rain turns to snow.");
         return;
     }
     bool lateAutumn = (s == AUTUMN && sp > 0.5f);
     if (!lateAutumn && s != WINTER && g.weather == W_SNOW) {
         g.weather = W_CLEAR;
         g.weatherTimer = 100;
-        if (g.players[0].alive) setStatus("The skies clear.");
+        if (g.players[g.localPlayer].alive) setStatus("The skies clear.");
         return;
     }
 
@@ -700,7 +700,7 @@ void tickWeather() {
         }
     }
 
-    if (g.players[0].alive) {
+    if (g.players[g.localPlayer].alive) {
         if      (g.weather == W_RAIN)  setStatus("Rain begins.");
         else if (g.weather == W_STORM) setStatus("A storm rolls in!");
         else if (g.weather == W_SNOW)  setStatus("Snow begins to fall.");
@@ -860,8 +860,12 @@ void checkWin() {
         if (!hasBase) g.players[p].alive = false;
         else { aliveCount++; lastAlive = p; }
     }
-    // Human defeat ends the match immediately — no point watching the AIs fight
-    // each other after the player's been eliminated.
-    if (!g.players[0].alive) { g.winner = -1; g.mode = M_GAME_OVER; return; }
-    if (aliveCount <= 1) { g.winner = lastAlive; g.mode = M_GAME_OVER; }
+    // Match resolved: one side (or nobody) left standing. Both machines in a
+    // network game reach this on the same tick — alive flags are sim state.
+    if (aliveCount <= 1) { g.winner = lastAlive; g.mode = M_GAME_OVER; return; }
+    // Solo-human defeat ends the match immediately — no point watching the AIs
+    // fight each other. With two humans the fallen one spectates to the end
+    // (halting the sim locally would stall the opponent's lockstep).
+    bool soloHuman = (g.humanMask & (g.humanMask - 1)) == 0;
+    if (soloHuman && !g.players[g.localPlayer].alive) { g.winner = -1; g.mode = M_GAME_OVER; }
 }

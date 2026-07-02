@@ -535,7 +535,9 @@ static void resetMatchState(unsigned long long seed) {
 // Score and space out player spawns, place each side's Town Hall + peasants,
 // and centre the camera on the human. Fills `spawns` for later wildlife/sheep.
 static void placeStartingPositions(int numAIs, std::vector<Spawn>& spawns) {
-    const int needed = 1 + numAIs;
+    int humans = 0;
+    for (int b = 0; b < MAX_PLAYERS; b++) if ((g.humanMask >> b) & 1) humans++;
+    const int needed = std::min(MAX_PLAYERS, std::max(1, humans) + numAIs);
     const int MIN_SPAWN_DIST = std::min(MAP_W, MAP_H) * 2 / 3; // ~73 on 110x180
     const int EDGE = 12;
 
@@ -613,8 +615,8 @@ static void placeStartingPositions(int numAIs, std::vector<Spawn>& spawns) {
 
     // Clear ground + place starter gold around each spawn, then drop entities.
     bool spawned[MAX_PLAYERS] = {false};
-    for (int i = 0; i < (int)spawns.size() && i <= numAIs; i++) {
-        int owner = (i == 0) ? 0 : i; // i==0 is human, then AI 1, 2, 3
+    for (int i = 0; i < (int)spawns.size() && i < needed; i++) {
+        int owner = i; // humans take the low slots, then the AIs
         if (owner >= MAX_PLAYERS) break;
         spawned[owner] = true;
         clearStartArea(spawns[i].thX - 2, spawns[i].thY - 2, 6);
@@ -632,8 +634,10 @@ static void placeStartingPositions(int numAIs, std::vector<Spawn>& spawns) {
     for (int p = 1; p < MAX_PLAYERS; p++) if (!spawned[p]) g.players[p].alive = false;
     for (int p = 0; p < MAX_PLAYERS; p++) updateSupply(p);
 
-    g.cursorX = spawns[0].thX + 2; g.cursorY = spawns[0].thY + 2;
-    g.viewX = std::max(0, spawns[0].thX - 10); g.viewY = std::max(0, spawns[0].thY - 5);
+    // Open on the local player's base (slot 1 on the joining machine).
+    const Spawn& home = spawns[std::min((size_t)std::max(0, g.localPlayer), spawns.size()-1)];
+    g.cursorX = home.thX + 2; g.cursorY = home.thY + 2;
+    g.viewX = std::max(0, home.thX - 10); g.viewY = std::max(0, home.thY - 5);
 }
 
 // Scatter wildlife (deer/wolves/bears/boars), neutral structures, and a starter
@@ -870,6 +874,7 @@ static int runVerify(unsigned long long seed, int ticks, int numAIs, int biome, 
     g.biomeChoice  = biome;   // climate; -1 = mixed
     g.layoutChoice = layout;  // -1 = random (resolved in initGame)
     g.difficulty   = 1;
+    g.humanMask    = 1; g.localPlayer = 0;
     initGame(numAIs, seed);
     for (int i = 0; i < ticks; i++) simTick();
     printf("seed=%llu ticks=%d ais=%d hash=%016llx\n",
@@ -894,14 +899,15 @@ int main(int argc, char** argv) {
     // and compare hashes — a recorded game that replays identically is the
     // end-to-end proof the funnel + sim are deterministic.
     if (argc >= 3 && strcmp(argv[1], "--verify-replay") == 0) {
-        unsigned long long seed; int ais, biome, layout, diffc;
-        if (!replayLoadFile(argv[2], seed, ais, biome, layout, diffc)) {
+        unsigned long long seed; int ais, biome, layout, diffc, humask;
+        if (!replayLoadFile(argv[2], seed, ais, biome, layout, diffc, humask)) {
             fprintf(stderr, "Can't read replay '%s'.\n", argv[2]);
             return 1;
         }
         g.biomeChoice  = biome;
         g.layoutChoice = layout;
         g.difficulty   = diffc;
+        g.humanMask    = humask; g.localPlayer = 0;
         initGame(ais, seed);
         int ticks = (argc >= 4) ? std::max(1, atoi(argv[3])) : 5000;
         for (int i = 0; i < ticks; i++) simTick();
@@ -912,9 +918,9 @@ int main(int argc, char** argv) {
     // --replay: load header before touching the screen so a bad file can
     // fail to stderr instead of into a half-initialised terminal.
     bool replay = false;
-    unsigned long long repSeed = 0; int repAIs = 1, repBiome = -1, repLayout = -1, repDiff = 1;
+    unsigned long long repSeed = 0; int repAIs = 1, repBiome = -1, repLayout = -1, repDiff = 1, repMask = 1;
     if (argc >= 3 && strcmp(argv[1], "--replay") == 0) {
-        if (!replayLoadFile(argv[2], repSeed, repAIs, repBiome, repLayout, repDiff)) {
+        if (!replayLoadFile(argv[2], repSeed, repAIs, repBiome, repLayout, repDiff, repMask)) {
             fprintf(stderr, "Can't read replay '%s' (missing, wrong version, or corrupt).\n", argv[2]);
             return 1;
         }
@@ -950,6 +956,7 @@ int main(int argc, char** argv) {
         g.biomeChoice  = repBiome;
         g.layoutChoice = repLayout;
         g.difficulty   = repDiff;
+        g.humanMask    = repMask; g.localPlayer = 0;
         initGame(repAIs, repSeed);
         setStatus("REPLAY — commands come from the recording. Camera/selection are yours; [Q][Q] to quit.");
         runMatch();
@@ -964,6 +971,7 @@ int main(int argc, char** argv) {
         unsigned long long pickedSeed = 0;
         int loadSlot = 0;
         int numAIs = showSplash(pickedSeed, loadSlot);
+        g.humanMask = 1; g.localPlayer = 0;   // solo seat; the MP lobby sets its own
 
         // Reinitialise colour pairs in case the splash changed anything.
         initColors();

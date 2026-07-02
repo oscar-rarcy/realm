@@ -50,7 +50,7 @@ static void removeFromSelection(int id) {
 static void pushCmd(int type, std::vector<int> units, int x = 0, int y = 0,
                     int target = -1, int arg = 0, int x2 = 0, int y2 = 0) {
     Command c;
-    c.type = type; c.player = 0;
+    c.type = type; c.player = g.localPlayer;
     c.units = std::move(units);
     c.x = x; c.y = y; c.x2 = x2; c.y2 = y2;
     c.target = target; c.arg = arg;
@@ -62,7 +62,7 @@ static std::vector<int> selectedUnitIds() {
     std::vector<int> ids;
     auto add = [&](int id) {
         Entity* u = findEntity(id);
-        if (u && u->alive && u->owner == 0 && isUnit(u->type)) ids.push_back(id);
+        if (u && u->alive && u->owner == g.localPlayer && isUnit(u->type)) ids.push_back(id);
     };
     if (!g.selectedIds.empty()) for (int id : g.selectedIds) add(id);
     else if (g.selectedId >= 0) add(g.selectedId);
@@ -75,20 +75,20 @@ static std::vector<int> selectedUnitIds() {
 // keyboard Enter handler and the mouse right-click handler so the two paths
 // can never drift out of sync.
 static void cmdAtTileSingle(Entity* sel, int x, int y) {
-    if (!sel || sel->owner != 0 || !isUnit(sel->type)) return;
+    if (!sel || sel->owner != g.localPlayer || !isUnit(sel->type)) return;
     Entity* tgt = entityAt(x, y);
-    bool visible = g.map[y][x].visible[0];
+    bool visible = g.map[y][x].visible[g.localPlayer];
 
     // Wagon: right-click a friendly building to load (if empty) or unload.
     if (sel->type == E_WAGON) {
-        if (tgt && tgt->alive && tgt->owner == 0 && isBuilding(tgt->type) && !tgt->underConstruction) {
+        if (tgt && tgt->alive && tgt->owner == g.localPlayer && isBuilding(tgt->type) && !tgt->underConstruction) {
             pushCmd(CMD_HAUL, {sel->id}, 0, 0, tgt->id);
             setStatus(sel->carrying ? "Wagon delivering..." : "Wagon heading to load...");
             return;
         }
         pushCmd(CMD_MOVE, {sel->id}, x, y); setStatus("Moving..."); return;
     }
-    if (tgt && tgt->alive && tgt->owner == 0 && tgt->underConstruction && sel->type == E_PEASANT) {
+    if (tgt && tgt->alive && tgt->owner == g.localPlayer && tgt->underConstruction && sel->type == E_PEASANT) {
         pushCmd(CMD_HELP, {sel->id}, 0, 0, tgt->id); setStatus("Helping build..."); return;
     }
     // Derelict village house: repair it to claim it.
@@ -96,18 +96,18 @@ static void cmdAtTileSingle(Entity* sel, int x, int y) {
         && tgt->underConstruction && sel->type == E_PEASANT) {
         pushCmd(CMD_HELP, {sel->id}, 0, 0, tgt->id); setStatus("Restoring the old house..."); return;
     }
-    if (tgt && tgt->alive && tgt->owner == 0 && tgt->type == E_FARM
+    if (tgt && tgt->alive && tgt->owner == g.localPlayer && tgt->type == E_FARM
         && !tgt->underConstruction && sel->type == E_PEASANT) {
         pushCmd(CMD_HELP, {sel->id}, 0, 0, tgt->id); setStatus("Tending farm..."); return;
     }
     bool ruinClaim = tgt && isClaimable(tgt->type) && tgt->owner == OWNER_NATURE;
-    if (tgt && tgt->alive && (tgt->owner == 0 || ruinClaim) && !tgt->underConstruction
+    if (tgt && tgt->alive && (tgt->owner == g.localPlayer || ruinClaim) && !tgt->underConstruction
         && canGarrisonIn(tgt->type) && sel->type != E_CATAPULT) {
         pushCmd(CMD_GARRISON, {sel->id}, 0, 0, tgt->id);
         if (ruinClaim) setStatus(std::string("Claiming the ") + STATS[tgt->type].name + "...");
         return;
     }
-    if (tgt && tgt->alive && tgt->owner != 0 && visible) {
+    if (tgt && tgt->alive && tgt->owner != g.localPlayer && visible) {
         pushCmd(CMD_ATTACK, {sel->id}, 0, 0, tgt->id); setStatus("Attacking!"); return;
     }
     if (sel->type == E_PEASANT) {
@@ -119,7 +119,7 @@ static void cmdAtTileSingle(Entity* sel, int x, int y) {
                     : ter==T_BERRY ? "Picking berries..." : "Chopping wood...");
             return;
         }
-        if (ter == T_WHEAT && !tgt && canPlace(E_FARM, x, y, 0)) {
+        if (ter == T_WHEAT && !tgt && canPlace(E_FARM, x, y, g.localPlayer)) {
             pushCmd(CMD_SOW_FARM, {sel->id}, x, y);
             setStatus("Working wheat field...");
             return;
@@ -140,9 +140,9 @@ static void cmdAtTileSingle(Entity* sel, int x, int y) {
 // Same path for keyboard and mouse.
 static void cmdAtTileGroup(int x, int y) {
     Entity* tgt = entityAt(x, y);
-    bool visible = g.map[y][x].visible[0];
+    bool visible = g.map[y][x].visible[g.localPlayer];
     if (tgt && tgt->alive
-        && (tgt->owner == 0 || (isClaimable(tgt->type) && tgt->owner == OWNER_NATURE))
+        && (tgt->owner == g.localPlayer || (isClaimable(tgt->type) && tgt->owner == OWNER_NATURE))
         && !tgt->underConstruction && canGarrisonIn(tgt->type)) {
         // Garrison the soldiers, but never sweep the workers in: a keep/TC has
         // a big footprint that sits in your base, and a stray move-click on it
@@ -162,7 +162,7 @@ static void cmdAtTileGroup(int x, int y) {
         if (!workers.empty()) pushCmd(CMD_MOVE, std::move(workers), x, y);
         return;
     }
-    if (tgt && tgt->alive && tgt->owner != 0 && visible) {
+    if (tgt && tgt->alive && tgt->owner != g.localPlayer && visible) {
         pushCmd(CMD_ATTACK, selectedUnitIds(), 0, 0, tgt->id); return;
     }
     pushCmd(CMD_MOVE, selectedUnitIds(), x, y);
@@ -266,7 +266,7 @@ void handleInput(int ch) {
         case 'w': case 'W': {
             // Wall uses click-drag mode instead of point placement
             Entity* sel2 = findEntity(g.selectedId);
-            if (sel2 && sel2->owner==0 && sel2->type==E_PEASANT) {
+            if (sel2 && sel2->owner==g.localPlayer && sel2->type==E_PEASANT) {
                 g.buildPending = E_WALL;
                 g.mode = M_WALL_DRAG;
                 setStatus("Click and drag to draw wall line...");
@@ -304,7 +304,7 @@ void handleInput(int ch) {
     // Build placement mode: cursor moves freely with a ghost footprint preview.
     if (g.mode == M_BUILD_PLACE) {
         Entity* sel = findEntity(g.selectedId);
-        if (!sel || sel->type != E_PEASANT || sel->owner != 0) {
+        if (!sel || sel->type != E_PEASANT || sel->owner != g.localPlayer) {
             g.mode = M_NORMAL; g.buildPending = E_NONE; return;
         }
         if (ch == 27) {
@@ -441,7 +441,7 @@ void handleInput(int ch) {
                 setStatus("Wall start set — move cursor then press Space/Enter to place");
             } else {
                 Entity* sel = findEntity(g.selectedId);
-                if (sel && sel->alive && sel->owner==0 && sel->type==E_PEASANT)
+                if (sel && sel->alive && sel->owner==g.localPlayer && sel->type==E_PEASANT)
                     pushCmd(CMD_BUILD_WALL, {sel->id}, g.wallDragX, g.wallDragY,
                             -1, 0, g.cursorX, g.cursorY);
                 g.dragging = false; g.mode = M_NORMAL;
@@ -465,7 +465,7 @@ void handleInput(int ch) {
             } else if (me.bstate & (BUTTON1_RELEASED | BUTTON1_CLICKED)) {
                 if (g.dragging || (me.bstate & BUTTON1_CLICKED)) {
                     Entity* sel = findEntity(g.selectedId);
-                    if (sel && sel->alive && sel->owner==0 && sel->type==E_PEASANT)
+                    if (sel && sel->alive && sel->owner==g.localPlayer && sel->type==E_PEASANT)
                         pushCmd(CMD_BUILD_WALL, {sel->id}, g.wallDragX, g.wallDragY,
                                 -1, 0, mapX, mapY);
                 }
@@ -485,7 +485,7 @@ void handleInput(int ch) {
         if (ch == KEY_RIGHT) { g.cursorX++; goto clamp; }
         auto commit = [](int tx, int ty) {
             Entity* sel = findEntity(g.selectedId);
-            if (sel && sel->alive && sel->owner == 0)
+            if (sel && sel->alive && sel->owner == g.localPlayer)
                 pushCmd(CMD_RALLY, {}, tx, ty, sel->id);
             g.mode = M_NORMAL;
         };
@@ -610,14 +610,14 @@ void handleInput(int ch) {
     case KEY_END:    g.cursorX += 10; break;
 
     case ' ': {
-        Entity* ent = entityAtOwner(g.cursorX, g.cursorY, 0);
+        Entity* ent = entityAtOwner(g.cursorX, g.cursorY, g.localPlayer);
         if (ent) {
             g.selectedId = ent->id;
             g.selectedIds.clear();
             setStatus(std::string("Selected: ") + STATS[ent->type].name);
         } else {
             Entity* any = entityAt(g.cursorX, g.cursorY);
-            if (any && any->alive && g.map[g.cursorY][g.cursorX].visible[0]) {
+            if (any && any->alive && g.map[g.cursorY][g.cursorX].visible[g.localPlayer]) {
                 g.selectedId = any->id;
                 g.selectedIds.clear();
                 setStatus(std::string(any->owner==OWNER_NATURE?"Animal: ":"Enemy ") + STATS[any->type].name);
@@ -641,8 +641,8 @@ void handleInput(int ch) {
     // units bounce between their current position and that target indefinitely.
     case 'Z': case 'z': {
         bool hasUnit = false;
-        if (!g.selectedIds.empty()) { for (int id : g.selectedIds) { Entity* u = findEntity(id); if (u && u->alive && u->owner==0 && isUnit(u->type) && !isNaval(u->type)) { hasUnit = true; break; } } }
-        else if (g.selectedId >= 0) { Entity* u = findEntity(g.selectedId); if (u && u->alive && u->owner==0 && isUnit(u->type) && !isNaval(u->type)) hasUnit = true; }
+        if (!g.selectedIds.empty()) { for (int id : g.selectedIds) { Entity* u = findEntity(id); if (u && u->alive && u->owner==g.localPlayer && isUnit(u->type) && !isNaval(u->type)) { hasUnit = true; break; } } }
+        else if (g.selectedId >= 0) { Entity* u = findEntity(g.selectedId); if (u && u->alive && u->owner==g.localPlayer && isUnit(u->type) && !isNaval(u->type)) hasUnit = true; }
         if (!hasUnit) { setStatus("Select land units to patrol."); break; }
         g.mode = M_PATROL_SET;
         setStatus("Patrol: click target — units bounce between current position and target. [Esc] cancel");
@@ -651,7 +651,7 @@ void handleInput(int ch) {
 
     case 'b': case 'B': {
         Entity* sel = findEntity(g.selectedId);
-        if (sel && sel->owner==0 && sel->type==E_PEASANT) {
+        if (sel && sel->owner==g.localPlayer && sel->type==E_PEASANT) {
             g.mode = M_BUILD_SELECT;
             setStatus("Select building to place at cursor...");
         } else setStatus("Select a peasant first!");
@@ -660,7 +660,7 @@ void handleInput(int ch) {
 
     case 't': case 'T': {
         Entity* sel = findEntity(g.selectedId);
-        if (sel && sel->owner==0 && isBuilding(sel->type) && !sel->underConstruction) {
+        if (sel && sel->owner==g.localPlayer && isBuilding(sel->type) && !sel->underConstruction) {
             if (sel->type==E_TOWNHALL||sel->type==E_BARRACKS||sel->type==E_STABLE||sel->type==E_DOCK||sel->type==E_CASTLE||sel->type==E_CHURCH||sel->type==E_MILL||sel->type==E_GRANARY) {
                 g.mode = M_TRAIN_SELECT;
                 setStatus("Select unit to train...");
@@ -672,7 +672,7 @@ void handleInput(int ch) {
     // Trebuchet pack / deploy toggle
     case 'D': case 'd': {
         Entity* sel = findEntity(g.selectedId);
-        if (sel && sel->alive && sel->owner == 0 && sel->type == E_TREBUCHET)
+        if (sel && sel->alive && sel->owner == g.localPlayer && sel->type == E_TREBUCHET)
             pushCmd(CMD_PACK, {sel->id});   // statuses set on apply
         else setStatus("Select a trebuchet to pack/deploy.");
         break;
@@ -681,7 +681,7 @@ void handleInput(int ch) {
     // Eject garrison from selected building or transport
     case 'U': case 'u': {
         Entity* sel = findEntity(g.selectedId);
-        if (sel && sel->alive && sel->owner == 0 && canGarrisonIn(sel->type)) {
+        if (sel && sel->alive && sel->owner == g.localPlayer && canGarrisonIn(sel->type)) {
             int n = (int)sel->garrison.size();
             if (n > 0) { pushCmd(CMD_UNGARRISON, {}, 0, 0, sel->id); setStatus(std::to_string(n) + " unit(s) ejected"); }
             else setStatus("No garrison to eject");
@@ -692,7 +692,7 @@ void handleInput(int ch) {
     // Rally point (production buildings) / research menu (blacksmith)
     case 'R': case 'r': {
         Entity* sel = findEntity(g.selectedId);
-        if (!sel || sel->owner != 0 || !isBuilding(sel->type) || sel->underConstruction) {
+        if (!sel || sel->owner != g.localPlayer || !isBuilding(sel->type) || sel->underConstruction) {
             setStatus("Select a production building first.");
             break;
         }
@@ -717,12 +717,12 @@ void handleInput(int ch) {
     case '.': case ',': {
         int sid = g.selectedId; bool past = (sid < 0); Entity* pick = nullptr;
         for (auto& e : g.entities) {
-            if (!e.alive || e.owner != 0 || e.type != E_PEASANT || e.state != S_IDLE) continue;
+            if (!e.alive || e.owner != g.localPlayer || e.type != E_PEASANT || e.state != S_IDLE) continue;
             if (!past) { if (e.id == sid) past = true; continue; }
             pick = &e; break;
         }
         if (!pick) for (auto& e : g.entities) {
-            if (!e.alive || e.owner != 0 || e.type != E_PEASANT || e.state != S_IDLE) continue;
+            if (!e.alive || e.owner != g.localPlayer || e.type != E_PEASANT || e.state != S_IDLE) continue;
             pick = &e; break;
         }
         if (pick) {
@@ -736,7 +736,7 @@ void handleInput(int ch) {
     // Gate toggle: cycle auto -> locked-open -> locked-closed -> auto
     case 'O': {
         Entity* sel = findEntity(g.selectedId);
-        if (sel && sel->alive && sel->owner==0 && sel->type==E_GATE && !sel->underConstruction)
+        if (sel && sel->alive && sel->owner==g.localPlayer && sel->type==E_GATE && !sel->underConstruction)
             pushCmd(CMD_GATE, {}, 0, 0, sel->id);   // status reflects the new state, set on apply
         break;
     }
@@ -784,7 +784,7 @@ void handleInput(int ch) {
         } else {
             g.selectedIds.clear(); g.selectedId = -1;
             for (auto& e : g.entities) {
-                if (!e.alive || e.owner != 0 || e.state == S_GARRISONED) continue;
+                if (!e.alive || e.owner != g.localPlayer || e.state == S_GARRISONED) continue;
                 if (isMilType(e.type)) {
                     g.selectedIds.push_back(e.id);
                     if (g.selectedId < 0) { g.selectedId=e.id; g.cursorX=e.x; g.cursorY=e.y; }
@@ -845,12 +845,12 @@ void handleInput(int ch) {
     case '\t': {
         int sid = g.selectedId; bool found = false, past = (sid < 0);
         for (auto& e : g.entities) {
-            if (!e.alive || e.owner!=0 || !isUnit(e.type) || e.state==S_GARRISONED) continue;
+            if (!e.alive || e.owner!=g.localPlayer || !isUnit(e.type) || e.state==S_GARRISONED) continue;
             if (!past) { if (e.id==sid) past=true; continue; }
             g.selectedId=e.id; g.selectedIds.clear(); g.cursorX=e.x; g.cursorY=e.y; found=true; break;
         }
         if (!found) for (auto& e : g.entities) {
-            if (!e.alive || e.owner!=0 || !isUnit(e.type) || e.state==S_GARRISONED) continue;
+            if (!e.alive || e.owner!=g.localPlayer || !isUnit(e.type) || e.state==S_GARRISONED) continue;
             g.selectedId=e.id; g.selectedIds.clear(); g.cursorX=e.x; g.cursorY=e.y; break;
         }
         break;
@@ -859,7 +859,7 @@ void handleInput(int ch) {
     // Home to town hall
     case 'h': {
         for (auto& e : g.entities)
-            if (e.alive && e.owner==0 && (e.type==E_TOWNHALL||e.type==E_CASTLE)) {
+            if (e.alive && e.owner==g.localPlayer && (e.type==E_TOWNHALL||e.type==E_CASTLE)) {
                 g.selectedId=e.id; g.selectedIds.clear(); g.cursorX=e.x+1; g.cursorY=e.y+1; break;
             }
         break;
@@ -957,12 +957,12 @@ void handleInput(int ch) {
 
         if (me.bstate & BUTTON1_DOUBLE_CLICKED) {
             // Select all of clicked unit type within the current viewport.
-            Entity* ent = entityAtOwner(mapX, mapY, 0);
+            Entity* ent = entityAtOwner(mapX, mapY, g.localPlayer);
             if (ent && isUnit(ent->type)) {
                 EntityType t = ent->type;
                 g.selectedIds.clear(); g.selectedId = -1;
                 for (auto& e : g.entities) {
-                    if (!e.alive || e.owner != 0 || e.type != t) continue;
+                    if (!e.alive || e.owner != g.localPlayer || e.type != t) continue;
                     if (e.state == S_GARRISONED) continue;
                     if (e.x < g.viewX || e.x >= g.viewX+g.viewW) continue;
                     if (e.y < g.viewY || e.y >= g.viewY+g.viewH) continue;
@@ -978,7 +978,7 @@ void handleInput(int ch) {
 
         // Shared logic for non-drag clicks: shift toggles membership, plain click replaces.
         auto handleClick = [&](){
-            Entity* ent = entityAtOwner(mapX, mapY, 0);
+            Entity* ent = entityAtOwner(mapX, mapY, g.localPlayer);
             if (shift && ent && isUnit(ent->type)) {
                 if (selectionContains(ent->id)) { removeFromSelection(ent->id); setStatus("Removed from selection"); }
                 else                            { addToSelection(ent->id);      setStatus("Added to selection"); }
@@ -989,7 +989,7 @@ void handleInput(int ch) {
                 setStatus(std::string("Selected: ") + STATS[ent->type].name);
             } else {
                 Entity* any = entityAt(mapX, mapY);
-                if (any && any->alive && g.map[mapY][mapX].visible[0]) {
+                if (any && any->alive && g.map[mapY][mapX].visible[g.localPlayer]) {
                     g.selectedId = any->id; g.selectedIds.clear();
                     setStatus(std::string(any->owner==OWNER_NATURE?"Animal: ":"Enemy ") + STATS[any->type].name);
                 } else { g.selectedId = -1; g.selectedIds.clear(); }
@@ -1003,7 +1003,7 @@ void handleInput(int ch) {
             std::vector<int> hits;
             bool sawMilitary = false, sawPeasant = false;
             for (auto& e : g.entities) {
-                if (!e.alive || e.owner != 0 || !isUnit(e.type)) continue;
+                if (!e.alive || e.owner != g.localPlayer || !isUnit(e.type)) continue;
                 if (e.state == S_GARRISONED) continue;
                 if (e.x < x0 || e.x > x1 || e.y < y0 || e.y > y1) continue;
                 if (e.type == E_PEASANT) sawPeasant = true; else sawMilitary = true;
@@ -1057,7 +1057,7 @@ void handleInput(int ch) {
                 // (drop it on a resource to auto-assign trained peasants to it);
                 // otherwise it queues a waypoint/gather order onto the units.
                 Entity* selB = findEntity(g.selectedId);
-                if (selB && selB->owner == 0 && isBuilding(selB->type)
+                if (selB && selB->owner == g.localPlayer && isBuilding(selB->type)
                         && !selB->underConstruction && g.selectedIds.size() <= 1) {
                     pushCmd(CMD_RALLY, {}, mapX, mapY, selB->id);   // status on apply
                 } else {

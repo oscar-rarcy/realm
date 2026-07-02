@@ -782,7 +782,8 @@ void tickAI() {
     g.aiTimer++;
     if (g.aiTimer < 12) return;
     g.aiTimer = 0;
-    for (int o = 1; o < MAX_PLAYERS; o++) {
+    for (int o = 0; o < MAX_PLAYERS; o++) {
+        if ((g.humanMask >> o) & 1) continue;   // human-driven seat (local or remote)
         if (!g.players[o].alive) continue;
         tickAIForOwner(o);
     }

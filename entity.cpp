@@ -543,13 +543,13 @@ static void beginRout(Entity& e) {
         e.path = findPathFor(e, haven->x, haven->y); e.pathIdx = 0;
         e.targetX = haven->x; e.targetY = haven->y;
     } else { e.path.clear(); e.pathIdx = 0; }
-    if (e.owner == 0)      setStatus("Your men are breaking — rally them!");
+    if (e.owner == g.localPlayer)      setStatus("Your men are breaking — rally them!");
     // Tally routs per side in a short window for the "broke their line" flash.
     if (e.owner < MAX_PLAYERS) {
         if (g.tick - g.routFlashTick > 20 || e.owner != g.routFlashOwner) {
             g.routFlashTick = g.tick; g.routFlashOwner = e.owner; g.routFlashCount = 0;
         }
-        if (++g.routFlashCount == 3 && e.owner != 0) setStatus("You broke their line!");
+        if (++g.routFlashCount == 3 && e.owner != g.localPlayer) setStatus("You broke their line!");
     }
 }
 
@@ -568,7 +568,7 @@ static void capture(Entity& e) {
     e.state = S_IDLE; e.routTicks = 0; e.captureTicks = 0; e.morale = 0;
     e.path.clear(); e.pathIdx = 0; e.targetId = -1; e.holdPosition = 0;
     updateSupply(oldOwner); updateSupply(e.owner);
-    if (captor->owner == 0) setStatus("Prisoner taken!");
+    if (captor->owner == g.localPlayer) setStatus("Prisoner taken!");
     else if (oldOwner == 0) setStatus("One of your soldiers was captured!");
 }
 
@@ -685,7 +685,7 @@ void tickEntity(Entity& e) {
           Player& sp = g.players[e.owner];
           if (sp.supply + STATS[e.producing].supplyUsed > sp.supplyMax) {
             e.prodProgress = e.prodTime;
-            if (e.owner == 0 && (g.tick + e.id) % 100 == 0)
+            if (e.owner == g.localPlayer && (g.tick + e.id) % 100 == 0)
                 setStatus("Trained unit waiting on supply — build more houses!");
           } else {
             auto& bs = STATS[e.type]; bool placed = false;
@@ -720,7 +720,7 @@ void tickEntity(Entity& e) {
                 }
                 EntityType justTrained = e.producing;
                 e.producing = E_NONE; e.state = S_IDLE;
-                if (e.owner==0) setStatus(std::string(STATS[justTrained].name) + " is ready.");
+                if (e.owner==g.localPlayer) setStatus(std::string(STATS[justTrained].name) + " is ready.");
                 // Pop the next queued unit straight into production.
                 if (!e.queue.empty()) {
                     EntityType next = (EntityType)e.queue.front();
@@ -739,7 +739,7 @@ void tickEntity(Entity& e) {
             g.players[e.owner].research |= e.researching;
             int bit = e.researching;
             e.researching = 0; e.prodProgress = 0; e.prodTime = 0;
-            if (e.owner == 0) {
+            if (e.owner == g.localPlayer) {
                 if      (bit == R_IRON_WEAPONS)  setStatus("Iron Weapons researched — militia/knights +2 atk!");
                 else if (bit == R_CROSSBOWS)     setStatus("Crossbows researched — archers +2 range!");
                 else if (bit == R_PIKES)         setStatus("Pikes researched — spearmen +1 range!");
@@ -763,7 +763,7 @@ void tickEntity(Entity& e) {
             e.hp += 2;
             if (e.hp >= e.maxHp) {
                 e.hp = e.maxHp; e.underConstruction = false; updateSupply(e.owner);
-                if (e.owner==0) setStatus(std::string(STATS[e.type].name) + " complete!");
+                if (e.owner==g.localPlayer) setStatus(std::string(STATS[e.type].name) + " complete!");
                 // A finished bridge becomes terrain: the scaffold entity goes
                 // away and the tile itself turns into a fast, land-passable
                 // span (T_BRIDGE survives winter — it isn't water anymore).
@@ -807,7 +807,7 @@ void tickEntity(Entity& e) {
         if (e.packTicks > 0) {
             e.packTicks--;
             if (e.packTicks == 0) {
-                if (e.owner == 0)
+                if (e.owner == g.localPlayer)
                     setStatus(e.packed ? "Trebuchet packed." : "Trebuchet deployed.");
             }
             return;
@@ -891,7 +891,7 @@ void tickEntity(Entity& e) {
                     e.state = S_RETURNING; e.targetId = dep->id;
                     e.targetX = dep->x; e.targetY = dep->y;
                     e.path = findPathFor(e, dep->x, dep->y); e.pathIdx = 0;
-                    if (e.owner == 0) setStatus("Plunder! Hauling stolen stores home.");
+                    if (e.owner == g.localPlayer) setStatus("Plunder! Hauling stolen stores home.");
                 }
                 break;
             }
@@ -1023,7 +1023,7 @@ void tickEntity(Entity& e) {
                     if (o.hp <= 0) killEntity(o);
                 }
             }
-            if (t->owner == 0 && g.attackNotifyCd == 0) {
+            if (t->owner == g.localPlayer && g.attackNotifyCd == 0) {
                 setStatus("A sapper charge rocks your walls!");
                 g.attackNotifyCd = 200;
             }
@@ -1075,7 +1075,7 @@ void tickEntity(Entity& e) {
                         t->x = kx; t->y = ky; t->path.clear(); t->pathIdx = 0;
                     }
                 }
-                if (t->owner == 0 && g.attackNotifyCd == 0 && t->type != E_NONE) {
+                if (t->owner == g.localPlayer && g.attackNotifyCd == 0 && t->type != E_NONE) {
                     setStatus("Your people are under attack!");
                     g.attackNotifyCd = 200;
                 }
@@ -1118,10 +1118,10 @@ void tickEntity(Entity& e) {
                             e.state = S_RETURNING;
                             e.targetId = dep->id; e.targetX = dep->x; e.targetY = dep->y;
                             e.path = findPathFor(e, dep->x, dep->y); e.pathIdx = 0;
-                            if (e.owner==0) setStatus(std::string("Hunted! Hauling ") + std::to_string(food) + " food.");
+                            if (e.owner==g.localPlayer) setStatus(std::string("Hunted! Hauling ") + std::to_string(food) + " food.");
                         } else {
                             e.carrying = 0; e.state = S_IDLE;
-                            if (e.owner==0) setStatus("Killed game but no Mill/TC nearby — meat wasted.");
+                            if (e.owner==g.localPlayer) setStatus("Killed game but no Mill/TC nearby — meat wasted.");
                         }
                     } else {
                         // Non-peasant kills (e.g. militia defending base) waste the carcass.
@@ -1140,7 +1140,7 @@ void tickEntity(Entity& e) {
             // that left its throw. Stand down; pack (D) to reposition.
             if (e.type == E_TREBUCHET) {
                 e.state = S_IDLE; e.targetId = -1;
-                if (e.owner == 0) setStatus("Target out of range — pack the trebuchet (D) to move.");
+                if (e.owner == g.localPlayer) setStatus("Target out of range — pack the trebuchet (D) to move.");
                 break;
             }
             // Re-path if our path is exhausted OR target wandered away from its end.
@@ -1223,14 +1223,14 @@ void tickEntity(Entity& e) {
                             e.gatherType = 3; e.foodKind = bestKind;
                         }
                         e.carrying = take;
-                        if (e.owner == 0) setStatus("Wagon loaded — right-click another depot to deliver.");
-                    } else if (e.owner == 0) setStatus("Nothing stored here to load.");
+                        if (e.owner == g.localPlayer) setStatus("Wagon loaded — right-click another depot to deliver.");
+                    } else if (e.owner == g.localPlayer) setStatus("Nothing stored here to load.");
                 } else {
                     if      (e.gatherType == 0) { p.gold += e.carrying; dep->storeGold += e.carrying; }
                     else if (e.gatherType == 1) { p.wood += e.carrying; dep->storeWood += e.carrying; }
                     else                        addFood(e.owner, e.foodKind, e.carrying, dep);
                     e.carrying = 0;
-                    if (e.owner == 0) setStatus("Wagon unloaded.");
+                    if (e.owner == g.localPlayer) setStatus("Wagon unloaded.");
                 }
                 e.state = S_IDLE;
             } else {
@@ -1307,15 +1307,15 @@ void tickEntity(Entity& e) {
                 e.state = S_GARRISONED;
                 e.x = bld->x; e.y = bld->y;
                 e.path.clear(); e.pathIdx = 0; e.stuckTicks = 0;
-                if (e.owner == 0) setStatus(std::string("Garrisoned in ") + STATS[bld->type].name);
+                if (e.owner == g.localPlayer) setStatus(std::string("Garrisoned in ") + STATS[bld->type].name);
                 // First unit into a neutral claimable claims it; it reverts
                 // when the last one leaves.
                 if (isClaimable(bld->type) && bld->owner != e.owner) {
                     bld->owner = e.owner;
-                    if (e.owner == 0) setStatus(std::string(STATS[bld->type].name) + " claimed — your banner flies here.");
+                    if (e.owner == g.localPlayer) setStatus(std::string(STATS[bld->type].name) + " claimed — your banner flies here.");
                 }
             } else {
-                if (e.owner == 0) setStatus(std::string(STATS[bld->type].name) + " is full");
+                if (e.owner == g.localPlayer) setStatus(std::string(STATS[bld->type].name) + " is full");
                 e.state = S_IDLE;
             }
         } else {

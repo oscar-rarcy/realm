@@ -339,6 +339,14 @@ struct Game {
     int slMenuX, slMenuW, slMenuRowY0, slMenuRowH;    // overlay geometry for mouse hit-test
     int difficulty;       // 0 easy / 1 normal / 2 hard — AI pacing knobs (ai.cpp)
     int winterSeverity;   // rolled at each winter onset: 0 mild / 1 normal / 2 brutal
+    // Which seat THIS machine plays. Single-player: 0. Multiplayer host: 0,
+    // client: 1. Pure presentation/input state — never part of the sim
+    // (both machines run every player's sim identically).
+    int localPlayer = 0;
+    // Bitmask of player slots driven by humans (bit p = slot p). The AI
+    // skips these. Match config, shared by the lobby / replay header like
+    // difficulty — identical on every machine, so it can't desync.
+    int humanMask = 1;
     std::vector<Command> pendingCmds; // local player's queued commands; applied at tick start
     std::vector<std::string> eventLog; // rolling recent-events feed (UI only; not saved/hashed)
 };
@@ -494,16 +502,77 @@ void pushCommand(const Command& c);   // queue from local input (dropped during 
 void applyCommand(const Command& c);  // validate + dispatch one command (AI calls this directly)
 void applyPendingCommands();          // drain g.pendingCmds at tick start; records to replay
 
+// commands.cpp — the command codec. One binary layout everywhere: the replay
+// file and the network wire both carry exactly this int32 field sequence, so
+// a multiplayer session is literally a replay exchanged live.
+void encodeCommand(const Command& c, std::vector<int>& out);   // appends fields
+int  decodeCommand(const int* f, int avail, Command& c);       // ints consumed; 0 = need more, -1 = malformed
+
 // commands.cpp — replays (seed + command stream)
-bool replayStartRecording(int numAIs);          // uses g.simSeed/g.biomeChoice; new file per match
+bool replayStartRecording(int numAIs);          // uses g.simSeed/g.biomeChoice/g.humanMask; new file per match
 void replayStopRecording();
-bool replayLoadFile(const char* path, unsigned long long& seed, int& numAIs, int& biomeChoice, int& layoutChoice, int& difficulty);
+bool replayLoadFile(const char* path, unsigned long long& seed, int& numAIs, int& biomeChoice, int& layoutChoice, int& difficulty, int& humanMask);
 void replayInjectCommands();          // playback: queue recorded commands for the current tick
 bool replayPlaying();
 
 // commands.cpp — desync detector
 unsigned long long simStateHash();    // FNV-1a over entities + players + RNG state
 void simHashTick();                   // REALM_HASH=1: append tick/hash to realm-hash.log every 100 ticks
+
+// ============================================================
+// net.cpp — deterministic-lockstep multiplayer (docs/networking-plan.md).
+// TCP carries Commands only (the replay codec is the wire codec); UDP
+// broadcast answers LAN lobby discovery. Host = slot 0, client = slot 1.
+// ============================================================
+inline constexpr int NET_TCP_PORT = 7521;   // lobby + match traffic
+inline constexpr int NET_UDP_PORT = 7522;   // LAN discovery pings
+inline constexpr int NET_CMD_DELAY = 3;     // commands run D ticks after issue (~240ms)
+
+struct NetMatchConfig {
+    unsigned long long seed = 0;
+    int numAIs = 1, biome = -1, layout = -1, difficulty = 1, speed = 1;
+    int humanMask = 3;
+};
+struct NetLobbyInfo {                 // one discovered LAN game
+    std::string addr;                 // dotted IP
+    int port = NET_TCP_PORT;
+    std::string host;                 // host's user name
+    std::string map;                  // settings blurb ("2 AIs · Normal")
+};
+
+// Lobby — host side
+bool netHostOpen();                             // listen + discovery responder
+void netHostSetInfo(const NetMatchConfig& cfg); // advertised + sent to client on change
+bool netHostPoll();                             // accept/handshake; true = client seated
+bool netHostClientPresent();
+std::string netHostClientName();
+bool netHostStart();                            // sends START; match may begin
+// Lobby — client side
+bool netJoinConnect(const char* addr, int port, std::string& err);
+int  netClientPoll(NetMatchConfig& cfg);        // 0 idle, 1 config updated, 2 START, -1 lost
+// LAN discovery — client side
+void netDiscoverStart();
+void netDiscoverPoll(std::vector<NetLobbyInfo>& out);
+void netDiscoverStop();
+// Either side
+void netClose();                                // tear everything down
+bool netActive();                               // in a live network match
+std::vector<std::string> netLocalAddresses();   // this machine's LAN IPv4s
+
+// Match — the lockstep scheduler
+void netMatchBegin(int localSlot);              // reset per-match state
+void netQueueLocal(const Command& c);           // local input during a net match
+bool netTickReady();                            // pump socket; true = both bundles for the next tick arrived (they're injected)
+void netAfterTick();                            // send our bundle / 100-tick hash
+void netPump();                                 // drain socket between ticks (keepalive, pause msgs)
+bool netConnectionLost();
+bool netDesynced();
+int  netDesyncTick();
+bool netPeerPaused();
+bool netWaitingForPeer();               // stalled on the opponent's bundle
+std::string netPeerName();
+void netSendPause(bool paused);
+void netSendBye();
 
 // save.cpp
 inline constexpr int NUM_SAVE_SLOTS = 4;

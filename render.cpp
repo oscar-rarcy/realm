@@ -257,9 +257,13 @@ void applyTeamColors() {
     // The non-player colours, in palette order — AIs draw from these.
     int others[NUM_TEAM_COLORS], no = 0;
     for (int i = 0; i < NUM_TEAM_COLORS; i++) if (i != pc) others[no++] = i;
+    // The LOCAL seat wears the chosen colour (colours are per-machine
+    // presentation — in multiplayer each player sees themself in their own
+    // pick); every other seat draws a distinct non-player colour.
     int ownerTeam[MAX_PLAYERS];
-    ownerTeam[0] = pc;
-    for (int o = 1; o < MAX_PLAYERS; o++) ownerTeam[o] = others[(o-1) % no];
+    int nxt = 0;
+    for (int o = 0; o < MAX_PLAYERS; o++)
+        ownerTeam[o] = (o == g.localPlayer) ? pc : others[nxt++ % no];
 
     const int bg = C::NEAR_BLACK;
     for (int o = 0; o < MAX_PLAYERS; o++) {
@@ -576,7 +580,7 @@ static void drawMapOverlays(int tileW) {
     attron(COLOR_PAIR(CP_CORPSE)|A_DIM);
     for (auto& c : g.corpses) {
         if (g.tick - c.tick > 200) continue;
-        if (!inBounds(c.x, c.y) || !g.map[c.y][c.x].visible[0]) continue;
+        if (!inBounds(c.x, c.y) || !g.map[c.y][c.x].visible[g.localPlayer]) continue;
         int sx = c.x - g.viewX, sy = c.y - g.viewY;
         if (sx < 0 || sx >= g.viewW || sy < 0 || sy >= g.viewH) continue;
         if (entityAt(c.x, c.y)) continue;   // don't paint under the living
@@ -598,7 +602,7 @@ static void drawMapOverlays(int tileW) {
             for (int h = 0; h < (stoked ? 2 : 1); h++) {
                 int smx = e.x + ((phase + h) % 3 == 0 ? (((phase>>1)&1) ? 1 : -1) : 0);
                 int smy = e.y - 1 - h;
-                if (!inBounds(smx, smy) || !g.map[smy][smx].visible[0]) continue;
+                if (!inBounds(smx, smy) || !g.map[smy][smx].visible[g.localPlayer]) continue;
                 int sx = smx - g.viewX, sy = smy - g.viewY;
                 if (sx < 0 || sx >= g.viewW || sy < 0 || sy >= g.viewH) continue;
                 if (entityAt(smx, smy)) continue;
@@ -617,7 +621,7 @@ static void drawMapOverlays(int tileW) {
         int frame = g.tick / 12;
         for (int sy = 0; sy < g.viewH; sy++) for (int sx = 0; sx < g.viewW; sx++) {
             int mx = g.viewX + sx, my = g.viewY + sy;
-            if (!inBounds(mx,my) || !g.map[my][mx].visible[0]) continue;
+            if (!inBounds(mx,my) || !g.map[my][mx].visible[g.localPlayer]) continue;
             if (entityAt(mx, my)) continue;
             unsigned h = ((unsigned)(mx*73856093u) ^ (unsigned)(my*19349663u) ^ (unsigned)(frame*83492791u));
             if ((int)(h % 100) >= 1) continue;
@@ -632,7 +636,7 @@ static void drawMapOverlays(int tileW) {
         int density = (g.weather == W_STORM) ? 2 : 1;
         for (int sy = 0; sy < g.viewH; sy++) for (int sx = 0; sx < g.viewW; sx++) {
             int mx = g.viewX + sx, my = g.viewY + sy;
-            if (!inBounds(mx,my) || !g.map[my][mx].visible[0]) continue;
+            if (!inBounds(mx,my) || !g.map[my][mx].visible[g.localPlayer]) continue;
             if (entityAt(mx, my)) continue;
             unsigned h = ((unsigned)(mx*73856093u) ^ (unsigned)(my*19349663u) ^ (unsigned)(g.tick*83492791u));
             if ((int)(h % 100) >= density) continue;
@@ -649,7 +653,7 @@ static void drawMapOverlays(int tileW) {
         for (int b = 0; b < FLOCK; b++) {
             int mx = (g.tick/5 + b*53) % (MAP_W + 24) - 12;       // drift + wrap
             int my = 5 + (b*MAP_H)/FLOCK + ((g.tick/40 + b) % 5) - 2;
-            if (!inBounds(mx,my) || !g.map[my][mx].visible[0] || entityAt(mx,my)) continue;
+            if (!inBounds(mx,my) || !g.map[my][mx].visible[g.localPlayer] || entityAt(mx,my)) continue;
             int sx = mx - g.viewX, sy = my - g.viewY;
             if (sx < 0 || sy < 0 || sx >= g.viewW || sy >= g.viewH) continue;
             bool flap = ((g.tick/3 + b) & 1);
@@ -666,7 +670,7 @@ static void drawMapOverlays(int tileW) {
             if (!e.alive || !isBuilding(e.type) || e.underConstruction) continue;
             bool hearth = (e.type==E_HOUSE || e.type==E_TOWNHALL || e.type==E_MANOR ||
                            e.type==E_TAVERN || e.type==E_BLACKSMITH);
-            if (!hearth || !inBounds(e.x,e.y) || !g.map[e.y][e.x].visible[0]) continue;
+            if (!hearth || !inBounds(e.x,e.y) || !g.map[e.y][e.x].visible[g.localPlayer]) continue;
             int sx = e.x - g.viewX, sy = e.y - g.viewY;
             if (sx < 0 || sy < 1 || sx >= g.viewW || sy >= g.viewH) continue;  // need a row above
             if (night) {
@@ -738,7 +742,7 @@ static void drawMapOverlays(int tileW) {
         attron(COLOR_PAIR(CP_UI_HIGH) | A_BOLD);
         for (auto& e : g.entities) {
             if (drawn >= 8) break;
-            if (!e.alive || e.owner != 0) continue;
+            if (!e.alive || e.owner != g.localPlayer) continue;
             if (!(e.alertTicks > 0 || e.state == S_ROUTING)) continue;     // only trouble
             if (e.x >= vx0 && e.x <= vx1 && e.y >= vy0 && e.y <= vy1) continue;  // on-screen
             int cxm = std::max(vx0, std::min(e.x, vx1));
@@ -785,9 +789,9 @@ static void rmPreparePass(bool night, int& ringX, int& ringY, int& ringR) {
     // Selected ranged unit/tower: precompute range-ring centre + radius.
     ringX = -1; ringY = -1; ringR = 0;
     Entity* selR = findEntity(g.selectedId);
-    if (selR && selR->alive && selR->owner == 0) {
+    if (selR && selR->alive && selR->owner == g.localPlayer) {
         int rng = STATS[selR->type].range;
-        if (selR->type == E_ARCHER && (g.players[0].research & R_CROSSBOWS)) rng += 2;
+        if (selR->type == E_ARCHER && (g.players[g.localPlayer].research & R_CROSSBOWS)) rng += 2;
         if (rng > 1) {
             auto& ss = STATS[selR->type];
             ringX = selR->x + ss.sizeW/2; ringY = selR->y + ss.sizeH/2; ringR = rng;
@@ -862,7 +866,7 @@ void renderMap() {
             auto clearTile = [&](int y, int x) { mvaddch(y, x, ' '); };
             if (!inBounds(mx, my)) { clearTile(scY, scX); continue; }
             Tile& tile = g.map[my][mx];
-            bool vis = tile.visible[0], expl = tile.explored[0];
+            bool vis = tile.visible[g.localPlayer], expl = tile.explored[g.localPlayer];
             bool isCur = (mx == g.cursorX && my == g.cursorY);
 
             if (!expl) {
@@ -913,8 +917,8 @@ void renderMap() {
             // Cloaking: enemy units fade at night/storm unless a friendly eye is close.
             // Wheat fields also conceal enemies — units in crops need close detection.
             bool inCrop = ent && !isBuilding(ent->type) && tile.terrain == T_WHEAT;
-            if (ent && ent->alive && ent->owner != 0 && ent->owner < MAX_PLAYERS
-                && (isConcealing() || inCrop) && !isDetectedBy(mx, my, 0)) ent = nullptr;
+            if (ent && ent->alive && ent->owner != g.localPlayer && ent->owner < MAX_PLAYERS
+                && (isConcealing() || inCrop) && !isDetectedBy(mx, my, g.localPlayer)) ent = nullptr;
 
             // Body tile: catapult/ram/deployed-trebuchet extend one cell right.
             if (!ent && inBounds(mx-1, my)) {
@@ -924,8 +928,8 @@ void renderMap() {
                      leftEnt->type == E_TREBUCHET);   // treb is two tiles packed OR deployed
                 if (isTwoTile) {
                     bool inCropLeft = !isBuilding(leftEnt->type) && g.map[my][mx-1].terrain == T_WHEAT;
-                    bool leftCloaked = leftEnt->owner != 0 && leftEnt->owner < MAX_PLAYERS
-                                    && (isConcealing() || inCropLeft) && !isDetectedBy(mx-1, my, 0);
+                    bool leftCloaked = leftEnt->owner != g.localPlayer && leftEnt->owner < MAX_PLAYERS
+                                    && (isConcealing() || inCropLeft) && !isDetectedBy(mx-1, my, g.localPlayer);
                     if (!leftCloaked) {
                         bool bodyIsSel = (leftEnt->id == g.selectedId);
                         if (!bodyIsSel) for (int sid : g.selectedIds) if (sid == leftEnt->id) { bodyIsSel = true; break; }
