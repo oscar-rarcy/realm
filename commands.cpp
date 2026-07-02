@@ -38,6 +38,27 @@ static std::vector<int> cmdUnits(const Command& c, bool landOnly = false) {
     return ids;
 }
 
+// ============================================================
+// RESEARCH TABLE — every tech: where it's bought, which era unlocks it,
+// what it costs. commands.cpp charges from it, ui.cpp prints from it,
+// input.cpp maps keys from it, ai.cpp shops from it.
+// ============================================================
+static const ResearchDef RESEARCH[] = {
+    { R_IRON_WEAPONS,   E_BLACKSMITH, ERA_TOWNSHIP,   100, 100,  940, 'I', "Iron Weapons",   "militia/knights +2 atk" },
+    { R_FLETCHING,      E_BLACKSMITH, ERA_TOWNSHIP,    80,  60,  800, 'F', "Fletching",      "archers/crossbows +1 atk" },
+    { R_CROSSBOWS,      E_BLACKSMITH, ERA_TOWNSHIP,    80,  80,  820, 'C', "Crossbows",      "archers +2 range" },
+    { R_PIKES,          E_BLACKSMITH, ERA_TOWNSHIP,   100, 100,  900, 'P', "Pikes",          "spearmen +1 range" },
+    { R_PLATE_HELM,     E_BLACKSMITH, ERA_STRONGHOLD, 120, 100, 1000, 'H', "Plate Helm",     "knights shrug cuts/arrows" },
+    { R_COUNTERWEIGHT,  E_BLACKSMITH, ERA_STRONGHOLD, 120, 150, 1000, 'W', "Counterweight",  "trebuchets deploy faster" },
+    { R_HEAVY_PLOUGH,   E_MILL,       ERA_TOWNSHIP,    60, 100,  850, 'P', "Heavy Plough",   "farms yield +1" },
+    { R_HORSE_BREEDING, E_STABLE,     ERA_STRONGHOLD, 120,  80,  950, 'H', "Horse Breeding", "new cavalry +15 HP" },
+    { R_MASONRY,        E_STONEMASON, ERA_STRONGHOLD, 100, 150, 1000, 'M', "Masonry",        "buildings take -20% damage" },
+};
+const ResearchDef* researchTable(int& n) {
+    n = (int)(sizeof(RESEARCH) / sizeof(RESEARCH[0]));
+    return RESEARCH;
+}
+
 void applyCommand(const Command& c) {
     if (c.player < 0 || c.player >= MAX_PLAYERS) return;
     bool human = (c.player == g.localPlayer);
@@ -325,20 +346,17 @@ void applyCommand(const Command& c) {
 
     case CMD_RESEARCH: {
         Entity* b = cmdEnt(c, c.target);
-        if (!b || b->type != E_BLACKSMITH || b->underConstruction) return;
-        struct ResEntry { int bit, gold, wood, ticks; const char* msg; };
-        // ~75 sec at 80 ms tick = 940 ticks.
-        static const ResEntry table[] = {
-            { R_IRON_WEAPONS,  100, 100,  940, "Researching Iron Weapons..." },
-            { R_CROSSBOWS,      80,  80,  820, "Researching Crossbows..." },
-            { R_PIKES,         100, 100,  900, "Researching Pikes..." },
-            { R_COUNTERWEIGHT, 120, 150, 1000, "Researching Counterweight..." },
-            { R_PLATE_HELM,    120, 100, 1000, "Researching Plate Helm..." },
-        };
-        const ResEntry* r = nullptr;
-        for (auto& e : table) if (e.bit == c.arg) { r = &e; break; }
-        if (!r) return;
+        if (!b || b->underConstruction) return;
+        int n = 0;
+        const ResearchDef* table = researchTable(n);
+        const ResearchDef* r = nullptr;
+        for (int i = 0; i < n; i++) if (table[i].bit == c.arg) { r = &table[i]; break; }
+        if (!r || b->type != r->building) return;
         Player& p = g.players[c.player];
+        if (p.era < r->era) {
+            if (human) setStatus(std::string(r->name) + " needs the " + eraName(r->era) + " era.");
+            return;
+        }
         if (p.research & r->bit)   { if (human) setStatus("Already researched.");  return; }
         if (b->researching != 0)   { if (human) setStatus("Already researching."); return; }
         if (p.gold < r->gold || p.wood < r->wood) {
@@ -346,7 +364,55 @@ void applyCommand(const Command& c) {
         }
         drainStores(c.player, r->gold, r->wood, b->x, b->y);
         b->researching = r->bit; b->prodProgress = 0; b->prodTime = r->ticks;
-        if (human) setStatus(r->msg);
+        if (human) setStatus(std::string("Researching ") + r->name + "...");
+        break;
+    }
+
+    case CMD_ERA_UP: {
+        // The match arc: a long, expensive upgrade at the TC/Castle.
+        Entity* b = cmdEnt(c, c.target);
+        if (!b || (b->type != E_TOWNHALL && b->type != E_CASTLE) || b->underConstruction) return;
+        Player& p = g.players[c.player];
+        int food, gold, wood, ticks;
+        if (!eraUpCost(p.era, food, gold, wood, ticks)) {
+            if (human) setStatus("Your civilisation already stands at its height.");
+            return;
+        }
+        if (b->researching != 0) { if (human) setStatus("That hall is already busy."); return; }
+        // One advance at a time, realm-wide.
+        for (auto& e : g.entities)
+            if (e.alive && e.owner == c.player && e.researching == R_ERA_ADVANCE)
+                { if (human) setStatus("The era is already advancing."); return; }
+        if (p.food < food || p.gold < gold || p.wood < wood) {
+            if (human) setStatus("Advancing needs " + std::to_string(food) + "f "
+                                 + std::to_string(gold) + "g "
+                                 + (wood ? std::to_string(wood) + "w" : ""));
+            return;
+        }
+        spendPlayerFood(c.player, food);
+        drainStores(c.player, gold, wood, b->x, b->y);
+        b->researching = R_ERA_ADVANCE; b->prodProgress = 0; b->prodTime = ticks;
+        if (human) setStatus(std::string("Advancing to the ") + eraName(p.era + 1) + " era...");
+        break;
+    }
+
+    case CMD_RAID: {
+        // March on an enemy stockyard and carry off its piles. Any land unit
+        // can steal; the goods ride home through the normal courier flow.
+        Entity* yard = findEntity(c.target);
+        if (!yard || !yard->alive || yard->type != E_STOCKYARD
+            || yard->owner == c.player || yard->owner >= MAX_PLAYERS
+            || yard->underConstruction) return;
+        for (int id : cmdUnits(c, /*landOnly=*/true)) {
+            Entity& u = *findEntity(id);
+            if (u.type == E_TREBUCHET || u.type == E_CATAPULT || u.type == E_RAM) continue;
+            clearQueued(u);
+            u.state = S_RAIDING; u.targetId = yard->id;
+            u.targetX = yard->x; u.targetY = yard->y;
+            u.holdPosition = 0; u.retreating = 0;
+            u.path = findPathFor(u, yard->x, yard->y); u.pathIdx = 0;
+        }
+        if (human) setStatus("Raiders away — steal from their piles and run!");
         break;
     }
 
@@ -428,7 +494,7 @@ void applyCommand(const Command& c) {
 // (same caveat as save files).
 // ============================================================
 static constexpr char REP_MAGIC[4] = {'R','L','R','P'};
-static constexpr int  REP_VERSION  = 7;   // v7: humanMask in header (multiplayer replays)
+static constexpr int  REP_VERSION  = 8;   // v8: per-seat civ choices in header (eras/civs update)
 
 // ---- Command codec ----
 // One binary layout — a flat int32 field sequence — shared by the replay
@@ -487,6 +553,7 @@ bool replayStartRecording(int numAIs) {
     wrI(recF, g.layoutChoice);
     wrI(recF, g.difficulty);
     wrI(recF, g.humanMask);
+    for (int i = 0; i < MAX_PLAYERS; i++) wrI(recF, g.civChoice[i]);
     fflush(recF);
     return true;
 }
@@ -535,6 +602,9 @@ bool replayLoadFile(const char* path, unsigned long long& seed, int& numAIs,
         || !rdI(playF, layoutChoice) || !rdI(playF, difficulty) || !rdI(playF, humanMask)) {
         fclose(playF); playF = nullptr; return false;
     }
+    // Seat civ choices (-1 = rolled from the seed; initGame re-derives those).
+    for (int i = 0; i < MAX_PLAYERS; i++)
+        if (!rdI(playF, g.civChoice[i])) { fclose(playF); playF = nullptr; return false; }
     playbackMode = true;
     replayReadNext();
     return true;
@@ -591,6 +661,8 @@ unsigned long long simStateHash() {
         fnv(h, pl.gold); fnv(h, pl.wood); fnv(h, pl.food);
         fnv(h, pl.supply); fnv(h, pl.supplyMax);
         fnv(h, pl.alive ? 1 : 0); fnv(h, pl.research);
+        fnv(h, pl.era); fnv(h, pl.civ);
+        fnv(h, pl.aiPersona); fnv(h, pl.aiWaveCd); fnv(h, pl.aiRaidCd);
     }
     for (const auto& e : g.entities) {
         if (!e.alive) continue;

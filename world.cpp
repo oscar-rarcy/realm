@@ -127,13 +127,19 @@ void tickFarms() {
                 else if (ss == SUMMER)             rate += 1;
                 else if (ss == AUTUMN && sp < 0.6f) rate *= 2;
                 else if (ss == AUTUMN)             rate = 0;   // fields spent
+                if (rate > 0) {
+                    // Better iron and better land: bonuses only help fields
+                    // that are actually producing — spent is spent.
+                    if (g.players[p].research & R_HEAVY_PLOUGH) rate += 1;
+                    if (g.players[p].civ == CIV_FENLANDERS)     rate += 1;
+                }
                 farm.carrying = std::min(FARM_CAP, farm.carrying + rate);
             }
 
             // AI helper: if ripe food is sitting on an AI farm with no courier
             // assigned, grab the nearest idle owner-peasant and send them to tend.
             // Player keeps explicit control — never auto-yanks the player's peasants.
-            if (p != 0 && farm.carrying >= 3) {
+            if (!((g.humanMask >> p) & 1) && farm.carrying >= 3) {
                 bool assigned = false;
                 for (auto& u : g.entities) {
                     if (!u.alive || u.owner!=p || u.type!=E_PEASANT) continue;

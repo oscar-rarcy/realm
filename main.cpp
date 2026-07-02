@@ -99,6 +99,7 @@ static int showLoadMenu() {
         refresh();
 
         int c = getch();
+        if (c == KEY_MOUSE) { MEVENT me; getmouse(&me); continue; }   // keep the event queue honest
         if      (c=='q'||c=='Q'||c==27)                 return 0;
         else if (c==KEY_UP   ||c=='k'||c=='K')          selSlot = (selSlot + NUM_SAVE_SLOTS - 1) % NUM_SAVE_SLOTS;
         else if (c==KEY_DOWN ||c=='j'||c=='J')          selSlot = (selSlot + 1) % NUM_SAVE_SLOTS;
@@ -121,6 +122,8 @@ static const char* kSpeedNames[]   = { "Slow","Normal","Fast" };
 static const int   kClimCount = 5;             // climates 0..4; index 5 = Random/mixed
 // layouts 0..LAYOUT_COUNT-1; index LAYOUT_COUNT = Random
 
+static int cfgCiv    = -1;                // -1 = random civilisation
+static const char* civLabel(int c) { return c < 0 ? "Random" : CIVS[c].name; }
 static int cfgNumAIs = 1;
 static int cfgDiff   = 1;                 // Normal
 static int cfgClim   = kClimCount;        // Random/mixed
@@ -179,19 +182,22 @@ static void showControlsScreen() {
         mvprintw(r+4, c, "U eject   R rally      P  pause (also save / load)");
         mvprintw(r+5, c, "Tab cycle units        H  jump to town hall");
         mvprintw(r+6, c, "Arrows pan   drag = marquee-select");
-        mvprintw(r+7, c, "?  in-game help        Q Q  back to menu");
+        mvprintw(r+7, c, "E  advance era (Town Hall)   R  research");
+        mvprintw(r+8, c, "RClick enemy stockyard = raid its piles");
+        mvprintw(r+9, c, "C  chat (multiplayer)  ?  in-game help  Q Q  menu");
         attroff(COLOR_PAIR(CP_UI_TEXT));
-        attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(r+9, c, "Press any key to go back"); attroff(COLOR_PAIR(CP_UI_DIM));
+        attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(r+11, c, "Press any key to go back"); attroff(COLOR_PAIR(CP_UI_DIM));
         refresh();
         int ch = getch();
-        if (ch != ERR && ch != KEY_MOUSE) return;
+        if (ch == KEY_MOUSE) { MEVENT me; getmouse(&me); continue; }
+        if (ch != ERR) return;
     }
 }
 
 // Grouped, cursor-navigable skirmish setup. Returns true to begin (config
 // committed to g.* + outSeed), false to back out to the main menu.
 static bool skirmishSetup(unsigned long long& outSeed) {
-    enum { R_OPP, R_DIFF, R_LAYOUT, R_CLIM, R_BROWSE, R_COLOUR, R_SPEED, R_BEGIN, R_COUNT };
+    enum { R_OPP, R_DIFF, R_LAYOUT, R_CLIM, R_BROWSE, R_CIV, R_COLOUR, R_SPEED, R_BEGIN, R_COUNT };
     int sel = R_OPP;
 
     auto adjust = [&](int row, int d) {
@@ -200,6 +206,7 @@ static bool skirmishSetup(unsigned long long& outSeed) {
             case R_DIFF:   cfgDiff   = (cfgDiff + d + 3) % 3; break;
             case R_LAYOUT: cfgLayout = (cfgLayout + d + (LAYOUT_COUNT+1)) % (LAYOUT_COUNT+1); cfgSeed = 0; break;
             case R_CLIM:   cfgClim   = (cfgClim + d + (kClimCount+1)) % (kClimCount+1); cfgSeed = 0; break;
+            case R_CIV:    cfgCiv    = ((cfgCiv + 1) + d + (NUM_CIVS+1)) % (NUM_CIVS+1) - 1; break;
             case R_COLOUR: g.playerColor = (g.playerColor + d + numTeamColors()) % numTeamColors(); applyTeamColors(); break;
             case R_SPEED:  cfgSpeed  = (cfgSpeed + d + 3) % 3; break;
             default: break;
@@ -221,7 +228,7 @@ static bool skirmishSetup(unsigned long long& outSeed) {
         erase();
         int top = std::max(0, maxY/2 - 13);
         drawRealmBanner(maxX, top);
-        const int bw = 42, bh = 14;
+        const int bw = 42, bh = 15;
         int c = std::max(2, maxX/2 - bw/2);
         int r0 = top + 8;
         drawFrame(r0, c, bw, bh, "NEW SKIRMISH");
@@ -249,6 +256,7 @@ static bool skirmishSetup(unsigned long long& outSeed) {
         field(R_CLIM,   "Climate", kClimateNames[cfgClim]);
         field(R_BROWSE, "Browse maps", cfgSeed ? u8"chosen ▸" : u8"▸");
         header("PLAYER");
+        field(R_CIV, "Civilisation", civLabel(cfgCiv));
         int colourRow = iy;
         field(R_COLOUR, "Colour", teamColorName(g.playerColor));
         attron(COLOR_PAIR(CP_MM_PLAYER) | A_BOLD); mvaddstr(colourRow, ix+22, "##"); attroff(COLOR_PAIR(CP_MM_PLAYER) | A_BOLD);
@@ -261,12 +269,18 @@ static bool skirmishSetup(unsigned long long& outSeed) {
         mvprintw(iy+1, ix, "Begin battle");
         attroff(bf ? (COLOR_PAIR(CP_GOLD) | A_BOLD) : COLOR_PAIR(CP_UI_TEXT));
 
+        // The chosen civ's character, under the frame.
+        if (cfgCiv >= 0) {
+            attron(COLOR_PAIR(CP_UI_HIGH)); mvprintw(r0 + bh,     c, "+ %s", CIVS[cfgCiv].bonus); attroff(COLOR_PAIR(CP_UI_HIGH));
+            attron(COLOR_PAIR(CP_UI_DIM));  mvprintw(r0 + bh + 1, c, "- %s", CIVS[cfgCiv].lack);  attroff(COLOR_PAIR(CP_UI_DIM));
+        }
         attron(COLOR_PAIR(CP_UI_DIM));
-        mvprintw(r0 + bh, c, "↑↓ select   ←→ change   Enter choose   Esc back");
+        mvprintw(r0 + bh + 2, c, "↑↓ select   ←→ change   Enter choose   Esc back");
         attroff(COLOR_PAIR(CP_UI_DIM));
         refresh();
 
         int ch = getch();
+        if (ch == KEY_MOUSE) { MEVENT me; getmouse(&me); continue; }
         if (ch==27 || ch=='q' || ch=='Q' || ch==8 || ch==127) return false;   // Esc/Q/Backspace
         else if (ch==KEY_UP   || ch=='k') sel = (sel + R_COUNT - 1) % R_COUNT;
         else if (ch==KEY_DOWN || ch=='j') sel = (sel + 1) % R_COUNT;
@@ -280,6 +294,8 @@ static bool skirmishSetup(unsigned long long& outSeed) {
                 gameSpeed      = (GameSpeed)cfgSpeed;
                 g.biomeChoice  = (cfgClim   >= kClimCount)   ? -1 : cfgClim;
                 g.layoutChoice = (cfgLayout >= LAYOUT_COUNT) ? -1 : cfgLayout;
+                g.civChoice[0] = cfgCiv;
+                for (int i = 1; i < MAX_PLAYERS; i++) g.civChoice[i] = -1;
                 outSeed = cfgSeed;
                 return true;
             }
@@ -315,6 +331,7 @@ static void showSplash(SplashResult& r) {
         refresh();
 
         int ch = getch();
+        if (ch == KEY_MOUSE) { MEVENT me; getmouse(&me); continue; }
         if (ch=='q' || ch=='Q') { endwin(); exit(0); }
         else if (ch==KEY_UP   || ch=='k' || ch=='K') sel = (sel + N - 1) % N;
         else if (ch==KEY_DOWN || ch=='j' || ch=='J') sel = (sel + 1) % N;
@@ -349,6 +366,7 @@ static NetMatchConfig mpCurrentCfg() {
     c.difficulty = cfgDiff;
     c.speed      = cfgSpeed;
     c.humanMask  = 3;         // host seat 0, challenger seat 1
+    c.civ[0]     = cfgCiv;    // seat 1 is filled in by net.cpp from the client's pick
     return c;
 }
 
@@ -367,7 +385,7 @@ static bool hostLobby(SplashResult& r) {
     }
     netHostSetInfo(mpCurrentCfg());
 
-    enum { R_OPP, R_DIFF, R_LAYOUT, R_CLIM, R_BROWSE, R_COLOUR, R_SPEED, R_BEGIN, R_COUNT };
+    enum { R_OPP, R_DIFF, R_LAYOUT, R_CLIM, R_BROWSE, R_CIV, R_COLOUR, R_SPEED, R_BEGIN, R_COUNT };
     int sel = R_OPP;
     bool dirty = false;
     auto adjust = [&](int row, int d) {
@@ -376,6 +394,7 @@ static bool hostLobby(SplashResult& r) {
             case R_DIFF:   cfgDiff   = (cfgDiff + d + 3) % 3; break;
             case R_LAYOUT: cfgLayout = (cfgLayout + d + (LAYOUT_COUNT+1)) % (LAYOUT_COUNT+1); cfgSeed = 0; break;
             case R_CLIM:   cfgClim   = (cfgClim + d + (kClimCount+1)) % (kClimCount+1); cfgSeed = 0; break;
+            case R_CIV:    cfgCiv    = ((cfgCiv + 1) + d + (NUM_CIVS+1)) % (NUM_CIVS+1) - 1; break;
             case R_COLOUR: g.playerColor = (g.playerColor + d + numTeamColors()) % numTeamColors(); applyTeamColors(); break;
             case R_SPEED:  cfgSpeed  = (cfgSpeed + d + 3) % 3; break;
             default: return;
@@ -409,7 +428,7 @@ static bool hostLobby(SplashResult& r) {
         erase();
         int top = std::max(0, maxY/2 - 15);
         drawRealmBanner(maxX, top);
-        const int bw = 46, bh = 14;
+        const int bw = 46, bh = 15;
         int c = std::max(2, maxX/2 - bw/2);
         int r0 = top + 8;
         drawFrame(r0, c, bw, bh, "HOST A GAME");
@@ -437,6 +456,7 @@ static bool hostLobby(SplashResult& r) {
         field(R_CLIM,   "Climate", kClimateNames[cfgClim]);
         field(R_BROWSE, "Browse maps", cfgSeed ? u8"chosen ▸" : u8"▸");
         header("PLAYER");
+        field(R_CIV, "Civilisation", civLabel(cfgCiv));
         int colourRow = iy;
         field(R_COLOUR, "Colour", teamColorName(g.playerColor));
         attron(COLOR_PAIR(CP_MM_PLAYER) | A_BOLD); mvaddstr(colourRow, ix+22, "##"); attroff(COLOR_PAIR(CP_MM_PLAYER) | A_BOLD);
@@ -474,6 +494,7 @@ static bool hostLobby(SplashResult& r) {
         timeout(90);
         int ch = getch();
         timeout(-1);
+        if (ch == KEY_MOUSE) { MEVENT me; getmouse(&me); continue; }
         if (ch==27 || ch=='q' || ch=='Q') { netClose(); return false; }
         else if (ch==KEY_UP   || ch=='k') sel = (sel + R_COUNT - 1) % R_COUNT;
         else if (ch==KEY_DOWN || ch=='j') sel = (sel + 1) % R_COUNT;
@@ -502,6 +523,7 @@ static bool hostLobby(SplashResult& r) {
 static bool clientLobby(SplashResult& r) {
     NetMatchConfig cfgIn;
     bool haveCfg = false;
+    netSendCivPick(cfgCiv);        // declare (or re-declare) our banner
     while (true) {
         int rc = netClientPoll(cfgIn);
         if (rc == 1) haveCfg = true;
@@ -524,7 +546,7 @@ static bool clientLobby(SplashResult& r) {
         erase();
         int top = std::max(0, maxY/2 - 13);
         drawRealmBanner(maxX, top);
-        const int bw = 44, bh = 10;
+        const int bw = 44, bh = 12;
         int c = std::max(2, maxX/2 - bw/2);
         int r0 = top + 8;
         char title[64];
@@ -545,19 +567,27 @@ static bool clientLobby(SplashResult& r) {
         attroff(COLOR_PAIR(CP_UI_TEXT));
         iy++;
         attron(COLOR_PAIR(CP_UI_HIGH));
+        mvprintw(iy, ix, "Civ  [  %s  ]", civLabel(cfgCiv));
+        iy++;
         mvprintw(iy, ix, "Colour  <  %s  >", teamColorName(g.playerColor));
         attroff(COLOR_PAIR(CP_UI_HIGH));
         attron(COLOR_PAIR(CP_MM_PLAYER) | A_BOLD); mvaddstr(iy, ix+24, "##"); attroff(COLOR_PAIR(CP_MM_PLAYER) | A_BOLD);
-
-        lobbyNote(r0 + bh + 1, c, "Waiting for the host to begin...   Esc leave", CP_UI_HIGH);
+        if (cfgCiv >= 0) {
+            lobbyNote(r0 + bh,     c, (std::string("+ ") + CIVS[cfgCiv].bonus).c_str(), CP_UI_HIGH);
+            lobbyNote(r0 + bh + 1, c, (std::string("- ") + CIVS[cfgCiv].lack).c_str());
+        }
+        lobbyNote(r0 + bh + 2, c, "[ ] civilisation   < > colour   Esc leave   (host starts the match)", CP_UI_HIGH);
         refresh();
 
         timeout(90);
         int ch = getch();
         timeout(-1);
+        if (ch == KEY_MOUSE) { MEVENT me; getmouse(&me); continue; }
         if (ch==27 || ch=='q' || ch=='Q') { netSendBye(); netClose(); return false; }
         else if (ch==KEY_LEFT)  { g.playerColor = (g.playerColor + numTeamColors() - 1) % numTeamColors(); applyTeamColors(); }
         else if (ch==KEY_RIGHT) { g.playerColor = (g.playerColor + 1) % numTeamColors(); applyTeamColors(); }
+        else if (ch=='[') { cfgCiv = ((cfgCiv + 1) + (NUM_CIVS+1) - 1) % (NUM_CIVS+1) - 1; netSendCivPick(cfgCiv); }
+        else if (ch==']') { cfgCiv = ((cfgCiv + 1) + 1) % (NUM_CIVS+1) - 1; netSendCivPick(cfgCiv); }
     }
 }
 
@@ -587,6 +617,7 @@ static bool joinByAddress(SplashResult& r) {
 
         timeout(-1);
         int ch = getch();
+        if (ch == KEY_MOUSE) { MEVENT me; getmouse(&me); continue; }
         if (ch == 27) return false;
         else if (ch=='\n' || ch=='\r' || ch==KEY_ENTER) {
             if (addr.empty()) continue;
@@ -647,6 +678,7 @@ static bool joinLanBrowse(SplashResult& r) {
         timeout(250);
         int ch = getch();
         timeout(-1);
+        if (ch == KEY_MOUSE) { MEVENT me; getmouse(&me); continue; }
         if (ch==27 || ch=='q' || ch=='Q') { netDiscoverStop(); return false; }
         else if (ch==KEY_UP   && !list.empty()) sel = (sel + (int)list.size() - 1) % (int)list.size();
         else if (ch==KEY_DOWN && !list.empty()) sel = (sel + 1) % (int)list.size();
@@ -690,6 +722,7 @@ static bool showMultiplayerMenu(SplashResult& r) {
         refresh();
 
         int ch = getch();
+        if (ch == KEY_MOUSE) { MEVENT me; getmouse(&me); continue; }
         if (ch==27 || ch=='q' || ch=='Q') return false;
         else if (ch==KEY_UP   || ch=='k' || ch=='K') sel = (sel + N - 1) % N;
         else if (ch==KEY_DOWN || ch=='j' || ch=='J') sel = (sel + 1) % N;
@@ -853,6 +886,7 @@ static bool showMapPreview(unsigned long long& outSeed) {
         refresh();
 
         int c = getch();
+        if (c == KEY_MOUSE) { MEVENT me; getmouse(&me); continue; }
         if (c=='q'||c=='Q')                       { g.layoutChoice = savedLay; g.biomeChoice = savedClim; return false; }
         else if (c=='\n'||c==KEY_ENTER||c=='\r')  { ensure(sel); g.layoutChoice = cand[sel].lay; g.biomeChoice = cand[sel].clim; outSeed = cand[sel].seed; return true; }
         else if (c==KEY_RIGHT||c=='l'||c=='L')    sel = std::min(POOL-1, sel+1);
@@ -915,8 +949,8 @@ static void resetMatchState(unsigned long long seed) {
     resetDetectMapCache();
     // biomeChoice is set by showSplash before initGame is called; don't reset it here.
     for (int p = 0; p < MAX_PLAYERS; p++)
-        g.players[p] = {300, 200, 100, 0, 0, true, 0, 0};
-    g.players[OWNER_NATURE] = {0, 0, 0, 0, 0, true, 0, 0};
+        g.players[p] = {300, 200, 100, 0, 0, true, 0, 0, ERA_HAMLET, CIV_FREEHOLDERS, 0, 0};
+    g.players[OWNER_NATURE] = {0, 0, 0, 0, 0, true, 0, 0, ERA_HAMLET, CIV_FREEHOLDERS, 0, 0};
 }
 
 // Score and space out player spawns, place each side's Town Hall + peasants,
@@ -1164,6 +1198,16 @@ void initGame(int numAIs, unsigned long long seed) {
     // future multiplayer lobby shares the host's seed with every client.
     if (seed == 0) seed = (unsigned long long)time(nullptr) * 2654435761ull + 1;
     resetMatchState(seed);
+    // Civs + AI temperaments. Every seat consumes exactly two simRand rolls
+    // regardless of what was chosen, so the RNG stream — and therefore the
+    // whole match — is identical across machines and replays.
+    for (int pl = 0; pl < MAX_PLAYERS; pl++) {
+        int roll  = simRand() % NUM_CIVS;
+        int mood  = 1 + simRand() % 3;              // Raider / Builder / Warlord
+        g.players[pl].civ = (g.civChoice[pl] >= 0 && g.civChoice[pl] < NUM_CIVS)
+                          ? g.civChoice[pl] : roll;
+        g.players[pl].aiPersona = mood;             // ignored for human seats
+    }
     generateMap();
     std::vector<Spawn> spawns;
     placeStartingPositions(numAIs, spawns);
@@ -1279,10 +1323,27 @@ static int runVerify(unsigned long long seed, int ticks, int numAIs, int biome, 
     g.layoutChoice = layout;  // -1 = random (resolved in initGame)
     g.difficulty   = 1;
     g.humanMask    = 1; g.localPlayer = 0;
+    for (int i = 0; i < MAX_PLAYERS; i++) g.civChoice[i] = -1;
     initGame(numAIs, seed);
     for (int i = 0; i < ticks; i++) simTick();
     printf("seed=%llu ticks=%d ais=%d hash=%016llx\n",
            seed, ticks, numAIs, simStateHash());
+    // Per-seat balance probe: is anyone stuck in an era, starved, or wiped out?
+    for (int pl = 0; pl < MAX_PLAYERS; pl++) {
+        const Player& P = g.players[pl];
+        int peas = 0, mili = 0, blds = 0;
+        for (auto& e : g.entities) {
+            if (!e.alive || e.owner != pl) continue;
+            if (e.type == E_PEASANT) peas++;
+            else if (isUnit(e.type) && !isNaval(e.type)) mili++;
+            else if (isBuilding(e.type)) blds++;
+        }
+        if (peas + mili + blds == 0 && !P.alive && pl > numAIs) continue;   // never seated
+        printf("  P%d %-12s era=%-10s persona=%d %s peas=%d mil=%d blds=%d g/w/f=%d/%d/%d research=%03x raids=%d\n",
+               pl + 1, CIVS[P.civ].name, eraName(P.era), P.aiPersona,
+               P.alive ? "alive" : "DEAD ", peas, mili, blds, P.gold, P.wood, P.food, P.research,
+               g.statRaids[pl]);
+    }
     return 0;
 }
 
@@ -1297,6 +1358,42 @@ int main(int argc, char** argv) {
         int biome  = (argc >= 6) ? atoi(argv[5]) : 0;   // climate: Biome 0-4 / -1 mixed
         int layout = (argc >= 7) ? atoi(argv[6]) : 0;   // layout: Layout 0-4 / -1 random
         return runVerify(seed, std::max(1, ticks), std::max(1, std::min(3, numAIs)), biome, layout);
+    }
+
+    // --test-raid: headless check of the whole plunder pipeline. Stages a
+    // stocked human stockyard in the AI's scouted range plus idle hussars,
+    // then requires the AI to rob it and bank the goods within 4000 ticks.
+    if (argc >= 2 && strcmp(argv[1], "--test-raid") == 0) {
+        g.biomeChoice = 0; g.layoutChoice = 0; g.difficulty = 2;   // Hard: short grace
+        g.humanMask = 1; g.localPlayer = 0;
+        for (int i = 0; i < MAX_PLAYERS; i++) g.civChoice[i] = -1;
+        initGame(1, 777);
+        Entity* aiTH = nullptr;
+        for (auto& e : g.entities)
+            if (e.alive && e.owner == 1 && e.type == E_TOWNHALL) { aiTH = &e; break; }
+        if (!aiTH) { fprintf(stderr, "no AI town hall\n"); return 1; }
+        int yx = -1, yy = -1;
+        for (int a = 0; a < 4000 && yx < 0; a++) {
+            int x = aiTH->x + (simRand()%81) - 40, y = aiTH->y + (simRand()%81) - 40;
+            int d = dist(aiTH->x, aiTH->y, x, y);
+            if (d < 26 || d > 40) continue;               // outside base defence, inside a ride
+            if (canPlace(E_STOCKYARD, x, y, 0)) { yx = x; yy = y; }
+        }
+        if (yx < 0) { fprintf(stderr, "no yard site\n"); return 1; }
+        int yid = spawnEntity(E_STOCKYARD, 0, yx, yy, true);
+        Entity* yard = findEntity(yid);
+        yard->storeGold = 300; g.players[0].gold += 300;
+        for (int dy = -1; dy <= 3; dy++) for (int dx = -1; dx <= 3; dx++)
+            if (inBounds(yx+dx, yy+dy)) g.map[yy+dy][yx+dx].explored[1] = true;
+        for (int i = 0; i < 3; i++)
+            spawnEntity(E_HUSSAR, 1, aiTH->x + 5 + i, aiTH->y + 5, true);
+        int aiGold0 = g.players[1].gold;
+        for (int i = 0; i < 4000; i++) simTick();
+        yard = findEntity(yid);
+        printf("raids=%d yardGold=%d aiGoldGain=%d humanGold=%d\n",
+               g.statRaids[1], yard ? yard->storeGold : -1,
+               g.players[1].gold - aiGold0, g.players[0].gold);
+        return (g.statRaids[1] > 0) ? 0 : 1;
     }
 
     // --net-host / --net-join: headless lockstep smoke test. Start a host in
@@ -1336,8 +1433,8 @@ int main(int argc, char** argv) {
         }
         g.difficulty = nc.difficulty; g.biomeChoice = nc.biome; g.layoutChoice = nc.layout;
         g.humanMask = nc.humanMask; g.localPlayer = slot;
+        for (int i = 0; i < MAX_PLAYERS; i++) g.civChoice[i] = nc.civ[i];
         initGame(nc.numAIs, nc.seed);
-        netMatchBegin(slot);
         int stall = 0;
         while (g.tick < ticks) {
             if (netConnectionLost()) { fprintf(stderr, "connection lost at tick %d\n", g.tick); return 1; }
@@ -1455,9 +1552,9 @@ int main(int argc, char** argv) {
             g.layoutChoice = nc.layout;
             g.humanMask    = nc.humanMask;
             g.localPlayer  = pick.netSlot;
+            for (int i = 0; i < MAX_PLAYERS; i++) g.civChoice[i] = nc.civ[i];
             applyTeamColors();
             initGame(nc.numAIs, nc.seed);
-            netMatchBegin(pick.netSlot);
             replayStartRecording(nc.numAIs);   // records BOTH players' streams
             setStatus(g.mapName + " — " + netPeerName() +
                       (pick.netSlot == 0 ? " marches against you. " : " awaits your challenge. ") +

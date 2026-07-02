@@ -137,6 +137,7 @@ int depotCapGold(EntityType t) {
     switch (t) {
         case E_TOWNHALL: return 400;  case E_CASTLE: return 600;
         case E_MINING_CAMP: return 250; case E_TRADING_POST: return 150;
+        case E_STOCKYARD: return 300;   // three open pallet-tiles of coin
         default: return 0;
     }
 }
@@ -144,6 +145,7 @@ int depotCapWood(EntityType t) {
     switch (t) {
         case E_TOWNHALL: return 400;  case E_CASTLE: return 600;
         case E_LUMBER_CAMP: return 250;
+        case E_STOCKYARD: return 300;
         default: return 0;
     }
 }
@@ -152,7 +154,7 @@ int depotCapFood(EntityType t) {
         case E_TOWNHALL: return 400;  case E_CASTLE: return 600;
         case E_MILL: return 300;      case E_GRANARY: return 600;
         case E_DOCK: return 200;      case E_TAVERN: return 200;
-        case E_WATERMILL: return 150;
+        case E_WATERMILL: return 150; case E_STOCKYARD: return 300;
         default: return 0;
     }
 }
@@ -418,7 +420,12 @@ int spawnEntity(EntityType type, int owner, int x, int y, bool built) {
         for (auto& m : g.entities)
             if (m.alive && m.owner == owner && m.type == E_STONEMASON && !m.underConstruction)
                 { e.maxHp *= 2; break; }
+        // Hillfolk build defence in dry-stone from the start (+50%, stacks).
+        if (g.players[owner].civ == CIV_HILLFOLK) e.maxHp = e.maxHp * 3 / 2;
     }
+    // Horse Breeding: cavalry musters with deeper wind and heavier stock.
+    if ((type==E_KNIGHT || type==E_HUSSAR) && owner < MAX_PLAYERS
+        && (g.players[owner].research & R_HORSE_BREEDING)) e.maxHp += 15;
     e.hp = built ? e.maxHp : 1;
     // Combat feel: full heart and wind on muster (docs/combat-feel-proposals.md).
     e.morale = 100; e.stamina = 100;
@@ -736,15 +743,25 @@ void tickEntity(Entity& e) {
     if (e.researching != 0 && !e.underConstruction) {
         e.prodProgress += 1;
         if (e.prodProgress >= e.prodTime) {
-            g.players[e.owner].research |= e.researching;
             int bit = e.researching;
             e.researching = 0; e.prodProgress = 0; e.prodTime = 0;
-            if (e.owner == g.localPlayer) {
-                if      (bit == R_IRON_WEAPONS)  setStatus("Iron Weapons researched — militia/knights +2 atk!");
-                else if (bit == R_CROSSBOWS)     setStatus("Crossbows researched — archers +2 range!");
-                else if (bit == R_PIKES)         setStatus("Pikes researched — spearmen +1 range!");
-                else if (bit == R_COUNTERWEIGHT) setStatus("Counterweight researched — trebuchets deploy faster!");
-                else if (bit == R_PLATE_HELM)    setStatus("Plate Helm researched — knights take less melee damage!");
+            if (bit == R_ERA_ADVANCE) {
+                // The bells ring: a new era. Everyone on the map hears of it.
+                Player& p = g.players[e.owner];
+                if (p.era < ERA_STRONGHOLD) p.era++;
+                if (e.owner == g.localPlayer)
+                    setStatus(std::string("You enter the ") + eraName(p.era) + " era!");
+                else
+                    setStatus(std::string("The ") + CIVS[p.civ].name + " (P" + std::to_string(e.owner + 1)
+                              + ") enter the " + eraName(p.era) + " era!");
+            } else {
+                g.players[e.owner].research |= bit;
+                if (e.owner == g.localPlayer) {
+                    int n = 0; const ResearchDef* tbl = researchTable(n);
+                    for (int i = 0; i < n; i++)
+                        if (tbl[i].bit == bit)
+                            setStatus(std::string(tbl[i].name) + " researched — " + tbl[i].effect + "!");
+                }
             }
         }
     }
@@ -1170,7 +1187,13 @@ void tickEntity(Entity& e) {
                 e.gatherCd++;
                 if (e.gatherCd >= GATHER_TICKS) {
                     e.gatherCd = 0;
-                    int amt = std::min(GATHER_RATE, tile.resources);
+                    int rate = GATHER_RATE;
+                    if (e.owner < MAX_PLAYERS) {
+                        int civ = g.players[e.owner].civ;
+                        if (civ == CIV_HILLFOLK   && tile.terrain == T_GOLD) rate = rate * 5 / 4;
+                        if (civ == CIV_FENLANDERS && isFishT)                rate = rate * 5 / 4;
+                    }
+                    int amt = std::min(rate, tile.resources);
                     tile.resources -= amt; e.carrying += amt;
                     if (tile.resources <= 0)
                         tile.terrain = isFishT ? T_WATER : isBerry ? T_GRASS : T_DIRT;
@@ -1191,6 +1214,60 @@ void tickEntity(Entity& e) {
             moveAlongPath(e);
             if (e.path.empty() && dist(e.x,e.y,e.targetX,e.targetY) > 1) {
                 e.path = findPathFor(e, e.targetX, e.targetY); e.pathIdx = 0;
+                if (e.path.empty()) e.state = S_IDLE;
+            }
+        }
+        break;
+    }
+    case S_RAIDING: {
+        Entity* yard = findEntity(e.targetId);
+        if (!yard || !yard->alive || yard->owner == e.owner || yard->underConstruction) {
+            e.state = S_IDLE; break;
+        }
+        int edible = 0;
+        for (int k = 0; k < F_COUNT; k++) if (k != F_ALE) edible += yard->storeFood[k];
+        if (yard->storeGold + yard->storeWood + edible <= 0) { e.state = S_IDLE; break; }
+        int d = dist(e.x, e.y, yard->x, yard->y);
+        if (getenv("REALM_AI_DEBUG") && (g.tick % 50 == 0))
+            fprintf(stderr, "[raid] unit %d at (%d,%d) yard (%d,%d) d=%d\n", e.id, e.x, e.y, yard->x, yard->y, d);
+        if (d <= STATS[yard->type].sizeW) {
+            // At the piles: grab the tallest one and leg it. The victim's
+            // realm totals shrink NOW — the goods only join the raider's
+            // treasury if the courier run home survives (see S_RETURNING;
+            // a dead raider scatters it as loot like any other courier).
+            Player& victim = g.players[yard->owner];
+            const int RAID_CARRY = 30;
+            int kind = 0, amt = yard->storeGold;              // 0 gold, 1 wood, 2 food
+            if (yard->storeWood > amt) { kind = 1; amt = yard->storeWood; }
+            if (edible          > amt) { kind = 2; amt = edible; }
+            int take = std::min(RAID_CARRY, amt);
+            if (kind == 0)      { yard->storeGold -= take; victim.gold -= std::min(take, victim.gold); e.gatherType = 0; }
+            else if (kind == 1) { yard->storeWood -= take; victim.wood -= std::min(take, victim.wood); e.gatherType = 1; }
+            else {
+                int left = take;
+                for (int k = 0; k < F_COUNT && left > 0; k++) {
+                    if (k == F_ALE) continue;
+                    int c = std::min(left, yard->storeFood[k]);
+                    yard->storeFood[k] -= c; left -= c;
+                }
+                victim.food -= std::min(take, victim.food);
+                e.gatherType = 3; e.foodKind = F_GRAIN;
+            }
+            e.carrying = take;
+            if (e.owner <= MAX_PLAYERS) g.statRaids[e.owner]++;
+            e.rallyX = -1; e.rallyY = -1;                     // no auto-resume after dropoff
+            e.state = S_RETURNING; e.targetId = -1;           // S_RETURNING finds our depot
+            if (yard->owner == g.localPlayer && g.attackNotifyCd == 0) {
+                setStatus("Raiders are plundering your Stockyard!");
+                g.attackNotifyCd = 100;
+            } else if (e.owner == g.localPlayer) {
+                setStatus(std::string("Plundered ") + std::to_string(take)
+                          + (kind==0 ? " gold" : kind==1 ? " wood" : " food") + " — run for home!");
+            }
+        } else {
+            moveAlongPath(e);
+            if (e.path.empty() && (g.tick + e.id) % 10 == 0) {
+                e.path = findPathFor(e, yard->x, yard->y); e.pathIdx = 0;
                 if (e.path.empty()) e.state = S_IDLE;
             }
         }

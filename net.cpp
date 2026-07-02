@@ -24,7 +24,14 @@
 // wire) — matching NET_PROTO_VERSION is required at the handshake.
 // ============================================================
 
-static const unsigned NET_PROTO_VERSION = 1;   // bump on ANY wire or sim-format change
+static const unsigned NET_PROTO_VERSION = 2;   // bump on ANY wire or sim-format change (v2: eras/civs)
+
+// REALM_NET_TRACE=1: log every frame in/out (harness debugging).
+static bool netTrace() {
+    static int on = -1;
+    if (on < 0) { const char* e = getenv("REALM_NET_TRACE"); on = (e && *e && *e != '0') ? 1 : 0; }
+    return on;
+}
 
 // Frame: u32 payload length, u8 type, payload bytes.
 enum : unsigned char {
@@ -36,6 +43,7 @@ enum : unsigned char {
     MSG_HASH    = 'A',   // both ways     i32 tick, u64 simStateHash
     MSG_PAUSE   = 'P',   // both ways     u8 paused
     MSG_CHAT    = 'T',   // both ways     utf-8 text (control channel, never sim)
+    MSG_CIVPICK = 'K',   // client->host  i32 civ index (-1 = random)
     MSG_BYE     = 'Y',   // either        clean leave
 };
 
@@ -54,6 +62,7 @@ static bool sawStart = false;        // client: host pressed Begin
 static bool cfgDirty = false;        // client: a fresh CONFIG arrived
 static std::string peerName;
 static NetMatchConfig cfg;
+static int clientCivPick = -1;       // host: the challenger's declared civ
 
 static std::vector<unsigned char> rxBuf, txBuf;
 static long long lastRecvMs = 0;
@@ -65,6 +74,8 @@ static std::map<int, std::vector<Command>> inbox[2];  // execTick -> commands, p
 static std::vector<Command> localPending;             // issued since the last tick
 static bool waitingForPeer = false;
 static std::map<int, unsigned long long> localHashes, remoteHashes;
+
+static void netMatchBegin(int slot);   // defined with the scheduler below
 
 static long long nowMs() {
     struct timeval tv; gettimeofday(&tv, nullptr);
@@ -97,6 +108,7 @@ std::string netPeerName() { return peerName.empty() ? std::string("Opponent") : 
 // ---- framing ----
 static void sendFrame(unsigned char type, const void* payload, unsigned len) {
     if (sock < 0) return;
+    if (netTrace()) fprintf(stderr, "[net>] %c len=%u tick=%d txq=%zu\n", type, len, g.tick, txBuf.size());
     unsigned char hdr[5];
     memcpy(hdr, &len, 4);
     hdr[4] = type;
@@ -161,10 +173,12 @@ bool netHostOpen() {
 
 void netHostSetInfo(const NetMatchConfig& c) {
     cfg = c;
+    cfg.civ[1] = clientCivPick;      // the challenger's seat is theirs to pick
     if (clientSeated) {
-        unsigned char pl[8 + 7 * 4];
+        unsigned char pl[8 + 10 * 4];
         memcpy(pl, &cfg.seed, 8);
-        int f[7] = {cfg.numAIs, cfg.biome, cfg.layout, cfg.difficulty, cfg.speed, cfg.humanMask, 0};
+        int f[10] = {cfg.numAIs, cfg.biome, cfg.layout, cfg.difficulty, cfg.speed, cfg.humanMask,
+                     cfg.civ[0], cfg.civ[1], cfg.civ[2], cfg.civ[3]};
         memcpy(pl + 8, f, sizeof f);
         sendFrame(MSG_CONFIG, pl, sizeof pl);
     }
@@ -212,6 +226,7 @@ bool netHostPoll() {
 bool netHostStart() {
     if (!clientSeated || connLost) return false;
     netHostSetInfo(cfg);              // final settings, then the gun
+    netMatchBegin(0);                 // seat + clean slate BEFORE the gun fires
     sendFrame(MSG_START, nullptr, 0);
     return !connLost;
 }
@@ -359,16 +374,27 @@ static void handleFrame(unsigned char type, const unsigned char* p, unsigned len
         if (!isHost && len >= 4 + 24) peerName.assign((const char*)p + 4);
         break;
     case MSG_CONFIG:
-        if (!isHost && len >= 8 + 7 * 4) {
+        if (!isHost && len >= 8 + 10 * 4) {
             memcpy(&cfg.seed, p, 8);
-            int f[7]; memcpy(f, p + 8, sizeof f);
+            int f[10]; memcpy(f, p + 8, sizeof f);
             cfg.numAIs = f[0]; cfg.biome = f[1]; cfg.layout = f[2];
             cfg.difficulty = f[3]; cfg.speed = f[4]; cfg.humanMask = f[5];
+            for (int i = 0; i < MAX_PLAYERS; i++) cfg.civ[i] = f[6 + i];
             cfgDirty = true;
         }
         break;
+    case MSG_CIVPICK:
+        if (isHost && len >= 4) {
+            memcpy(&clientCivPick, p, 4);
+            if (clientCivPick < -1 || clientCivPick >= NUM_CIVS) clientCivPick = -1;
+            netHostSetInfo(cfg);     // echo the seat assignment to both lobbies
+        }
+        break;
     case MSG_START:
-        if (!isHost) sawStart = true;
+        if (!isHost) {
+            netMatchBegin(1);         // file every following bundle under the right seat
+            sawStart = true;
+        }
         break;
     case MSG_BUNDLE: {
         if (len < 8) break;
@@ -435,6 +461,7 @@ void netPump() {
         unsigned len; memcpy(&len, rxBuf.data() + off, 4);
         if (len > 1 << 20) { CONN_LOST("frame-insane"); break; }        // insane frame: bail
         if (rxBuf.size() - off < 5 + len) break;
+        if (netTrace()) fprintf(stderr, "[net<] %c len=%u tick=%d\n", rxBuf[off + 4], len, g.tick);
         handleFrame(rxBuf[off + 4], rxBuf.data() + off + 5, len);
         off += 5 + len;
     }
@@ -447,7 +474,12 @@ void netPump() {
 // ============================================================
 // LOCKSTEP SCHEDULER
 // ============================================================
-void netMatchBegin(int slot) {
+// Reset MUST happen the instant the match is agreed — host: before START
+// leaves; client: the moment START is parsed — because the peer's first
+// bundles can share a TCP segment with START itself. Resetting any later
+// (say, after initGame) files or wipes early bundles under the wrong seat:
+// the client stalls at tick NET_CMD_DELAY and both sides die of silence.
+static void netMatchBegin(int slot) {
     localSlot = slot;
     matchActive = true;
     waitingForPeer = false;
@@ -518,6 +550,10 @@ void netSendChat(const std::string& text) {
     sendFrame(MSG_CHAT, text.data(), (unsigned)std::min<size_t>(text.size(), 160));
 }
 
+void netSendCivPick(int civ) {
+    sendFrame(MSG_CIVPICK, &civ, 4);
+}
+
 void netSendPause(bool paused) {
     unsigned char b = paused ? 1 : 0;
     sendFrame(MSG_PAUSE, &b, 1);
@@ -533,6 +569,7 @@ void netClose() {
     isHost = matchActive = connLost = desynced = false;
     clientSeated = sawStart = cfgDirty = peerPaused = waitingForPeer = false;
     peerName.clear();
+    clientCivPick = -1;
     inbox[0].clear(); inbox[1].clear();
     localPending.clear(); localHashes.clear(); remoteHashes.clear();
     found.clear();

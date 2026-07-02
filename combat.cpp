@@ -12,11 +12,82 @@ bool hasMorale(EntityType t) {
         || t==E_CROSSBOWMAN||t==E_HUSSAR||t==E_SAPPER;
 }
 
+// ============================================================
+// ERA + CIV GATES — one authority for "may this player make that?"
+// orderTrain / orderBuild enforce it (sim-side, funnel-validated);
+// the menus read it to dim locked rows; the AI checks it before trying.
+// ============================================================
+int eraOf(EntityType t) {
+    switch (t) {
+        // Township: the tools of an organised town.
+        case E_ARCHER: case E_SPEARMAN: case E_HUSSAR: case E_MONK:
+        case E_WAGON: case E_TRANSPORT: case E_WARSHIP:
+        case E_STABLE: case E_BLACKSMITH: case E_MARKET: case E_CHURCH:
+        case E_TAVERN: case E_GRANARY: case E_MANOR: case E_STOCKYARD:
+        case E_TOWER:
+            return ERA_TOWNSHIP;
+        // Walls and gates stay Hamlet: even the poorest village can raise a
+        // palisade, so nobody is ever locked out of defending themselves.
+        // Stronghold: heavy metal and siegecraft.
+        case E_KNIGHT: case E_CROSSBOWMAN: case E_SAPPER:
+        case E_CATAPULT: case E_RAM: case E_TREBUCHET:
+        case E_CASTLE: case E_STONEMASON:
+            return ERA_STRONGHOLD;
+        default:
+            return ERA_HAMLET;
+    }
+}
+
+int makeGate(int owner, EntityType t) {
+    if (owner < 0 || owner >= MAX_PLAYERS) return 0;   // nature builds what it likes
+    const Player& p = g.players[owner];
+    if (p.era < eraOf(t)) return 1;
+    switch (p.civ) {
+        case CIV_FENLANDERS:   // marsh people never took to the saddle
+            if (t == E_STABLE || t == E_KNIGHT || t == E_HUSSAR) return 2;
+            break;
+        case CIV_HILLFOLK:     // mountain clans keep no war fleet
+            if (t == E_WARSHIP || t == E_TRANSPORT) return 2;
+            break;
+        case CIV_MARCHERS:     // horse lords disdain the bow (until the crossbow)
+            if (t == E_ARCHER) return 2;
+            break;
+    }
+    return 0;
+}
+
+int costGoldOf(int owner, EntityType t) {
+    int c = STATS[t].costGold;
+    if (owner >= 0 && owner < MAX_PLAYERS && g.players[owner].civ == CIV_MARCHERS
+        && (t == E_KNIGHT || t == E_HUSSAR)) c = c * 4 / 5;
+    if (owner >= 0 && owner < MAX_PLAYERS && g.players[owner].civ == CIV_FENLANDERS
+        && isNaval(t)) c = c * 3 / 4;
+    return c;
+}
+int costWoodOf(int owner, EntityType t) {
+    int c = STATS[t].costWood;
+    if (owner >= 0 && owner < MAX_PLAYERS && g.players[owner].civ == CIV_FENLANDERS
+        && isNaval(t)) c = c * 3 / 4;
+    return c;
+}
+int trainTimeOf(int owner, EntityType t) {
+    int tt = STATS[t].trainTime;
+    if (owner < 0 || owner >= MAX_PLAYERS) return tt;
+    switch (g.players[owner].civ) {
+        case CIV_FREEHOLDERS: if (t == E_PEASANT) tt = tt * 85 / 100; break;
+        case CIV_FENLANDERS:  if (t == E_ARCHER)  tt = tt * 4 / 5;   break;
+        case CIV_HILLFOLK:    if (isUnit(t) && t != E_PEASANT && !isNaval(t)) tt = tt * 115 / 100; break;
+        case CIV_MARCHERS:    if (t == E_KNIGHT || t == E_HUSSAR) tt = tt * 3 / 4; break;
+    }
+    return tt;
+}
+
 int unitAtk(const Entity& e) {
     if (e.prisoner) return 0;   // disarmed
     int a = STATS[e.type].atk;
     int r = g.players[e.owner].research;
     if ((e.type == E_MILITIA || e.type == E_KNIGHT) && (r & R_IRON_WEAPONS)) a += 2;
+    if ((e.type == E_ARCHER || e.type == E_CROSSBOWMAN) && (r & R_FLETCHING)) a += 1;
     // Shield wall: militia fight harder when shoulder-to-shoulder.
     if (e.type == E_MILITIA) {
         int allies = 0;
@@ -94,10 +165,15 @@ int damageVs(EntityType attacker, EntityType target, int rawDmg, int targetOwner
     if (attacker==E_SPEARMAN && (target==E_KNIGHT||target==E_HUSSAR)) rawDmg += 8;
     // Buildings keep bespoke siege multipliers — the table covers field combat.
     if (isBuilding(target)) {
-        if (attacker == E_TREBUCHET) return rawDmg * 3;       // city-killer
-        if (attacker == E_RAM)       return rawDmg * 2;       // built for doors
-        if (attacker == E_CATAPULT)  return (rawDmg * 3) / 2;
-        return std::max(1, rawDmg / 2);                       // 0.5x, floor 1
+        int b;
+        if      (attacker == E_TREBUCHET) b = rawDmg * 3;     // city-killer
+        else if (attacker == E_RAM)       b = rawDmg * 2;     // built for doors
+        else if (attacker == E_CATAPULT)  b = (rawDmg * 3) / 2;
+        else                              b = std::max(1, rawDmg / 2);
+        // Masonry: dressed stone sheds a fifth of everything thrown at it.
+        if (targetOwner >= 0 && targetOwner < MAX_PLAYERS
+            && (g.players[targetOwner].research & R_MASONRY)) b = std::max(1, b * 4 / 5);
+        return b;
     }
     // Trebuchet vs personnel: a wall-breaker, not a man-killer.
     if (attacker == E_TREBUCHET) rawDmg = std::max(1, rawDmg / 4);
@@ -232,13 +308,25 @@ void orderGather(Entity& e, int tx, int ty) {
 void orderBuild(Entity& e, EntityType bt, int bx, int by) {
     if (e.type != E_PEASANT) return;
     Player& p = g.players[e.owner];
-    if (p.gold < STATS[bt].costGold || p.wood < STATS[bt].costWood) {
+    int gate = makeGate(e.owner, bt);
+    if (gate == 1) {
+        if (e.owner == g.localPlayer)
+            setStatus(std::string(STATS[bt].name) + " needs the " + eraName(eraOf(bt)) + " era — advance at the Town Hall [E].");
+        return;
+    }
+    if (gate == 2) {
+        if (e.owner == g.localPlayer)
+            setStatus(std::string("The ") + CIVS[p.civ].name + " do not build the " + STATS[bt].name + ".");
+        return;
+    }
+    int cg = costGoldOf(e.owner, bt), cw = costWoodOf(e.owner, bt);
+    if (p.gold < cg || p.wood < cw) {
         if (e.owner == g.localPlayer) setStatus("Not enough resources!"); return;
     }
     if (!canPlace(bt, bx, by, e.owner, e.id)) {
         if (e.owner == g.localPlayer) setStatus("Can't build there!"); return;
     }
-    drainStores(e.owner, STATS[bt].costGold, STATS[bt].costWood, bx, by);
+    drainStores(e.owner, cg, cw, bx, by);
     int bid;
     if (bt == E_CASTLE) {
         // Walk-in castle: the placement expands into a 7x7 compound —
@@ -323,6 +411,17 @@ void orderTrain(Entity& bld, EntityType ut) {
         if (bld.owner==g.localPlayer) setStatus("Queue full!"); return;
     }
     Player& p = g.players[bld.owner];
+    int gate = makeGate(bld.owner, ut);
+    if (gate == 1) {
+        if (bld.owner == g.localPlayer)
+            setStatus(std::string(STATS[ut].name) + "s need the " + eraName(eraOf(ut)) + " era — advance at the Town Hall [E].");
+        return;
+    }
+    if (gate == 2) {
+        if (bld.owner == g.localPlayer)
+            setStatus(std::string("The ") + CIVS[p.civ].name + " do not field the " + STATS[ut].name + ".");
+        return;
+    }
     // Workshop units need a working forge: no Blacksmith, no crossbows/petards.
     if (ut==E_CROSSBOWMAN || ut==E_SAPPER) {
         bool smith = false;
@@ -330,7 +429,8 @@ void orderTrain(Entity& bld, EntityType ut) {
             if (e.alive && e.owner==bld.owner && e.type==E_BLACKSMITH && !e.underConstruction) { smith = true; break; }
         if (!smith) { if (bld.owner==g.localPlayer) setStatus("Requires a Blacksmith!"); return; }
     }
-    if (p.gold < STATS[ut].costGold || p.wood < STATS[ut].costWood) {
+    int cg = costGoldOf(bld.owner, ut), cw = costWoodOf(bld.owner, ut);
+    if (p.gold < cg || p.wood < cw) {
         if (bld.owner==g.localPlayer) setStatus("Not enough resources!"); return;
     }
     // Pop cap: the AI bounces here (it shouldn't tie up gold in a unit it can't
@@ -342,9 +442,9 @@ void orderTrain(Entity& bld, EntityType ut) {
     int foodCost = trainFoodCost(ut);
     if (p.food < foodCost) { if (bld.owner==g.localPlayer) setStatus("Need more food!"); return; }
     spendPlayerFood(bld.owner, foodCost);
-    drainStores(bld.owner, STATS[ut].costGold, STATS[ut].costWood, bld.x, bld.y);
+    drainStores(bld.owner, cg, cw, bld.x, bld.y);
     if (bld.producing == E_NONE) {
-        bld.producing = ut; bld.prodProgress = 0; bld.prodTime = STATS[ut].trainTime;
+        bld.producing = ut; bld.prodProgress = 0; bld.prodTime = trainTimeOf(bld.owner, ut);
         bld.state = S_TRAINING;
         if (overCap && bld.owner == g.localPlayer) setStatus("Training — build houses to muster it.");
     } else {

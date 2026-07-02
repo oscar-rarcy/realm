@@ -53,6 +53,9 @@ const EntityStats STATS[] = {
     {"Well",       'Q',  60, 0,0,0,0, 10, 20, 30, 1,1,  0,0, true},
     {"Manor",      'R', 160, 0,0,0,0, 50,100, 80, 2,2, 10,0, true},
     {"Stonemason", 'Z', 110, 0,0,0,0, 60,120, 70, 2,2,  0,0, true},
+    // Open-air hoard: huge, cheap storage whose goods sit in visible piles
+    // on its 3x3 yard — and any enemy can march in and carry them off.
+    {"Stockyard",  '=', 140, 0,0,0,0,  0, 60, 50, 3,3,  0,0, true},
     {"Shrine",     'I',  80, 0,0,0,0,  0,  0,  0, 1,1,  0,0, true},
     {"Watermill",  'C', 100, 0,0,0,0,  0,  0,  0, 2,2,  0,0, true},
     {"Trading Post",'E',100, 0,0,0,0,  0,  0,  0, 2,2,  0,0, true},
@@ -65,3 +68,31 @@ const EntityStats STATS[] = {
     {"Boar",       'o',  25, 3,1,2,8,  0,  0,  0, 1,1,  0,0, false},
     {"Bear",       'Y', 100,13,1,2,10, 0,  0,  0, 1,1,  0,0, false},
 };
+
+// ============================================================
+// CIVILISATIONS — a bonus column and a denial column. The denials are
+// the counter-play: Marcher cavalry runs into Fenland spear walls, the
+// Fenlanders can't chase Hillfolk miners into the hills, and so on.
+// ============================================================
+const CivDef CIVS[] = {
+    {"Freeholders",  "Peasants train 15% faster; sturdy all-rounders", "no edge in war"},
+    {"Fenlanders",   "Farms yield +1, boats 25% cheaper, archers train fast", "no stables (no cavalry)"},
+    {"Hillfolk",     "Miners +25%, walls/towers/gates +50% HP", "military trains slower; no war fleet"},
+    {"Marcher Lords","Stable units 20% cheaper and train 25% faster", "no archers (crossbows come late)"},
+};
+
+const char* eraName(int era) {
+    switch (era) {
+        case ERA_HAMLET:     return "Hamlet";
+        case ERA_TOWNSHIP:   return "Township";
+        case ERA_STRONGHOLD: return "Stronghold";
+    }
+    return "?";
+}
+
+// The long, expensive click that defines the match arc.
+bool eraUpCost(int fromEra, int& food, int& gold, int& wood, int& ticks) {
+    if (fromEra == ERA_HAMLET)     { food = 175; gold = 100; wood = 0;   ticks = 900;  return true; }
+    if (fromEra == ERA_TOWNSHIP)   { food = 450; gold = 300; wood = 150; ticks = 1300; return true; }
+    return false;
+}

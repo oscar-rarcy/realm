@@ -21,6 +21,7 @@ static const char* stateName(EntityState s) {
         case S_ENTERING:   return "Boarding";
         case S_GARRISONED: return "Garrisoned";
         case S_ROUTING:    return "ROUTING!";
+        case S_RAIDING:    return "Raiding!";
     }
     return "Unknown";
 }
@@ -48,9 +49,12 @@ void renderUI() {
     int maxY, maxX; getmaxyx(stdscr, maxY, maxX);
     Player& p = g.players[g.localPlayer]; int panelW = 24, panelX = maxX - panelW;
 
-    // Top bar
+    // Top bar — the brand carries your era, the arc of the match.
     attron(COLOR_PAIR(CP_UI_BAR)|A_BOLD); mvhline(0, 0, ' ', maxX);
-    mvprintw(0, 1, " REALM "); attroff(A_BOLD);
+    char brand[40];
+    snprintf(brand, sizeof brand, " REALM · %s ", eraName(p.era));
+    mvprintw(0, 1, "%s", brand); attroff(A_BOLD);
+    int resX = 2 + (int)strlen(brand);
     int idleCount = 0, idleBldg = 0, popForecast = 0;
     for (auto& e : g.entities) {
         if (!e.alive || e.owner != g.localPlayer) continue;
@@ -65,12 +69,12 @@ void renderUI() {
     char resTxt[96];
     snprintf(resTxt, sizeof resTxt, "Gold:%-5d Wood:%-5d Food:%-5d Pop:%d/%d(+%d)",
              p.gold, p.wood, p.food, p.supply, p.supplyMax, popForecast);
-    mvprintw(0, 9, "%s", resTxt);
+    mvprintw(0, resX, "%s", resTxt);
     // The Idle readout is a button (AoE2 idle-villager bell): click it to jump
     // to the next idle peasant. Geometry stashed for input's mouse hit-test.
     char idleTxt[32];
     snprintf(idleTxt, sizeof idleTxt, " Idle:%d/%d ", idleCount, idleBldg);
-    g.idleBtnX = 9 + (int)strlen(resTxt) + 1;
+    g.idleBtnX = resX + (int)strlen(resTxt) + 1;
     g.idleBtnW = (int)strlen(idleTxt);
     // The day/season/weather cluster owns the bar's right edge; on a narrow
     // terminal the button yields to it rather than colliding.
@@ -162,13 +166,31 @@ void renderUI() {
     int iy = mmY + mmH + 1;
     attron(COLOR_PAIR(CP_UI_DIM)); mvhline(iy-1, panelX, '-', panelW); attroff(COLOR_PAIR(CP_UI_DIM));
 
-    // One row of a build/train menu: key, name, and the live cost from STATS.
+    // One row of a build/train menu: key, name, live civ-adjusted cost —
+    // and the gate: era-locked rows dim with their era's name, civ-denied
+    // rows dim with a dash. Locked rows still teach what's coming.
     auto menuRow = [&](int& row, char key, EntityType t, const char* req) {
-        attron(COLOR_PAIR(CP_UI_HIGH)); mvprintw(row, panelX+1, "[%c]", key); attroff(COLOR_PAIR(CP_UI_HIGH));
-        attron(COLOR_PAIR(CP_UI_TEXT)); mvprintw(row, panelX+4, "%-11.11s", STATS[t].name); attroff(COLOR_PAIR(CP_UI_TEXT));
+        int gate = makeGate(g.localPlayer, t);
+        if (gate == 2) {
+            attron(COLOR_PAIR(CP_UI_DIM));
+            mvprintw(row, panelX+1, " -  %-11.11s not your way", STATS[t].name);
+            attroff(COLOR_PAIR(CP_UI_DIM));
+            row++; return;
+        }
+        int keyA  = gate ? COLOR_PAIR(CP_UI_DIM) : COLOR_PAIR(CP_UI_HIGH);
+        int nameA = gate ? COLOR_PAIR(CP_UI_DIM) : COLOR_PAIR(CP_UI_TEXT);
+        attron(keyA);  mvprintw(row, panelX+1, "[%c]", key); attroff(keyA);
+        attron(nameA); mvprintw(row, panelX+4, "%-11.11s", STATS[t].name); attroff(nameA);
+        if (gate) {
+            attron(COLOR_PAIR(CP_UI_DIM));
+            mvprintw(row, panelX+15, "%s era", eraName(eraOf(t)));
+            attroff(COLOR_PAIR(CP_UI_DIM));
+            row++; return;
+        }
         char cost[16] = ""; int cl = 0;
-        if (STATS[t].costGold) cl += snprintf(cost+cl, sizeof(cost)-cl, "%dg", STATS[t].costGold);
-        if (STATS[t].costWood) cl += snprintf(cost+cl, sizeof(cost)-cl, "%s%dw", cl?" ":"", STATS[t].costWood);
+        int cg = costGoldOf(g.localPlayer, t), cw = costWoodOf(g.localPlayer, t);
+        if (cg) cl += snprintf(cost+cl, sizeof(cost)-cl, "%dg", cg);
+        if (cw) cl += snprintf(cost+cl, sizeof(cost)-cl, "%s%dw", cl?" ":"", cw);
         int fc = isBuilding(t) ? 0 : trainFoodCost(t);
         if (fc)                cl += snprintf(cost+cl, sizeof(cost)-cl, "%s%df", cl?" ":"", fc);
         if (!cl) snprintf(cost, sizeof(cost), "free");
@@ -191,6 +213,7 @@ void renderUI() {
         menuRow(iy, 'Y', E_GRANARY, "");    menuRow(iy, 'V', E_TAVERN, "");
         menuRow(iy, 'O', E_WELL, "");       menuRow(iy, 'E', E_MANOR, "");
         menuRow(iy, 'U', E_STONEMASON, "");
+        menuRow(iy, 'Z', E_STOCKYARD, "");
         iy++;
         attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(iy++, panelX+1, "[Esc] cancel"); attroff(COLOR_PAIR(CP_UI_DIM));
     } else if (g.mode == M_TRAIN_SELECT) {
@@ -213,6 +236,37 @@ void renderUI() {
                 menuRow(iy, 'T', E_TRANSPORT, "");
                 break;
             default: break;
+        }
+        iy++;
+        attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(iy++, panelX+1, "[Esc] cancel"); attroff(COLOR_PAIR(CP_UI_DIM));
+    } else if (g.mode == M_RESEARCH_SELECT) {
+        Entity* b = findEntity(g.selectedId);
+        attron(COLOR_PAIR(CP_UI_ACCENT)|A_BOLD); mvprintw(iy++, panelX+1, "RESEARCH"); attroff(COLOR_PAIR(CP_UI_ACCENT)|A_BOLD);
+        if (b) {
+            int nRes = 0; const ResearchDef* tbl = researchTable(nRes);
+            for (int i = 0; i < nRes; i++) {
+                const ResearchDef& r = tbl[i];
+                if (r.building != b->type) continue;
+                bool done   = (g.players[g.localPlayer].research & r.bit) != 0;
+                bool locked = g.players[g.localPlayer].era < r.era;
+                if (done) {
+                    attron(COLOR_PAIR(CP_UI_DIM));
+                    mvprintw(iy++, panelX+1, " +  %-14.14s done", r.name);
+                    attroff(COLOR_PAIR(CP_UI_DIM));
+                    continue;
+                }
+                int a = locked ? COLOR_PAIR(CP_UI_DIM) : COLOR_PAIR(CP_UI_HIGH);
+                attron(a); mvprintw(iy, panelX+1, "[%c]", r.key); attroff(a);
+                attron(locked ? COLOR_PAIR(CP_UI_DIM) : COLOR_PAIR(CP_UI_TEXT));
+                mvprintw(iy, panelX+4, "%-14.14s", r.name);
+                attroff(locked ? COLOR_PAIR(CP_UI_DIM) : COLOR_PAIR(CP_UI_TEXT));
+                attron(COLOR_PAIR(CP_UI_DIM));
+                if (locked) mvprintw(iy, panelX+18, "%s", eraName(r.era));
+                else        mvprintw(iy, panelX+18, "%dg %dw", r.gold, r.wood);
+                attroff(COLOR_PAIR(CP_UI_DIM));
+                iy++;
+                attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(iy++, panelX+4, "%-.18s", r.effect); attroff(COLOR_PAIR(CP_UI_DIM));
+            }
         }
         iy++;
         attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(iy++, panelX+1, "[Esc] cancel"); attroff(COLOR_PAIR(CP_UI_DIM));
@@ -360,12 +414,16 @@ void renderUI() {
             if (sel->researching != 0) {
                 iy++;
                 int pp = sel->prodProgress * 100 / std::max(1, sel->prodTime);
-                const char* rn = (sel->researching == R_IRON_WEAPONS)  ? "Iron Weapons" :
-                                 (sel->researching == R_CROSSBOWS)    ? "Crossbows"    :
-                                 (sel->researching == R_PIKES)        ? "Pikes"        :
-                                 (sel->researching == R_COUNTERWEIGHT)? "Counterweight":
-                                 (sel->researching == R_PLATE_HELM)   ? "Plate Helm"   : "Research";
-                attron(COLOR_PAIR(CP_UI_HIGH)); mvprintw(iy++, panelX+1, "Researching: %s", rn);
+                const char* rn = "Research";
+                if (sel->researching == R_ERA_ADVANCE) {
+                    rn = eraName(std::min((int)ERA_STRONGHOLD, g.players[sel->owner].era + 1));
+                } else {
+                    int nRes = 0; const ResearchDef* tbl = researchTable(nRes);
+                    for (int i = 0; i < nRes; i++) if (tbl[i].bit == sel->researching) { rn = tbl[i].name; break; }
+                }
+                attron(COLOR_PAIR(CP_UI_HIGH));
+                if (sel->researching == R_ERA_ADVANCE) mvprintw(iy++, panelX+1, "Advancing: %s era", rn);
+                else                                   mvprintw(iy++, panelX+1, "Researching: %s", rn);
                 int pb = panelW-4, pf = pp*pb/100;
                 for (int i = 0; i < pb; i++) { int c=(i<pf)?CP_UI_HIGH:CP_FOG; attron(COLOR_PAIR(c)); mvaddch(iy, panelX+1+i, (i<pf)?'=':'-'); attroff(COLOR_PAIR(c)); }
                 iy++; mvprintw(iy++, panelX+1, "%d%%", pp); attroff(COLOR_PAIR(CP_UI_HIGH));
@@ -421,6 +479,17 @@ void renderUI() {
                         mvprintw(iy++, panelX+1, sel->gateOpen ? "State: Open" : "State: Closed");
                         mvprintw(iy++, panelX+1, sel->gateLocked ? "Mode: Locked" : "Mode: Auto");
                         mvprintw(iy++, panelX+1, "[O] Toggle/Lock");
+                    }
+                    if (sel->type==E_STOCKYARD)  { mvprintw(iy++, panelX+1, "Open piles: 300 each");
+                                                     mvprintw(iy++, panelX+1, "Enemies can RAID this!"); }
+                    if ((sel->type==E_TOWNHALL || sel->type==E_CASTLE) && sel->researching == 0) {
+                        int f, gld, w, tks;
+                        if (eraUpCost(g.players[g.localPlayer].era, f, gld, w, tks)) {
+                            attron(COLOR_PAIR(CP_GOLD));
+                            mvprintw(iy++, panelX+1, "[E] To %s era", eraName(g.players[g.localPlayer].era + 1));
+                            mvprintw(iy++, panelX+1, "    %df %dg %s", f, gld, w ? (std::to_string(w) + "w").c_str() : "");
+                            attroff(COLOR_PAIR(CP_GOLD));
+                        }
                     }
                     if (sel->type==E_CASTLE)     mvprintw(iy++, panelX+1, "+15 Supply, 350 HP");
                     if (canGarrisonIn(sel->type)) {
@@ -591,6 +660,8 @@ void renderUI() {
         mvprintw(r+13,c1, " Z              patrol to click");
         mvprintw(r+14,c1, " D              pack/deploy trebuchet");
         mvprintw(r+15,c1, " U / O          eject garrison / gate mode");
+        mvprintw(r+16,c1, " E              advance era (Town Hall)");
+        mvprintw(r+17,c1, " RClick enemy stockyard = raid its piles");
         mvprintw(r,   c2, "PRODUCTION");
         mvprintw(r+1, c2, " B   build menu (peasant)");
         mvprintw(r+2, c2, " T   train menu (building)");

@@ -107,6 +107,13 @@ static void cmdAtTileSingle(Entity* sel, int x, int y) {
         if (ruinClaim) setStatus(std::string("Claiming the ") + STATS[tgt->type].name + "...");
         return;
     }
+    // Enemy stockyard: steal, don't smash — the piles are worth more carried
+    // home. (To demolish it instead, use attack-move.)
+    if (tgt && tgt->alive && tgt->type == E_STOCKYARD && tgt->owner != g.localPlayer
+        && tgt->owner < MAX_PLAYERS && visible && !isNaval(sel->type)
+        && sel->type != E_CATAPULT && sel->type != E_TREBUCHET && sel->type != E_RAM) {
+        pushCmd(CMD_RAID, {sel->id}, 0, 0, tgt->id); return;
+    }
     if (tgt && tgt->alive && tgt->owner != g.localPlayer && visible) {
         pushCmd(CMD_ATTACK, {sel->id}, 0, 0, tgt->id); setStatus("Attacking!"); return;
     }
@@ -161,6 +168,10 @@ static void cmdAtTileGroup(int x, int y) {
         }
         if (!workers.empty()) pushCmd(CMD_MOVE, std::move(workers), x, y);
         return;
+    }
+    if (tgt && tgt->alive && tgt->type == E_STOCKYARD && tgt->owner != g.localPlayer
+        && tgt->owner < MAX_PLAYERS && visible) {
+        pushCmd(CMD_RAID, selectedUnitIds(), 0, 0, tgt->id); return;
     }
     if (tgt && tgt->alive && tgt->owner != g.localPlayer && visible) {
         pushCmd(CMD_ATTACK, selectedUnitIds(), 0, 0, tgt->id); return;
@@ -271,8 +282,8 @@ void handleInput(int ch) {
     // Visual Save/Load menu: pick a slot (arrows or click), then act on it.
     if (g.mode == M_SAVELOAD) {
         if (ch == 27 || ch=='p' || ch=='P') { g.mode = M_NORMAL; return; }
-        if (ch == KEY_UP)   { g.saveSlotSel = (g.saveSlotSel + NUM_SAVE_SLOTS - 1) % NUM_SAVE_SLOTS; return; }
-        if (ch == KEY_DOWN) { g.saveSlotSel = (g.saveSlotSel + 1) % NUM_SAVE_SLOTS; return; }
+        if (ch == KEY_UP   || ch=='k' || ch=='K') { g.saveSlotSel = (g.saveSlotSel + NUM_SAVE_SLOTS - 1) % NUM_SAVE_SLOTS; return; }
+        if (ch == KEY_DOWN || ch=='j' || ch=='J') { g.saveSlotSel = (g.saveSlotSel + 1) % NUM_SAVE_SLOTS; return; }
         int slot = g.saveSlotSel + 1;
         char path[64]; saveSlotPath(slot, path, sizeof(path));
         if (ch=='s' || ch=='S') {
@@ -299,7 +310,13 @@ void handleInput(int ch) {
         }
         if (ch == KEY_MOUSE) {
             MEVENT me;
-            if (getmouse(&me) == OK && g.slMenuRowH > 0
+            // CLICKS select a row. Bare position reports must not: the SDL
+            // shim synthesises one every 30ms, and hover-select let a parked
+            // pointer stomp every arrow-key change (the "arrows don't work
+            // in the save menu" bug).
+            if (getmouse(&me) == OK
+                && (me.bstate & (BUTTON1_CLICKED | BUTTON1_PRESSED | BUTTON1_RELEASED))
+                && g.slMenuRowH > 0
                 && me.x >= g.slMenuX && me.x < g.slMenuX + g.slMenuW) {
                 int row = (me.y - g.slMenuRowY0) / g.slMenuRowH;
                 if (row >= 0 && row < NUM_SAVE_SLOTS) g.saveSlotSel = row;  // click selects; Enter loads
@@ -347,6 +364,7 @@ void handleInput(int ch) {
         case 'o': case 'O': tb = E_WELL;        break;
         case 'e': case 'E': tb = E_MANOR;       break;
         case 'u': case 'U': tb = E_STONEMASON;  break;
+        case 'z': case 'Z': tb = E_STOCKYARD;   break;
         case 27: g.mode = M_NORMAL; return;
         default: return;
         }
@@ -610,21 +628,20 @@ void handleInput(int ch) {
         return;
     }
 
-    // Research selection from the blacksmith.
+    // Research selection — any research building; keys come from the shared
+    // table (commands.cpp), so the menu, the keys and the charges can't drift.
     if (g.mode == M_RESEARCH_SELECT) {
         if (ch == 27) { g.mode = M_NORMAL; return; }
         Entity* bs = findEntity(g.selectedId);
-        if (!bs || bs->type != E_BLACKSMITH || bs->underConstruction) {
-            g.mode = M_NORMAL; return;
+        if (!bs || bs->underConstruction) { g.mode = M_NORMAL; return; }
+        int nRes = 0; const ResearchDef* tbl = researchTable(nRes);
+        for (int i = 0; i < nRes; i++) {
+            if (tbl[i].building != bs->type) continue;
+            if (toupper(ch) != tbl[i].key) continue;
+            pushCmd(CMD_RESEARCH, {}, 0, 0, bs->id, tbl[i].bit);
+            g.mode = M_NORMAL;
+            return;
         }
-        // Costs/durations + statuses live in the CMD_RESEARCH table in commands.cpp.
-        int bit = 0;
-        if      (ch == 'i' || ch == 'I') bit = R_IRON_WEAPONS;
-        else if (ch == 'c' || ch == 'C') bit = R_CROSSBOWS;
-        else if (ch == 'p' || ch == 'P') bit = R_PIKES;
-        else if (ch == 'w' || ch == 'W') bit = R_COUNTERWEIGHT;
-        else if (ch == 'h' || ch == 'H') bit = R_PLATE_HELM;
-        if (bit) { pushCmd(CMD_RESEARCH, {}, 0, 0, bs->id, bit); g.mode = M_NORMAL; }
         return;
     }
 
@@ -771,9 +788,10 @@ void handleInput(int ch) {
             setStatus("Trade (40→30): [G]old→Wood  [W]ood→Gold  [F]ood←Gold  [V]ictuals→Gold  [Esc]");
         } else if (sel->type == E_TAVERN) {
             pushCmd(CMD_FEAST, {}, 0, 0, sel->id);   // validation + statuses on apply
-        } else if (sel->type == E_BLACKSMITH) {
+        } else if (sel->type == E_BLACKSMITH || sel->type == E_MILL
+                || sel->type == E_STABLE || sel->type == E_STONEMASON) {
             g.mode = M_RESEARCH_SELECT;
-            setStatus("Research: [I]ron 100/100 [C]rossbows 80/80 [P]ikes 100/100 [W]eight 120/150 [H]elm 120/100 [Esc]");
+            setStatus("Research: pick from the panel on the right. [Esc] cancel");
         } else if (sel->type == E_TOWNHALL || sel->type == E_CASTLE
                 || sel->type == E_BARRACKS || sel->type == E_STABLE || sel->type == E_DOCK) {
             setStatus("Shift+right-click a tile to set rally (drop on a resource to auto-harvest).");
@@ -786,6 +804,18 @@ void handleInput(int ch) {
     // Cycle to the next idle peasant
     case '.': case ',': {
         selectNextIdlePeasant();
+        break;
+    }
+
+    // Advance the era — the Town Hall (or Castle) rings the bells.
+    case 'E': case 'e': {
+        Entity* sel = findEntity(g.selectedId);
+        if (sel && sel->alive && sel->owner == g.localPlayer
+            && (sel->type == E_TOWNHALL || sel->type == E_CASTLE) && !sel->underConstruction) {
+            pushCmd(CMD_ERA_UP, {}, 0, 0, sel->id);   // cost check + statuses on apply
+        } else {
+            setStatus("Select your Town Hall to advance the era.");
+        }
         break;
     }
 

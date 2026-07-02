@@ -75,6 +75,7 @@ enum EntityType {
     E_WELL,         // peasant heal trickle; nearby buildings take less damage (bucket line)
     E_MANOR,        // +supply, garrison, small tax on nearby worked farms
     E_STONEMASON,   // stone construction (2x wall/gate/tower HP) + auto-repair from stone deposits
+    E_STOCKYARD,    // open-air hoard: stores pile up tile by tile — and can be raided
     E_SHRINE,       // neutral: heals adjacent; a garrisoned monk projects the aura
     E_WATERMILL,    // neutral riverside: claim by garrison — half-rate mill + food dropoff
     E_TRADING_POST, // neutral on roads: claim by garrison — trickle gold + market trades
@@ -93,12 +94,55 @@ enum EntityState {
     S_IDLE, S_MOVING, S_ATTACKING, S_GATHERING,
     S_BUILDING, S_TRAINING, S_RETURNING, S_DEAD,
     S_ENTERING, S_GARRISONED,
-    S_ROUTING   // morale broke: fleeing, unorderable until it rallies
+    S_ROUTING,  // morale broke: fleeing, unorderable until it rallies
+    S_RAIDING   // marching on an enemy stockyard to steal from its piles
 };
 enum GameMode  { M_NORMAL, M_BUILD_SELECT, M_BUILD_PLACE, M_TRAIN_SELECT, M_WALL_DRAG, M_PAUSED, M_GAME_OVER, M_RALLY_SET, M_RESEARCH_SELECT, M_ATTACK_MOVE, M_MARKET_TRADE, M_PATROL_SET, M_HELP, M_SAVELOAD };
 
 // Research bits stored in Player.research
-enum Research { R_IRON_WEAPONS = 1, R_CROSSBOWS = 2, R_PIKES = 4, R_COUNTERWEIGHT = 8, R_PLATE_HELM = 16 };
+enum Research {
+    R_IRON_WEAPONS = 1, R_CROSSBOWS = 2, R_PIKES = 4, R_COUNTERWEIGHT = 8, R_PLATE_HELM = 16,
+    R_FLETCHING = 32,       // Blacksmith, Township:   archers/crossbowmen +1 atk
+    R_HEAVY_PLOUGH = 64,    // Mill, Township:         farms yield +1 per harvest
+    R_HORSE_BREEDING = 128, // Stable, Stronghold:     cavalry musters with +15 HP
+    R_MASONRY = 256,        // Stonemason, Stronghold: buildings take 20% less damage
+    // Sentinel carried in Entity.researching while a Town Hall/Castle is
+    // advancing the era; never set in Player.research.
+    R_ERA_ADVANCE = 1 << 20,
+};
+
+// ============================================================
+// ERAS — the match arc. Each era gates buildings, units and research;
+// advancing is a long, expensive upgrade at the Town Hall / Castle.
+// ============================================================
+enum Era { ERA_HAMLET = 0, ERA_TOWNSHIP = 1, ERA_STRONGHOLD = 2, ERA_COUNT };
+const char* eraName(int era);
+int  eraOf(EntityType t);                       // minimum era to make t
+bool eraUpCost(int fromEra, int& food, int& gold, int& wood, int& ticks);
+
+// ============================================================
+// CIVILISATIONS — light asymmetry: each civ bends costs, speeds and
+// rates, and is DENIED something (that's where the countering lives).
+// Player.civ indexes CIVS[] (globals.cpp).
+// ============================================================
+struct CivDef { const char* name; const char* bonus; const char* lack; };
+extern const CivDef CIVS[];
+inline constexpr int NUM_CIVS = 4;
+enum Civ { CIV_FREEHOLDERS = 0, CIV_FENLANDERS, CIV_HILLFOLK, CIV_MARCHERS };
+// One research: where it's bought, which era unlocks it, what it costs.
+struct ResearchDef {
+    int bit; EntityType building; int era;
+    int gold, wood, ticks;
+    char key; const char* name; const char* effect;
+};
+const ResearchDef* researchTable(int& n);   // commands.cpp owns the table
+
+// Gate: 0 = may make it, 1 = locked by era, 2 = denied by civilisation.
+int  makeGate(int owner, EntityType t);
+// Civ-adjusted costs / training time (UI prints these; orders charge these).
+int  costGoldOf(int owner, EntityType t);
+int  costWoodOf(int owner, EntityType t);
+int  trainTimeOf(int owner, EntityType t);
 // Climate = the tile palette (what open ground / trees / etc. look like). This
 // is the per-tile `biome` and the climate axis of map setup. Values 5-8 are
 // legacy and no longer used as climates — topology now lives in `Layout`.
@@ -247,6 +291,10 @@ struct Player {
     bool alive;
     int research;     // bitmask of completed upgrades (R_*)
     int aiWaveCd;     // per-AI rate-limit for wave dispatch
+    int era;          // Era ladder position (ERA_HAMLET..ERA_STRONGHOLD)
+    int civ;          // index into CIVS[]
+    int aiPersona;    // AI temperament: 0 none, 1 Raider, 2 Builder, 3 Warlord
+    int aiRaidCd;     // per-AI rate-limit for plunder squads
 };
 
 // ============================================================
@@ -283,6 +331,8 @@ enum CmdType {
     CMD_REVEAL,      // debug: reveal map for issuing player
     CMD_FEAST,       // tavern `target` throws a feast: 10 ale, heal nearby units
     CMD_HAUL,        // wagon units[0] ↔ depot `target`: load if empty, unload if laden
+    CMD_ERA_UP,      // town hall/castle `target` begins advancing to the next era
+    CMD_RAID,        // land units march on enemy stockyard `target` and steal from it
 };
 
 struct Command {
@@ -315,6 +365,10 @@ struct Game {
     int attackNotifyCd;  // ticks until next "Under attack" message is allowed
     int weather;          // current Weather state
     int weatherTimer;     // ticks until next weather change roll
+    // Civ choices per seat: -1 = roll one from the seed in initGame. Match
+    // config like biomeChoice — set by splash/lobby/replay header, identical
+    // on every machine, NOT reset by resetMatchState.
+    int civChoice[MAX_PLAYERS] = {-1, -1, -1, -1};
     int biomeChoice;      // CLIMATE: -1 = mixed climate bands, else a forced Biome (0-4)
     int layoutChoice;     // LAYOUT: -1 = random (resolved in initGame), else a Layout
     std::string mapName;  // evocative battlefield name (display only; derived from seed)
@@ -334,6 +388,8 @@ struct Game {
     // "Their line broke!" status flash: counts routs per side in a short
     // window. UI-only — never saved, never hashed (doesn't feed the sim).
     int routFlashTick, routFlashOwner, routFlashCount;
+    // Match statistics (presentation/tuning only — never saved or hashed).
+    int statRaids[MAX_PLAYERS + 1] = {};   // successful stockyard thefts per seat
     // Save/Load overlay (M_SAVELOAD): transient UI state — never saved/hashed.
     int saveSlotSel;                                  // highlighted slot 0..NUM_SAVE_SLOTS-1
     int slMenuX, slMenuW, slMenuRowY0, slMenuRowH;    // overlay geometry for mouse hit-test
@@ -539,6 +595,7 @@ struct NetMatchConfig {
     unsigned long long seed = 0;
     int numAIs = 1, biome = -1, layout = -1, difficulty = 1, speed = 1;
     int humanMask = 3;
+    int civ[MAX_PLAYERS] = {-1, -1, -1, -1};   // per-seat civ choice; -1 = rolled
 };
 struct NetLobbyInfo {                 // one discovered LAN game
     std::string addr;                 // dotted IP
@@ -566,8 +623,9 @@ void netClose();                                // tear everything down
 bool netActive();                               // in a live network match
 std::vector<std::string> netLocalAddresses();   // this machine's LAN IPv4s
 
-// Match — the lockstep scheduler
-void netMatchBegin(int localSlot);              // reset per-match state
+// Match — the lockstep scheduler. (The per-match reset happens inside the
+// net layer at START time — the peer's first bundles can ride the same TCP
+// segment as START, so resetting any later would lose them.)
 void netQueueLocal(const Command& c);           // local input during a net match
 bool netTickReady();                            // pump socket; true = both bundles for the next tick arrived (they're injected)
 void netAfterTick();                            // send our bundle / 100-tick hash
@@ -580,6 +638,7 @@ bool netWaitingForPeer();               // stalled on the opponent's bundle
 std::string netPeerName();
 void netSendPause(bool paused);
 void netSendChat(const std::string& text);   // shows on both sides' event logs
+void netSendCivPick(int civ);                // client tells host its civilisation
 void netSendBye();
 
 // save.cpp

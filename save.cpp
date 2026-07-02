@@ -14,7 +14,7 @@
 //   - Skips garbage corrupt files via fread return-value checks
 
 static constexpr char MAGIC[4] = {'R','L','M','2'};
-static constexpr int  SAVE_VERSION = 11; // v11: persist g.playerColor (team colour)
+static constexpr int  SAVE_VERSION = 12; // v12: eras/civs/AI personas (Player grew), E_STOCKYARD, S_RAIDING
 static constexpr int  MAX_ENTITIES = 100000;
 static constexpr int  MAX_VEC_LEN  = 50000;
 

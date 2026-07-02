@@ -1034,6 +1034,24 @@ void renderMap() {
                     else if (dx == 0 || dx == 2) { ch = '|'; drawCh = (chtype)ch; }
                     else                         { ch = 'W'; drawCh = (chtype)ch; }
                 }
+                // Stockyard: the hoard is VISIBLE, tile by tile — top row
+                // gold, middle wood, bottom food. Each tile is one pile of
+                // up to 100; its glyph fades in as the pile grows, so a fat
+                // yard reads as treasure from across the map (and to your
+                // enemies: these piles are what CMD_RAID steals from).
+                if (ent->type == E_STOCKYARD && !ent->underConstruction) {
+                    int dx = mx - ent->x, dy = my - ent->y;
+                    int amt, pcp;
+                    char full, half;
+                    if (dy == 0)      { amt = ent->storeGold; full = '$'; half = '$'; pcp = CP_GOLD; }
+                    else if (dy == 1) { amt = ent->storeWood; full = '='; half = '-'; pcp = CP_DEAD_TREE; }
+                    else              { amt = depotFoodSum(*ent); full = '%'; half = '"'; pcp = CP_WHEAT; }
+                    int pile = std::max(0, std::min(100, amt - dx * 100));
+                    if      (pile == 0)  { ch = '.'; drawCh = (chtype)ch; }
+                    else if (pile < 50)  { ch = half; drawCh = (chtype)ch; cp = pcp; }
+                    else                 { ch = full; drawCh = (chtype)ch | A_BOLD; cp = pcp; }
+                }
+
                 // Siege engine arm animations.
                 if (ent->type == E_CATAPULT) {
                     // Arm shows as raised only for the first 3 ticks after firing —

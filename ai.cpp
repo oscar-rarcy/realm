@@ -24,6 +24,11 @@ int     aiCountAll(int o, EntityType t) { int c=0; for(auto& e:g.entities) if(e.
 Entity* aiIdle(int o, EntityType t)     { for(auto& e:g.entities) if(e.alive&&e.owner==o&&e.type==t&&e.state==S_IDLE&&!e.underConstruction)return &e; return nullptr; }
 Entity* aiBldg(int o, EntityType t)     { for(auto& e:g.entities) if(e.alive&&e.owner==o&&e.type==t&&!e.underConstruction)return &e; return nullptr; }
 
+// May this AI make that, era- and civ-wise? Checked before shopping so the
+// build order adapts (a Fenlander AI never wants a stable; a Hamlet-era AI
+// doesn't burn workers trying to place a castle).
+static bool aiCan(int o, EntityType t) { return makeGate(o, t) == 0; }
+
 // Worker selection for AI construction. Prefers idle peasants; if none exist,
 // pulls one off gathering/returning so the AI doesn't deadlock.
 static Entity* aiWorker(int o) {
@@ -106,13 +111,22 @@ static void aiBuildSpotWide(int o, EntityType bt, int& ox, int& oy) {
     }
 }
 
+// Has owner `o` ever laid eyes on this entity's tile? The AI's knowledge of
+// its enemies is limited to what its own units have scouted — no more
+// omniscient counting. (explored[] is honest: it only spreads with vision.)
+static bool aiKnows(int o, const Entity& e) {
+    return inBounds(e.x, e.y) && g.map[e.y][e.x].explored[o];
+}
+
 // Scan all opponents — used to scale production and pick targets.
+// FAIR: only counts what this AI has actually scouted (explored tiles).
 struct AIIntel { int playerArmy; int playerCastles; int playerWalls; int playerPeasants; int playerCatapults; int playerCavalry; Entity* playerTH; };
 static AIIntel aiScout(int o) {
     AIIntel x{0,0,0,0,0,0,nullptr};
     for (auto& e : g.entities) {
         if (!e.alive || e.owner == o || e.owner == OWNER_NATURE) continue;
         if (e.state == S_GARRISONED) continue;
+        if (!aiKnows(o, e)) continue;
         if      (e.type == E_PEASANT)  x.playerPeasants++;
         else if (e.type == E_CATAPULT) { x.playerCatapults++; x.playerArmy++; }
         else if (e.type == E_KNIGHT || e.type == E_HUSSAR) { x.playerCavalry++; x.playerArmy++; }
@@ -129,7 +143,7 @@ static Entity* aiNearestEnemyBuilding(int o, int x, int y) {
     Entity* best = nullptr; int bestD = 99999;
     for (auto& e : g.entities) {
         if (!e.alive || e.owner == o || e.owner == OWNER_NATURE) continue;
-        if (!isBuilding(e.type)) continue;
+        if (!isBuilding(e.type) || !aiKnows(o, e)) continue;
         int d = dist(x, y, e.x, e.y);
         if (d < bestD) { bestD = d; best = &e; }
     }
@@ -172,6 +186,7 @@ static void aiTickTransports(int o) {
     for (auto& e : g.entities) {
         if (!e.alive || e.owner == o || e.owner == OWNER_NATURE) continue;
         if (e.type != E_TOWNHALL && e.type != E_CASTLE) continue;
+        if (!aiKnows(o, e)) continue;
         int d = mdist(home->x, home->y, e.x, e.y);
         if (d < bestD) { bestD = d; target = &e; }
     }
@@ -288,15 +303,22 @@ static void aiTickTrebuchets(int o) {
     }
 }
 
+// SCOUTING — with fair intel the AI has to go and LOOK. Until it has found
+// an enemy hall, it periodically sends one fast unit riding at an unexplored
+// quarter of the map; afterwards, an occasional sweep keeps intel fresh.
+static void aiScoutMission(const struct AICtx& cx);
+
 // Pick the best target for a wave originating from `attacker`.
 // Priority adapts to game phase: early = raid workers, late = destroy HQ.
 static int aiPickTarget(int o, Entity* attacker) {
     Entity* best = nullptr; int bestScore = -999999;
     bool lateGame = g.tick > 6000;
     bool midGame  = g.tick > 2500;
+    Season season = getSeason();
     for (auto& e : g.entities) {
         if (!e.alive || e.owner == o || e.owner == OWNER_NATURE) continue;
         if (e.state == S_GARRISONED) continue;
+        if (!aiKnows(o, e)) continue;      // can't march on what it hasn't found
         int score = 0;
         if      (e.type == E_CATAPULT)                               score += 270; // neutralise siege threat first
         else if (e.type == E_WARSHIP)                                score += 220;
@@ -312,6 +334,10 @@ static int aiPickTarget(int o, Entity* attacker) {
         // Fat depots are worth burning: weight targets by what's stored there.
         if (isBuilding(e.type))
             score += (e.storeGold + e.storeWood + depotFoodSum(e)) / 4;
+        // Autumn is the season to strike the harvest: granaries, mills,
+        // stockyards and taverns all smell of winter stores.
+        if (season == AUTUMN && (e.type==E_GRANARY || e.type==E_MILL
+                              || e.type==E_STOCKYARD || e.type==E_TAVERN)) score += 120;
         // Focus-fire bonus: heavily wounded targets are almost dead, finish them.
         int missing = e.maxHp - e.hp;
         score += missing / 2;
@@ -329,6 +355,7 @@ static int aiPickSiegeTarget(int o, Entity* attacker) {
     for (auto& e : g.entities) {
         if (!e.alive || e.owner == o || e.owner == OWNER_NATURE) continue;
         if (!isBuilding(e.type) && e.type != E_CATAPULT) continue;
+        if (!aiKnows(o, e)) continue;
         int score = 0;
         if      (e.type == E_TOWNHALL || e.type == E_CASTLE) score += 300;
         else if (e.type == E_TOWER)                          score += 220;
@@ -379,10 +406,32 @@ static void aiProduceAndTrain(const AICtx& cx) {
         if (b) { int bx=-1,by=-1; aiBuildSpotWide(o,E_HOUSE,bx,by); if(bx>=0) aiBuildAt(o,*b,E_HOUSE,bx,by); }
     }
 
+    // === ERA ADVANCE — the spine of the AI's game plan ===
+    // Builders push the ladder early; Warlords wait for an army; Raiders
+    // sit in the middle. All personas advance eventually — stalling in the
+    // Hamlet era is how you lose to a knight push.
+    {
+        int persona = p.aiPersona;
+        int wantPeas = (persona == 2) ? 6 : (persona == 3) ? 9 : 7;
+        int f, gld, w, ticks;
+        bool advancing = false;
+        for (auto& e : g.entities)
+            if (e.alive && e.owner == o && e.researching == R_ERA_ADVANCE) { advancing = true; break; }
+        if (!advancing && eraUpCost(p.era, f, gld, w, ticks)
+            && peas >= wantPeas
+            && p.food >= f + 40 && p.gold >= gld && p.wood >= w) {
+            Entity* hall = aiBldg(o, E_TOWNHALL);
+            if (!hall) hall = aiBldg(o, E_CASTLE);
+            if (hall && hall->researching == 0) {
+                Command c; c.type = CMD_ERA_UP; c.target = hall->id; aiCmd(c, o);
+            }
+        }
+    }
+
     // === LATE-GAME UPGRADE: Castle ===
     // Castle (100g+250w, 4x4) replaces or supplements the TH — more HP, more supply,
     // and gives the AI a hardened anchor for late-game sieges.
-    if (aiCountAll(o,E_CASTLE) == 0 && mil + kni >= 8 && p.gold >= STATS[E_CASTLE].costGold && p.wood >= STATS[E_CASTLE].costWood) {
+    if (aiCan(o,E_CASTLE) && aiCountAll(o,E_CASTLE) == 0 && mil + kni >= 8 && p.gold >= STATS[E_CASTLE].costGold && p.wood >= STATS[E_CASTLE].costWood) {
         Entity* b = aiWorker(o);
         if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_CASTLE,bx,by); if(bx>=0) aiBuildAt(o,*b,E_CASTLE,bx,by); }
     }
@@ -397,26 +446,43 @@ static void aiProduceAndTrain(const AICtx& cx) {
         Entity* b = aiWorker(o);
         if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_BARRACKS,bx,by); if(bx>=0) aiBuildAt(o,*b,E_BARRACKS,bx,by); }
     }
-    if (aiCount(o,E_BLACKSMITH) == 0 && bar > 0 && p.wood >= 120) {
+    if (aiCan(o,E_BLACKSMITH) && aiCount(o,E_BLACKSMITH) == 0 && bar > 0 && p.wood >= 120) {
         Entity* b = aiWorker(o);
         if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_BLACKSMITH,bx,by); if(bx>=0) aiBuildAt(o,*b,E_BLACKSMITH,bx,by); }
     }
-    if (stb == 0 && mil >= 3 && p.wood >= 200) {
+    if (aiCan(o,E_STABLE) && stb == 0 && mil >= 3 && p.wood >= 200) {
         Entity* b = aiWorker(o);
         if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_STABLE,bx,by); if(bx>=0) aiBuildAt(o,*b,E_STABLE,bx,by); }
     }
 
-    // === RESEARCH: queue at blacksmith once it's built ===
-    // Order: Iron → Crossbows → Pikes → Plate Helm → Counterweight.
-    // Counterweight last since it only matters once we're fielding trebuchets.
-    for (auto& smith : g.entities) {
-        if (!smith.alive || smith.owner != o || smith.type != E_BLACKSMITH || smith.underConstruction) continue;
-        if (smith.researching != 0) break;
-        if      (!(p.research & R_IRON_WEAPONS))  { smith.researching = R_IRON_WEAPONS;  smith.prodProgress=0; smith.prodTime=350*((diff==2)?10:(diff==1)?16:24)/10; break; }
-        else if (!(p.research & R_CROSSBOWS))     { smith.researching = R_CROSSBOWS;     smith.prodProgress=0; smith.prodTime=350*((diff==2)?10:(diff==1)?16:24)/10; break; }
-        else if (!(p.research & R_PIKES))         { smith.researching = R_PIKES;         smith.prodProgress=0; smith.prodTime=350*((diff==2)?10:(diff==1)?16:24)/10; break; }
-        else if (!(p.research & R_PLATE_HELM))    { smith.researching = R_PLATE_HELM;    smith.prodProgress=0; smith.prodTime=400*((diff==2)?10:(diff==1)?16:24)/10; break; }
-        else if (!(p.research & R_COUNTERWEIGHT) && aiCountAll(o,E_CASTLE) > 0) { smith.researching = R_COUNTERWEIGHT; smith.prodProgress=0; smith.prodTime=400*((diff==2)?10:(diff==1)?16:24)/10; break; }
+    // === STOCKYARD: the AI hoards too — and its open piles are raidable,
+    // which is exactly the kind of target the raid squads live for. ===
+    if (aiCan(o,E_STOCKYARD) && aiCountAll(o,E_STOCKYARD) == 0 && peas >= 6 && p.wood >= 100) {
+        Entity* b = aiWorker(o);
+        if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_STOCKYARD,bx,by); if(bx>=0) aiBuildAt(o,*b,E_STOCKYARD,bx,by); }
+    }
+
+    // === RESEARCH: shop the shared table at every research building ===
+    // (Free and difficulty-time-scaled — the AI's standing handicap/cheat.)
+    // Counterweight waits for a castle; everything else goes in table order.
+    {
+        int nRes = 0; const ResearchDef* tbl = researchTable(nRes);
+        for (auto& shop : g.entities) {
+            if (!shop.alive || shop.owner != o || shop.underConstruction) continue;
+            if (shop.researching != 0) continue;
+            if (shop.type != E_BLACKSMITH && shop.type != E_MILL
+                && shop.type != E_STABLE && shop.type != E_STONEMASON) continue;
+            for (int i = 0; i < nRes; i++) {
+                const ResearchDef& r = tbl[i];
+                if (r.building != shop.type) continue;
+                if (p.era < r.era) continue;
+                if (p.research & r.bit) continue;
+                if (r.bit == R_COUNTERWEIGHT && aiCountAll(o,E_CASTLE) == 0) continue;
+                shop.researching = r.bit; shop.prodProgress = 0;
+                shop.prodTime = r.ticks * ((diff==2) ? 10 : (diff==1) ? 16 : 24) / 24;
+                break;
+            }
+        }
     }
 
     // === MILITARY UNITS — train at every barracks/stable in parallel ===
@@ -424,27 +490,30 @@ static void aiProduceAndTrain(const AICtx& cx) {
     for (auto& br : g.entities) {
         if (!br.alive || br.owner != o || br.type != E_BARRACKS || br.underConstruction) continue;
         if (br.producing != E_NONE) continue;
-        if (needSiege && cat < 3 && p.gold >= 150 && p.wood >= 40 && p.food >= 30) { aiTrain(o, br, E_CATAPULT); continue; }
+        if (aiCan(o,E_CATAPULT) && needSiege && cat < 3 && p.gold >= 150 && p.wood >= 40 && p.food >= 30) { aiTrain(o, br, E_CATAPULT); continue; }
         // Crossbowmen answer enemy cavalry: thrust punches plate. Needs a smith.
-        if (aiBldg(o, E_BLACKSMITH) && intel.playerCavalry >= 2
+        if (aiCan(o,E_CROSSBOWMAN) && aiBldg(o, E_BLACKSMITH) && intel.playerCavalry >= 2
             && xbow < std::max(2, intel.playerCavalry)
             && p.gold >= 70 && p.wood >= 30 && p.food >= 20) { aiTrain(o, br, E_CROSSBOWMAN); continue; }
         // Spearmen counter the player's cavalry — train them in response to knights.
         int sprCap = std::max(4, intel.playerArmy/3 + 2);
-        bool needSpears = (spr < sprCap && p.gold >= 40 && p.food >= 20);
+        bool canSpear = aiCan(o,E_SPEARMAN), canArch = aiCan(o,E_ARCHER);
+        bool needSpears = (canSpear && spr < sprCap && p.gold >= 40 && p.food >= 20);
         if (needSpears && spr < arch) { aiTrain(o, br, E_SPEARMAN); continue; }
         // Alternate militia and archers for a balanced field force.
-        if (arch < mil && arch < archCap && p.gold >= 70 && p.food >= 20) { aiTrain(o, br, E_ARCHER);  continue; }
+        if (canArch && arch < mil && arch < archCap && p.gold >= 70 && p.food >= 20) { aiTrain(o, br, E_ARCHER);  continue; }
         if (mil < milCap               && p.gold >= 60 && p.food >= 20) { aiTrain(o, br, E_MILITIA); continue; }
         if (needSpears                                                  ) { aiTrain(o, br, E_SPEARMAN); continue; }
-        if (arch < archCap             && p.gold >= 70 && p.food >= 20) { aiTrain(o, br, E_ARCHER);  continue; }
+        if (canArch && arch < archCap  && p.gold >= 70 && p.food >= 20) { aiTrain(o, br, E_ARCHER);  continue; }
     }
     for (auto& st : g.entities) {
         if (!st.alive || st.owner != o || st.type != E_STABLE || st.underConstruction) continue;
         if (st.producing != E_NONE) continue;
-        if      (kni < kniCap && p.gold >= 120 && p.food >= 40) aiTrain(o, st, E_KNIGHT);
-        // Hussars raid the player's economy once the knight core exists.
-        else if (kni >= 2 && hus < 2 + diff && p.gold >= 80 && p.food >= 20) aiTrain(o, st, E_HUSSAR);
+        int husCap = (p.aiPersona == 1) ? 4 + diff : 2 + diff;   // Raiders love light horse
+        if      (aiCan(o,E_KNIGHT) && kni < kniCap && p.gold >= 120 && p.food >= 40) aiTrain(o, st, E_KNIGHT);
+        // Hussars raid the player's economy — Raiders keep a whole stable of them.
+        else if (aiCan(o,E_HUSSAR) && (kni >= 2 || p.aiPersona == 1)
+                 && hus < husCap && p.gold >= 80 && p.food >= 20) aiTrain(o, st, E_HUSSAR);
     }
     // Castles produce trebuchets — siege specialists, 1-2 max, only when sieging.
     bool wantTreb = (intel.playerCastles > 0 || intel.playerWalls > 8 || (intel.playerArmy >= 10));
@@ -671,12 +740,26 @@ static void aiCommandArmy(const AICtx& cx) {
         if (!anchor) anchor = &e;
     }
 
-    // Grace period before first attack. Threshold scales with game age.
+    // Grace period before first attack. Threshold scales with game age —
+    // then persona, season and hour of day bend it. A Raider prowls at
+    // night; everyone digs in for winter; summer is campaign season.
     const int graceTicks = (diff==2) ? 1500 : (diff==1) ? 2250 : 3200; // ~2/3/4.5 min
     bool lateGame = g.tick > 12000;
     bool midGame  = g.tick > 6000;
     int attackThreshold = (g.tick < graceTicks) ? 999 : (lateGame ? 4 : (midGame ? 5 : 7)) + (2-diff)*2;
     int waveCooldown    = (lateGame ? 6 : 10) + (2-diff)*3; // AI ticks between wave re-orders
+    if (g.tick >= graceTicks) {
+        switch (p.aiPersona) {
+            case 1: attackThreshold -= 1; break;                       // Raider: restless
+            case 2: attackThreshold += 1; break;                       // Builder: patient
+            case 3: attackThreshold += 2; waveCooldown += 4; break;    // Warlord: fewer, bigger blows
+        }
+        Season ss = getSeason();
+        if      (ss == WINTER) attackThreshold += 3;   // the land itself defends
+        else if (ss == SUMMER) attackThreshold -= 1;   // dry roads, long days
+        if (isNight()) attackThreshold += (p.aiPersona == 1) ? -2 : 2; // Raiders own the dark
+        attackThreshold = std::max(3, attackThreshold);
+    }
 
     if (idleArmy >= attackThreshold && p.aiWaveCd == 0 && anchor) {
         int tid    = aiPickTarget(o, anchor);
@@ -696,6 +779,54 @@ static void aiCommandArmy(const AICtx& cx) {
                 }
             }
             p.aiWaveCd = waveCooldown;
+        }
+    }
+
+    // === PLUNDER SQUADS: small, fast, and after your goods, not your walls ===
+    // Stockyards get robbed (CMD_RAID hauls the piles home); otherwise the
+    // squad harasses scouted gatherers and farms. Raiders do this constantly,
+    // Builders now and then, Warlords barely bother. Autumn sharpens everyone.
+    if (p.aiRaidCd > 0) p.aiRaidCd--;
+    if (g.tick >= graceTicks/2 && p.aiRaidCd == 0) {
+        int interval = (p.aiPersona == 1) ? 45 : (p.aiPersona == 2) ? 110 : 160;
+        if (getSeason() == AUTUMN) interval = interval * 2 / 3;
+        // Gather a small fast squad: hussars first, then militia/spearmen.
+        std::vector<Entity*> squad;
+        for (int pass = 0; pass < 2 && (int)squad.size() < 3; pass++)
+            for (auto& u : g.entities) {
+                if ((int)squad.size() >= 3) break;
+                if (!u.alive || u.owner != o || u.state != S_IDLE) continue;
+                if (pass == 0 && u.type != E_HUSSAR) continue;
+                if (pass == 1 && u.type != E_MILITIA && u.type != E_SPEARMAN) continue;
+                squad.push_back(&u);
+            }
+        if (getenv("REALM_AI_DEBUG"))
+            fprintf(stderr, "[ai%d] raid check t=%d squad=%d cd=%d\n", o, g.tick, (int)squad.size(), p.aiRaidCd);
+        if ((int)squad.size() >= 2) {
+            // Best loot first: a scouted enemy stockyard with goods in it.
+            Entity* yard = nullptr; int yD = 99999;
+            Entity* prey = nullptr; int pD = 99999;
+            for (auto& e : g.entities) {
+                if (!e.alive || e.owner == o || e.owner >= MAX_PLAYERS) continue;
+                if (!aiKnows(o, e)) continue;
+                int d = mdist(squad[0]->x, squad[0]->y, e.x, e.y);
+                if (e.type == E_STOCKYARD && !e.underConstruction
+                    && (e.storeGold + e.storeWood + depotFoodSum(e)) > 40 && d < yD) { yD = d; yard = &e; }
+                if ((e.type == E_PEASANT || e.type == E_FARM || e.type == E_MILL) && d < pD) { pD = d; prey = &e; }
+            }
+            if (getenv("REALM_AI_DEBUG"))
+                fprintf(stderr, "[ai%d] raid targets t=%d yard=%d prey=%d\n", o, g.tick, yard?yard->id:-1, prey?prey->id:-1);
+            if (yard) {
+                Command c; c.type = CMD_RAID; c.target = yard->id;
+                for (auto* u : squad) c.units.push_back(u->id);
+                aiCmd(c, o);
+                p.aiRaidCd = interval;
+            } else if (prey) {
+                Command c; c.type = CMD_ATTACK_MOVE; c.x = prey->x; c.y = prey->y;
+                for (auto* u : squad) c.units.push_back(u->id);
+                aiCmd(c, o);
+                p.aiRaidCd = interval;
+            }
         }
     }
 
@@ -748,6 +879,37 @@ static void aiCommandArmy(const AICtx& cx) {
     if (g.layoutChoice == L_ISLANDS) aiTickTransports(o);
 }
 
+// Ride out and LOOK. Until the enemy hall is found, this fires often; after
+// that, an occasional sweep refreshes the picture. One rider per mission.
+static void aiScoutMission(const AICtx& cx) {
+    const int o = cx.o;
+    bool blind = (cx.intel.playerTH == nullptr);
+    // Cadence: blind = every ~40 AI ticks; informed = every ~400.
+    static_assert(MAX_PLAYERS <= 8, "scout phase packing");
+    int phase = (g.tick / 12) % (blind ? 40 : 400);
+    if (phase != o) return;                      // stagger per seat, deterministic
+    // Pick the rider: hussar > militia > spearman > (blind only) a peasant.
+    Entity* rider = nullptr;
+    for (EntityType t : {E_HUSSAR, E_MILITIA, E_SPEARMAN}) {
+        rider = aiIdle(o, t);
+        if (rider) break;
+    }
+    if (!rider && blind && g.tick > 600) rider = aiIdlePeasant(o);
+    if (!rider) return;
+    // Aim at an unexplored spot far from home — quarter the map and probe.
+    Entity* home = aiBldg(o, E_TOWNHALL);
+    if (!home) home = aiBldg(o, E_CASTLE);
+    int bx = -1, by = -1, bestScore = -1;
+    for (int tries = 0; tries < 12; tries++) {
+        int x = 8 + simRand() % (MAP_W - 16), y = 8 + simRand() % (MAP_H - 16);
+        if (!isPassable(x, y)) continue;
+        int score = g.map[y][x].explored[o] ? 0 : 100;
+        if (home) score += mdist(home->x, home->y, x, y) / 4;
+        if (score > bestScore) { bestScore = score; bx = x; by = y; }
+    }
+    if (bx >= 0) aiMove(o, *rider, bx, by);
+}
+
 static void tickAIForOwner(int o) {
     const int diff = g.difficulty;
     AICtx cx;
@@ -772,6 +934,11 @@ static void tickAIForOwner(int o) {
     cx.kniCap   = std::max(4, cx.intel.playerArmy/3 + diff);
     cx.towerCap = (cx.intel.playerArmy >= 6 || cx.intel.playerCastles > 0) ? 4 : 2;
 
+    // Persona flavour on the caps: Builders boom, Warlords mass, Raiders run lean.
+    if (g.players[o].aiPersona == 2) cx.peasCap += 4;
+    if (g.players[o].aiPersona == 3) cx.milCap  += 4;
+
+    aiScoutMission(cx);
     aiProduceAndTrain(cx);
     aiInfraAndNaval(cx);
     aiExpand(cx);
