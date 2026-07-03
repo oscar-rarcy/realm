@@ -98,7 +98,12 @@ enum EntityState {
     S_ROUTING,  // morale broke: fleeing, unorderable until it rallies
     S_RAIDING   // marching on an enemy stockyard to steal from its piles
 };
-enum GameMode  { M_NORMAL, M_BUILD_SELECT, M_BUILD_PLACE, M_TRAIN_SELECT, M_WALL_DRAG, M_PAUSED, M_GAME_OVER, M_RALLY_SET, M_RESEARCH_SELECT, M_ATTACK_MOVE, M_MARKET_TRADE, M_PATROL_SET, M_HELP, M_SAVELOAD };
+enum GameMode  { M_NORMAL, M_BUILD_SELECT, M_BUILD_PLACE, M_TRAIN_SELECT, M_WALL_DRAG, M_PAUSED, M_GAME_OVER, M_RALLY_SET, M_RESEARCH_SELECT, M_ATTACK_MOVE, M_MARKET_TRADE, M_PATROL_SET, M_HELP, M_SAVELOAD, M_STATS };
+
+// Sacred-site domination: hold a MAJORITY of the map's claimable sites
+// (shrines, watermills, trading posts, ruined keeps) for this many ticks
+// and the realm submits — a match can end without grinding the last keep.
+const int SITE_HOLD_TICKS = 2500;   // ~3.3 min at base speed
 
 // Research bits stored in Player.research
 enum Research {
@@ -397,8 +402,16 @@ struct Game {
     // "Their line broke!" status flash: counts routs per side in a short
     // window. UI-only — never saved, never hashed (doesn't feed the sim).
     int routFlashTick, routFlashOwner, routFlashCount;
-    // Match statistics (presentation/tuning only — never saved or hashed).
+    // Sacred-site domination countdown — SIM STATE (hashed + saved): who
+    // currently holds the majority of claimable sites, and for how long.
+    int siteHoldOwner = -1;
+    int siteHoldTicks = 0;
+    // Match statistics (presentation only — never saved or hashed; both
+    // machines in MP derive identical numbers from the shared sim anyway).
     int statRaids[MAX_PLAYERS + 1] = {};   // successful stockyard thefts per seat
+    int statEraTick[MAX_PLAYERS][ERA_COUNT] = {};   // when each seat reached each era
+    struct StatSample { short army[MAX_PLAYERS]; short work[MAX_PLAYERS]; int wealth[MAX_PLAYERS]; };
+    std::vector<StatSample> statSamples;    // sampled every 250 ticks for the charts
     // Save/Load overlay (M_SAVELOAD): transient UI state — never saved/hashed.
     int saveSlotSel;                                  // highlighted slot 0..NUM_SAVE_SLOTS-1
     int slMenuX, slMenuW, slMenuRowY0, slMenuRowH;    // overlay geometry for mouse hit-test

@@ -244,6 +244,14 @@ void handleInput(int ch) {
         return;
     }
 
+    // Post-match statistics: any key returns to the game-over screen.
+    if (g.mode == M_STATS) {
+        if (ch == KEY_MOUSE) { MEVENT me; getmouse(&me); return; }
+        if (ch != ERR) g.mode = M_GAME_OVER;
+        return;
+    }
+    if ((ch == 's' || ch == 'S') && g.mode == M_GAME_OVER) { g.mode = M_STATS; return; }
+
     if (ch == 'q' || ch == 'Q') {
         if (g.mode == M_GAME_OVER) { g.returnToMenu = true; return; }
         // Mid-game quit needs a confirming second press — one stray key

@@ -869,6 +869,44 @@ void checkWin() {
     // Match resolved: one side (or nobody) left standing. Both machines in a
     // network game reach this on the same tick — alive flags are sim state.
     if (aliveCount <= 1) { g.winner = lastAlive; g.mode = M_GAME_OVER; return; }
+
+    // === SACRED-SITE DOMINATION ===
+    // Count the map's claimable sites per holder. Hold the majority and a
+    // countdown starts; keep it through SITE_HOLD_TICKS and the realm is
+    // yours. Burning a site removes it from the count — denial is a play.
+    {
+        int total = 0, held[MAX_PLAYERS] = {};
+        for (auto& e : g.entities) {
+            if (!e.alive || !isClaimable(e.type)) continue;
+            total++;
+            if (e.owner >= 0 && e.owner < MAX_PLAYERS && !e.garrison.empty() ) held[e.owner]++;
+            else if (e.owner >= 0 && e.owner < MAX_PLAYERS && e.type == E_RUIN) held[e.owner]++; // keeps stay claimed
+        }
+        int leader = -1;
+        if (total >= 3)
+            for (int p = 0; p < MAX_PLAYERS; p++)
+                if (g.players[p].alive && held[p] * 2 > total) leader = p;
+        if (leader != g.siteHoldOwner) {
+            if (leader >= 0)
+                setStatus(std::string(leader == g.localPlayer ? "You hold" : (std::string("The ") + CIVS[g.players[leader].civ].name + " (P" + std::to_string(leader+1) + ") hold"))
+                          + " the sacred sites! The realm submits in "
+                          + std::to_string(SITE_HOLD_TICKS * TICK_MS / 60000) + " minutes — break their grip!");
+            else if (g.siteHoldOwner >= 0)
+                setStatus("The grip on the sacred sites is broken.");
+            g.siteHoldOwner = leader;
+            g.siteHoldTicks = 0;
+        } else if (leader >= 0) {
+            int before = g.siteHoldTicks;
+            g.siteHoldTicks += 100;   // checkWin cadence
+            if (before < SITE_HOLD_TICKS/2 && g.siteHoldTicks >= SITE_HOLD_TICKS/2)
+                setStatus(std::string(leader == g.localPlayer ? "Your" : "The enemy's")
+                          + " claim on the sites is half sworn — the bells grow louder!");
+            if (g.siteHoldTicks >= SITE_HOLD_TICKS) {
+                g.winner = leader; g.mode = M_GAME_OVER;
+                return;
+            }
+        }
+    }
     // Solo-human defeat ends the match immediately — no point watching the AIs
     // fight each other. With two humans the fallen one spectates to the end
     // (halting the sim locally would stall the opponent's lockstep).

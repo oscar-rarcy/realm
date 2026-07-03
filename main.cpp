@@ -309,8 +309,10 @@ static void showControlsScreen() {
         mvprintw(r+7, c, "E  advance era (Town Hall)   R  research");
         mvprintw(r+8, c, "RClick enemy stockyard = raid its piles");
         mvprintw(r+9, c, "C  chat (multiplayer)  ?  in-game help  Q Q  menu");
+        mvprintw(r+10,c, "Win: destroy every foe's halls - OR garrison and");
+        mvprintw(r+11,c, "hold MOST sacred sites (shrines/mills/keeps) to a bell");
         attroff(COLOR_PAIR(CP_UI_TEXT));
-        attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(r+11, c, "Press any key to go back"); attroff(COLOR_PAIR(CP_UI_DIM));
+        attron(COLOR_PAIR(CP_UI_DIM)); mvprintw(r+13, c, "Press any key to go back"); attroff(COLOR_PAIR(CP_UI_DIM));
         refresh();
         int ch = getch();
         if (ch == KEY_MOUSE) { MEVENT me; getmouse(&me); continue; }
@@ -1109,6 +1111,10 @@ static void resetMatchState(unsigned long long seed) {
     g.returnToMenu = false;
     g.cursorByMouse = false;
     g.winterSeverity = 1;
+    g.siteHoldOwner = -1; g.siteHoldTicks = 0;
+    g.statSamples.clear();
+    memset(g.statRaids, 0, sizeof g.statRaids);
+    memset(g.statEraTick, 0, sizeof g.statEraTick);
     // g.difficulty is match config like biomeChoice — set by the splash /
     // replay header / verify harness before initGame; never reset here.
     // Invalidate per-tick detection cache so the new match (which starts at
@@ -1425,6 +1431,19 @@ void simTick() {
         for (int p = 0; p < MAX_PLAYERS; p++) updateSupply(p);
         checkWin();
     }
+    // Chart sampler (presentation only): a per-player snapshot every 250
+    // ticks feeds the post-match statistics screen.
+    if (g.tick % 250 == 0) {
+        Game::StatSample smp{};
+        for (auto& e : g.entities) {
+            if (!e.alive || e.owner < 0 || e.owner >= MAX_PLAYERS) continue;
+            if (e.type == E_PEASANT || e.type == E_WAGON || e.type == E_FISHING_BOAT) smp.work[e.owner]++;
+            else if (isUnit(e.type) && STATS[e.type].atk > 0) smp.army[e.owner]++;
+        }
+        for (int p = 0; p < MAX_PLAYERS; p++)
+            smp.wealth[p] = g.players[p].gold + g.players[p].wood + g.players[p].food;
+        g.statSamples.push_back(smp);
+    }
     simHashTick();   // REALM_HASH=1: desync-detector log
 }
 
@@ -1454,7 +1473,7 @@ static void runMatch() {
         bool ticked = false;
         if (Clock::now() >= nextTick) {
             bool simAllowed = g.mode != M_PAUSED && g.mode != M_GAME_OVER
-                           && g.mode != M_HELP && g.mode != M_SAVELOAD;
+                           && g.mode != M_HELP && g.mode != M_SAVELOAD && g.mode != M_STATS;
             if (!netActive()) {
                 nextTick += Ms(tickPeriodMs());
                 if (simAllowed) simTick();
@@ -1493,8 +1512,16 @@ static int runVerify(unsigned long long seed, int ticks, int numAIs, int biome, 
     for (int i = 0; i < MAX_PLAYERS; i++) g.civChoice[i] = -1;
     initGame(numAIs, seed);
     for (int i = 0; i < ticks; i++) simTick();
-    printf("seed=%llu ticks=%d ais=%d hash=%016llx\n",
-           seed, ticks, numAIs, simStateHash());
+    int sitesTotal = 0, sitesHeld[MAX_PLAYERS] = {};
+    for (auto& e : g.entities) {
+        if (!e.alive || !isClaimable(e.type)) continue;
+        sitesTotal++;
+        if (e.owner >= 0 && e.owner < MAX_PLAYERS) sitesHeld[e.owner]++;
+    }
+    printf("seed=%llu ticks=%d ais=%d hash=%016llx winner=%d sites=%d held=%d/%d/%d/%d clock=P%d+%d\n",
+           seed, ticks, numAIs, simStateHash(), g.winner, sitesTotal,
+           sitesHeld[0], sitesHeld[1], sitesHeld[2], sitesHeld[3],
+           g.siteHoldOwner + 1, g.siteHoldTicks);
     // Per-seat balance probe: is anyone stuck in an era, starved, or wiped out?
     for (int pl = 0; pl < MAX_PLAYERS; pl++) {
         const Player& P = g.players[pl];

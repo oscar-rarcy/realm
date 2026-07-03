@@ -14,7 +14,7 @@
 //   - Skips garbage corrupt files via fread return-value checks
 
 static constexpr char MAGIC[4] = {'R','L','M','2'};
-static constexpr int  SAVE_VERSION = 12; // v12: eras/civs/AI personas (Player grew), E_STOCKYARD, S_RAIDING
+static constexpr int  SAVE_VERSION = 13; // v13: sacred-site domination countdown (siteHoldOwner/Ticks)
 static constexpr int  MAX_ENTITIES = 100000;
 static constexpr int  MAX_VEC_LEN  = 50000;
 
@@ -89,6 +89,7 @@ bool saveGame(const char* path) {
     wr(f, g.winner); wr(f, g.aiTimer); wr(f, g.farmTimer);
     wr(f, g.rngState);
     wr(f, g.difficulty); wr(f, g.winterSeverity);
+    wr(f, g.siteHoldOwner); wr(f, g.siteHoldTicks);
 
     // ----- PLAYERS, MAP -----
     wrBlock(f, g.players, sizeof(g.players));
@@ -166,6 +167,7 @@ bool loadGame(const char* path) {
     rd(f, g.winner); rd(f, g.aiTimer); rd(f, g.farmTimer);
     rd(f, g.rngState);
     rd(f, g.difficulty); rd(f, g.winterSeverity);
+    rd(f, g.siteHoldOwner); rd(f, g.siteHoldTicks);
     // Re-derive the battlefield name from the persisted seed/layout/climate.
     g.mapName = makeMapName(g.simSeed, g.layoutChoice, g.biomeChoice);
     // Commands queued against the pre-load world would mis-target ids in

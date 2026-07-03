@@ -751,6 +751,8 @@ void tickEntity(Entity& e) {
                 // The bells ring: a new era. Everyone on the map hears of it.
                 Player& p = g.players[e.owner];
                 if (p.era < ERA_STRONGHOLD) p.era++;
+                if (e.owner < MAX_PLAYERS && p.era < ERA_COUNT)
+                    g.statEraTick[e.owner][p.era] = g.tick;   // chart annotation
                 if (e.owner == g.localPlayer)
                     setStatus(std::string("You enter the ") + eraName(p.era) + " era!");
                 else

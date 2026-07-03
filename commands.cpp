@@ -670,6 +670,7 @@ unsigned long long simStateHash() {
     unsigned long long h = 1469598103934665603ull;
     fnv(h, g.tick);
     fnv(h, (long long)g.rngState);
+    fnv(h, g.siteHoldOwner); fnv(h, g.siteHoldTicks);
     for (int p = 0; p <= MAX_PLAYERS; p++) {
         const Player& pl = g.players[p];
         fnv(h, pl.gold); fnv(h, pl.wood); fnv(h, pl.food);

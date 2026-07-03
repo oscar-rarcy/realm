@@ -338,6 +338,10 @@ static int aiPickTarget(int o, Entity* attacker) {
         // stockyards and taverns all smell of winter stores.
         if (season == AUTUMN && (e.type==E_GRANARY || e.type==E_MILL
                               || e.type==E_STOCKYARD || e.type==E_TAVERN)) score += 120;
+        // Someone's domination clock is running: their held sites become the
+        // most urgent targets on the map — break the grip before the bell.
+        if (g.siteHoldOwner >= 0 && g.siteHoldOwner != o
+            && e.owner == g.siteHoldOwner && isClaimable(e.type)) score += 250;
         // Focus-fire bonus: heavily wounded targets are almost dead, finish them.
         int missing = e.maxHp - e.hp;
         score += missing / 2;
@@ -759,6 +763,10 @@ static void aiCommandArmy(const AICtx& cx) {
         if      (ss == WINTER) attackThreshold += 3;   // the land itself defends
         else if (ss == SUMMER) attackThreshold -= 1;   // dry roads, long days
         if (isNight()) attackThreshold += (p.aiPersona == 1) ? -2 : 2; // Raiders own the dark
+        // Domination urgency: march NOW if an enemy clock is running; sit
+        // tighter on the sites if it's ours.
+        if      (g.siteHoldOwner >= 0 && g.siteHoldOwner != o) attackThreshold -= 2;
+        else if (g.siteHoldOwner == o)                          attackThreshold += 2;
         attackThreshold = std::max(3, attackThreshold);
     }
 
@@ -871,6 +879,25 @@ static void aiCommandArmy(const AICtx& cx) {
         }
         if (guard && threat) aiAttackCmd(o, *guard, threat->id, true);
         break; // one escort response per AI tick
+    }
+
+    // === SACRED SITES: claim what stands empty ===
+    // One garrison at a time, staggered per seat — a parked soldier is a
+    // real cost, so the AI only spares one when it has an army to spare.
+    if ((g.tick / 12) % 31 == (o * 7) % 31 && idleArmy >= 4) {
+        Entity* site = nullptr; int bestD = 99999;
+        Entity* runner = nullptr;
+        for (auto& e : g.entities) {
+            if (!e.alive || !isClaimable(e.type) || e.owner != OWNER_NATURE) continue;
+            if (!aiKnows(o, e)) continue;
+            for (auto& u : g.entities) {
+                if (!u.alive || u.owner != o || u.state != S_IDLE) continue;
+                if (u.type != E_MILITIA && u.type != E_SPEARMAN && u.type != E_ARCHER) continue;
+                int d = mdist(u.x, u.y, e.x, e.y);
+                if (d < bestD) { bestD = d; site = &e; runner = &u; }
+            }
+        }
+        if (site && runner) aiGarrisonIn(o, *runner, site->id);
     }
 
     // Trebuchet management — pack/march/deploy/attack lifecycle.

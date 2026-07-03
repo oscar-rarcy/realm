@@ -113,6 +113,24 @@ void renderUI() {
         if (ct.resources > 0) { attron(COLOR_PAIR(CP_UI_HIGH)); mvprintw(1, 30, "Res:%d", ct.resources); attroff(COLOR_PAIR(CP_UI_HIGH)); }
         if (ct.elev > 0) { attron(COLOR_PAIR(CP_UI_ACCENT)); mvprintw(1, 40, "Highland"); attroff(COLOR_PAIR(CP_UI_ACCENT)); }
     }
+    // Domination clock: who holds the sacred sites and how long remains.
+    if (g.siteHoldOwner >= 0) {
+        int total = 0, held = 0;
+        for (auto& e : g.entities) {
+            if (!e.alive || !isClaimable(e.type)) continue;
+            total++;
+            if (e.owner == g.siteHoldOwner) held++;
+        }
+        int left = std::max(0, SITE_HOLD_TICKS - g.siteHoldTicks) * TICK_MS / 1000;
+        bool mine = (g.siteHoldOwner == g.localPlayer);
+        char who[8];
+        if (mine) snprintf(who, sizeof who, "YOURS");
+        else      snprintf(who, sizeof who, "P%d", g.siteHoldOwner + 1);
+        attron(COLOR_PAIR(mine ? CP_HP_GREEN : CP_HP_RED) | A_BOLD);
+        mvprintw(1, std::max(45, g.viewW - 30), "SITES %s %d/%d  %d:%02d",
+                 who, held, total, left/60, left%60);
+        attroff(COLOR_PAIR(mine ? CP_HP_GREEN : CP_HP_RED) | A_BOLD);
+    }
 
     // Panel separator
     for (int y = 0; y < maxY; y++) { attron(COLOR_PAIR(CP_UI_DIM)); mvaddch(y, panelX-1, '|'); attroff(COLOR_PAIR(CP_UI_DIM)); }
@@ -592,8 +610,8 @@ void renderUI() {
         mvprintw(botY2, 1, " SAVE / LOAD — Up/Down or click a slot   [Enter] Load   [S] Save   [D] Delete   [Esc] Back ");
     } else if (g.mode == M_GAME_OVER) {
         attron(A_BOLD);
-        if (g.winner==g.localPlayer) mvprintw(botY2, 1, " VICTORY! The realm is yours. [Enter] New game  [Q] Quit ");
-        else                         mvprintw(botY2, 1, " DEFEAT! Your kingdom has fallen. [Enter] New game  [Q] Quit ");
+        if (g.winner==g.localPlayer) mvprintw(botY2, 1, " VICTORY! The realm is yours. [S] Statistics  [Enter] New game  [Q] Quit ");
+        else                         mvprintw(botY2, 1, " DEFEAT! Your kingdom has fallen. [S] Statistics  [Enter] New game  [Q] Quit ");
         attroff(A_BOLD);
     } else if (g.groupAssignPending) {
         attron(A_BOLD); mvprintw(botY2, 1, " GROUP ASSIGN: Press [1]-[9] to assign selection to group, [Esc] to cancel "); attroff(A_BOLD);
@@ -739,6 +757,73 @@ void renderUI() {
         } else if (netWaitingForPeer()) {
             centreBanner("Waiting for " + netPeerName() + "...", CP_UI_BAR);
         }
+    }
+
+    // ---- Post-match statistics: sparkline history + summary table ----
+    if (g.mode == M_STATS) {
+        int hw = std::min(maxX - 4, 100), hh = std::min(maxY - 2, 34);
+        int hx = std::max(1, (maxX - hw) / 2), hy = std::max(0, (maxY - hh) / 2);
+        attron(COLOR_PAIR(CP_UI_BAR));
+        for (int r = 0; r < hh; r++) mvhline(hy+r, hx, ' ', hw);
+        attron(A_BOLD); mvprintw(hy+1, hx+2, "THE CHRONICLE OF THE MATCH   (year %d)", (int)(g.seasonPhase/4)+1); attroff(A_BOLD);
+        int n = (int)g.statSamples.size();
+        int cw = std::min(n, hw - 26);
+        static const char ramp[] = " .:-=+*#%@";
+        static const int ownCp[] = { CP_OWN_P0, CP_OWN_P1, CP_OWN_P2, CP_OWN_P3 };
+        int row = hy + 3;
+        struct Series { const char* name; int kind; };
+        static const Series charts[] = { {"ARMY", 0}, {"WORKERS", 1}, {"WEALTH", 2} };
+        for (auto& chart : charts) {
+            attron(COLOR_PAIR(CP_UI_BAR) | A_BOLD); mvprintw(row++, hx+2, "%s", chart.name); attroff(A_BOLD);
+            for (int pl = 0; pl < MAX_PLAYERS; pl++) {
+                bool seated = g.players[pl].alive;
+                for (auto& e : g.entities) if (e.alive && e.owner == pl) { seated = true; break; }
+                if (!seated && g.statEraTick[pl][1] == 0 && pl > 0) {
+                    bool any = false;
+                    for (int k = 0; k < n; k++) { auto& smp = g.statSamples[k];
+                        if ((chart.kind==0?smp.army[pl]:chart.kind==1?smp.work[pl]:smp.wealth[pl]) > 0) { any = true; break; } }
+                    if (!any) continue;   // seat never played
+                }
+                int mx = 1;
+                for (int k = 0; k < n; k++) { auto& smp = g.statSamples[k];
+                    int v = chart.kind==0?smp.army[pl]:chart.kind==1?smp.work[pl]:smp.wealth[pl];
+                    if (v > mx) mx = v; }
+                attron(COLOR_PAIR(ownCp[pl]) | A_BOLD); mvprintw(row, hx+2, "P%d", pl+1); attroff(COLOR_PAIR(ownCp[pl]) | A_BOLD);
+                attron(COLOR_PAIR(CP_UI_BAR));
+                int last = 0;
+                for (int c2 = 0; c2 < cw; c2++) {
+                    int k = (n <= cw) ? c2 : c2 * n / cw;
+                    if (k >= n) break;
+                    auto& smp = g.statSamples[k];
+                    int v = chart.kind==0?smp.army[pl]:chart.kind==1?smp.work[pl]:smp.wealth[pl];
+                    last = v;
+                    int lv = (v <= 0) ? 0 : 1 + v * 8 / mx;
+                    mvaddch(row, hx + 5 + c2, ramp[std::min(9, lv)]);
+                }
+                mvprintw(row, hx + 6 + cw, "%d", last);
+                row++;
+            }
+            row++;
+        }
+        // Summary table: civ, eras with timestamps, plunder.
+        attron(A_BOLD); mvprintw(row++, hx+2, "%-4s %-13s %-22s %s", "", "CIVILISATION", "ERAS (game-minute)", "RAIDS"); attroff(A_BOLD);
+        for (int pl = 0; pl < MAX_PLAYERS; pl++) {
+            bool everSeen = g.players[pl].alive;
+            for (int k = 0; k < n && !everSeen; k++) if (g.statSamples[k].work[pl] > 0) everSeen = true;
+            if (!everSeen) continue;
+            char eras[40] = "Hamlet";
+            int el = (int)strlen(eras);
+            for (int er = 1; er < ERA_COUNT; er++)
+                if (g.statEraTick[pl][er] > 0)
+                    el += snprintf(eras+el, sizeof(eras)-el, " > %s@%d", eraName(er), g.statEraTick[pl][er]*TICK_MS/60000);
+            attron(COLOR_PAIR(ownCp[pl]) | A_BOLD); mvprintw(row, hx+2, "P%d", pl+1); attroff(COLOR_PAIR(ownCp[pl]) | A_BOLD);
+            attron(COLOR_PAIR(CP_UI_BAR));
+            mvprintw(row, hx+7, "%-13s %-22s %d%s", CIVS[g.players[pl].civ].name, eras,
+                     g.statRaids[pl], g.players[pl].alive ? "" : "   (fallen)");
+            row++;
+        }
+        mvprintw(hy+hh-2, hx+2, "Any key to go back");
+        attroff(COLOR_PAIR(CP_UI_BAR));
     }
 
     mvhline(botY1, 0, ' ', maxX);
