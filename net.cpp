@@ -17,6 +17,15 @@ static void netPlatformInit() {
     static bool done = false;
     if (!done) { WSADATA w; WSAStartup(MAKEWORD(2, 2), &w); done = true; }
 }
+// Winsock buffer parameters are char*, not void* — cast in one place.
+static ssize_t nsend(int s, const void* b, size_t n)  { return send(s, (const char*)b, (int)n, 0); }
+static ssize_t nrecv(int s, void* b, size_t n)        { return recv(s, (char*)b, (int)n, 0); }
+static int nsetsockopt(int s, int l, int o, const void* v, socklen_t n) { return setsockopt(s, l, o, (const char*)v, n); }
+static int ngetsockopt(int s, int l, int o, void* v, socklen_t* n)      { return getsockopt(s, l, o, (char*)v, n); }
+static ssize_t nsendto(int s, const void* b, size_t n, const sockaddr* a, socklen_t al)
+    { return sendto(s, (const char*)b, (int)n, 0, a, al); }
+static ssize_t nrecvfrom(int s, void* b, size_t n, sockaddr* a, socklen_t* al)
+    { return recvfrom(s, (char*)b, (int)n, 0, a, al); }
 #else
 #include <arpa/inet.h>
 #include <errno.h>
@@ -33,6 +42,14 @@ static bool errWouldBlock() { return errno == EAGAIN || errno == EWOULDBLOCK; }
 static bool errInProgress() { return errno == EINPROGRESS; }
 static void closeRawSock(int fd) { close(fd); }
 static void netPlatformInit() {}
+static ssize_t nsend(int s, const void* b, size_t n)  { return send(s, b, n, 0); }
+static ssize_t nrecv(int s, void* b, size_t n)        { return recv(s, b, n, 0); }
+static int nsetsockopt(int s, int l, int o, const void* v, socklen_t n) { return setsockopt(s, l, o, v, n); }
+static int ngetsockopt(int s, int l, int o, void* v, socklen_t* n)      { return getsockopt(s, l, o, v, n); }
+static ssize_t nsendto(int s, const void* b, size_t n, const sockaddr* a, socklen_t al)
+    { return sendto(s, b, n, 0, a, al); }
+static ssize_t nrecvfrom(int s, void* b, size_t n, sockaddr* a, socklen_t* al)
+    { return recvfrom(s, b, n, 0, a, al); }
 #endif
 
 // ============================================================
@@ -147,7 +164,7 @@ static void sendFrame(unsigned char type, const void* payload, unsigned len) {
     }
     // Flush what the socket will take; the rest stays queued for netPump.
     while (!txBuf.empty()) {
-        ssize_t n = send(sock, txBuf.data(), txBuf.size(), 0);
+        ssize_t n = nsend(sock, txBuf.data(), txBuf.size());
         if (n > 0) txBuf.erase(txBuf.begin(), txBuf.begin() + n);
         else if (n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) break;
         else { connLost = true; break; }
@@ -180,7 +197,7 @@ bool netHostOpen() {
     lsock = socket(AF_INET, SOCK_STREAM, 0);
     if (lsock < 0) return false;
     int yes = 1;
-    setsockopt(lsock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes);
+    nsetsockopt(lsock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes);
     sockaddr_in a{};
     a.sin_family = AF_INET; a.sin_addr.s_addr = INADDR_ANY; a.sin_port = htons(NET_TCP_PORT);
     if (bind(lsock, (sockaddr*)&a, sizeof a) < 0 || listen(lsock, 1) < 0) {
@@ -191,7 +208,7 @@ bool netHostOpen() {
     // Discovery responder: answer LAN broadcast pings with our lobby card.
     usock = socket(AF_INET, SOCK_DGRAM, 0);
     if (usock >= 0) {
-        setsockopt(usock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes);
+        nsetsockopt(usock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes);
         sockaddr_in u{};
         u.sin_family = AF_INET; u.sin_addr.s_addr = INADDR_ANY; u.sin_port = htons(NET_UDP_PORT);
         if (bind(usock, (sockaddr*)&u, sizeof u) < 0) closeFd(usock);
@@ -222,7 +239,7 @@ bool netHostPoll() {
     if (usock >= 0) {
         char buf[16]; sockaddr_in from{}; socklen_t fl = sizeof from;
         ssize_t n;
-        while ((n = recvfrom(usock, buf, sizeof buf, 0, (sockaddr*)&from, &fl)) > 0) {
+        while ((n = nrecvfrom(usock, buf, sizeof buf, (sockaddr*)&from, &fl)) > 0) {
             if (n >= 4 && memcmp(buf, "RLM?", 4) == 0) {
                 unsigned char re[4 + 4 + 2 + 24 + 40] = {'R','L','M','!'};
                 unsigned proto = NET_PROTO_VERSION;
@@ -232,7 +249,7 @@ bool netHostPoll() {
                 snprintf((char*)re + 10, 24, "%s", localUserName().c_str());
                 snprintf((char*)re + 34, 40, "%s%s", cfgBlurb(cfg).c_str(),
                          clientSeated ? " (full)" : "");
-                sendto(usock, re, sizeof re, 0, (sockaddr*)&from, fl);
+                nsendto(usock, re, sizeof re, (sockaddr*)&from, fl);
             }
             fl = sizeof from;
         }
@@ -244,7 +261,7 @@ bool netHostPoll() {
             sock = c;
             setNonBlocking(sock);
             int yes = 1;
-            setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &yes, sizeof yes);
+            nsetsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &yes, sizeof yes);
             lastRecvMs = nowMs();
         }
     }
@@ -287,10 +304,10 @@ bool netJoinConnect(const char* addr, int port, std::string& err) {
         closeFd(sock); err = "No answer (is the host lobby open? firewall?)"; return false;
     }
     int soerr = 0; socklen_t sl = sizeof soerr;
-    getsockopt(sock, SOL_SOCKET, SO_ERROR, &soerr, &sl);
+    ngetsockopt(sock, SOL_SOCKET, SO_ERROR, &soerr, &sl);
     if (soerr != 0) { closeFd(sock); err = "Connection refused (no lobby at that address)."; return false; }
     int yes = 1;
-    setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &yes, sizeof yes);
+    nsetsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &yes, sizeof yes);
 
     unsigned char pl[4 + 24] = {0};
     unsigned proto = NET_PROTO_VERSION;
@@ -320,7 +337,7 @@ void netDiscoverStart() {
     usock = socket(AF_INET, SOCK_DGRAM, 0);
     if (usock < 0) return;
     int yes = 1;
-    setsockopt(usock, SOL_SOCKET, SO_BROADCAST, &yes, sizeof yes);
+    nsetsockopt(usock, SOL_SOCKET, SO_BROADCAST, &yes, sizeof yes);
     setNonBlocking(usock);
     lastPingMs = 0;
     found.clear();
@@ -334,14 +351,14 @@ void netDiscoverPoll(std::vector<NetLobbyInfo>& out) {
         sockaddr_in b{};
         b.sin_family = AF_INET; b.sin_port = htons(NET_UDP_PORT);
         b.sin_addr.s_addr = INADDR_BROADCAST;
-        sendto(usock, "RLM?", 4, 0, (sockaddr*)&b, sizeof b);
+        nsendto(usock, "RLM?", 4, (sockaddr*)&b, sizeof b);
         // Loopback ping too, so a host on THIS machine shows up (testing).
         b.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-        sendto(usock, "RLM?", 4, 0, (sockaddr*)&b, sizeof b);
+        nsendto(usock, "RLM?", 4, (sockaddr*)&b, sizeof b);
     }
     unsigned char buf[128]; sockaddr_in from{}; socklen_t fl = sizeof from;
     ssize_t n;
-    while ((n = recvfrom(usock, buf, sizeof buf, 0, (sockaddr*)&from, &fl)) > 0) {
+    while ((n = nrecvfrom(usock, buf, sizeof buf, (sockaddr*)&from, &fl)) > 0) {
         if (n >= (ssize_t)(4 + 4 + 2 + 24 + 40) && memcmp(buf, "RLM!", 4) == 0) {
             unsigned proto; memcpy(&proto, buf + 4, 4);
             if (proto == NET_PROTO_VERSION) {
@@ -478,7 +495,7 @@ void netPump() {
     if (sock < 0) return;
     // Flush anything still queued for send.
     while (!txBuf.empty()) {
-        ssize_t n = send(sock, txBuf.data(), txBuf.size(), 0);
+        ssize_t n = nsend(sock, txBuf.data(), txBuf.size());
         if (n > 0) txBuf.erase(txBuf.begin(), txBuf.begin() + n);
         else if (n < 0 && errWouldBlock()) break;
         else { CONN_LOST("pump-send"); break; }
@@ -486,7 +503,7 @@ void netPump() {
     // Drain the socket.
     unsigned char buf[4096];
     ssize_t n;
-    while ((n = recv(sock, buf, sizeof buf, 0)) > 0) {
+    while ((n = nrecv(sock, buf, sizeof buf)) > 0) {
         rxBuf.insert(rxBuf.end(), buf, buf + n);
         lastRecvMs = nowMs();
     }
