@@ -392,7 +392,7 @@ static void applyWinter() {
             case T_GRASS: case T_TALL_GRASS: case T_FLOWERS: case T_MEADOW:
             case T_DIRT:  case T_ROAD:       case T_GRAVEL:  case T_RUINS:
             case T_SAND:  case T_DUNES:      case T_WHEAT:   case T_BERRY:
-            case T_MUD:   case T_CASTLE_FLOOR:
+            case T_MUD:   case T_CASTLE_FLOOR: case T_HEATH:
                 t.terrain = T_SNOW; break;
             case T_WATER: case T_SHALLOWS: case T_MARSH: case T_REEDS: {
                 // Partial freeze: deeper water freezes less readily than shallows/marsh.

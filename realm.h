@@ -55,7 +55,8 @@ enum Terrain {
     T_LAVA, T_ASH,
     T_CASTLE_WALL, T_CASTLE_FLOOR, T_CASTLE_GATE,
     T_BRIDGE,  // built over water; land-passable (fast), blocks boats
-    T_MONOLITH // standing stone: a unit on it sees +6 (hilltop beacon)
+    T_MONOLITH,// standing stone: a unit on it sees +6 (hilltop beacon)
+    T_HEATH    // moorland heather: open, hardy purple scrub (appended: saved as int)
 };
 
 enum EntityType {
@@ -147,11 +148,18 @@ int  trainTimeOf(int owner, EntityType t);
 // is the per-tile `biome` and the climate axis of map setup. Values 5-8 are
 // legacy and no longer used as climates — topology now lives in `Layout`.
 enum Biome     { B_TEMPERATE, B_DESERT, B_SNOW, B_SWAMP, B_FOREST,
-                 B_OCEAN, B_HIGHLANDS, B_DEEPWOODS, B_RIVER };
+                 B_OCEAN, B_HIGHLANDS, B_DEEPWOODS, B_RIVER,
+                 // New CLIMATES appended (stored ints must stay stable):
+                 B_STEPPE,  // dry golden grass-sea: salt pans, kurgan barrows
+                 B_MOOR };  // heather upland: peat bogs, tors, stone circles
 // Layout = the map topology, independent of climate. Each layout emits a
 // neutral terrain template that applyClimateSkin() then themes to the chosen
 // climate, so e.g. Highlands+Snow = alpine, Riverlands+Desert = a Nile.
-enum Layout    { L_CONTINENTAL, L_HIGHLANDS, L_DEEPWOODS, L_RIVER, L_ISLANDS, L_PLAINS, LAYOUT_COUNT };
+enum Layout    { L_CONTINENTAL, L_HIGHLANDS, L_DEEPWOODS, L_RIVER, L_ISLANDS, L_PLAINS,
+                 L_DELTA,    // one great river fanning into braided channels + silt isles
+                 L_VALE,     // rift valley: fertile corridor between two cliff plateaus
+                 L_CANYONS,  // badlands maze of stone gorges and gulches
+                 LAYOUT_COUNT };
 enum Season    { SPRING = 0, SUMMER, AUTUMN, WINTER };
 enum Weather   { W_CLEAR = 0, W_RAIN, W_STORM, W_SNOW };
 
@@ -199,6 +207,7 @@ enum {
     CP_BUILD_OK, CP_BUILD_BAD,
     CP_CLIFF,   // plateau rim escarpment
     CP_CORPSE,  // fallen-soldier marker (dim blood-red)
+    CP_HEATH, CP_MM_HEATH,   // moorland heather (map + minimap/preview)
     CP_COUNT
 };
 

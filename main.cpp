@@ -203,11 +203,19 @@ static std::string showReplayMenu() {
 }
 
 // ---- Splash configuration, remembered across menu visits and matches ----
-static const char* kClimateNames[] = { "Temperate","Desert","Snow","Swamp","Forest","Random" };
-static const char* kLayoutNames[]  = { "Continental","Highlands","Deep Woods","River","Islands","Plains","Random" };
+// UI climate SLOTS map to Biome values (which are no longer contiguous —
+// Steppe/Moor were appended after the legacy layout ids). cfgClim stores the
+// slot; g.biomeChoice stores the Biome value.
+static const int   kClimBiome[]    = { B_TEMPERATE, B_DESERT, B_SNOW, B_SWAMP, B_FOREST, B_STEPPE, B_MOOR };
+static const char* kClimateNames[] = { "Temperate","Desert","Snow","Swamp","Forest","Steppe","Moorland","Random" };
+static const int   kClimCount = 7;             // slots 0..6; slot 7 = Random/mixed
+static int climSlotOf(int biome) {             // reverse lookup; -1/unknown -> Random
+    for (int i = 0; i < kClimCount; i++) if (kClimBiome[i] == biome) return i;
+    return kClimCount;
+}
+static const char* kLayoutNames[]  = { "Continental","Highlands","Deep Woods","River","Islands","Plains","Delta","Vale","Canyons","Random" };
 static const char* kDiffNames[]    = { "Easy","Normal","Hard" };
 static const char* kSpeedNames[]   = { "Slow","Normal","Fast" };
-static const int   kClimCount = 5;             // climates 0..4; index 5 = Random/mixed
 // layouts 0..LAYOUT_COUNT-1; index LAYOUT_COUNT = Random
 
 static int cfgCiv    = -1;                // -1 = random civilisation
@@ -329,12 +337,12 @@ static bool skirmishSetup(unsigned long long& outSeed) {
         }
     };
     auto openPicker = [&]() {
-        g.biomeChoice  = (cfgClim   >= kClimCount)   ? -1 : cfgClim;
+        g.biomeChoice  = (cfgClim   >= kClimCount)   ? -1 : kClimBiome[cfgClim];
         g.layoutChoice = (cfgLayout >= LAYOUT_COUNT) ? -1 : cfgLayout;
         unsigned long long s = 0;
         if (showMapPreview(s)) {
             cfgSeed = s;
-            cfgClim   = (g.biomeChoice  < 0) ? kClimCount   : g.biomeChoice;
+            cfgClim   = climSlotOf(g.biomeChoice);
             cfgLayout = (g.layoutChoice < 0) ? LAYOUT_COUNT : g.layoutChoice;
         }
     };
@@ -408,7 +416,7 @@ static bool skirmishSetup(unsigned long long& outSeed) {
             else if (sel == R_BEGIN) {
                 g.difficulty   = cfgDiff;
                 gameSpeed      = (GameSpeed)cfgSpeed;
-                g.biomeChoice  = (cfgClim   >= kClimCount)   ? -1 : cfgClim;
+                g.biomeChoice  = (cfgClim   >= kClimCount)   ? -1 : kClimBiome[cfgClim];
                 g.layoutChoice = (cfgLayout >= LAYOUT_COUNT) ? -1 : cfgLayout;
                 g.civChoice[0] = cfgCiv;
                 for (int i = 1; i < MAX_PLAYERS; i++) g.civChoice[i] = -1;
@@ -482,7 +490,7 @@ static NetMatchConfig mpCurrentCfg() {
     NetMatchConfig c;
     c.seed       = cfgSeed;   // 0 = rolled at Begin
     c.numAIs     = mpNumAIs;
-    c.biome      = (cfgClim   >= kClimCount)   ? -1 : cfgClim;
+    c.biome      = (cfgClim   >= kClimCount)   ? -1 : kClimBiome[cfgClim];
     c.layout     = (cfgLayout >= LAYOUT_COUNT) ? -1 : cfgLayout;
     c.difficulty = cfgDiff;
     c.speed      = cfgSpeed;
@@ -523,12 +531,12 @@ static bool hostLobby(SplashResult& r) {
         dirty = true;
     };
     auto openPicker = [&]() {
-        g.biomeChoice  = (cfgClim   >= kClimCount)   ? -1 : cfgClim;
+        g.biomeChoice  = (cfgClim   >= kClimCount)   ? -1 : kClimBiome[cfgClim];
         g.layoutChoice = (cfgLayout >= LAYOUT_COUNT) ? -1 : cfgLayout;
         unsigned long long sd = 0;
         if (showMapPreview(sd)) {
             cfgSeed = sd;
-            cfgClim   = (g.biomeChoice  < 0) ? kClimCount   : g.biomeChoice;
+            cfgClim   = climSlotOf(g.biomeChoice);
             cfgLayout = (g.layoutChoice < 0) ? LAYOUT_COUNT : g.layoutChoice;
             dirty = true;
         }
@@ -681,7 +689,7 @@ static bool clientLobby(SplashResult& r) {
             mvprintw(iy++, ix, "AI seats     %d", cfgIn.numAIs);
             mvprintw(iy++, ix, "Difficulty   %s", kDiffNames[std::max(0,std::min(2,cfgIn.difficulty))]);
             mvprintw(iy++, ix, "Layout       %s", kLayoutNames[(cfgIn.layout<0||cfgIn.layout>=LAYOUT_COUNT)?LAYOUT_COUNT:cfgIn.layout]);
-            mvprintw(iy++, ix, "Climate      %s", kClimateNames[(cfgIn.biome<0||cfgIn.biome>=kClimCount)?kClimCount:cfgIn.biome]);
+            mvprintw(iy++, ix, "Climate      %s", kClimateNames[climSlotOf(cfgIn.biome)]);
             mvprintw(iy++, ix, "Game speed   %s", kSpeedNames[std::max(0,std::min(2,cfgIn.speed))]);
         } else {
             mvprintw(iy++, ix, "Reading the host's settings...");
@@ -864,7 +872,7 @@ static bool showMultiplayerMenu(SplashResult& r) {
 // terrain (gold, keeps, water, woods) must survive the shrink.
 static void previewCell(int x0, int y0, int x1, int y1, char& ch, int& cp) {
     int water=0, mtn=0, forest=0, gold=0, hills=0, sand=0, snow=0,
-        dirt=0, crop=0, keep=0, lava=0, total=0, highland=0;
+        dirt=0, crop=0, keep=0, lava=0, heath=0, total=0, highland=0;
     for (int y = y0; y < y1; y++) for (int x = x0; x < x1; x++) {
         if (!inBounds(x, y)) continue;
         total++;
@@ -882,6 +890,7 @@ static void previewCell(int x0, int y0, int x1, int y1, char& ch, int& cp) {
             case T_CASTLE_WALL: case T_CASTLE_GATE: case T_CASTLE_FLOOR:
             case T_RUINS: case T_MONOLITH:                       keep++;   break;
             case T_LAVA: case T_ASH:                             lava++;   break;
+            case T_HEATH:                                        heath++;  break;
             default: break;
         }
     }
@@ -897,6 +906,7 @@ static void previewCell(int x0, int y0, int x1, int y1, char& ch, int& cp) {
     if (hills * 4 >= total)     { ch = 'n'; cp = CP_MM_MTN;    return; }
     if (crop * 5 >= total)      { ch = '"'; cp = CP_GRASS_DRY; return; }
     if (snow * 2 >= total)      { ch = '.'; cp = CP_MM_SNOW;   return; }
+    if (heath * 2 >= total)     { ch = ':'; cp = CP_MM_HEATH;  return; }
     if (sand * 2 >= total)      { ch = '.'; cp = CP_MM_SAND;   return; }
     if (dirt * 2 >= total)      { ch = ','; cp = CP_MM_SAND;   return; }
     // Open ground; highland plateaus shade differently so the cliff shapes
@@ -923,8 +933,8 @@ static bool showMapPreview(unsigned long long& outSeed) {
     const int TW = std::max(16, std::min(30, (maxX0 - (COLS+1)*2)/COLS));
     const int TH = std::max(7,  std::min(13, (maxY0 - 8)/VIS_ROWS - 2));
 
-    static const char* layName[]  = {"Continental","Highlands","Deep Woods","River","Islands","Plains"};
-    static const char* climName[] = {"Temperate","Desert","Snow","Swamp","Forest"};
+    static const char* layName[]  = {"Continental","Highlands","Deep Woods","River","Islands","Plains","Delta","Vale","Canyons"};
+    auto climLabel = [](int biome) { return biome < 0 ? "Mixed" : kClimateNames[climSlotOf(biome)]; };
     struct Cand { bool ready=false; unsigned long long seed=0; int lay=0, clim=0; std::string name; std::vector<char> ch; std::vector<int> cp; };
     std::vector<Cand> cand(POOL);
     int layFilter  = g.layoutChoice;                 // -1 = random
@@ -935,13 +945,14 @@ static bool showMapPreview(unsigned long long& outSeed) {
 
     // Distinct-layout / distinct-climate orderings (incl. one Mixed), reshuffled
     // each reroll, so consecutive thumbnails never look alike.
-    int layOrder[LAYOUT_COUNT], climOrder[6];
+    const int NCLIM = kClimCount + 1;             // every climate + one Mixed
+    int layOrder[LAYOUT_COUNT], climOrder[kClimCount + 1];
     auto reshuffle = [&]() {
         for (int i = 0; i < LAYOUT_COUNT; i++) layOrder[i] = i;
         for (int i = LAYOUT_COUNT-1; i > 0; i--) { int j=(int)((base>>(i*3+1))%(i+1)); std::swap(layOrder[i],layOrder[j]); }
-        int seed6[6] = { -1, B_TEMPERATE, B_DESERT, B_FOREST, B_SNOW, B_SWAMP };
-        for (int i = 0; i < 6; i++) climOrder[i] = seed6[i];
-        for (int i = 5; i > 0; i--) { int j=(int)((base>>(i*5+2))%(i+1)); std::swap(climOrder[i],climOrder[j]); }
+        climOrder[0] = -1;
+        for (int i = 0; i < kClimCount; i++) climOrder[i+1] = kClimBiome[i];
+        for (int i = NCLIM-1; i > 0; i--) { int j=(int)((base>>(i*5+2))%(i+1)); std::swap(climOrder[i],climOrder[j]); }
     };
     // Generate one thumbnail on demand (lazy — only maps you actually scroll to
     // are built, so a 24-map wall stays snappy).
@@ -950,7 +961,7 @@ static bool showMapPreview(unsigned long long& outSeed) {
         unsigned long long s = base + (unsigned long long)(i+1)*0x9E3779B97F4A7C15ull;
         if (s == 0) s = 1;
         int lay  = (layFilter  < 0) ? layOrder[i % LAYOUT_COUNT] : layFilter;
-        int clim = (climFilter < 0) ? climOrder[i % 6]           : climFilter;
+        int clim = (climFilter < 0) ? climOrder[i % NCLIM]       : climFilter;
         g.layoutChoice = lay; g.biomeChoice = clim;
         seedSimRng(s); generateMap();
         cand[i].seed = s; cand[i].lay = lay; cand[i].clim = clim;
@@ -1005,8 +1016,7 @@ static bool showMapPreview(unsigned long long& outSeed) {
             // Top border: WHAT it is (layout · climate) — the axis people
             // actually choose on. Bottom border: the evocative name.
             char kind[48];
-            snprintf(kind, sizeof kind, " %s ~ %s ", layName[cand[i].lay],
-                     cand[i].clim < 0 ? "Mixed" : climName[cand[i].clim]);
+            snprintf(kind, sizeof kind, " %s ~ %s ", layName[cand[i].lay], climLabel(cand[i].clim));
             kind[std::min((int)strlen(kind), TW)] = '\0';
             attron(isSel ? (COLOR_PAIR(CP_UI_ACCENT)|A_BOLD) : COLOR_PAIR(CP_UI_DIM));
             mvprintw(cy-1, cx+1, "%s", kind);
@@ -1032,13 +1042,11 @@ static bool showMapPreview(unsigned long long& outSeed) {
         attroff(COLOR_PAIR(CP_UI_HIGH)|A_BOLD);
         attron(COLOR_PAIR(CP_UI_TEXT));
         mvprintw(oy + gridH + 1, ox + (int)cand[sel].name.size() + 2, "— %s · %s   (%d/%d)",
-                 layName[cand[sel].lay], cand[sel].clim < 0 ? "Mixed lands" : climName[cand[sel].clim],
-                 sel+1, POOL);
+                 layName[cand[sel].lay], climLabel(cand[sel].clim), sel+1, POOL);
         attroff(COLOR_PAIR(CP_UI_TEXT));
         attron(COLOR_PAIR(CP_UI_DIM));
         mvprintw(oy + gridH + 2, ox, "Filter: %s layout, %s climate",
-                 layFilter < 0 ? "Random" : layName[layFilter],
-                 climFilter < 0 ? "Mixed" : climName[climFilter]);
+                 layFilter < 0 ? "Random" : layName[layFilter], climLabel(climFilter));
         attroff(COLOR_PAIR(CP_UI_DIM));
         refresh();
 
@@ -1055,8 +1063,10 @@ static bool showMapPreview(unsigned long long& outSeed) {
         else if (c=='r'||c=='R')                  { base = base*6364136223846793005ull + 1442695040888963407ull; invalidate(); }
         else if (c==']')                          { layFilter  = (layFilter  >= LAYOUT_COUNT-1) ? -1 : layFilter+1;  invalidate(); }
         else if (c=='[')                          { layFilter  = (layFilter  < 0) ? LAYOUT_COUNT-1 : layFilter-1;    invalidate(); }
-        else if (c=='.'||c=='>')                  { climFilter = (climFilter >= B_FOREST)      ? -1 : climFilter+1; invalidate(); }
-        else if (c==','||c=='<')                  { climFilter = (climFilter < 0) ? B_FOREST   : climFilter-1;      invalidate(); }
+        else if (c=='.'||c=='>')                  { int sl = climSlotOf(climFilter); sl = (sl + 1) % (kClimCount + 1);
+                                                    climFilter = (sl == kClimCount) ? -1 : kClimBiome[sl]; invalidate(); }
+        else if (c==','||c=='<')                  { int sl = climSlotOf(climFilter); sl = (sl + kClimCount) % (kClimCount + 1);
+                                                    climFilter = (sl == kClimCount) ? -1 : kClimBiome[sl]; invalidate(); }
     }
 }
 

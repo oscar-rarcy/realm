@@ -79,6 +79,8 @@ void initColors() {
     init_pair(CP_GRASS_LIGHT,   C::BRIGHT_GREEN, tileBg(C::MED_GREEN));
     init_pair(CP_GRASS_DRY,     C::YELLOW_GREEN, tileBg(C::OLIVE));
     init_pair(CP_TALL_GRASS,    C::MED_GREEN,    tileBg(C::DARK_GREEN));
+    init_pair(CP_HEATH,         96,              tileBg(C::DARK_GREEN));   // heather purple on moss
+    init_pair(CP_MM_HEATH,      139,             C::NEAR_BLACK);
     init_pair(CP_FLOWERS,       C::LAVENDER,     tileBg(C::MED_GREEN));
     init_pair(CP_FLOWERS_BLUE,  C::MED_BLUE,     tileBg(C::MED_GREEN));
     init_pair(CP_FLOWERS_YELLOW,C::BRIGHT_GOLD,  tileBg(C::MED_GREEN));
@@ -377,6 +379,7 @@ void getTerrainVisual(Terrain t, int x, int y, char& ch, int& cp, bool lit) {
     switch (t) {
     case T_GRASS:        ch='.'; cp=CP_GRASS;       break;
     case T_TALL_GRASS:   ch='"'; cp=CP_TALL_GRASS;  break;
+    case T_HEATH:        ch=':'; cp=CP_HEATH;       break;
     case T_FLOWERS: {
         ch='*';
         static const int fcp[] = {CP_FLOWERS, CP_FLOWERS_BLUE, CP_FLOWERS_YELLOW, CP_FLOWERS_RED};
@@ -992,48 +995,23 @@ void renderMap() {
                     ch = ch - 'a' + 'A';
                 drawCh = (chtype)ch;
 
-                // Architecture pass: multi-tile buildings read as structures —
-                // pitched roof, walls, a door — instead of a grid of letters.
-                // One cell keeps the building's letter as its signboard, so
-                // identification survives the beauty. (Ownership stays in the
-                // background colour; bespoke looks below — castle keep,
-                // stockyard piles, gates — override this.)
+                // Masonry pass — the castle's own language, extended only to
+                // the big civic buildings. The roofs experiment read as
+                // cartoons; what worked about the castle was TEXTURE:
+                // checkerboard stone corners, plain edges, one letter.
+                // 2x2 buildings stay as solid letter blocks (they were fine).
                 if (isBuilding(ent->type) && !ent->underConstruction
-                    && STATS[ent->type].sizeW >= 2 && ent->type != E_RUIN) {
+                    && STATS[ent->type].sizeW >= 3 && ent->type != E_CASTLE
+                    && ent->type != E_STOCKYARD) {
                     int bdx = mx - ent->x, bdy = my - ent->y;
                     int bw = STATS[ent->type].sizeW, bh = STATS[ent->type].sizeH;
-                    char letter = STATS[ent->type].glyph;
-                    char door = (letter == '+') ? '|' : '+';   // the church IS a cross
-                    char bc;
-                    if (bdy == 0)             bc = (bdx == 0) ? '/' : (bdx == bw-1) ? '\\' : '^';
-                    else if (bw == 2)         bc = (bdx == 0) ? letter : door;      // 2x2 ground floor
-                    else if (bdy == bh - 1 && bh >= 3)
-                                              bc = (bdx == 0 || bdx == bw-1) ? '|' : door;
-                    else                      bc = (bdx == 0) ? '|'
-                                                 : (bdx == bw-1) ? ((bh == 2) ? door : '|')
-                                                 : letter;
-                    ch = bc; drawCh = (chtype)ch;
+                    bool corner = (bdx == 0 || bdx == bw-1) && (bdy == 0 || bdy == bh-1);
+                    if (corner)                      drawCh = ACS_CKBOARD;
+                    else if (bdx == 0 || bdx == bw-1) { ch = '|'; drawCh = (chtype)ch; }
+                    else if (bdy == 0)                { ch = '='; drawCh = (chtype)ch; }
+                    else if (bdy == bh-1 && bh >= 3)  { ch = '+'; drawCh = (chtype)ch; }  // door
+                    else { ch = STATS[ent->type].glyph; drawCh = (chtype)ch; }
                 }
-
-                // Colour pair: player-owned units/buildings use owner colour
-                // backgrounds; Gaia animals keep their type-specific colours.
-                if (ent->owner == OWNER_NATURE) {
-                    if      (ent->type == E_WOLF)  cp = CP_WOLF;
-                    else if (ent->type == E_SHEEP) cp = CP_SHEEP;
-                    else if (ent->type == E_BOAR)  cp = CP_BOAR;
-                    else                           cp = CP_DEER;
-                } else {
-                    cp = ownerColorPair(ent->owner, night && !litMask[my][mx]);
-                }
-                // All boats get a wood-brown deck; glyph colour is per-player
-                // so each side's fleet is identifiable.
-                if (isNaval(ent->type) && ent->owner < MAX_PLAYERS) {
-                    static const int shipCp[] = { CP_SHIP_P0, CP_SHIP_P1, CP_SHIP_P2, CP_SHIP_P3 };
-                    cp = shipCp[ent->owner];
-                }
-                // Farms are always wheat-gold — ownership doesn't change their colour.
-                if (ent->type == E_FARM && !ent->underConstruction)
-                    cp = (getSeason() == SUMMER) ? CP_WHEAT_GOLD : CP_WHEAT;
 
                 // State-specific glyph overrides (gate, construction, siege engines, alert).
                 if (ent->type == E_GATE && !ent->underConstruction) {

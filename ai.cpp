@@ -582,7 +582,8 @@ static void aiInfraAndNaval(const AICtx& cx) {
         if (aiCount(o,E_FISHING_BOAT) < 3 && p.gold >= 80 && p.wood >= 50) { aiTrain(o, dk, E_FISHING_BOAT); continue; }
         if (aiCount(o,E_WARSHIP) < 2 && p.gold >= 150 && p.wood >= 80 && p.food >= 20) { aiTrain(o, dk, E_WARSHIP); continue; }
         // Coastal maps: build a transport for amphibious assault on enemies on other islands.
-        if (g.layoutChoice == L_ISLANDS && aiCount(o,E_TRANSPORT) < 1
+        if ((g.layoutChoice == L_ISLANDS || g.layoutChoice == L_DELTA)
+                && aiCount(o,E_TRANSPORT) < 1
                 && p.gold >= 80 && p.wood >= 40 && p.food >= 10) {
             aiTrain(o, dk, E_TRANSPORT); continue;
         }
@@ -876,7 +877,7 @@ static void aiCommandArmy(const AICtx& cx) {
     aiTickTrebuchets(o);
 
     // Coastal maps: AI transports ferry troops across the sea.
-    if (g.layoutChoice == L_ISLANDS) aiTickTransports(o);
+    if (g.layoutChoice == L_ISLANDS || g.layoutChoice == L_DELTA) aiTickTransports(o);
 }
 
 // Ride out and LOOK. Until the enemy hall is found, this fires often; after

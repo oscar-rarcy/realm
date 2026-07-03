@@ -34,14 +34,14 @@ static const char* terrName(Terrain t) {
         "Marshland","Reed Bed","Gold Deposit","Sandy Ground","Sand Dunes","Snow Cover","Frozen Ice",
         "Bare Earth","Stone Road","Mud","Wheat Field","Berry Bush","Fish Shoal","Ancient Ruins","Gravel",
         "Lava Fissure","Volcanic Ash",
-        "Castle Wall","Castle Floor","Castle Gate","Stone Bridge","Standing Stones"};
-    static_assert(sizeof(tn)/sizeof(tn[0]) == (size_t)T_MONOLITH + 1,
+        "Castle Wall","Castle Floor","Castle Gate","Stone Bridge","Standing Stones","Heather"};
+    static_assert(sizeof(tn)/sizeof(tn[0]) == (size_t)T_HEATH + 1,
         "terrain name table must cover every Terrain value");
-    return ((int)t >= 0 && (int)t <= (int)T_MONOLITH) ? tn[t] : "?";
+    return ((int)t >= 0 && (int)t <= (int)T_HEATH) ? tn[t] : "?";
 }
 static const char* biomeName(Biome b) {
     static const char* bn[] = {"Temperate","Desert","Tundra","Swamp","Woodland","Ocean",
-                               "Highlands","Deep Woods","Riverlands"};
+                               "Highlands","Deep Woods","Riverlands","Steppe","Moorland"};
     return ((int)b >= 0 && (int)b < (int)(sizeof(bn)/sizeof(bn[0]))) ? bn[b] : "?";
 }
 
@@ -134,6 +134,7 @@ void renderUI() {
             else if (t==T_GOLD)                           { mch='$'; mcp=CP_MM_GOLD;  }
             else if (t==T_SAND||t==T_DUNES)               { mch='.'; mcp=CP_MM_SAND;  }
             else if (t==T_SNOW||t==T_ICE)                 { mch='.'; mcp=CP_MM_SNOW;  }
+            else if (t==T_HEATH)                          { mch='.'; mcp=CP_MM_HEATH; }
             else if (t==T_CASTLE_WALL||t==T_CASTLE_GATE)  { mch='#'; mcp=CP_MM_CASTLE;}
             else { mch='.'; mcp=CP_FOG; }
         }
