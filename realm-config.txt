@@ -1,0 +1,8 @@
+ais=1
+diff=1
+clim=5
+layout=6
+speed=1
+civ=1
+colour=0
+mpais=0

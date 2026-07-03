@@ -5,7 +5,9 @@
 // TIME
 // ============================================================
 float getBrightness() {
-    float b = sinf(g.dayPhase * M_PI);
+    // Own constant: M_PI is a POSIX extension MinGW's <cmath> hides.
+    constexpr float kPi = 3.14159265358979f;
+    float b = sinf(g.dayPhase * kPi);
     // Seasonal day length: midsummer nights are short, midwinter nights long.
     // Biasing brightness moves the isNight()/dusk thresholds, which stretches
     // or shrinks the dark window without touching the day-cycle clock.

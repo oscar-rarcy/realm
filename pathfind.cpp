@@ -1,4 +1,5 @@
 #include "realm.h"
+#include <cstdint>   // int8_t: not transitively included by MinGW's headers
 
 // Pathfinding, split out of entity.cpp: the A* search (findPath) and the
 // per-tick path follower (moveAlongPath). findPathFor() stays inline in

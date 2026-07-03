@@ -213,11 +213,39 @@ static const int   kClimCount = 5;             // climates 0..4; index 5 = Rando
 static int cfgCiv    = -1;                // -1 = random civilisation
 static const char* civLabel(int c) { return c < 0 ? "Random" : CIVS[c].name; }
 static int cfgNumAIs = 1;
+static int mpNumAIs  = 0;                 // multiplayer: extra AI seats
 static int cfgDiff   = 1;                 // Normal
 static int cfgClim   = kClimCount;        // Random/mixed
 static int cfgLayout = LAYOUT_COUNT;      // Random
 static int cfgSpeed  = GS_NORMAL;
 static unsigned long long cfgSeed = 0;    // non-zero once a specific map is picked
+
+// ---- Settings persistence: the splash remembers you between launches ----
+// Plain key=value file next to the saves. Only menu preferences — nothing
+// sim-critical lives here (match config still travels via lobby/replay).
+static void saveMenuConfig() {
+    FILE* f = fopen("realm-config.txt", "w");
+    if (!f) return;
+    fprintf(f, "ais=%d\ndiff=%d\nclim=%d\nlayout=%d\nspeed=%d\nciv=%d\ncolour=%d\nmpais=%d\n",
+            cfgNumAIs, cfgDiff, cfgClim, cfgLayout, cfgSpeed, cfgCiv, g.playerColor, mpNumAIs);
+    fclose(f);
+}
+static void loadMenuConfig() {
+    FILE* f = fopen("realm-config.txt", "r");
+    if (!f) return;
+    char k[32]; int v;
+    while (fscanf(f, "%31[^=]=%d\n", k, &v) == 2) {
+        if      (!strcmp(k, "ais"))    cfgNumAIs = std::max(1, std::min(3, v));
+        else if (!strcmp(k, "diff"))   cfgDiff   = std::max(0, std::min(2, v));
+        else if (!strcmp(k, "clim"))   cfgClim   = std::max(0, std::min(kClimCount, v));
+        else if (!strcmp(k, "layout")) cfgLayout = std::max(0, std::min((int)LAYOUT_COUNT, v));
+        else if (!strcmp(k, "speed"))  cfgSpeed  = std::max(0, std::min(2, v));
+        else if (!strcmp(k, "civ"))    cfgCiv    = std::max(-1, std::min(NUM_CIVS - 1, v));
+        else if (!strcmp(k, "colour")) g.playerColor = std::max(0, std::min(numTeamColors() - 1, v));
+        else if (!strcmp(k, "mpais"))  mpNumAIs  = std::max(0, std::min(2, v));
+    }
+    fclose(f);
+}
 
 // Titled box frame (reused by the setup screen).
 static void drawFrame(int r, int c, int w, int h, const char* title) {
@@ -385,6 +413,7 @@ static bool skirmishSetup(unsigned long long& outSeed) {
                 g.civChoice[0] = cfgCiv;
                 for (int i = 1; i < MAX_PLAYERS; i++) g.civChoice[i] = -1;
                 outSeed = cfgSeed;
+                saveMenuConfig();
                 return true;
             }
             else adjust(sel, +1);   // Enter on a value row cycles it forward
@@ -448,8 +477,6 @@ static void showSplash(SplashResult& r) {
 static void lobbyNote(int row, int col, const char* msg, int cp = CP_UI_DIM) {
     attron(COLOR_PAIR(cp)); mvprintw(row, col, "%s", msg); attroff(COLOR_PAIR(cp));
 }
-
-static int mpNumAIs = 0;   // extra AI seats on top of the two humans
 
 static NetMatchConfig mpCurrentCfg() {
     NetMatchConfig c;
@@ -603,6 +630,7 @@ static bool hostLobby(SplashResult& r) {
                 NetMatchConfig fin = mpCurrentCfg();
                 netHostSetInfo(fin);          // final settings incl. the real seed
                 if (!netHostStart()) { netClose(); return false; }
+                saveMenuConfig();
                 r.netPlay = true; r.netCfg = fin; r.netSlot = 0;
                 cfgSeed = 0;                  // next lobby rolls fresh again
                 return true;
@@ -1649,7 +1677,8 @@ int main(int argc, char** argv) {
     initscr(); cbreak(); noecho(); keypad(stdscr, TRUE); curs_set(0);
     // REPORT_MOUSE_POSITION gives continuous hover events for live cursor tracking
     mousemask(ALL_MOUSE_EVENTS | REPORT_MOUSE_POSITION, NULL);
-    initColors();
+    loadMenuConfig();   // remembered splash preferences (civ, colour, setup)
+    initColors();       // after load: team colours honour the remembered pick
 
     if (replay) {
         g.biomeChoice  = repBiome;
