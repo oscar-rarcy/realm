@@ -48,8 +48,24 @@ extern WINDOW* stdscr;
 #define COLOR_CYAN    6
 #define COLOR_WHITE   7
 
-// ----- line-drawing glyphs -----
-#define ACS_CKBOARD ((chtype)0x2592)  // ▒ medium shade
+// ----- line-drawing glyphs (ncurses provides these natively; the shim maps
+// them to the Unicode codepoints the TTF renderer draws directly) -----
+#define ACS_CKBOARD  ((chtype)0x2592)  // ▒ medium shade
+#define ACS_BOARD    ((chtype)0x2591)  // ░ light shade
+#define ACS_BLOCK    ((chtype)0x2588)  // █ full block
+#define ACS_HLINE    ((chtype)0x2500)  // ─
+#define ACS_VLINE    ((chtype)0x2502)  // │
+#define ACS_ULCORNER ((chtype)0x250C)  // ┌
+#define ACS_URCORNER ((chtype)0x2510)  // ┐
+#define ACS_LLCORNER ((chtype)0x2514)  // └
+#define ACS_LRCORNER ((chtype)0x2518)  // ┘
+#define ACS_PLUS     ((chtype)0x253C)  // ┼
+#define ACS_LTEE     ((chtype)0x251C)  // ├
+#define ACS_RTEE     ((chtype)0x2524)  // ┤
+#define ACS_TTEE     ((chtype)0x252C)  // ┬
+#define ACS_BTEE     ((chtype)0x2534)  // ┴
+#define ACS_BULLET   ((chtype)0x00B7)  // · cobble/waypoint dot
+#define ACS_DIAMOND  ((chtype)0x25C6)  // ◆
 
 // ----- keys (values are arbitrary but match ncurses where easy) -----
 #define KEY_DOWN   258

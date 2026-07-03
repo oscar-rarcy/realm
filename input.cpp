@@ -1030,7 +1030,15 @@ void handleInput(int ch) {
         // brushed the margin (the map flew, the cursor tile looked possessed).
         // The shim feeds synthetic position reports while the pointer parks at
         // an edge, so scrolling continues without wiggling.
-        if (!clickEvt) {
+        // A PARKED pointer must never move the world: the SDL shim streams
+        // synthetic position reports every 30ms, and edge-scroll driven by
+        // those made the view (and with it the hover cursor) crawl downward
+        // for anyone who left the mouse resting near a window edge. Scroll
+        // only when the pointer has actually MOVED since the last event.
+        static int lastPixX = -9999, lastPixY = -9999;
+        bool pointerMoved = (me.x != lastPixX || me.y != lastPixY);
+        lastPixX = me.x; lastPixY = me.y;
+        if (!clickEvt && pointerMoved) {
             int maxY2, maxX2; getmaxyx(stdscr, maxY2, maxX2);
             static std::chrono::steady_clock::time_point lastEdgeScroll{};
             auto nowT = std::chrono::steady_clock::now();
@@ -1059,14 +1067,15 @@ void handleInput(int ch) {
                       && me.x < g.viewW * tileW && inBounds(mapX, mapY));
         if (!inMap) { g.dragging = false; break; }
 
-        // Hover-track the cursor, but only when the mouse actually crossed into a new map
-        // cell. Without this, every stale ncurses motion event would yank the cursor back
-        // to the OS mouse position, fighting keyboard arrow input. Clicks/drags still pin
-        // the cursor regardless of last-cell state.
-        static int lastMx = -9999, lastMy = -9999;
-        if (clickEvt || mapX != lastMx || mapY != lastMy) {
+        // Hover-track the cursor, but only when the mouse crossed into a new
+        // SCREEN cell. Tracking map cells was the second half of the drift
+        // bug: whenever the view scrolled under a stationary pointer, the
+        // pointer's map tile changed and the cursor got yanked to it —
+        // walking the cursor across the map one scroll-step at a time.
+        static int lastSx = -9999, lastSy = -9999;
+        if (clickEvt || mapSX != lastSx || mapSY != lastSy) {
             g.cursorX = mapX; g.cursorY = mapY;
-            lastMx = mapX; lastMy = mapY;
+            lastSx = mapSX; lastSy = mapSY;
         }
 
         if (me.bstate & BUTTON1_DOUBLE_CLICKED) {

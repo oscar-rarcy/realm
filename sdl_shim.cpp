@@ -258,13 +258,11 @@ void pollPointer() {
     int ww, wh;
     SDL_GetWindowSize(win, &ww, &wh);
     if (px < 0 || py < 0 || px >= ww || py >= wh) return;
-    float s = pixelScale();
-    float edgeX = 2.0f * cellW / s, edgeY = 2.0f * cellH / s;
-    bool inEdge = (px < edgeX || px > ww - edgeX || py < edgeY || py > wh - edgeY);
-    if (inEdge && now - lastEdgePush >= 60) {
-        lastEdgePush = now;
-        lastCellX = lastCellY = -1;   // force this push through the cell dedupe
-    }
+    // (The old edge-zone dedupe bypass is gone: it existed to stream events
+    // for parked-at-the-edge autoscroll, which is exactly the behaviour that
+    // made a forgotten mouse drag the world around. Edge scrolling now rides
+    // real pointer motion only — see input.cpp.)
+    (void)lastEdgePush;
     // Self-heal: once a second, push even without a cell change. Covers a
     // pointer parked across a match start (dedupe primed on the splash) and
     // any staleness after the cell size changes (font zoom, resize).

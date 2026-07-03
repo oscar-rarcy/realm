@@ -213,6 +213,8 @@ enum {
     CP_CLIFF,   // plateau rim escarpment
     CP_CORPSE,  // fallen-soldier marker (dim blood-red)
     CP_HEATH, CP_MM_HEATH,   // moorland heather (map + minimap/preview)
+    CP_TORCHLIT,             // torch-glow core: warm amber pool around buildings
+    CP_TORCHLIT_DIM,         // glow fringe flicker: embers at the edge of the light
     CP_COUNT
 };
 

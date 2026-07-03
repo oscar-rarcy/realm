@@ -81,6 +81,9 @@ void initColors() {
     init_pair(CP_TALL_GRASS,    C::MED_GREEN,    tileBg(C::DARK_GREEN));
     init_pair(CP_HEATH,         96,              tileBg(C::DARK_GREEN));   // heather purple on moss
     init_pair(CP_MM_HEATH,      139,             C::NEAR_BLACK);
+    // Torchlight: a warm amber pool (core) fading to embers (fringe flicker).
+    init_pair(CP_TORCHLIT,      222,             tileBg(58));
+    init_pair(CP_TORCHLIT_DIM,  137,             tileBg(235));
     init_pair(CP_FLOWERS,       C::LAVENDER,     tileBg(C::MED_GREEN));
     init_pair(CP_FLOWERS_BLUE,  C::MED_BLUE,     tileBg(C::MED_GREEN));
     init_pair(CP_FLOWERS_YELLOW,C::BRIGHT_GOLD,  tileBg(C::MED_GREEN));
@@ -244,7 +247,7 @@ struct TeamColor { const char* name; int day, night, text; };
 static const TeamColor TEAM_COLORS[] = {
     {"Blue",    C::PLAYER_CYAN, C::PLAYER_DIM, C::SNOW_WHITE},
     {"Red",     C::ENEMY_RED,   C::ENEMY_DIM,  C::SNOW_WHITE},
-    {"Green",   40,             22,            C::NEAR_BLACK},
+    {"Green",   40,             28,            C::NEAR_BLACK},   // night keeps a readable green
     {"Gold",    C::GOLD,        C::DARK_GOLD,  C::NEAR_BLACK},
     {"Purple",  99,             54,            C::SNOW_WHITE},
     {"Magenta", 170,            90,            C::SNOW_WHITE},
@@ -367,13 +370,13 @@ static inline bool bordersSea(int x, int y) {
     return isSeaTile(x+1,y) || isSeaTile(x-1,y) || isSeaTile(x,y+1) || isSeaTile(x,y-1);
 }
 
-void getTerrainVisual(Terrain t, int x, int y, char& ch, int& cp, bool lit) {
+void getTerrainVisual(Terrain t, int x, int y, char& ch, int& cp, int lit) {
     Season season = getSeason();
     float sprog   = getSeasonProgress();
     float bright  = getBrightness();
-    // Torchlight from a nearby building holds the night back on this tile, so it
-    // keeps its daytime colours (see the lit-mask built in renderMap).
-    bool  night   = (bright < 0.3f) && !lit;
+    // Torchlight from a nearby building holds the night back on this tile
+    // (lit 1 = glow fringe, 2 = amber core — tinted at the end of this fn).
+    bool  night   = (bright < 0.3f) && lit == 0;
     Biome biome   = g.map[y][x].biome;
 
     switch (t) {
@@ -549,6 +552,10 @@ void getTerrainVisual(Terrain t, int x, int y, char& ch, int& cp, bool lit) {
         }
     }
 
+    // The harvest reads as HARVEST at a glance: wheat keeps its gold through
+    // every season and every hour (summer's brighter shade stays).
+    if (t == T_WHEAT && cp != CP_WHEAT_GOLD) { ch = '%'; cp = CP_WHEAT; }
+
     if (night) {
         if (cp==CP_GRASS||cp==CP_GRASS_LIGHT||cp==CP_GRASS_DRY||cp==CP_TALL_GRASS||cp==CP_MEADOW
             ||cp==CP_AUT_GRASS||cp==CP_AUT_GRASS_LATE
@@ -563,12 +570,24 @@ void getTerrainVisual(Terrain t, int x, int y, char& ch, int& cp, bool lit) {
             cp = CP_NIGHT_TREE;
         if (cp==CP_WATER||cp==CP_WATER_SHIMMER||cp==CP_SHALLOWS) cp = CP_NIGHT_WATER;
         if (cp==CP_SAND||cp==CP_DUNES||cp==CP_DIRT||cp==CP_ROAD||cp==CP_GRAVEL
-            ||cp==CP_CASTLE_FLOOR||cp==CP_RUINS||cp==CP_WHEAT||cp==CP_WHEAT_GOLD
-            ||cp==CP_HILLS||cp==CP_STONE)
+            ||cp==CP_CASTLE_FLOOR||cp==CP_RUINS
+            ||cp==CP_HILLS||cp==CP_STONE||cp==CP_HEATH)
             cp = CP_NIGHT_GROUND;
-        if (cp==CP_GOLD||cp==CP_GOLD_SHIMMER) cp = CP_NIGHT_GOLD;
+        // Gold stays gold after dark — coin and corn both.
+        if (cp==CP_GOLD||cp==CP_GOLD_SHIMMER||cp==CP_WHEAT||cp==CP_WHEAT_GOLD) cp = CP_NIGHT_GOLD;
         // Snow tiles darken but stay distinctly lighter than bare ground at night.
         if (cp==CP_WIN_GROUND||cp==CP_SNOW_GROUND) cp = CP_NIGHT_SNOW;
+    }
+
+    // Firelight: inside a torch pool after dusk the ground bathes amber.
+    // Core tiles glow steadily; the fringe keeps its daylight colours but
+    // gutters — every few ticks a tile falls to ember-dim, so the edge of
+    // the light LIVES the way real torchlight does. Water won't take it.
+    if (lit > 0 && bright < 0.45f
+        && cp != CP_NIGHT_WATER && cp != CP_WATER && cp != CP_WATER_SHIMMER
+        && cp != CP_SHALLOWS && cp != CP_LAVA && cp != CP_LAVA_HOT) {
+        if (lit >= 2) cp = CP_TORCHLIT;
+        else if (((unsigned)(x*7349 + y*4913 + (g.tick/4)*911) % 7) == 0) cp = CP_TORCHLIT_DIM;
     }
 }
 
@@ -781,27 +800,52 @@ static void drawMapOverlays(int tileW) {
     }
 }
 
-static bool          litMask[MAP_H][MAP_W];
+static unsigned char litMask[MAP_H][MAP_W];   // 0 dark, 1 glow fringe, 2 torch core
+static unsigned char wallGrid[MAP_H][MAP_W];  // wall/gate/tower occupancy (connectivity)
 static unsigned char bldPrev[MAP_H][MAP_W];
 static bool          wallPrev[MAP_H][MAP_W];
 
 // Per-frame precompute: the night torch-light mask, the selected ranged
 // unit/tower range ring, and the build / wall-drag placement previews.
 // Fills the file-static masks the map loop reads below.
-static void rmPreparePass(bool night, int& ringX, int& ringY, int& ringR) {
-    // Torchlight: at night every standing building casts a small pool of light
-    // onto the tiles immediately around it (all owners — a global world effect),
-    // so bases and outposts glow warmly against the dark instead of vanishing.
-    // Lit tiles render in their daytime colours (see getTerrainVisual).
+static void rmPreparePass(int& ringX, int& ringY, int& ringR) {
+    // Torchlight: from dusk on, every standing building casts a ROUND pool of
+    // warm light — a bright core by the walls fading to an ember fringe. The
+    // old version was a binary square of daytime colours; round falloff plus
+    // the amber palette below is what makes it read as firelight. All owners
+    // glow (a world effect): villages become constellations after dark.
     memset(litMask, 0, sizeof(litMask));
-    if (night) {
-        const int R = 3;
-        for (auto& b : g.entities) {
-            if (!b.alive || !isBuilding(b.type) || b.underConstruction) continue;
-            int bx2 = b.x + STATS[b.type].sizeW - 1, by2 = b.y + STATS[b.type].sizeH - 1;
-            for (int yy = b.y - R; yy <= by2 + R; yy++)
-                for (int xx = b.x - R; xx <= bx2 + R; xx++)
-                    if (inBounds(xx, yy)) litMask[yy][xx] = true;
+    memset(wallGrid, 0, sizeof(wallGrid));
+    bool lamps = (getBrightness() < 0.45f);   // lamplighters work from dusk
+    for (auto& b : g.entities) {
+        if (!b.alive || !isBuilding(b.type)) continue;
+        int bx2 = b.x + STATS[b.type].sizeW - 1, by2 = b.y + STATS[b.type].sizeH - 1;
+        // Connectivity grid for the wall renderer (built + building alike).
+        if (b.type == E_WALL || b.type == E_GATE || b.type == E_TOWER)
+            for (int yy = b.y; yy <= by2; yy++) for (int xx = b.x; xx <= bx2; xx++)
+                if (inBounds(xx, yy)) wallGrid[yy][xx] = 1;
+        if (!lamps || b.underConstruction) continue;
+        // Light class: beacons (keeps, towers, halls, taverns) throw far;
+        // cottages keep a hearth-pool; walls carry a rim of embers.
+        float coreR, fringeR;
+        switch (b.type) {
+            case E_TOWNHALL: case E_CASTLE: case E_TOWER:
+            case E_CHURCH:   case E_TAVERN:               coreR = 2.4f; fringeR = 5.0f; break;
+            case E_WALL:     case E_GATE:                 coreR = 0.0f; fringeR = 1.6f; break;
+            default:                                      coreR = 1.5f; fringeR = 3.4f; break;
+        }
+        int R = (int)fringeR + 1;
+        for (int yy = b.y - R; yy <= by2 + R; yy++) for (int xx = b.x - R; xx <= bx2 + R; xx++) {
+            if (!inBounds(xx, yy)) continue;
+            // Distance to the building's footprint rectangle (not its centre),
+            // so long walls and big keeps glow evenly along their length.
+            int cx = std::max(b.x, std::min(xx, bx2));
+            int cy = std::max(b.y, std::min(yy, by2));
+            float d2 = (float)((xx-cx)*(xx-cx) + (yy-cy)*(yy-cy));
+            unsigned char lv = 0;
+            if      (coreR > 0 && d2 <= coreR*coreR)  lv = 2;
+            else if (d2 <= fringeR*fringeR)           lv = 1;
+            if (lv > litMask[yy][xx]) litMask[yy][xx] = lv;
         }
     }
 
@@ -877,7 +921,7 @@ void renderMap() {
     bool night = isNight();
 
     int ringX, ringY, ringR;
-    rmPreparePass(night, ringX, ringY, ringR);
+    rmPreparePass(ringX, ringY, ringR);
 
     for (int sy = 0; sy < g.viewH; sy++) { int my = g.viewY + sy;
         for (int sx = 0; sx < g.viewW; sx++) { int mx = g.viewX + sx;
@@ -930,6 +974,20 @@ void renderMap() {
 
             // Use a chtype-wide draw glyph so completed walls can use the ACS solid block.
             chtype drawCh = (chtype)ch;
+            // Roads read as cobbles (walkable texture), never as fences.
+            if (tile.terrain == T_ROAD) drawCh = ACS_BULLET;
+            // Ruined castle masonry joins the wall-line language: straight
+            // stretches are wall lines, corners and breaks are stone blocks.
+            if (tile.terrain == T_CASTLE_WALL) {
+                auto tw = [&](int xx, int yy){ return inBounds(xx,yy)
+                    && (g.map[yy][xx].terrain==T_CASTLE_WALL || g.map[yy][xx].terrain==T_CASTLE_GATE
+                        || wallGrid[yy][xx]); };
+                bool n = tw(mx, my-1), s2 = tw(mx, my+1);
+                bool w = tw(mx-1, my), e2 = tw(mx+1, my);
+                bool horiz = (w || e2) && !(n || s2);
+                bool vert  = (n || s2) && !(w || e2);
+                drawCh = horiz ? ACS_HLINE : vert ? ACS_VLINE : ACS_CKBOARD;
+            }
             if (wallPrev[my][mx]) drawCh = ACS_CKBOARD;
 
             Entity* ent = entityAt(mx, my);
@@ -1013,18 +1071,53 @@ void renderMap() {
                     else { ch = STATS[ent->type].glyph; drawCh = (chtype)ch; }
                 }
 
+                // Colour pair: player-owned units/buildings use owner colour
+                // backgrounds; Gaia animals keep their type-specific colours.
+                // (Restored: a bad edit dropped this block, and units took
+                // whatever colour the ground under them had.)
+                if (ent->owner == OWNER_NATURE) {
+                    if      (ent->type == E_WOLF)  cp = CP_WOLF;
+                    else if (ent->type == E_SHEEP) cp = CP_SHEEP;
+                    else if (ent->type == E_BOAR)  cp = CP_BOAR;
+                    else                           cp = CP_DEER;
+                } else {
+                    cp = ownerColorPair(ent->owner, night && litMask[my][mx] == 0);
+                }
+                // All boats get a wood-brown deck; glyph colour is per-player
+                // so each side's fleet is identifiable.
+                if (isNaval(ent->type) && ent->owner < MAX_PLAYERS) {
+                    static const int shipCp[] = { CP_SHIP_P0, CP_SHIP_P1, CP_SHIP_P2, CP_SHIP_P3 };
+                    cp = shipCp[ent->owner];
+                }
+                // Farms are always wheat-gold — ownership doesn't change their
+                // colour, and neither does being half-sown (a growing field in
+                // the owner's team colour read as "green corn").
+                if (ent->type == E_FARM)
+                    cp = (getSeason() == SUMMER) ? CP_WHEAT_GOLD : CP_WHEAT;
+
                 // State-specific glyph overrides (gate, construction, siege engines, alert).
-                if (ent->type == E_GATE && !ent->underConstruction) {
-                    ch = ent->gateOpen ? '-' : '|';
-                    drawCh = (chtype)ch;
+                // Fortifications read as LINES: straight curtain-wall runs are
+                // wall lines; corners, junctions and lone stubs are bastion
+                // blocks. Gates take the run's orientation — closed bars the
+                // line, open leaves a passage dot.
+                if ((ent->type == E_WALL || ent->type == E_GATE) && !ent->underConstruction) {
+                    auto tw = [&](int xx, int yy){ return inBounds(xx,yy)
+                        && (wallGrid[yy][xx]
+                            || g.map[yy][xx].terrain==T_CASTLE_WALL
+                            || g.map[yy][xx].terrain==T_CASTLE_GATE); };
+                    bool n = tw(mx, my-1), s2 = tw(mx, my+1);
+                    bool w = tw(mx-1, my), e2 = tw(mx+1, my);
+                    bool horiz = (w || e2) && !(n || s2);
+                    bool vert  = (n || s2) && !(w || e2);
+                    if (ent->type == E_GATE)
+                        drawCh = ent->gateOpen ? ACS_BULLET : (vert ? ACS_VLINE : ACS_HLINE);
+                    else
+                        drawCh = horiz ? ACS_HLINE : vert ? ACS_VLINE : ACS_CKBOARD;
                 }
                 if (ent->underConstruction && g.tick%10 < 5) {
                     ch = '#'; drawCh = (chtype)ch;
                 }
-                // Dwarf-Fortress-style solid wall block when complete.
-                if (ent->type == E_WALL && !ent->underConstruction) {
-                    drawCh = ACS_CKBOARD;
-                }
+
                 // Keep: 3×3 per-cell pattern — solid corners, edged walls,
                 // the lord's hall at the centre.
                 if (ent->type == E_CASTLE && !ent->underConstruction) {
