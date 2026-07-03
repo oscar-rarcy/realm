@@ -577,6 +577,7 @@ void replayStopRecording();
 bool replayLoadFile(const char* path, unsigned long long& seed, int& numAIs, int& biomeChoice, int& layoutChoice, int& difficulty, int& humanMask);
 void replayInjectCommands();          // playback: queue recorded commands for the current tick
 bool replayPlaying();
+void replayStopPlayback();            // back to live play (splash replay browser)
 
 // commands.cpp — desync detector
 unsigned long long simStateHash();    // FNV-1a over entities + players + RNG state

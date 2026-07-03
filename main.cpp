@@ -2,6 +2,7 @@
 #include <chrono>
 #include <cstdlib>
 #include <cstring>
+#include <dirent.h>
 #include <locale.h>
 #if defined(_WIN32)
 #include <windows.h>
@@ -9,6 +10,15 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #endif
+
+// Millisecond sleep for the headless harness loops (POSIX + Windows).
+static void msleep(int ms) {
+#if defined(_WIN32)
+    Sleep(ms);
+#else
+    usleep(ms * 1000);
+#endif
+}
 
 static bool isUtf8LocaleName(const char* name) {
     if (!name) return false;
@@ -54,6 +64,7 @@ struct SplashResult {
     bool netPlay = false;
     NetMatchConfig netCfg;
     int netSlot = 0;
+    std::string replayPath;   // non-empty: watch this recording
 };
 static bool showMultiplayerMenu(SplashResult& r);          // lobby flows, below
 
@@ -104,13 +115,90 @@ static int showLoadMenu() {
         else if (c==KEY_UP   ||c=='k'||c=='K')          selSlot = (selSlot + NUM_SAVE_SLOTS - 1) % NUM_SAVE_SLOTS;
         else if (c==KEY_DOWN ||c=='j'||c=='J')          selSlot = (selSlot + 1) % NUM_SAVE_SLOTS;
         else if (c=='d'||c=='D') {
-            SaveSlotInfo info; char path[64]; saveSlotPath(selSlot+1, path, sizeof path);
-            if (peekSave(path, info)) remove(path);
+            // Same double-press grammar as Q-quit and F-loads: destroying a
+            // save should never be one accidental keystroke.
+            static int armedSlot = -1;
+            if (armedSlot == selSlot) {
+                SaveSlotInfo info; char path[64]; saveSlotPath(selSlot+1, path, sizeof path);
+                if (peekSave(path, info)) remove(path);
+                armedSlot = -1;
+            } else armedSlot = selSlot;
         }
         else if (c=='\n'||c=='\r'||c==KEY_ENTER) {
             SaveSlotInfo info;
             if (slotUsed(selSlot, info)) return selSlot + 1;   // only load a used slot
         }
+    }
+}
+
+static void drawFrame(int r, int c, int w, int h, const char* title);   // defined below
+static void drawRealmBanner(int maxX, int topRow);
+
+// Replay browser: every match records itself into replays/ — this makes the
+// recordings reachable without the command line. Newest first (the
+// timestamped filenames sort chronologically). D arms, D confirms.
+static std::string showReplayMenu() {
+    std::vector<std::string> files;
+    auto rescan = [&]() {
+        files.clear();
+        DIR* d = opendir("replays");
+        if (!d) return;
+        struct dirent* de;
+        while ((de = readdir(d)) != nullptr) {
+            std::string n = de->d_name;
+            if (n.size() > 4 && n.substr(n.size()-4) == ".rep") files.push_back(n);
+        }
+        closedir(d);
+        std::sort(files.rbegin(), files.rend());
+    };
+    rescan();
+    int sel = 0, top = 0, armedDel = -1;
+    while (true) {
+        int maxY, maxX; getmaxyx(stdscr, maxY, maxX);
+        erase();
+        drawRealmBanner(maxX, std::max(0, maxY/2 - 14));
+        const int VIS = std::min(10, maxY - 16);
+        const int bw = 52, bh = 4 + std::max(2, std::min((int)files.size(), VIS));
+        int c = std::max(2, maxX/2 - bw/2), r0 = std::max(9, maxY/2 - 4);
+        drawFrame(r0, c, bw, bh, "REPLAYS");
+        if (files.empty()) {
+            attron(COLOR_PAIR(CP_UI_DIM));
+            mvprintw(r0+2, c+3, "No recordings yet - every match saves one.");
+            attroff(COLOR_PAIR(CP_UI_DIM));
+        }
+        if (sel < top) top = sel;
+        if (sel >= top + VIS) top = sel - VIS + 1;
+        for (int i = top; i < (int)files.size() && i < top + VIS; i++) {
+            bool f = (i == sel);
+            // realm-YYYYMMDD-HHMMSS.rep -> "YYYY-MM-DD HH:MM"
+            std::string n = files[i], when = n;
+            if (n.size() >= 21 && n.rfind("realm-", 0) == 0)
+                when = n.substr(6,4)+"-"+n.substr(10,2)+"-"+n.substr(12,2)+"  "+n.substr(15,2)+":"+n.substr(17,2);
+            int a = f ? (COLOR_PAIR(CP_UI_HIGH)|A_BOLD) : COLOR_PAIR(CP_UI_TEXT);
+            attron(a);
+            mvprintw(r0+2+(i-top), c+3, "%s %s%s", f ? u8"›" : " ", when.c_str(),
+                     (armedDel == i) ? "   [D] again to delete!" : "");
+            attroff(a);
+        }
+        attron(COLOR_PAIR(CP_UI_DIM));
+        mvprintw(r0 + bh, c, "↑↓/JK pick   Enter watch   D delete (twice)   Esc back");
+        attroff(COLOR_PAIR(CP_UI_DIM));
+        refresh();
+
+        int ch = getch();
+        if (ch == KEY_MOUSE) { MEVENT me; getmouse(&me); continue; }
+        if (ch==27 || ch=='q' || ch=='Q') return "";
+        else if ((ch==KEY_UP   || ch=='k'|| ch=='K') && !files.empty()) { sel = (sel + (int)files.size() - 1) % (int)files.size(); armedDel = -1; }
+        else if ((ch==KEY_DOWN || ch=='j'|| ch=='J') && !files.empty()) { sel = (sel + 1) % (int)files.size(); armedDel = -1; }
+        else if ((ch=='d' || ch=='D') && !files.empty()) {
+            if (armedDel == sel) {
+                remove(("replays/" + files[sel]).c_str());
+                armedDel = -1; rescan();
+                if (sel >= (int)files.size()) sel = std::max(0, (int)files.size() - 1);
+            } else armedDel = sel;
+        }
+        else if ((ch=='\n' || ch=='\r' || ch==KEY_ENTER) && !files.empty())
+            return "replays/" + files[sel];
     }
 }
 
@@ -308,8 +396,8 @@ static bool skirmishSetup(unsigned long long& outSeed) {
 // opens the grouped setup; Multiplayer the lobby flows; Load the slot
 // browser; Controls the key reference. Fills `r` with what to play.
 static void showSplash(SplashResult& r) {
-    static const char* items[] = { "SKIRMISH", "MULTIPLAYER", "LOAD GAME", "CONTROLS", "QUIT" };
-    const int N = 5;
+    static const char* items[] = { "SKIRMISH", "MULTIPLAYER", "LOAD GAME", "REPLAYS", "CONTROLS", "QUIT" };
+    const int N = 6;
     int sel = 0;
     while (true) {
         int maxY, maxX; getmaxyx(stdscr, maxY, maxX);
@@ -327,6 +415,11 @@ static void showSplash(SplashResult& r) {
         attron(COLOR_PAIR(CP_UI_DIM));
         const char* hint = "↑↓ select    Enter choose    Q quit";
         mvprintw(my0 + N + 2, maxX/2 - (int)strlen(hint)/2, "%s", hint);
+        // Build fingerprint: multiplayer needs identical builds, and "which
+        // version do you have?" should be answerable from the title screen.
+        char ver[48];
+        snprintf(ver, sizeof ver, "build %s - protocol v2", __DATE__);
+        mvprintw(maxY - 1, maxX - (int)strlen(ver) - 2, "%s", ver);
         attroff(COLOR_PAIR(CP_UI_DIM));
         refresh();
 
@@ -339,7 +432,8 @@ static void showSplash(SplashResult& r) {
             if      (sel == 0) { if (skirmishSetup(r.seed)) { r.numAIs = cfgNumAIs; return; } }
             else if (sel == 1) { if (showMultiplayerMenu(r)) return; }
             else if (sel == 2) { int s = showLoadMenu(); if (s > 0) { r.loadSlot = s; return; } }
-            else if (sel == 3) { showControlsScreen(); }
+            else if (sel == 3) { std::string rp = showReplayMenu(); if (!rp.empty()) { r.replayPath = rp; return; } }
+            else if (sel == 4) { showControlsScreen(); }
             else               { endwin(); exit(0); }
         }
     }
@@ -735,28 +829,52 @@ static bool showMultiplayerMenu(SplashResult& r) {
     }
 }
 
-// One terrain -> minimap glyph/colour, shared by every preview thumbnail. Full
-// visibility (no fog), so it reads as a map illustration, not the in-game radar.
-static void previewGlyph(Terrain t, char& ch, int& cp) {
-    switch (t) {
-        case T_WATER: case T_SHALLOWS: case T_REEDS: case T_MARSH:
-                                       ch='~'; cp=CP_MM_WATER;  break;
-        case T_FISH:                   ch='*'; cp=CP_MM_WATER;  break;
-        case T_MOUNTAIN: case T_STONE: ch='^'; cp=CP_MM_MTN;    break;
-        case T_HILLS: case T_GRAVEL:   ch='n'; cp=CP_MM_MTN;    break;
-        case T_FOREST: case T_PINE: case T_PALM: case T_DEAD_TREE:
-                                       ch='*'; cp=CP_MM_FOREST; break;
-        case T_GOLD:                   ch='$'; cp=CP_MM_GOLD;   break;
-        case T_SAND: case T_DUNES:     ch='.'; cp=CP_MM_SAND;   break;
-        case T_DIRT: case T_MUD:       ch=','; cp=CP_MM_SAND;   break;  // cracked flats / wadi beds
-        case T_SNOW: case T_ICE:       ch='.'; cp=CP_MM_SNOW;   break;
-        case T_CASTLE_WALL: case T_CASTLE_GATE: case T_CASTLE_FLOOR: case T_RUINS:
-                                       ch='#'; cp=CP_MM_CASTLE; break;
-        case T_BRIDGE:                 ch='='; cp=CP_MM_CASTLE; break;
-        case T_MONOLITH:               ch='I'; cp=CP_MM_CASTLE; break;
-        case T_WHEAT: case T_BERRY:    ch=':'; cp=CP_GRASS_DRY; break;
-        default:                       ch='.'; cp=CP_GRASS;     break;  // grass & friends
+// One preview cell = a BLOCK of world tiles (a thumbnail cell covers ~7x9 of
+// them). The old point-sample read a single tile, so rivers aliased away and
+// forests thinned to noise — every map looked like the same sparse meadow.
+// Majority-vote the block with feature priority: rare, match-defining
+// terrain (gold, keeps, water, woods) must survive the shrink.
+static void previewCell(int x0, int y0, int x1, int y1, char& ch, int& cp) {
+    int water=0, mtn=0, forest=0, gold=0, hills=0, sand=0, snow=0,
+        dirt=0, crop=0, keep=0, lava=0, total=0, highland=0;
+    for (int y = y0; y < y1; y++) for (int x = x0; x < x1; x++) {
+        if (!inBounds(x, y)) continue;
+        total++;
+        if (g.map[y][x].elev > 0) highland++;
+        switch (g.map[y][x].terrain) {
+            case T_WATER: case T_SHALLOWS: case T_REEDS: case T_MARSH: case T_FISH: water++; break;
+            case T_MOUNTAIN: case T_STONE:                       mtn++;    break;
+            case T_FOREST: case T_PINE: case T_PALM: case T_DEAD_TREE: forest++; break;
+            case T_GOLD:                                         gold++;   break;
+            case T_HILLS: case T_GRAVEL:                         hills++;  break;
+            case T_SAND: case T_DUNES:                           sand++;   break;
+            case T_SNOW: case T_ICE:                             snow++;   break;
+            case T_DIRT: case T_MUD:                             dirt++;   break;
+            case T_WHEAT: case T_BERRY:                          crop++;   break;
+            case T_CASTLE_WALL: case T_CASTLE_GATE: case T_CASTLE_FLOOR:
+            case T_RUINS: case T_MONOLITH:                       keep++;   break;
+            case T_LAVA: case T_ASH:                             lava++;   break;
+            default: break;
+        }
     }
+    if (total == 0) { ch = ' '; cp = CP_FOG; return; }
+    // Priority ladder: the rarer and more match-defining, the earlier.
+    if (gold > 0)               { ch = '$'; cp = CP_MM_GOLD;   return; }
+    if (keep > 0)               { ch = '#'; cp = CP_MM_CASTLE; return; }
+    if (lava * 4 >= total)      { ch = '^'; cp = CP_LAVA;      return; }
+    if (water * 4 >= total)     { ch = '~'; cp = CP_MM_WATER;  return; }
+    if (mtn * 8 >= total)       { ch = '^'; cp = CP_MM_MTN;    return; }
+    if (forest * 3 >= total)    { ch = '*'; cp = CP_MM_FOREST; return; }   // deep woods
+    if (forest * 7 >= total)    { ch = '\''; cp = CP_MM_FOREST; return; } // scattered trees
+    if (hills * 4 >= total)     { ch = 'n'; cp = CP_MM_MTN;    return; }
+    if (crop * 5 >= total)      { ch = '"'; cp = CP_GRASS_DRY; return; }
+    if (snow * 2 >= total)      { ch = '.'; cp = CP_MM_SNOW;   return; }
+    if (sand * 2 >= total)      { ch = '.'; cp = CP_MM_SAND;   return; }
+    if (dirt * 2 >= total)      { ch = ','; cp = CP_MM_SAND;   return; }
+    // Open ground; highland plateaus shade differently so the cliff shapes
+    // (the chokepoints that decide fights) read at a glance.
+    if (highland * 2 >= total)  { ch = ':'; cp = CP_MM_MTN;    return; }
+    ch = '.'; cp = CP_GRASS;
 }
 
 // AoE2-style battlefield picker: a grid of real generated minimaps. Browse
@@ -811,7 +929,9 @@ static bool showMapPreview(unsigned long long& outSeed) {
         cand[i].name = makeMapName(s, lay, clim);
         cand[i].ch.assign(TW*TH, '.'); cand[i].cp.assign(TW*TH, CP_GRASS);
         for (int yy = 0; yy < TH; yy++) for (int xx = 0; xx < TW; xx++) {
-            char c; int cp; previewGlyph(g.map[yy*MAP_H/TH][xx*MAP_W/TW].terrain, c, cp);
+            char c; int cp;
+            previewCell(xx*MAP_W/TW, yy*MAP_H/TH,
+                        (xx+1)*MAP_W/TW, (yy+1)*MAP_H/TH, c, cp);
             cand[i].ch[yy*TW+xx] = c; cand[i].cp[yy*TW+xx] = cp;
         }
         g.entities.clear();   // discard any ruins spawned while generating previews
@@ -836,6 +956,7 @@ static bool showMapPreview(unsigned long long& outSeed) {
         attroff(A_TITLE|COLOR_PAIR(CP_UI_ACCENT));
         attron(COLOR_PAIR(CP_UI_DIM));
         mvprintw(oy-2, ox, "Arrows/HJKL move   PgUp/Dn scroll   [ ] layout   < > climate   R reroll   Enter begin   Q back");
+        mvprintw(oy-1, ox, "Layout = the land's SHAPE  ~  Climate = its palette");
         attroff(COLOR_PAIR(CP_UI_DIM));
 
         for (int vr = 0; vr < VIS_ROWS; vr++) for (int c = 0; c < COLS; c++) {
@@ -853,7 +974,15 @@ static bool showMapPreview(unsigned long long& outSeed) {
                 int cp = cand[i].cp[r*TW+cc];
                 attron(COLOR_PAIR(cp)); mvaddch(cy+r, cx+cc, cand[i].ch[r*TW+cc]); attroff(COLOR_PAIR(cp));
             }
-            // Headline the map's evocative name on the bottom border (AoE2 style).
+            // Top border: WHAT it is (layout · climate) — the axis people
+            // actually choose on. Bottom border: the evocative name.
+            char kind[48];
+            snprintf(kind, sizeof kind, " %s ~ %s ", layName[cand[i].lay],
+                     cand[i].clim < 0 ? "Mixed" : climName[cand[i].clim]);
+            kind[std::min((int)strlen(kind), TW)] = '\0';
+            attron(isSel ? (COLOR_PAIR(CP_UI_ACCENT)|A_BOLD) : COLOR_PAIR(CP_UI_DIM));
+            mvprintw(cy-1, cx+1, "%s", kind);
+            attroff(isSel ? (COLOR_PAIR(CP_UI_ACCENT)|A_BOLD) : COLOR_PAIR(CP_UI_DIM));
             char title[64];
             snprintf(title, sizeof title, " %s ", cand[i].name.c_str());
             title[std::min((int)strlen(title), TW)] = '\0';   // keep inside the frame
@@ -1417,7 +1546,7 @@ int main(int argc, char** argv) {
             fprintf(stderr, "hosting on :%d, waiting for joiner...\n", NET_TCP_PORT);
             while (!netHostClientPresent()) {
                 if (!netHostPoll()) { fprintf(stderr, "lobby error\n"); return 1; }
-                usleep(10000);
+                msleep(10);
             }
             if (!netHostStart()) { fprintf(stderr, "start failed\n"); return 1; }
             slot = 0;
@@ -1427,7 +1556,7 @@ int main(int argc, char** argv) {
             int rc2;
             while ((rc2 = netClientPoll(nc)) != 2) {
                 if (rc2 < 0) { fprintf(stderr, "lost host in lobby\n"); return 1; }
-                usleep(5000);
+                msleep(5);
             }
             slot = 1;
         }
@@ -1454,11 +1583,11 @@ int main(int argc, char** argv) {
                 }
             }
             if (netTickReady()) { simTick(); netAfterTick(); stall = 0; }
-            else { usleep(2000); if (++stall > 5000) { fprintf(stderr, "stalled at tick %d\n", g.tick); return 1; } }
+            else { msleep(2); if (++stall > 5000) { fprintf(stderr, "stalled at tick %d\n", g.tick); return 1; } }
         }
         printf("net-%s ticks=%d hash=%016llx\n", netHost ? "host" : "join", g.tick, simStateHash());
         // Linger so the slower side can finish and the final hashes cross.
-        for (int i = 0; i < 200 && !netConnectionLost() && !netDesynced(); i++) { netPump(); usleep(5000); }
+        for (int i = 0; i < 200 && !netConnectionLost() && !netDesynced(); i++) { netPump(); msleep(5); }
         if (netDesynced()) { fprintf(stderr, "DESYNC at tick %d\n", netDesyncTick()); return 1; }
         netSendBye();
         netClose();
@@ -1541,6 +1670,25 @@ int main(int argc, char** argv) {
 
         // Reinitialise colour pairs in case the splash changed anything.
         initColors();
+
+        if (!pick.replayPath.empty()) {
+            // Watch a recording chosen in the browser: identical to the
+            // --replay CLI path, then back to the splash (playback mode must
+            // be cleared or the next live match would drop every order).
+            unsigned long long rs; int rAIs, rBiome, rLayout, rDiff, rMask;
+            if (replayLoadFile(pick.replayPath.c_str(), rs, rAIs, rBiome, rLayout, rDiff, rMask)) {
+                g.biomeChoice = rBiome; g.layoutChoice = rLayout; g.difficulty = rDiff;
+                g.humanMask = rMask; g.localPlayer = 0;
+                initGame(rAIs, rs);
+                setStatus("REPLAY — commands come from the recording. Camera/selection are yours; [Q][Q] to stop.");
+                runMatch();
+                replayStopPlayback();
+            } else {
+                // Old-version or corrupt recording; say so instead of nothing.
+                setStatus("That replay is from another Realm version — can't play it.");
+            }
+            continue;
+        }
 
         if (pick.netPlay) {
             // Network match: both machines build the identical world from the

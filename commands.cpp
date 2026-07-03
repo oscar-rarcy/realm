@@ -1,6 +1,12 @@
 #include "realm.h"
 #include <cstdio>
+#ifdef _WIN32
+#include <direct.h>
+#define MKDIR(p) _mkdir(p)
+#else
 #include <sys/stat.h>
+#define MKDIR(p) mkdir(p, 0755)
+#endif
 
 // ============================================================
 // COMMAND FUNNEL
@@ -538,7 +544,7 @@ static bool rdU64(FILE* f, unsigned long long& v) { return fread(&v, sizeof v, 1
 bool replayStartRecording(int numAIs) {
     replayStopRecording();
     if (playbackMode) return false;   // never record a playback of itself
-    mkdir("replays", 0755);
+    MKDIR("replays");
     char path[128];
     time_t now = time(nullptr);
     struct tm* tmv = localtime(&now);
@@ -560,6 +566,14 @@ bool replayStartRecording(int numAIs) {
 
 void replayStopRecording() {
     if (recF) { fclose(recF); recF = nullptr; }
+}
+
+// Leave playback mode (the splash replay browser returns to live play —
+// without this, pushCommand would stay inert for the next real match).
+void replayStopPlayback() {
+    if (playF) { fclose(playF); playF = nullptr; }
+    playbackMode = false;
+    havePendingRec = false;
 }
 
 static void replayRecord(const Command& c) {

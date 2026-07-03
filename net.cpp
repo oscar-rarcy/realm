@@ -1,16 +1,39 @@
 #include "realm.h"
+#include <cstdio>
+#include <map>
+#ifdef _WIN32
+// Winsock port (MinGW/MSYS2). Socket handles are stored in plain ints like
+// the POSIX build — Windows handles are small in practice; CI compiles this,
+// and the first Windows playtest is the runtime proof.
+#define WIN32_LEAN_AND_MEAN
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <sys/time.h>            // MinGW provides gettimeofday
+static int  netErrno()      { return WSAGetLastError(); }
+static bool errWouldBlock() { int e = WSAGetLastError(); return e == WSAEWOULDBLOCK; }
+static bool errInProgress() { int e = WSAGetLastError(); return e == WSAEWOULDBLOCK || e == WSAEINPROGRESS; }
+static void closeRawSock(int fd) { closesocket(fd); }
+static void netPlatformInit() {
+    static bool done = false;
+    if (!done) { WSADATA w; WSAStartup(MAKEWORD(2, 2), &w); done = true; }
+}
+#else
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <ifaddrs.h>
-#include <map>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <unistd.h>
-#include <cstdio>
+static int  netErrno()      { return errno; }
+static bool errWouldBlock() { return errno == EAGAIN || errno == EWOULDBLOCK; }
+static bool errInProgress() { return errno == EINPROGRESS; }
+static void closeRawSock(int fd) { close(fd); }
+static void netPlatformInit() {}
+#endif
 
 // ============================================================
 // LOCKSTEP NETWORKING (docs/networking-plan.md)
@@ -83,19 +106,24 @@ static long long nowMs() {
 }
 
 static void setNonBlocking(int fd) {
+#ifdef _WIN32
+    u_long one = 1;
+    ioctlsocket(fd, FIONBIO, &one);
+#else
     int fl = fcntl(fd, F_GETFL, 0);
     fcntl(fd, F_SETFL, fl | O_NONBLOCK);
+#endif
 }
 
-static void closeFd(int& fd) { if (fd >= 0) { close(fd); fd = -1; } }
+static void closeFd(int& fd) { if (fd >= 0) { closeRawSock(fd); fd = -1; } }
 
 // REALM_NET_DEBUG=1: log why the link died (stderr; harness only).
 static void netDbg(const char* where, int err) {
     static int on = -1;
     if (on < 0) { const char* e = getenv("REALM_NET_DEBUG"); on = (e && *e && *e != '0') ? 1 : 0; }
-    if (on) fprintf(stderr, "[net] connLost: %s (errno=%d %s) tick=%d\n", where, err, strerror(err), g.tick);
+    if (on) fprintf(stderr, "[net] connLost: %s (err=%d) tick=%d\n", where, err, g.tick);
 }
-#define CONN_LOST(where) do { if (!connLost) netDbg(where, errno); connLost = true; } while (0)
+#define CONN_LOST(where) do { if (!connLost) netDbg(where, netErrno()); connLost = true; } while (0)
 
 bool netActive() { return matchActive; }
 bool netConnectionLost() { return connLost; }
@@ -145,6 +173,7 @@ static std::string cfgBlurb(const NetMatchConfig& c) {
 // HOST LOBBY
 // ============================================================
 bool netHostOpen() {
+    netPlatformInit();
     netClose();
     isHost = true;
 
@@ -235,6 +264,7 @@ bool netHostStart() {
 // CLIENT JOIN
 // ============================================================
 bool netJoinConnect(const char* addr, int port, std::string& err) {
+    netPlatformInit();
     netClose();
     isHost = false;
 
@@ -247,9 +277,9 @@ bool netJoinConnect(const char* addr, int port, std::string& err) {
     sock = socket(AF_INET, SOCK_STREAM, 0);
     if (sock < 0) { freeaddrinfo(res); err = "socket() failed"; return false; }
     setNonBlocking(sock);
-    int rc = connect(sock, res->ai_addr, res->ai_addrlen);
+    int rc = connect(sock, res->ai_addr, (socklen_t)res->ai_addrlen);
     freeaddrinfo(res);
-    if (rc < 0 && errno != EINPROGRESS) { closeFd(sock); err = "Connection refused."; return false; }
+    if (rc < 0 && !errInProgress()) { closeFd(sock); err = "Connection refused."; return false; }
     // Wait up to 4s for the connect to land.
     fd_set wf; FD_ZERO(&wf); FD_SET(sock, &wf);
     timeval tv{4, 0};
@@ -285,6 +315,7 @@ int netClientPoll(NetMatchConfig& out) {
 static std::vector<NetLobbyInfo> found;
 
 void netDiscoverStart() {
+    netPlatformInit();
     netDiscoverStop();
     usock = socket(AF_INET, SOCK_DGRAM, 0);
     if (usock < 0) return;
@@ -339,6 +370,11 @@ void netDiscoverStop() {
 
 std::vector<std::string> netLocalAddresses() {
     std::vector<std::string> out;
+#ifdef _WIN32
+    // No getifaddrs on Windows; the lobby shows a hint instead of addresses.
+    out.push_back("(run ipconfig for your address)");
+    return out;
+#else
     ifaddrs* ifs = nullptr;
     if (getifaddrs(&ifs) != 0) return out;
     for (ifaddrs* i = ifs; i; i = i->ifa_next) {
@@ -350,6 +386,7 @@ std::vector<std::string> netLocalAddresses() {
     }
     freeifaddrs(ifs);
     return out;
+#endif
 }
 
 // ============================================================
@@ -443,7 +480,7 @@ void netPump() {
     while (!txBuf.empty()) {
         ssize_t n = send(sock, txBuf.data(), txBuf.size(), 0);
         if (n > 0) txBuf.erase(txBuf.begin(), txBuf.begin() + n);
-        else if (n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) break;
+        else if (n < 0 && errWouldBlock()) break;
         else { CONN_LOST("pump-send"); break; }
     }
     // Drain the socket.
@@ -454,7 +491,7 @@ void netPump() {
         lastRecvMs = nowMs();
     }
     if (n == 0) CONN_LOST("recv-eof");                        // orderly shutdown
-    else if (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK) CONN_LOST("recv-err");
+    else if (n < 0 && !errWouldBlock()) CONN_LOST("recv-err");
     // Parse complete frames.
     size_t off = 0;
     while (rxBuf.size() - off >= 5) {

@@ -1,0 +1,101 @@
+name: build
+
+# Every push proves Realm still builds on all three platforms and that the
+# sim stays deterministic (same seed twice must hash identically — the
+# property multiplayer and replays stand on).
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libncursesw5-dev libsdl2-dev libsdl2-ttf-dev libsdl2-mixer-dev pkg-config
+      - name: terminal build
+        run: make -j"$(nproc)"
+      - name: sdl build
+        run: make gui-build -j"$(nproc)"
+      - name: determinism
+        run: |
+          ./realm --verify 12345 3000 2 | head -1 | tee a.txt
+          ./realm --verify 12345 3000 2 | head -1 | tee b.txt
+          cmp a.txt b.txt
+          ./realm-gui --verify 12345 3000 2 | head -1 | tee c.txt
+          cmp a.txt c.txt
+      - name: raid pipeline
+        run: ./realm --test-raid
+      - uses: actions/upload-artifact@v4
+        with:
+          name: realm-linux-x86_64
+          path: |
+            realm
+            realm-gui
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: deps
+        run: brew install sdl2 sdl2_ttf sdl2_mixer pkg-config || true
+      - name: terminal build
+        run: make -j"$(sysctl -n hw.ncpu)"
+      - name: sdl build
+        run: make gui-build -j"$(sysctl -n hw.ncpu)"
+      - name: determinism
+        run: |
+          ./realm --verify 12345 3000 2 | head -1 | tee a.txt
+          ./realm --verify 12345 3000 2 | head -1 | tee b.txt
+          cmp a.txt b.txt
+      - name: raid pipeline
+        run: ./realm --test-raid
+      - uses: actions/upload-artifact@v4
+        with:
+          name: realm-macos-arm64
+          path: |
+            realm
+            realm-gui
+
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            make
+            pkg-config
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-SDL2
+            mingw-w64-x86_64-SDL2_ttf
+            mingw-w64-x86_64-SDL2_mixer
+            mingw-w64-x86_64-ncurses
+      - name: sdl build
+        run: make gui-build CXX=g++ -j4
+      - name: terminal build (ncursesw)
+        run: make CXX=g++ -j4
+      - name: determinism
+        run: |
+          ./realm --verify 12345 3000 2 | head -1 | tee a.txt
+          ./realm --verify 12345 3000 2 | head -1 | tee b.txt
+          cmp a.txt b.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: realm-windows-x86_64
+          path: |
+            realm.exe
+            realm-gui.exe
+            realm
+            realm-gui
+          if-no-files-found: warn

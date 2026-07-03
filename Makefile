@@ -13,10 +13,18 @@ OBJS := $(addprefix obj/,$(OBJ_NAMES))
 NCURSES_CFLAGS := $(shell $(PKG_CONFIG) --cflags ncursesw 2>/dev/null)
 NCURSES_LIBS   := $(shell $(PKG_CONFIG) --libs ncursesw 2>/dev/null || echo -lncursesw)
 
+# Platform link extras: Winsock on Windows (MSYS2/MinGW); nothing elsewhere.
+# macOS and Linux need no additions — BSD sockets live in libc.
+ifeq ($(OS),Windows_NT)
+PLATFORM_LIBS := -lws2_32
+else
+PLATFORM_LIBS :=
+endif
+
 all: $(TARGET)
 
 $(TARGET): $(OBJS)
-	$(CXX) $(CXXFLAGS) -o $@ $(OBJS) $(NCURSES_LIBS)
+	$(CXX) $(CXXFLAGS) -o $@ $(OBJS) $(NCURSES_LIBS) $(PLATFORM_LIBS)
 
 obj/%.o: %.cpp realm.h | obj
 	$(CXX) $(CXXFLAGS) $(NCURSES_CFLAGS) -c -o $@ $<
@@ -33,7 +41,7 @@ SDL_LIBS   := $(shell $(PKG_CONFIG) --libs sdl2 SDL2_ttf SDL2_mixer 2>/dev/null)
 gui-build: $(GUI_TARGET)
 
 $(GUI_TARGET): $(GUI_OBJS)
-	$(CXX) $(CXXFLAGS) -o $@ $(GUI_OBJS) $(SDL_LIBS)
+	$(CXX) $(CXXFLAGS) -o $@ $(GUI_OBJS) $(SDL_LIBS) $(PLATFORM_LIBS)
 
 gui/%.o: %.cpp realm.h sdl_shim.h | gui
 	$(CXX) $(CXXFLAGS) -DUSE_SDL_SHIM $(SDL_CFLAGS) -c -o $@ $<

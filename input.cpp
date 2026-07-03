@@ -292,9 +292,16 @@ void handleInput(int ch) {
             return;
         }
         if (ch=='d' || ch=='D') {
+            static int armedSlot = -1;
             SaveSlotInfo info;
-            if (peekSave(path, info)) { remove(path); setStatus(std::string("Deleted slot ") + std::to_string(slot) + "."); }
-            else setStatus("Slot is already empty.");
+            if (!peekSave(path, info)) { setStatus("Slot is already empty."); armedSlot = -1; return; }
+            if (armedSlot != g.saveSlotSel) {
+                armedSlot = g.saveSlotSel;
+                setStatus("Press D again to delete slot " + std::to_string(slot) + " forever.");
+                return;
+            }
+            remove(path); armedSlot = -1;
+            setStatus(std::string("Deleted slot ") + std::to_string(slot) + ".");
             return;
         }
         if (ch=='\n' || ch=='\r' || ch==KEY_ENTER || ch=='l' || ch=='L') {
