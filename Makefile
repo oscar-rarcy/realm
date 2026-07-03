@@ -38,10 +38,13 @@ GUI_OBJS   := $(addprefix gui/,$(OBJ_NAMES)) gui/sdl_shim.o
 SDL_CFLAGS := $(shell $(PKG_CONFIG) --cflags sdl2 SDL2_ttf SDL2_mixer 2>/dev/null)
 SDL_LIBS   := $(shell $(PKG_CONFIG) --libs sdl2 SDL2_ttf SDL2_mixer 2>/dev/null)
 ifeq ($(OS),Windows_NT)
-# We define main() ourselves (SDL_MAIN_HANDLED in sdl_shim.cpp): SDL2main's
-# WinMain wrapper would demand an SDL_main symbol we don't have. Console
-# subsystem (no -mwindows) keeps --verify/--net-* output visible too.
-SDL_LIBS := $(filter-out -lSDL2main -mwindows,$(SDL_LIBS))
+# We define main() ourselves (SDL_MAIN_HANDLED in sdl_shim.cpp). MSYS2's
+# sdl2.pc plays the whole SDL_main game: -Dmain=SDL_main in Cflags renames
+# every main it can see, and -lSDL2main provides the WinMain that would call
+# it. Strip both sides, keep the console subsystem so --verify/--net-*
+# output stays visible.
+SDL_CFLAGS := $(filter-out -Dmain=SDL_main,$(SDL_CFLAGS))
+SDL_LIBS   := $(filter-out -lSDL2main -mwindows,$(SDL_LIBS))
 endif
 
 gui-build: $(GUI_TARGET)
