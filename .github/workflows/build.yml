@@ -26,9 +26,9 @@ jobs:
         run: |
           ./realm --verify 12345 3000 2 | head -1 | tee a.txt
           ./realm --verify 12345 3000 2 | head -1 | tee b.txt
-          cmp a.txt b.txt
+          [ "$(cat a.txt)" = "$(cat b.txt)" ]
           ./realm-gui --verify 12345 3000 2 | head -1 | tee c.txt
-          cmp a.txt c.txt
+          [ "$(cat a.txt)" = "$(cat c.txt)" ]
       - name: raid pipeline
         run: ./realm --test-raid
       - uses: actions/upload-artifact@v4
@@ -52,7 +52,7 @@ jobs:
         run: |
           ./realm --verify 12345 3000 2 | head -1 | tee a.txt
           ./realm --verify 12345 3000 2 | head -1 | tee b.txt
-          cmp a.txt b.txt
+          [ "$(cat a.txt)" = "$(cat b.txt)" ]
       - name: raid pipeline
         run: ./realm --test-raid
       - uses: actions/upload-artifact@v4
@@ -89,7 +89,7 @@ jobs:
         run: |
           ./realm --verify 12345 3000 2 | head -1 | tee a.txt
           ./realm --verify 12345 3000 2 | head -1 | tee b.txt
-          cmp a.txt b.txt
+          [ "$(cat a.txt)" = "$(cat b.txt)" ]
       - uses: actions/upload-artifact@v4
         with:
           name: realm-windows-x86_64

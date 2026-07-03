@@ -992,6 +992,29 @@ void renderMap() {
                     ch = ch - 'a' + 'A';
                 drawCh = (chtype)ch;
 
+                // Architecture pass: multi-tile buildings read as structures —
+                // pitched roof, walls, a door — instead of a grid of letters.
+                // One cell keeps the building's letter as its signboard, so
+                // identification survives the beauty. (Ownership stays in the
+                // background colour; bespoke looks below — castle keep,
+                // stockyard piles, gates — override this.)
+                if (isBuilding(ent->type) && !ent->underConstruction
+                    && STATS[ent->type].sizeW >= 2 && ent->type != E_RUIN) {
+                    int bdx = mx - ent->x, bdy = my - ent->y;
+                    int bw = STATS[ent->type].sizeW, bh = STATS[ent->type].sizeH;
+                    char letter = STATS[ent->type].glyph;
+                    char door = (letter == '+') ? '|' : '+';   // the church IS a cross
+                    char bc;
+                    if (bdy == 0)             bc = (bdx == 0) ? '/' : (bdx == bw-1) ? '\\' : '^';
+                    else if (bw == 2)         bc = (bdx == 0) ? letter : door;      // 2x2 ground floor
+                    else if (bdy == bh - 1 && bh >= 3)
+                                              bc = (bdx == 0 || bdx == bw-1) ? '|' : door;
+                    else                      bc = (bdx == 0) ? '|'
+                                                 : (bdx == bw-1) ? ((bh == 2) ? door : '|')
+                                                 : letter;
+                    ch = bc; drawCh = (chtype)ch;
+                }
+
                 // Colour pair: player-owned units/buildings use owner colour
                 // backgrounds; Gaia animals keep their type-specific colours.
                 if (ent->owner == OWNER_NATURE) {
