@@ -18,6 +18,9 @@
 // the cell cursor always sits exactly under the OS pointer tip.
 // ============================================================
 #include "sdl_shim.h"
+// We own main() on every platform; stop SDL2main's WinMain/SDL_main macro
+// dance on Windows (paired with SDL_SetMainReady before SDL_Init).
+#define SDL_MAIN_HANDLED
 #include <SDL.h>
 #include <SDL_ttf.h>
 #include <SDL_mixer.h>
@@ -598,6 +601,7 @@ void shutdownAudio() {
 // API
 // ============================================================
 WINDOW* initscr() {
+    SDL_SetMainReady();
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         fprintf(stderr, "SDL_Init failed: %s\n", SDL_GetError());
         exit(1);
