@@ -455,8 +455,13 @@ static void handleFrame(unsigned char type, const unsigned char* p, unsigned len
         int execTick, nCmds;
         memcpy(&execTick, p, 4); memcpy(&nCmds, p + 4, 4);
         if (nCmds < 0 || nCmds > 4096) { CONN_LOST("bundle-count"); break; }
-        const int* f = (const int*)(p + 8);
+        // The frame header is 5 bytes, so the payload lands odd-aligned:
+        // copy the command ints into an aligned buffer before decoding
+        // (casting p+8 to int* is UB — UBSan-caught).
         int avail = (int)((len - 8) / 4);
+        std::vector<int> fbuf(std::max(0, avail));
+        if (avail > 0) memcpy(fbuf.data(), p + 8, (size_t)avail * 4);
+        const int* f = fbuf.data();
         std::vector<Command> cmds;
         for (int i = 0; i < nCmds; i++) {
             Command c;

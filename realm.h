@@ -376,6 +376,7 @@ struct Game {
     EntityType buildPending; int wallDragX, wallDragY;
     int winner, aiTimer, farmTimer;
     float dayPhase, seasonPhase;
+    int year;             // campaign year; seasonPhase wraps at 4.0, this counts the wraps
     int prevSeason;       // for detecting season transitions
     int prevTimePhase;    // 0=day 1=dusk 2=night 3=dawn; for transition messages
     int attackNotifyCd;  // ticks until next "Under attack" message is allowed
@@ -675,6 +676,21 @@ bool saveGame(const char* path);
 bool loadGame(const char* path);
 bool peekSave(const char* path, SaveSlotInfo& out);
 void saveSlotPath(int slot, char* buf, int n);   // slot is 1-based
+
+// menu.cpp — the splash and every screen around it. What the splash
+// resolved to: a skirmish, a saved game, a replay to watch, or a connected
+// network match (host seat 0 / client seat 1, config agreed in the lobby).
+struct SplashResult {
+    int numAIs = 1;
+    unsigned long long seed = 0;
+    int loadSlot = 0;
+    bool netPlay = false;
+    NetMatchConfig netCfg;
+    int netSlot = 0;
+    std::string replayPath;   // non-empty: watch this recording
+};
+void showSplash(SplashResult& r);
+void loadMenuConfig();   // remembered preferences (realm-config.txt)
 
 // main.cpp
 void initGame(int numAIs, unsigned long long seed = 0); // seed 0 = derive from clock

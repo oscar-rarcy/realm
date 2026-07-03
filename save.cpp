@@ -14,7 +14,7 @@
 //   - Skips garbage corrupt files via fread return-value checks
 
 static constexpr char MAGIC[4] = {'R','L','M','2'};
-static constexpr int  SAVE_VERSION = 13; // v13: sacred-site domination countdown (siteHoldOwner/Ticks)
+static constexpr int  SAVE_VERSION = 14; // v14: campaign year counter (every "Year" display was stuck at 1)
 static constexpr int  MAX_ENTITIES = 100000;
 static constexpr int  MAX_VEC_LEN  = 50000;
 
@@ -48,14 +48,13 @@ bool peekSave(const char* path, SaveSlotInfo& out) {
     if (mapW != MAP_W || mapH != MAP_H || maxPlayers != MAX_PLAYERS) { fclose(f); return false; }
     int64_t saveTime;
     if (!rd(f, saveTime)) { fclose(f); return false; }
-    int nextId, tick; float dayPhase, seasonPhase;   // same order as saveGame
-    if (!rd(f, nextId) || !rd(f, tick) || !rd(f, dayPhase) || !rd(f, seasonPhase)) { fclose(f); return false; }
+    int nextId, tick, year; float dayPhase, seasonPhase;   // same order as saveGame
+    if (!rd(f, nextId) || !rd(f, tick) || !rd(f, dayPhase) || !rd(f, seasonPhase) || !rd(f, year)) { fclose(f); return false; }
     fclose(f);
-    int sp = (int)seasonPhase;
     out.used     = true;
     out.saveTime = (long long)saveTime;
-    out.season   = ((sp % 4) + 4) % 4;
-    out.year     = sp / 4 + 1;
+    out.season   = ((int)seasonPhase % 4 + 4) % 4;
+    out.year     = std::max(1, year);
     return true;
 }
 
@@ -81,6 +80,7 @@ bool saveGame(const char* path) {
     // ----- GAME SCALARS -----
     wr(f, g.nextId);   wr(f, g.tick);
     wr(f, g.dayPhase); wr(f, g.seasonPhase);
+    wr(f, g.year);
     wr(f, g.prevSeason); wr(f, g.prevTimePhase);
     wr(f, g.attackNotifyCd);
     wr(f, g.weather); wr(f, g.weatherTimer);
@@ -159,6 +159,7 @@ bool loadGame(const char* path) {
     if (!rd(f, g.nextId))   { fclose(f); return false; }
     if (!rd(f, g.tick))     { fclose(f); return false; }
     rd(f, g.dayPhase); rd(f, g.seasonPhase);
+    rd(f, g.year);
     rd(f, g.prevSeason); rd(f, g.prevTimePhase);
     rd(f, g.attackNotifyCd);
     rd(f, g.weather); rd(f, g.weatherTimer);

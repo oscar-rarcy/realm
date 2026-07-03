@@ -74,12 +74,19 @@ const EntityStats STATS[] = {
 // the counter-play: Marcher cavalry runs into Fenland spear walls, the
 // Fenlanders can't chase Hillfolk miners into the hills, and so on.
 // ============================================================
+static_assert(sizeof(STATS) / sizeof(STATS[0]) == (size_t)E_BEAR + 1,
+    "STATS[] must have exactly one row per EntityType, in enum order — "
+    "adding an entity type means adding its row at the SAME position");
+
 const CivDef CIVS[] = {
     {"Freeholders",  "Peasants train 15% faster; sturdy all-rounders", "no edge in war"},
     {"Fenlanders",   "Farms yield +1, boats 25% cheaper, archers train fast", "no stables (no cavalry)"},
     {"Hillfolk",     "Miners +25%, walls/towers/gates +50% HP", "military trains slower; no war fleet"},
     {"Marcher Lords","Stable units 20% cheaper and train 25% faster", "no archers (crossbows come late)"},
 };
+
+static_assert(sizeof(CIVS) / sizeof(CIVS[0]) == NUM_CIVS,
+    "CIVS[] and NUM_CIVS must agree");
 
 const char* eraName(int era) {
     switch (era) {

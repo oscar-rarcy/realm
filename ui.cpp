@@ -765,7 +765,7 @@ void renderUI() {
         int hx = std::max(1, (maxX - hw) / 2), hy = std::max(0, (maxY - hh) / 2);
         attron(COLOR_PAIR(CP_UI_BAR));
         for (int r = 0; r < hh; r++) mvhline(hy+r, hx, ' ', hw);
-        attron(A_BOLD); mvprintw(hy+1, hx+2, "THE CHRONICLE OF THE MATCH   (year %d)", (int)(g.seasonPhase/4)+1); attroff(A_BOLD);
+        attron(A_BOLD); mvprintw(hy+1, hx+2, "THE CHRONICLE OF THE MATCH   (year %d)", std::max(1, g.year)); attroff(A_BOLD);
         int n = (int)g.statSamples.size();
         int cw = std::min(n, hw - 26);
         static const char ramp[] = " .:-=+*#%@";

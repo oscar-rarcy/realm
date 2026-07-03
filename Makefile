@@ -5,7 +5,7 @@ PKG_CONFIG ?= pkg-config
 TARGET := realm
 # Object basenames, shared by both backends. Terminal objects build into
 # obj/, the SDL-shim objects into gui/ — so the repo root stays clean.
-OBJ_NAMES := main.o globals.o mapgen.o entity.o pathfind.o combat.o world.o ai.o render.o ui.o input.o display.o save.o commands.o net.o
+OBJ_NAMES := main.o menu.o globals.o mapgen.o entity.o pathfind.o combat.o world.o ai.o render.o ui.o input.o display.o save.o commands.o net.o
 OBJS := $(addprefix obj/,$(OBJ_NAMES))
 
 # Use wide ncurses for UTF-8/Unicode glyph output. Falls back to -lncursesw
@@ -63,6 +63,18 @@ gui:
 app:
 	./make-app.sh
 
+# The post-change gate: determinism double-run + the raid pipeline. Run this
+# after ANY edit — if it passes, the sim still reproduces and replays/
+# multiplayer still stand. (CI runs the same on every push, on 3 OSes.)
+check: all
+	./realm --verify 12345 3000 2 | head -1 > /tmp/realm-check-a.txt
+	./realm --verify 12345 3000 2 | head -1 > /tmp/realm-check-b.txt
+	@[ "$$(cat /tmp/realm-check-a.txt)" = "$$(cat /tmp/realm-check-b.txt)" ] \
+	  && echo "OK determinism: $$(cat /tmp/realm-check-a.txt)" \
+	  || (echo "FAIL: two runs of the same seed differ!"; exit 1)
+	./realm --test-raid
+	@echo "OK all checks passed."
+
 # Friend-ready zip on the Desktop: Realm/ = Realm.app + the Gatekeeper /
 # multiplayer READ ME (share/READ ME FIRST.txt is the source of truth).
 share: app
@@ -76,4 +88,4 @@ clean:
 	rm -f $(OBJS) $(TARGET) $(GUI_OBJS) $(GUI_TARGET)
 	rm -rf obj gui Realm.app Realm.zip
 
-.PHONY: all clean gui-build app share
+.PHONY: all clean gui-build app share check
