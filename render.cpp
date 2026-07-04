@@ -991,9 +991,18 @@ void renderMap() {
             if (wallPrev[my][mx]) drawCh = ACS_CKBOARD;
 
             Entity* ent = entityAt(mx, my);
+            // Fields are walkable: a unit standing in the crops draws over
+            // the wheat (entityAt returns the lowest id, often the farm).
+            bool onField = ent && ent->type == E_FARM && !ent->underConstruction;
+            if (onField) {
+                for (auto& u : g.entities) {
+                    if (!u.alive || isBuilding(u.type) || u.state == S_GARRISONED) continue;
+                    if (u.x == mx && u.y == my) { ent = &u; break; }
+                }
+            }
             // Cloaking: enemy units fade at night/storm unless a friendly eye is close.
             // Wheat fields also conceal enemies — units in crops need close detection.
-            bool inCrop = ent && !isBuilding(ent->type) && tile.terrain == T_WHEAT;
+            bool inCrop = ent && !isBuilding(ent->type) && (tile.terrain == T_WHEAT || onField);
             if (ent && ent->alive && ent->owner != g.localPlayer && ent->owner < MAX_PLAYERS
                 && (isConcealing() || inCrop) && !isDetectedBy(mx, my, g.localPlayer)) ent = nullptr;
 

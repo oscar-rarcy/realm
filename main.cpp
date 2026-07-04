@@ -616,7 +616,9 @@ int main(int argc, char** argv) {
         Command c; c.type = CMD_SOW_FARM; c.player = 0;
         c.x = wx; c.y = wy; c.units = { peas->id };
         pushCommand(c);
-        int maxCarry = 0, farmId = -1;
+        int maxCarry = 0, farmId = -1, inFieldTicks = 0, tendTiles = 0;
+        unsigned seenTiles = 0;   // bitmask of footprint tiles the tender stood on
+        int peasId = peas->id;
         for (int i = 0; i < 2000; i++) {
             simTick();
             for (auto& e : g.entities) {
@@ -625,13 +627,21 @@ int main(int argc, char** argv) {
                  && wy >= e.y && wy < e.y + STATS[E_FARM].sizeH) {
                     farmId = e.id;
                     maxCarry = std::max(maxCarry, e.carrying);
+                    // Tenders work from INSIDE the square — and move around it.
+                    Entity* p2 = findEntity(peasId);
+                    if (p2 && p2->alive && p2->x >= e.x && p2->x < e.x + STATS[E_FARM].sizeW
+                           && p2->y >= e.y && p2->y < e.y + STATS[E_FARM].sizeH) {
+                        inFieldTicks++;
+                        seenTiles |= 1u << ((p2->y - e.y) * STATS[E_FARM].sizeW + (p2->x - e.x));
+                    }
                 }
             }
         }
-        printf("farm=%s footprint=%dx%d maxCarry=%d grain=%d\n",
+        for (unsigned m = seenTiles; m; m >>= 1) tendTiles += (int)(m & 1);
+        printf("farm=%s footprint=%dx%d maxCarry=%d grain=%d inFieldTicks=%d tendTiles=%d\n",
                farmId >= 0 ? "yes" : "NO", STATS[E_FARM].sizeW, STATS[E_FARM].sizeH,
-               maxCarry, g.players[0].food);
-        return (farmId >= 0 && maxCarry > 0) ? 0 : 1;
+               maxCarry, g.players[0].food, inFieldTicks, tendTiles);
+        return (farmId >= 0 && maxCarry > 0 && inFieldTicks > 0 && tendTiles >= 2) ? 0 : 1;
     }
 
     // --net-host / --net-join: headless lockstep smoke test. Start a host in

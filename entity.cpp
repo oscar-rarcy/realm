@@ -1432,7 +1432,8 @@ void tickEntity(Entity& e) {
     case S_BUILDING: {
         Entity* bld = findEntity(e.targetId);
         if (!bld || !bld->alive) { e.state = S_IDLE; break; }
-        // Tending a completed farm — stay adjacent and ferry ripe harvest to a depot
+        // Tending a completed farm — work from INSIDE the square, ferrying
+        // ripe harvest to a depot. Fields are walkable crops now.
         if (!bld->underConstruction && bld->type == E_FARM) {
             int d = distToBuilding(e.x, e.y, *bld);
             // Pick up as soon as there is anything worth carrying.
@@ -1452,10 +1453,26 @@ void tickEntity(Entity& e) {
                 }
                 break;
             }
-            if (d > 1) {
+            if (d > 0) {
+                // Not in the field yet — walk into it.
                 moveAlongPath(e);
                 if (e.path.empty() && (g.tick + e.id) % 10 == 0) {
                     e.path = findPathFor(e, bld->x, bld->y); e.pathIdx = 0;
+                }
+            } else if (e.path.empty() && (g.tick + e.id * 13) % 45 == 0) {
+                // In the field: drift to another furrow now and then — a
+                // tender hoeing their way around the square, not a statue.
+                auto& fs = STATS[E_FARM];
+                int cx[3], cy[3], cn = 0;
+                for (int dy2 = 0; dy2 < fs.sizeH; dy2++) for (int dx2 = 0; dx2 < fs.sizeW; dx2++) {
+                    int nx = bld->x+dx2, ny = bld->y+dy2;
+                    if ((nx == e.x && ny == e.y) || !inBounds(nx,ny)) continue;
+                    if (!isPassable(nx,ny) || !canStep(e.x, e.y, nx, ny, false)) continue;
+                    if (cn < 3) { cx[cn] = nx; cy[cn] = ny; cn++; }
+                }
+                if (cn > 0) {
+                    int k = simRand() % cn;
+                    e.x = cx[k]; e.y = cy[k];   // one hoe-step; all field tiles adjoin
                 }
             }
             break;

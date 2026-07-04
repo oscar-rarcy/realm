@@ -33,6 +33,9 @@ std::vector<std::pair<int,int>> findPath(int sx, int sy, int tx, int ty, int /*m
         if (!e.alive) continue;
         if (isBuilding(e.type)) {
             if (e.type == E_GATE && e.gateOpen) continue;
+            // A field is crops, not masonry — anyone can walk through a
+            // finished farm (its tender works from inside the square).
+            if (e.type == E_FARM && !e.underConstruction) continue;
             auto& s = STATS[e.type];
             for (int dy2 = 0; dy2 < s.sizeH; dy2++) for (int dx2 = 0; dx2 < s.sizeW; dx2++) {
                 int bx = e.x+dx2, by = e.y+dy2;
@@ -148,11 +151,13 @@ void moveAlongPath(Entity& e) {
         if (e.path.empty()) { if (e.state == S_MOVING) e.state = S_IDLE; }
         return;
     }
-    // Units share tiles freely; buildings block, except open gates
+    // Units share tiles freely; buildings block, except open gates and
+    // finished farms (fields are walkable crops).
     Entity* blk = entityAt(nx, ny);
     if (blk && blk->id != e.id && isBuilding(blk->type)) {
-        bool isOpenGate = (blk->type == E_GATE && blk->gateOpen);
-        if (!isOpenGate) {
+        bool walkThrough = (blk->type == E_GATE && blk->gateOpen)
+                        || (blk->type == E_FARM && !blk->underConstruction);
+        if (!walkThrough) {
             e.chargeSteps = 0;   // blocked — momentum lost
             // Tolerate transient blocks; only repath after several stuck ticks (staggered by id).
             // Tightened threshold (was 3+id%5) so stuck units recover quicker.
@@ -163,15 +168,19 @@ void moveAlongPath(Entity& e) {
                 int gx = e.path.empty() ? e.targetX : e.path.back().first;
                 int gy = e.path.empty() ? e.targetY : e.path.back().second;
                 // If the original goal tile is now blocked by a building, target the closest free tile around it.
-                if (!isPassable(gx, gy) || (entityAt(gx,gy) && isBuilding(entityAt(gx,gy)->type))) {
+                auto blocksGoal = [](Entity* o) {
+                    return o && isBuilding(o->type)
+                        && !(o->type == E_FARM && !o->underConstruction)
+                        && !(o->type == E_GATE && o->gateOpen);
+                };
+                if (!isPassable(gx, gy) || blocksGoal(entityAt(gx,gy))) {
                     int bestD = 99999, bx = gx, by = gy;
                     for (int r = 1; r <= 4 && bestD == 99999; r++)
                         for (int dy = -r; dy <= r; dy++) for (int dx = -r; dx <= r; dx++) {
                             if (std::abs(dx) != r && std::abs(dy) != r) continue;
                             int qx = gx+dx, qy = gy+dy;
                             if (!inBounds(qx,qy) || !isPassable(qx,qy)) continue;
-                            Entity* o = entityAt(qx,qy);
-                            if (o && isBuilding(o->type)) continue;
+                            if (blocksGoal(entityAt(qx,qy))) continue;
                             int d = mdist(e.x, e.y, qx, qy);
                             if (d < bestD) { bestD = d; bx = qx; by = qy; }
                         }

@@ -723,6 +723,20 @@ void orderHelp(Entity& e, int buildingId) {
     if (!bld->underConstruction && bld->type != E_FARM) return;
     e.state = S_BUILDING; e.targetId = buildingId;
     e.targetX = bld->x; e.targetY = bld->y;
+    // A finished field is tended from INSIDE the square — head for the
+    // nearest of its four tiles (fields are walkable crops).
+    if (!bld->underConstruction && bld->type == E_FARM) {
+        int fw = STATS[E_FARM].sizeW, fh = STATS[E_FARM].sizeH;
+        int bestX = bld->x, bestY = bld->y, bestD = 99999;
+        for (int dy = 0; dy < fh; dy++) for (int dx = 0; dx < fw; dx++) {
+            int nx = bld->x+dx, ny = bld->y+dy;
+            if (!inBounds(nx,ny) || !isPassable(nx,ny)) continue;
+            int d = mdist(e.x, e.y, nx, ny);
+            if (d < bestD) { bestD = d; bestX = nx; bestY = ny; }
+        }
+        e.path = findPathFor(e, bestX, bestY); e.pathIdx = 0;
+        return;
+    }
     int bldW = STATS[bld->type].sizeW, bldH = STATS[bld->type].sizeH;
     int bestAX = bld->x-1, bestAY = bld->y, bestAD = 99999;
     for (int dy = -1; dy <= bldH; dy++) for (int dx = -1; dx <= bldW; dx++) {

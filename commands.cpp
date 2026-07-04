@@ -517,7 +517,7 @@ void applyCommand(const Command& c) {
 // (same caveat as save files).
 // ============================================================
 static constexpr char REP_MAGIC[4] = {'R','L','R','P'};
-static constexpr int  REP_VERSION  = 9;   // v9: 2x2 farm fields changed sim rules — old replays would desync
+static constexpr int  REP_VERSION  = 10;  // v10: fields walkable, tenders work from inside the square
 
 // ---- Command codec ----
 // One binary layout — a flat int32 field sequence — shared by the replay
