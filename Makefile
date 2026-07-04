@@ -73,6 +73,7 @@ check: all
 	  && echo "OK determinism: $$(cat /tmp/realm-check-a.txt)" \
 	  || (echo "FAIL: two runs of the same seed differ!"; exit 1)
 	./realm --test-raid
+	./realm --test-sow
 	@echo "OK all checks passed."
 
 # Friend-ready zip on the Desktop: Realm/ = Realm.app + the Gatekeeper /

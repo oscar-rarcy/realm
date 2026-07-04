@@ -550,7 +550,8 @@ static void aiInfraAndNaval(const AICtx& cx) {
         Entity* b = aiWorker(o);
         if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_GRANARY,bx,by); if(bx>=0) aiBuildAt(o,*b,E_GRANARY,bx,by); }
     }
-    int wantFarms = (getSeason() == AUTUMN) ? 8 : (getSeason() == WINTER ? 0 : 5);
+    // 2x2 fields yield double the old plots — half as many feed the same army.
+    int wantFarms = (getSeason() == AUTUMN) ? 4 : (getSeason() == WINTER ? 0 : 3);
     if (aiCountAll(o,E_MILL) > 0 && aiCountAll(o,E_FARM) < wantFarms && getSeason() != WINTER) {
         Entity* b = aiWorker(o);
         if (b) { int bx=-1,by=-1; aiBuildSpot(o,E_FARM,bx,by); if(bx>=0) aiBuildAt(o,*b,E_FARM,bx,by); }

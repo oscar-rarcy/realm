@@ -502,17 +502,17 @@ static int runVerify(unsigned long long seed, int ticks, int numAIs, int biome, 
     // Per-seat balance probe: is anyone stuck in an era, starved, or wiped out?
     for (int pl = 0; pl < MAX_PLAYERS; pl++) {
         const Player& P = g.players[pl];
-        int peas = 0, mili = 0, blds = 0;
+        int peas = 0, mili = 0, blds = 0, farms = 0;
         for (auto& e : g.entities) {
             if (!e.alive || e.owner != pl) continue;
             if (e.type == E_PEASANT) peas++;
             else if (isUnit(e.type) && !isNaval(e.type)) mili++;
-            else if (isBuilding(e.type)) blds++;
+            else if (isBuilding(e.type)) { blds++; if (e.type == E_FARM) farms++; }
         }
         if (peas + mili + blds == 0 && !P.alive && pl > numAIs) continue;   // never seated
-        printf("  P%d %-12s era=%-10s persona=%d %s peas=%d mil=%d blds=%d g/w/f=%d/%d/%d research=%03x raids=%d\n",
+        printf("  P%d %-12s era=%-10s persona=%d %s peas=%d mil=%d blds=%d farms=%d g/w/f=%d/%d/%d research=%03x raids=%d\n",
                pl + 1, CIVS[P.civ].name, eraName(P.era), P.aiPersona,
-               P.alive ? "alive" : "DEAD ", peas, mili, blds, P.gold, P.wood, P.food, P.research,
+               P.alive ? "alive" : "DEAD ", peas, mili, blds, farms, P.gold, P.wood, P.food, P.research,
                g.statRaids[pl]);
     }
     return 0;
@@ -565,6 +565,53 @@ int main(int argc, char** argv) {
                g.statRaids[1], yard ? yard->storeGold : -1,
                g.players[1].gold - aiGold0, g.players[0].gold);
         return (g.statRaids[1] > 0) ? 0 : 1;
+    }
+
+    // --test-sow: headless check of the player farm pipeline. Stages a wild
+    // wheat patch beside the human's start, right-clicks it through the
+    // command funnel (CMD_SOW_FARM), and requires a 2x2 field containing the
+    // clicked tile to exist and produce grain within 2000 ticks.
+    if (argc >= 2 && strcmp(argv[1], "--test-sow") == 0) {
+        g.biomeChoice = 0; g.layoutChoice = 0; g.difficulty = 1;
+        g.humanMask = 1; g.localPlayer = 0;
+        for (int i = 0; i < MAX_PLAYERS; i++) g.civChoice[i] = -1;
+        initGame(1, 777);
+        Entity* th = nullptr; Entity* peas = nullptr;
+        for (auto& e : g.entities) {
+            if (!e.alive || e.owner != 0) continue;
+            if (e.type == E_TOWNHALL) th = &e;
+            if (e.type == E_PEASANT && !peas) peas = &e;
+        }
+        if (!th || !peas) { fprintf(stderr, "no start town hall / peasant\n"); return 1; }
+        // Paint a wheat meadow on open ground near the hall and click its centre.
+        int wx = -1, wy = -1;
+        for (int a = 0; a < 4000 && wx < 0; a++) {
+            int x = th->x + (simRand()%17) - 8, y = th->y + (simRand()%17) - 8;
+            if (dist(th->x, th->y, x, y) < 4) continue;   // off the hall's doorstep
+            if (canPlace(E_FARM, x, y, 0)) { wx = x; wy = y; }
+        }
+        if (wx < 0) { fprintf(stderr, "no sowable ground near start\n"); return 1; }
+        for (int dy = 0; dy < 2; dy++) for (int dx = 0; dx < 2; dx++)
+            g.map[wy+dy][wx+dx].terrain = T_WHEAT;
+        Command c; c.type = CMD_SOW_FARM; c.player = 0;
+        c.x = wx; c.y = wy; c.units = { peas->id };
+        pushCommand(c);
+        int maxCarry = 0, farmId = -1;
+        for (int i = 0; i < 2000; i++) {
+            simTick();
+            for (auto& e : g.entities) {
+                if (!e.alive || e.owner != 0 || e.type != E_FARM) continue;
+                if (wx >= e.x && wx < e.x + STATS[E_FARM].sizeW
+                 && wy >= e.y && wy < e.y + STATS[E_FARM].sizeH) {
+                    farmId = e.id;
+                    maxCarry = std::max(maxCarry, e.carrying);
+                }
+            }
+        }
+        printf("farm=%s footprint=%dx%d maxCarry=%d grain=%d\n",
+               farmId >= 0 ? "yes" : "NO", STATS[E_FARM].sizeW, STATS[E_FARM].sizeH,
+               maxCarry, g.players[0].food);
+        return (farmId >= 0 && maxCarry > 0) ? 0 : 1;
     }
 
     // --net-host / --net-join: headless lockstep smoke test. Start a host in

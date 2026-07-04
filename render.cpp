@@ -1094,6 +1094,24 @@ void renderMap() {
                 // the owner's team colour read as "green corn").
                 if (ent->type == E_FARM)
                     cp = (getSeason() == SUMMER) ? CP_WHEAT_GOLD : CP_WHEAT;
+                // A field ripens tile by tile through the farming year — each
+                // cell leads or lags by its own patch of soil, so no two
+                // fields ever look alike (render-only, per-tile hash).
+                if (ent->type == E_FARM) {
+                    unsigned fhash = (unsigned)(mx*7349) ^ (unsigned)(my*9241)
+                                   ^ (unsigned)(ent->id*131);
+                    if (ent->underConstruction) ch = ',';   // tilled rows
+                    else {
+                        Season fss = getSeason(); float fsp = getSeasonProgress();
+                        int grow = fss==SPRING ? (int)(fsp*8)          // sprouting
+                                 : fss==SUMMER ? 8 + (int)(fsp*8)      // filling out
+                                 : (fss==AUTUMN && fsp<0.6f) ? 20      // heavy with grain
+                                 : 0;                                  // spent stubble
+                        int v = grow + (int)(fhash % 7);
+                        ch = v < 7 ? ',' : v < 14 ? '"' : '%';
+                    }
+                    drawCh = (chtype)ch;
+                }
 
                 // State-specific glyph overrides (gate, construction, siege engines, alert).
                 // Fortifications read as LINES: straight curtain-wall runs are

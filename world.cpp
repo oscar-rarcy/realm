@@ -95,7 +95,6 @@ void tickFarms() {
         return;
     }
 
-    const int FARM_CAP = 20;
     for (int p = 0; p < MAX_PLAYERS; p++) {
         bool hasMill = false;
         for (auto& e : g.entities)
@@ -103,11 +102,11 @@ void tickFarms() {
 
         for (auto& farm : g.entities) {
             if (!farm.alive || farm.type!=E_FARM || farm.owner!=p || farm.underConstruction) continue;
-            // Any adjacent peasant keeps the wheat growing.
+            // Any peasant beside the field keeps the wheat growing.
             bool tended = false;
             for (auto& u : g.entities) {
                 if (!u.alive || u.owner!=p || u.type!=E_PEASANT) continue;
-                if (dist(u.x, u.y, farm.x, farm.y) <= 1) { tended=true; break; }
+                if (distToBuilding(u.x, u.y, farm) <= 1) { tended=true; break; }
             }
             // A claimed riverside watermill is a half-measure mill.
             bool hasWatermill = false;
@@ -119,21 +118,42 @@ void tickFarms() {
             // the great harvest (double), late autumn = fields spent.
             // Stockpile in autumn or starve in winter — and everyone's
             // bursting granaries make autumn the season to raid.
+            // Rates are for the full 2x2 field — four plants, one tender.
             if (tended && farm.carrying < FARM_CAP) {
-                int rate = hasMill ? 6 : hasWatermill ? 4 : 3;
+                int rate = hasMill ? 12 : hasWatermill ? 8 : 6;
                 Season ss = getSeason();
                 float sp = getSeasonProgress();
-                if      (ss == SPRING)             rate = std::max(1, rate / 2);
-                else if (ss == SUMMER)             rate += 1;
+                if      (ss == SPRING)             rate = std::max(2, rate / 2);
+                else if (ss == SUMMER)             rate += 2;
                 else if (ss == AUTUMN && sp < 0.6f) rate *= 2;
                 else if (ss == AUTUMN)             rate = 0;   // fields spent
                 if (rate > 0) {
                     // Better iron and better land: bonuses only help fields
                     // that are actually producing — spent is spent.
-                    if (g.players[p].research & R_HEAVY_PLOUGH) rate += 1;
-                    if (g.players[p].civ == CIV_FENLANDERS)     rate += 1;
+                    if (g.players[p].research & R_HEAVY_PLOUGH) rate += 2;
+                    if (g.players[p].civ == CIV_FENLANDERS)     rate += 2;
                 }
                 farm.carrying = std::min(FARM_CAP, farm.carrying + rate);
+            }
+            // A worked field seeds its verges: wheat creeps into the open
+            // grass around the square, so old farmland grows wild and
+            // ragged at the edges — and yields new ground worth sowing.
+            if (tended && !(getSeason() == AUTUMN && getSeasonProgress() >= 0.6f)
+                && simRand() % 6 == 0) {
+                auto& fs = STATS[E_FARM];
+                int vx[16], vy[16], vn = 0;
+                for (int dy = -1; dy <= fs.sizeH; dy++) for (int dx = -1; dx <= fs.sizeW; dx++) {
+                    if (dx >= 0 && dx < fs.sizeW && dy >= 0 && dy < fs.sizeH) continue;
+                    int nx = farm.x+dx, ny = farm.y+dy;
+                    if (!inBounds(nx,ny) || vn >= 16) continue;
+                    Terrain vt = g.map[ny][nx].terrain;
+                    if (vt==T_GRASS||vt==T_MEADOW||vt==T_TALL_GRASS||vt==T_FLOWERS)
+                        { vx[vn]=nx; vy[vn]=ny; vn++; }
+                }
+                if (vn > 0) {
+                    int k = simRand() % vn;
+                    g.map[vy[k]][vx[k]].terrain = T_WHEAT;
+                }
             }
 
             // AI helper: if ripe food is sitting on an AI farm with no courier
@@ -181,7 +201,7 @@ void tickMarkets() {
                 if (dist(f.x, f.y, e.x, e.y) > 6) continue;
                 for (auto& u : g.entities) {
                     if (!u.alive || u.owner != e.owner || u.type != E_PEASANT) continue;
-                    if (dist(u.x, u.y, f.x, f.y) <= 1) { tax++; break; }
+                    if (distToBuilding(u.x, u.y, f) <= 1) { tax++; break; }
                 }
             }
             if (tax > 0) depositToNearest(e.owner, tax, 0, 0, 0, e.x, e.y);

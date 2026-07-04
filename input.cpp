@@ -126,7 +126,8 @@ static void cmdAtTileSingle(Entity* sel, int x, int y) {
                     : ter==T_BERRY ? "Picking berries..." : "Chopping wood...");
             return;
         }
-        if (ter == T_WHEAT && !tgt && canPlace(E_FARM, x, y, g.localPlayer)) {
+        int fax, fay; // a 2x2 field must fit with the clicked wheat inside it
+        if (ter == T_WHEAT && !tgt && farmAnchorFor(x, y, g.localPlayer, sel->id, fax, fay)) {
             pushCmd(CMD_SOW_FARM, {sel->id}, x, y);
             setStatus("Working wheat field...");
             return;

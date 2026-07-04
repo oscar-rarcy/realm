@@ -14,7 +14,7 @@
 //   - Skips garbage corrupt files via fread return-value checks
 
 static constexpr char MAGIC[4] = {'R','L','M','2'};
-static constexpr int  SAVE_VERSION = 14; // v14: campaign year counter (every "Year" display was stuck at 1)
+static constexpr int  SAVE_VERSION = 15; // v15: farms are 2x2 fields (footprint/sim rules changed)
 static constexpr int  MAX_ENTITIES = 100000;
 static constexpr int  MAX_VEC_LEN  = 50000;
 

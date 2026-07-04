@@ -35,6 +35,7 @@ const int DAY_LENGTH   = 1500;
 const int SEASON_LENGTH= 3000;
 const int CARRY_MAX    = 20;
 const int WAGON_CAP    = 100;  // supply wagon hold — five peasant-loads per trip
+const int FARM_CAP     = 40;   // ripe grain a 2x2 field holds awaiting pickup
 const int MAX_PLAYERS  = 4;
 const int OWNER_NATURE = MAX_PLAYERS;
 
@@ -486,7 +487,9 @@ Entity* findEntity(int id);
 Entity* findDepot(Entity& e);
 Entity* entityAt(int x,int y);
 Entity* entityAtOwner(int x,int y,int owner);
+int     distToBuilding(int x,int y,const Entity& b);
 bool    canPlace(EntityType type,int x,int y,int owner,int ignoreId=-1);
+bool    farmAnchorFor(int x,int y,int player,int ignoreId,int& ax,int& ay);
 void    updateSupply(int owner);
 int     spawnEntity(EntityType type,int owner,int x,int y,bool built=true);
 

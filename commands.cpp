@@ -65,6 +65,23 @@ const ResearchDef* researchTable(int& n) {
     return RESEARCH;
 }
 
+// A field is sown as a 2x2 square. The clicked wheat tile may sit in any
+// corner of it — pick the anchor whose footprint folds in the most wild
+// wheat (ties resolve in fixed scan order, so both lockstep sides agree).
+bool farmAnchorFor(int x, int y, int player, int ignoreId, int& ax, int& ay) {
+    int fw = STATS[E_FARM].sizeW, fh = STATS[E_FARM].sizeH;
+    int best = -1;
+    for (int oy = 1 - fh; oy <= 0; oy++) for (int ox = 1 - fw; ox <= 0; ox++) {
+        int tx = x + ox, ty = y + oy;
+        if (!canPlace(E_FARM, tx, ty, player, ignoreId)) continue;
+        int score = 0;
+        for (int dy = 0; dy < fh; dy++) for (int dx = 0; dx < fw; dx++)
+            if (g.map[ty+dy][tx+dx].terrain == T_WHEAT) score++;
+        if (score > best) { best = score; ax = tx; ay = ty; }
+    }
+    return best >= 0;
+}
+
 void applyCommand(const Command& c) {
     if (c.player < 0 || c.player >= MAX_PLAYERS) return;
     bool human = (c.player == g.localPlayer);
@@ -203,9 +220,9 @@ void applyCommand(const Command& c) {
         Entity* u = cmdEnt(c, c.units[0]);
         if (!u || u->type != E_PEASANT) return;
         if (g.map[c.y][c.x].terrain != T_WHEAT) return;
-        if (entityAt(c.x, c.y)) return;
-        if (!canPlace(E_FARM, c.x, c.y, c.player)) return;
-        int fid = spawnEntity(E_FARM, c.player, c.x, c.y, true);
+        int ax, ay;
+        if (!farmAnchorFor(c.x, c.y, c.player, u->id, ax, ay)) return;
+        int fid = spawnEntity(E_FARM, c.player, ax, ay, true);
         clearQueued(*u);
         orderHelp(*u, fid);
         break;
@@ -500,7 +517,7 @@ void applyCommand(const Command& c) {
 // (same caveat as save files).
 // ============================================================
 static constexpr char REP_MAGIC[4] = {'R','L','R','P'};
-static constexpr int  REP_VERSION  = 8;   // v8: per-seat civ choices in header (eras/civs update)
+static constexpr int  REP_VERSION  = 9;   // v9: 2x2 farm fields changed sim rules — old replays would desync
 
 // ---- Command codec ----
 // One binary layout — a flat int32 field sequence — shared by the replay

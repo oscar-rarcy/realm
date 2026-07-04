@@ -305,6 +305,15 @@ Entity* entityAtOwner(int x, int y, int owner) {
     return nullptr;
 }
 
+// Chebyshev distance from a point to a building's whole footprint
+// (0 = standing on it, 1 = adjacent to any of its tiles).
+int distToBuilding(int x, int y, const Entity& b) {
+    auto& s = STATS[b.type];
+    int cx = std::max(b.x, std::min(x, b.x + s.sizeW - 1));
+    int cy = std::max(b.y, std::min(y, b.y + s.sizeH - 1));
+    return dist(x, y, cx, cy);
+}
+
 bool canPlace(EntityType type, int x, int y, int owner, int ignoreId) {
     (void)owner;
     // Top-level bounds check protects every g.map read below, including the
@@ -329,12 +338,9 @@ bool canPlace(EntityType type, int x, int y, int owner, int ignoreId) {
         }
         return false;
     }
-    // Farms can only be sown on open ground, not in winter
-    if (type == E_FARM) {
-        if (getSeason() == WINTER) return false;
-        Terrain t = g.map[y][x].terrain;
-        if (t!=T_GRASS&&t!=T_MEADOW&&t!=T_TALL_GRASS&&t!=T_FLOWERS&&t!=T_DIRT&&t!=T_WHEAT&&t!=T_SNOW) return false;
-    }
+    // Farms can only be sown on open ground, not in winter. The soil test
+    // itself runs per footprint tile below — the whole field needs earth.
+    if (type == E_FARM && getSeason() == WINTER) return false;
     auto& s = STATS[type];
     // The castle is placed as its full 7x7 compound (walls + courtyard +
     // 3x3 keep), so the whole enclosure must fit on clear, level ground.
@@ -353,6 +359,10 @@ bool canPlace(EntityType type, int x, int y, int owner, int ignoreId) {
         // walkable for units but not foundations. (Docks are special: their
         // footprint must be land, plus one neighbour must be water — handled below.)
         if (ter==T_SHALLOWS||ter==T_MARSH||ter==T_REEDS||ter==T_ICE) return false;
+        // Every tile of a field must be workable soil.
+        if (type == E_FARM
+            && ter!=T_GRASS&&ter!=T_MEADOW&&ter!=T_TALL_GRASS&&ter!=T_FLOWERS
+            && ter!=T_DIRT&&ter!=T_WHEAT&&ter!=T_SNOW) return false;
         Entity* o = entityAt(nx,ny);
         // ignoreId lets the builder peasant stand on its own foundation tile —
         // it'll path off via orderBuild's adjacent-tile pick next tick.
@@ -1424,7 +1434,7 @@ void tickEntity(Entity& e) {
         if (!bld || !bld->alive) { e.state = S_IDLE; break; }
         // Tending a completed farm — stay adjacent and ferry ripe harvest to a depot
         if (!bld->underConstruction && bld->type == E_FARM) {
-            int d = dist(e.x, e.y, bld->x, bld->y);
+            int d = distToBuilding(e.x, e.y, *bld);
             // Pick up as soon as there is anything worth carrying.
             if (d <= 1 && bld->carrying >= 3 && e.carrying == 0) {
                 int take = std::min(bld->carrying, CARRY_MAX);

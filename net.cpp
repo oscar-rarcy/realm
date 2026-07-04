@@ -64,7 +64,7 @@ static ssize_t nrecvfrom(int s, void* b, size_t n, sockaddr* a, socklen_t* al)
 // wire) — matching NET_PROTO_VERSION is required at the handshake.
 // ============================================================
 
-static const unsigned NET_PROTO_VERSION = 3;   // bump on ANY wire or sim-format change (v3: site domination)
+static const unsigned NET_PROTO_VERSION = 4;   // bump on ANY wire or sim-format change (v4: 2x2 farm fields)
 
 // REALM_NET_TRACE=1: log every frame in/out (harness debugging).
 static bool netTrace() {
