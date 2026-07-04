@@ -192,6 +192,7 @@ static void saveMenuConfig() {
             cfgNumAIs, cfgDiff, cfgClim, cfgLayout, cfgSpeed, cfgCiv, g.playerColor, mpNumAIs);
     if (!cfgLastAddr.empty()) fprintf(f, "lastaddr=%s\n", cfgLastAddr.c_str());
     fclose(f);
+    platformPersistFiles();   // browser build: flush MEMFS down to IndexedDB
 }
 void loadMenuConfig() {
     FILE* f = fopen("realm-config.txt", "r");
@@ -398,8 +399,18 @@ static bool skirmishSetup(unsigned long long& outSeed) {
 // opens the grouped setup; Multiplayer the lobby flows; Load the slot
 // browser; Controls the key reference. Fills `r` with what to play.
 void showSplash(SplashResult& r) {
+    enum { MI_SKIRMISH, MI_MULTI, MI_LOAD, MI_REPLAYS, MI_CONTROLS, MI_QUIT };
+#ifdef __EMSCRIPTEN__
+    // Browser build: raw TCP doesn't exist in a tab, so no MULTIPLAYER (the
+    // desktop build hosts/joins); QUIT would only freeze the canvas.
+    static const char* items[] = { "SKIRMISH", "LOAD GAME", "REPLAYS", "CONTROLS" };
+    static const int   acts[]  = { MI_SKIRMISH, MI_LOAD, MI_REPLAYS, MI_CONTROLS };
+    const int N = 4;
+#else
     static const char* items[] = { "SKIRMISH", "MULTIPLAYER", "LOAD GAME", "REPLAYS", "CONTROLS", "QUIT" };
+    static const int   acts[]  = { MI_SKIRMISH, MI_MULTI, MI_LOAD, MI_REPLAYS, MI_CONTROLS, MI_QUIT };
     const int N = 6;
+#endif
     int sel = 0;
     while (true) {
         int maxY, maxX; getmaxyx(stdscr, maxY, maxX);
@@ -415,28 +426,36 @@ void showSplash(SplashResult& r) {
             attroff(a);
         }
         attron(COLOR_PAIR(CP_UI_DIM));
+#ifdef __EMSCRIPTEN__
+        const char* hint = "↑↓ select    Enter choose";
+#else
         const char* hint = "↑↓ select    Enter choose    Q quit";
+#endif
         mvprintw(my0 + N + 2, maxX/2 - (int)strlen(hint)/2, "%s", hint);
         // Build fingerprint: multiplayer needs identical builds, and "which
         // version do you have?" should be answerable from the title screen.
         char ver[48];
-        snprintf(ver, sizeof ver, "build %s - protocol v2", __DATE__);
+        snprintf(ver, sizeof ver, "build %s - protocol v%d", __DATE__, netProtoVersion());
         mvprintw(maxY - 1, maxX - (int)strlen(ver) - 2, "%s", ver);
         attroff(COLOR_PAIR(CP_UI_DIM));
         refresh();
 
         int ch = getch();
         if (ch == KEY_MOUSE) { MEVENT me; getmouse(&me); continue; }
+#ifndef __EMSCRIPTEN__
         if (ch=='q' || ch=='Q') { endwin(); exit(0); }
-        else if (ch==KEY_UP   || ch=='k' || ch=='K') sel = (sel + N - 1) % N;
+#endif
+        if      (ch==KEY_UP   || ch=='k' || ch=='K') sel = (sel + N - 1) % N;
         else if (ch==KEY_DOWN || ch=='j' || ch=='J') sel = (sel + 1) % N;
         else if (ch=='\n' || ch=='\r' || ch==KEY_ENTER) {
-            if      (sel == 0) { if (skirmishSetup(r.seed)) { r.numAIs = cfgNumAIs; return; } }
-            else if (sel == 1) { if (showMultiplayerMenu(r)) return; }
-            else if (sel == 2) { int s = showLoadMenu(); if (s > 0) { r.loadSlot = s; return; } }
-            else if (sel == 3) { std::string rp = showReplayMenu(); if (!rp.empty()) { r.replayPath = rp; return; } }
-            else if (sel == 4) { showControlsScreen(); }
-            else               { endwin(); exit(0); }
+            switch (acts[sel]) {
+            case MI_SKIRMISH: if (skirmishSetup(r.seed)) { r.numAIs = cfgNumAIs; return; } break;
+            case MI_MULTI:    if (showMultiplayerMenu(r)) return; break;
+            case MI_LOAD:     { int s = showLoadMenu(); if (s > 0) { r.loadSlot = s; return; } break; }
+            case MI_REPLAYS:  { std::string rp = showReplayMenu(); if (!rp.empty()) { r.replayPath = rp; return; } break; }
+            case MI_CONTROLS: showControlsScreen(); break;
+            case MI_QUIT:     endwin(); exit(0);
+            }
         }
     }
 }

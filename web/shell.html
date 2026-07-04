@@ -1,0 +1,54 @@
+<!doctype html>
+<!-- Realm — browser build shell. `make web` compiles the game to WebAssembly
+     and bakes this page into web/index.html. Serve the web/ directory with
+     any static file server (python3 -m http.server) — file:// won't work
+     because the .wasm and .data fetches need HTTP. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>REALM</title>
+  <style>
+    html, body {
+      margin: 0; padding: 0; background: #0c0a08; color: #cbb37a;
+      font-family: ui-monospace, Menlo, Consolas, monospace;
+      min-height: 100vh;
+    }
+    .wrap { display: flex; flex-direction: column; align-items: center; }
+    header { margin: 10px 0 6px; font-size: 13px; letter-spacing: 3px; opacity: .75; }
+    canvas {
+      display: block; background: #000;
+      border: 1px solid #3a3020;
+      image-rendering: pixelated;
+      /* Pin the CSS size: SDL's resizable-window handler syncs the canvas
+         to its CSS box, and an unsized box feedback-shrinks to nothing. */
+      width: 1440px; height: 860px;
+    }
+    canvas:focus { outline: none; }
+    #status { margin: 8px 0 14px; font-size: 12px; opacity: .6; min-height: 1em; }
+    a { color: #cbb37a; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>R E A L M</header>
+    <canvas id="canvas" width="1440" height="860" tabindex="-1"
+            oncontextmenu="event.preventDefault()"></canvas>
+    <div id="status">loading…</div>
+  </div>
+  <script>
+    var statusEl = document.getElementById('status');
+    var Module = {
+      canvas: document.getElementById('canvas'),
+      setStatus: function (t) { statusEl.textContent = t || ''; },
+      onRuntimeInitialized: function () { statusEl.textContent = ''; }
+    };
+    // Keys the game needs that the browser normally eats.
+    window.addEventListener('keydown', function (e) {
+      if (['Tab', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12'].includes(e.key))
+        e.preventDefault();
+    }, { capture: true });
+  </script>
+  {{{ SCRIPT }}}
+</body>
+</html>

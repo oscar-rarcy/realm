@@ -112,3 +112,9 @@ gui/
 /realm-gui
 replays/
 *.rep
+
+# Web build outputs (make web) — shell.html + fonts/ are sources, kept in git
+/web/index.html
+/web/index.js
+/web/index.wasm
+/web/index.data

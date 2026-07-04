@@ -671,6 +671,11 @@ void netSendChat(const std::string& text);   // shows on both sides' event logs
 void netSendCivPick(int civ);                // client tells host its civilisation
 void netSendBye();
 
+// main.cpp — browser build flushes the IndexedDB filesystem after file
+// writes (saves/replays/config); native builds no-op.
+void platformPersistFiles();
+int  netProtoVersion();   // net.cpp — NET_PROTO_VERSION for display
+
 // save.cpp
 inline constexpr int NUM_SAVE_SLOTS = 4;
 // Lightweight summary of a save slot for the visual Save/Load menu (peekSave

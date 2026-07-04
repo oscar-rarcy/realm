@@ -20,6 +20,26 @@ static void msleep(int ms) {
 #endif
 }
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+// Browser build: saves/replays/config live in an IndexedDB-backed
+// filesystem (IDBFS). Writes land in MEMFS instantly; syncfs pushes them
+// down to IndexedDB so they survive a tab reload. The pull at startup is
+// async — Asyncify lets main() just sleep until it lands.
+EM_JS(void, realmIdbfsMount, (), {
+    FS.mkdir('/realm-data');
+    FS.mount(IDBFS, {}, '/realm-data');
+    Module.realmFsReady = 0;
+    FS.syncfs(true, function(err) { Module.realmFsReady = 1; });
+});
+EM_JS(int, realmIdbfsReady, (), { return Module.realmFsReady|0; });
+EM_JS(void, realmIdbfsPersist, (), { FS.syncfs(false, function(err) {}); });
+void platformPersistFiles() { realmIdbfsPersist(); }
+#else
+// Native builds write straight to disk; nothing to flush.
+void platformPersistFiles() {}
+#endif
+
 static bool isUtf8LocaleName(const char* name) {
     if (!name) return false;
     return std::strstr(name, "UTF-8") || std::strstr(name, "utf8")
@@ -727,7 +747,14 @@ int main(int argc, char** argv) {
         replay = true;
     }
 
-#if defined(USE_SDL_SHIM) && !defined(_WIN32)
+#ifdef __EMSCRIPTEN__
+    // Work out of the persistent IndexedDB mount from the first frame on.
+    realmIdbfsMount();
+    while (!realmIdbfsReady()) emscripten_sleep(20);
+    if (chdir("/realm-data") == 0) mkdir("replays", 0755);
+#endif
+
+#if defined(USE_SDL_SHIM) && !defined(_WIN32) && !defined(__EMSCRIPTEN__)
     // The standalone .app is launched from Finder with cwd "/", where the
     // game's relative save/replay paths can't be written. Run from a writable
     // per-user folder (~/Library/Application Support/Realm) and ensure the

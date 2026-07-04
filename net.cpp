@@ -30,7 +30,9 @@ static ssize_t nrecvfrom(int s, void* b, size_t n, sockaddr* a, socklen_t* al)
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <ifaddrs.h>
+#ifndef __EMSCRIPTEN__
+#include <ifaddrs.h>   // no interface enumeration in the browser sandbox
+#endif
 #include <netdb.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
@@ -148,6 +150,7 @@ static void netDbg(const char* where, int err) {
 bool netActive() { return matchActive; }
 bool netConnectionLost() { return connLost; }
 bool netVersionMismatch() { return protoMismatch; }
+int  netProtoVersion() { return (int)NET_PROTO_VERSION; }
 bool netDesynced() { return desynced; }
 int  netDesyncTick() { return desyncTick; }
 bool netPeerPaused() { return peerPaused; }
@@ -401,7 +404,10 @@ void netDiscoverStop() {
 
 std::vector<std::string> netLocalAddresses() {
     std::vector<std::string> out;
-#ifdef _WIN32
+#if defined(__EMSCRIPTEN__)
+    // Browser build never shows the host lobby; compile-only stub.
+    return out;
+#elif defined(_WIN32)
     // No getifaddrs on Windows; the lobby shows a hint instead of addresses.
     out.push_back("(run ipconfig for your address)");
     return out;

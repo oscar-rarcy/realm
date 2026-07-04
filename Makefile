@@ -63,6 +63,26 @@ gui:
 app:
 	./make-app.sh
 
+# --- Browser build: same sources + SDL shim, compiled to WebAssembly ---
+# Emscripten's SDL2/SDL2_ttf ports supply the platform; ASYNCIFY lets the
+# game's ordinary blocking loops (menus, the match loop) yield to the
+# browser event loop; IDBFS persists saves/replays/config across reloads.
+# JetBrains Mono (OFL) is preloaded at /fonts — no system fonts in a tab.
+# Output: web/index.html (+ .js/.wasm/.data). Serve the web/ directory over
+# HTTP (python3 -m http.server -d web) — file:// can't fetch wasm.
+EMXX ?= em++
+WEB_SRCS := $(OBJ_NAMES:.o=.cpp) sdl_shim.cpp
+web: web/fonts/JetBrainsMono-Regular.ttf web/shell.html
+	$(EMXX) -std=c++17 -O2 -DUSE_SDL_SHIM \
+	  -finput-charset=UTF-8 -fexec-charset=UTF-8 \
+	  -sUSE_SDL=2 -sUSE_SDL_TTF=2 \
+	  -sASYNCIFY -sALLOW_MEMORY_GROWTH=0 -sINITIAL_MEMORY=256MB \
+	  -sEXIT_RUNTIME=0 -lidbfs.js \
+	  --preload-file web/fonts@/fonts \
+	  --shell-file web/shell.html \
+	  -o web/index.html $(WEB_SRCS)
+	@echo "==> web/index.html ready. Try: python3 -m http.server 8080 -d web"
+
 # The post-change gate: determinism double-run + the raid pipeline. Run this
 # after ANY edit — if it passes, the sim still reproduces and replays/
 # multiplayer still stand. (CI runs the same on every push, on 3 OSes.)
@@ -88,5 +108,6 @@ share: app
 clean:
 	rm -f $(OBJS) $(TARGET) $(GUI_OBJS) $(GUI_TARGET)
 	rm -rf obj gui Realm.app Realm.zip
+	rm -f web/index.html web/index.js web/index.wasm web/index.data
 
-.PHONY: all clean gui-build app share check
+.PHONY: all clean gui-build app share check web

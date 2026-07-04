@@ -32,9 +32,13 @@ it maps every file and has cookbooks for the common changes.
 make && make check         # build + the post-change gate
 make gui-build             # SDL window build (realm-gui)
 make app && make share     # macOS Realm.app + friend zip on ~/Desktop
+make web                   # browser build -> web/index.html (needs emcc);
+                           #   serve: python3 -m http.server 8080 -d web
 ./realm --verify S T N B L # headless: seed/ticks/AIs/biome/layout + probe
 ./realm --test-raid        # AI plunder pipeline end-to-end (exit 0 = pass)
+./realm --test-sow         # player farm pipeline (sow 2x2 field, tend, bank)
 ./realm --net-host 3000 1  # + --net-join <ip> 3000 elsewhere: lockstep test
+REALM_NET_PAUSE_TEST=1 ./realm --net-host 3000 1  # 12s mid-match stall must survive
 ./realm --replay <file>    # watch a recording (also in-game REPLAYS menu)
 ```
 

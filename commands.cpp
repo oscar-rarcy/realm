@@ -582,7 +582,7 @@ bool replayStartRecording(int numAIs) {
 }
 
 void replayStopRecording() {
-    if (recF) { fclose(recF); recF = nullptr; }
+    if (recF) { fclose(recF); recF = nullptr; platformPersistFiles(); }
 }
 
 // Leave playback mode (the splash replay browser returns to live play —

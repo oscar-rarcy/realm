@@ -23,7 +23,11 @@
 #define SDL_MAIN_HANDLED
 #include <SDL.h>
 #include <SDL_ttf.h>
+// The browser build has no SDL_mixer port wired up (and no audio to play);
+// everything else in the shim is platform-clean under Emscripten.
+#ifndef __EMSCRIPTEN__
 #include <SDL_mixer.h>
+#endif
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -202,10 +206,17 @@ bool selfTest = false;   // defined early: pushMouse must know the input source
 // Self-test keeps injected coordinates (there is no real pointer to poll).
 static void pointerWindowPos(int evX, int evY, int& outX, int& outY) {
     if (selfTest) { outX = evX; outY = evY; return; }
+#ifdef __EMSCRIPTEN__
+    // One window (the canvas), no desktop: SDL_GetMouseState is already
+    // canvas-relative, and there's no window origin to subtract.
+    (void)evX; (void)evY;
+    SDL_GetMouseState(&outX, &outY);
+#else
     int gx, gy, wx, wy;
     SDL_GetGlobalMouseState(&gx, &gy);
     SDL_GetWindowPosition(win, &wx, &wy);
     outX = gx - wx; outY = gy - wy;
+#endif
 }
 
 void pushMouse(mmask_t bstate, int px, int py) {
@@ -551,6 +562,9 @@ const char* findFont() {
     // true Bold face for A_BOLD.
     struct Cand { const char* reg; const char* bold; };
     static const Cand candidates[] = {
+        // Browser build: the Makefile preloads OFL-licensed JetBrains Mono
+        // into the virtual filesystem at this path (no system fonts exist).
+        { "/fonts/JetBrainsMono-Regular.ttf", "/fonts/JetBrainsMono-Bold.ttf" },
         { "/System/Applications/Utilities/Terminal.app/Contents/Resources/Fonts/SF-Mono-Regular.otf",
           "/System/Applications/Utilities/Terminal.app/Contents/Resources/Fonts/SF-Mono-Bold.otf" },
         { "/System/Library/Fonts/SFNSMono.ttf", nullptr },
@@ -581,6 +595,10 @@ const char* findFont() {
 // Open the audio mixer so a soundtrack can be dropped in later (SDL2_mixer
 // stays linked + bundled — the framework is kept), but play nothing for now.
 // To add music: Mix_LoadMUS(path) + Mix_PlayMusic(mus, -1) right here.
+#ifdef __EMSCRIPTEN__
+void initAudio() {}
+void shutdownAudio() {}
+#else
 void initAudio() {
     if (SDL_InitSubSystem(SDL_INIT_AUDIO) != 0) return;
     if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) != 0) return;
@@ -592,6 +610,7 @@ void shutdownAudio() {
     Mix_CloseAudio();
     audioReady = false;
 }
+#endif
 
 } // namespace
 
@@ -682,16 +701,19 @@ static bool   hasStagedMouse = false;
 
 int getch() {
     pumpEvents();
-    if (keyQ.empty() && timeoutMs > 0) {
-        Uint32 deadline = SDL_GetTicks() + timeoutMs;
+    // ncurses semantics: timeout(<0) blocks until a key, timeout(0) polls,
+    // timeout(>0) waits that many ms. The blocking case waits in 50ms
+    // slices so pointer polling stays alive (and, in the browser build,
+    // so SDL_Delay inside SDL_WaitEventTimeout yields to the event loop).
+    if (keyQ.empty() && timeoutMs != 0) {
+        Uint32 deadline = timeoutMs > 0 ? SDL_GetTicks() + timeoutMs : 0;
         while (keyQ.empty()) {
             Uint32 now = SDL_GetTicks();
-            if (now >= deadline) break;
+            if (timeoutMs > 0 && now >= deadline) break;
+            Uint32 slice = timeoutMs > 0 ? deadline - now : 50;
             SDL_Event e;
-            if (SDL_WaitEventTimeout(&e, deadline - now)) {
-                handleEvent(e);
-                pumpEvents();
-            }
+            if (SDL_WaitEventTimeout(&e, (int)slice)) handleEvent(e);
+            pumpEvents();
         }
     }
     if (keyQ.empty()) return ERR;

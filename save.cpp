@@ -137,6 +137,7 @@ bool saveGame(const char* path) {
 
     // Atomic rename. On the failure path the user keeps their last good save.
     if (rename(tmpPath, path) != 0) { remove(tmpPath); return false; }
+    platformPersistFiles();   // browser build: flush MEMFS down to IndexedDB
     return true;
 }
 
