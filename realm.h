@@ -660,6 +660,7 @@ bool netTickReady();                            // pump socket; true = both bund
 void netAfterTick();                            // send our bundle / 100-tick hash
 void netPump();                                 // drain socket between ticks (keepalive, pause msgs)
 bool netConnectionLost();
+bool netVersionMismatch();              // the BYE said our builds differ
 bool netDesynced();
 int  netDesyncTick();
 bool netPeerPaused();

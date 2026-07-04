@@ -180,6 +180,7 @@ static int cfgClim   = kClimCount;        // Random/mixed
 static int cfgLayout = LAYOUT_COUNT;      // Random
 static int cfgSpeed  = GS_NORMAL;
 static unsigned long long cfgSeed = 0;    // non-zero once a specific map is picked
+static std::string cfgLastAddr;           // last address joined (typing it once is enough)
 
 // ---- Settings persistence: the splash remembers you between launches ----
 // Plain key=value file next to the saves. Only menu preferences — nothing
@@ -189,13 +190,21 @@ static void saveMenuConfig() {
     if (!f) return;
     fprintf(f, "ais=%d\ndiff=%d\nclim=%d\nlayout=%d\nspeed=%d\nciv=%d\ncolour=%d\nmpais=%d\n",
             cfgNumAIs, cfgDiff, cfgClim, cfgLayout, cfgSpeed, cfgCiv, g.playerColor, mpNumAIs);
+    if (!cfgLastAddr.empty()) fprintf(f, "lastaddr=%s\n", cfgLastAddr.c_str());
     fclose(f);
 }
 void loadMenuConfig() {
     FILE* f = fopen("realm-config.txt", "r");
     if (!f) return;
-    char k[32]; int v;
-    while (fscanf(f, "%31[^=]=%d\n", k, &v) == 2) {
+    char line[128];
+    while (fgets(line, sizeof line, f)) {
+        char* eq = strchr(line, '=');
+        if (!eq) continue;
+        *eq = 0;
+        const char* k = line;
+        char* val = eq + 1;
+        val[strcspn(val, "\r\n")] = 0;
+        int v = atoi(val);
         if      (!strcmp(k, "ais"))    cfgNumAIs = std::max(1, std::min(3, v));
         else if (!strcmp(k, "diff"))   cfgDiff   = std::max(0, std::min(2, v));
         else if (!strcmp(k, "clim"))   cfgClim   = std::max(0, std::min(kClimCount, v));
@@ -204,6 +213,7 @@ void loadMenuConfig() {
         else if (!strcmp(k, "civ"))    cfgCiv    = std::max(-1, std::min(NUM_CIVS - 1, v));
         else if (!strcmp(k, "colour")) g.playerColor = std::max(0, std::min(numTeamColors() - 1, v));
         else if (!strcmp(k, "mpais"))  mpNumAIs  = std::max(0, std::min(2, v));
+        else if (!strcmp(k, "lastaddr") && strlen(val) <= 40) cfgLastAddr = val;
     }
     fclose(f);
 }
@@ -620,7 +630,10 @@ static bool clientLobby(SplashResult& r) {
             timeout(-1);
             int maxY, maxX; getmaxyx(stdscr, maxY, maxX);
             erase(); drawRealmBanner(maxX, std::max(0, maxY/2 - 9));
-            lobbyNote(maxY/2 + 2, maxX/2 - 22, "Lost the host (they closed the lobby, or versions differ).", CP_HP_RED);
+            if (netVersionMismatch())
+                lobbyNote(maxY/2 + 2, maxX/2 - 27, "Your builds differ - you and the host need the same Realm version.", CP_HP_RED);
+            else
+                lobbyNote(maxY/2 + 2, maxX/2 - 22, "Lost the host (they closed the lobby).", CP_HP_RED);
             lobbyNote(maxY/2 + 4, maxX/2 - 12, "Press any key to go back");
             refresh(); getch();
             netClose();
@@ -679,7 +692,7 @@ static bool clientLobby(SplashResult& r) {
 // Type-an-address entry (long-distance play: the host's public IP with TCP
 // 7521 forwarded, or their Tailscale address).
 static bool joinByAddress(SplashResult& r) {
-    std::string addr;
+    std::string addr = cfgLastAddr;   // last game's host is one Enter away
     std::string err;
     while (true) {
         int maxY, maxX; getmaxyx(stdscr, maxY, maxX);
@@ -711,6 +724,8 @@ static bool joinByAddress(SplashResult& r) {
             refresh();
             std::string why;
             if (netJoinConnect(addr.c_str(), NET_TCP_PORT, why)) {
+                cfgLastAddr = addr;
+                saveMenuConfig();
                 if (clientLobby(r)) return true;
                 return false;
             }

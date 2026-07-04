@@ -654,9 +654,21 @@ int main(int argc, char** argv) {
         for (int i = 0; i < MAX_PLAYERS; i++) g.civChoice[i] = nc.civ[i];
         initGame(nc.numAIs, nc.seed);
         int stall = 0;
+        // REALM_NET_PAUSE_TEST=1: host stalls 12s at tick 1000 exactly like a
+        // player pausing (pumping the wire, not ticking). The link must ride
+        // it out on keepalives — this is the regression test for the >10s
+        // pause reading as a dead peer.
+        bool pauseTest = netHost && getenv("REALM_NET_PAUSE_TEST");
         while (g.tick < ticks) {
             if (netConnectionLost()) { fprintf(stderr, "connection lost at tick %d\n", g.tick); return 1; }
             if (netDesynced()) { fprintf(stderr, "DESYNC at tick %d\n", netDesyncTick()); return 1; }
+            if (pauseTest && g.tick == 1000) {
+                pauseTest = false;
+                fprintf(stderr, "pause-test: host stalling 12s at tick 1000...\n");
+                for (int i = 0; i < 120 && !netConnectionLost(); i++) { netPump(); msleep(100); }
+                if (netConnectionLost()) { fprintf(stderr, "pause-test: link died during the stall\n"); return 1; }
+                fprintf(stderr, "pause-test: link survived, resuming\n");
+            }
             // Scripted human traffic: each side periodically orders one of its
             // own units around. Different phases so both directions carry load.
             if (g.tick % 37 == (slot == 0 ? 0 : 5)) {
@@ -672,7 +684,7 @@ int main(int argc, char** argv) {
                 }
             }
             if (netTickReady()) { simTick(); netAfterTick(); stall = 0; }
-            else { msleep(2); if (++stall > 5000) { fprintf(stderr, "stalled at tick %d\n", g.tick); return 1; } }
+            else { msleep(2); if (++stall > 10000) { fprintf(stderr, "stalled at tick %d\n", g.tick); return 1; } }
         }
         printf("net-%s ticks=%d hash=%016llx\n", netHost ? "host" : "join", g.tick, simStateHash());
         // Linger so the slower side can finish and the final hashes cross.

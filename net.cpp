@@ -85,6 +85,7 @@ enum : unsigned char {
     MSG_CHAT    = 'T',   // both ways     utf-8 text (control channel, never sim)
     MSG_CIVPICK = 'K',   // client->host  i32 civ index (-1 = random)
     MSG_BYE     = 'Y',   // either        clean leave
+    MSG_PING    = 'G',   // either        keepalive while the sim is stalled
 };
 
 // ---- connection state ----
@@ -100,6 +101,7 @@ static bool peerPaused = false;
 static bool clientSeated = false;    // host: a client completed HELLO
 static bool sawStart = false;        // client: host pressed Begin
 static bool cfgDirty = false;        // client: a fresh CONFIG arrived
+static bool protoMismatch = false;   // BYE carried a different NET_PROTO_VERSION
 static std::string peerName;
 static NetMatchConfig cfg;
 static int clientCivPick = -1;       // host: the challenger's declared civ
@@ -107,6 +109,7 @@ static int clientCivPick = -1;       // host: the challenger's declared civ
 static std::vector<unsigned char> rxBuf, txBuf;
 static long long lastRecvMs = 0;
 static long long lastPingMs = 0;
+static long long lastSendMs = 0;
 
 // ---- lockstep state ----
 static int localSlot = 0;
@@ -144,6 +147,7 @@ static void netDbg(const char* where, int err) {
 
 bool netActive() { return matchActive; }
 bool netConnectionLost() { return connLost; }
+bool netVersionMismatch() { return protoMismatch; }
 bool netDesynced() { return desynced; }
 int  netDesyncTick() { return desyncTick; }
 bool netPeerPaused() { return peerPaused; }
@@ -163,12 +167,14 @@ static void sendFrame(unsigned char type, const void* payload, unsigned len) {
         txBuf.insert(txBuf.end(), p, p + len);
     }
     // Flush what the socket will take; the rest stays queued for netPump.
+    // (errWouldBlock, not raw errno — winsock reports through WSAGetLastError.)
     while (!txBuf.empty()) {
         ssize_t n = nsend(sock, txBuf.data(), txBuf.size());
         if (n > 0) txBuf.erase(txBuf.begin(), txBuf.begin() + n);
-        else if (n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) break;
-        else { connLost = true; break; }
+        else if (n < 0 && errWouldBlock()) break;
+        else { CONN_LOST("send"); break; }
     }
+    lastSendMs = nowMs();
 }
 
 static std::string localUserName() {
@@ -266,6 +272,14 @@ bool netHostPoll() {
         }
     }
     netPump();   // may complete the HELLO
+    // A connection that dies or never says HELLO must not wedge the lobby:
+    // drop it and keep listening (port scanners, joiners whose game crashed
+    // mid-connect). Seated challengers leaving is the lobby screen's case.
+    if (sock >= 0 && !clientSeated && (connLost || nowMs() - lastRecvMs > 5000)) {
+        closeFd(sock);
+        rxBuf.clear(); txBuf.clear();
+        connLost = false;
+    }
     return !connLost;
 }
 
@@ -414,7 +428,11 @@ static void handleFrame(unsigned char type, const unsigned char* p, unsigned len
     case MSG_HELLO:
         if (isHost && len >= 4 + 24) {
             unsigned proto; memcpy(&proto, p, 4);
-            if (proto != NET_PROTO_VERSION) { sendFrame(MSG_BYE, nullptr, 0); CONN_LOST("proto"); return; }
+            if (proto != NET_PROTO_VERSION) {
+                // Tell the joiner WHY: our version rides in the BYE, so their
+                // lobby can say "update Realm" instead of a shrug.
+                netSendBye(); protoMismatch = true; CONN_LOST("proto"); return;
+            }
             peerName.assign((const char*)p + 4);
             clientSeated = true;
             unsigned char re[4 + 24] = {0};
@@ -455,6 +473,9 @@ static void handleFrame(unsigned char type, const unsigned char* p, unsigned len
         int execTick, nCmds;
         memcpy(&execTick, p, 4); memcpy(&nCmds, p + 4, 4);
         if (nCmds < 0 || nCmds > 4096) { CONN_LOST("bundle-count"); break; }
+        // A sane peer is never more than a pause-skew ahead; a corrupt
+        // execTick would silently bloat the inbox map forever.
+        if (execTick < 0 || execTick > g.tick + 1000) { CONN_LOST("bundle-tick"); break; }
         // The frame header is 5 bytes, so the payload lands odd-aligned:
         // copy the command ints into an aligned buffer before decoding
         // (casting p+8 to int* is UB — UBSan-caught).
@@ -491,6 +512,12 @@ static void handleFrame(unsigned char type, const unsigned char* p, unsigned len
         break;
     }
     case MSG_BYE:
+        // A versioned BYE (4-byte proto payload) that doesn't match ours
+        // means the handshake failed on versions, not that the peer quit.
+        if (len >= 4) {
+            unsigned pv; memcpy(&pv, p, 4);
+            if (pv != NET_PROTO_VERSION) protoMismatch = true;
+        }
         CONN_LOST("bye");
         break;
     }
@@ -525,6 +552,11 @@ void netPump() {
         off += 5 + len;
     }
     if (off) rxBuf.erase(rxBuf.begin(), rxBuf.begin() + off);
+    // While the sim is stalled (pause, help sheet, waiting out a desync
+    // check) no bundles flow — without a heartbeat, a >10s pause would
+    // read as a dead peer and kill the match on BOTH sides.
+    if (matchActive && !connLost && nowMs() - lastSendMs > 2500)
+        sendFrame(MSG_PING, nullptr, 0);
     // Mid-match silence timeout: bundles double as keepalives at ~12.5/s,
     // so ten quiet seconds means the peer is gone (not just slow).
     if (matchActive && !connLost && nowMs() - lastRecvMs > 10000) CONN_LOST("silence");
@@ -619,7 +651,8 @@ void netSendPause(bool paused) {
 }
 
 void netSendBye() {
-    sendFrame(MSG_BYE, nullptr, 0);
+    unsigned proto = NET_PROTO_VERSION;
+    sendFrame(MSG_BYE, &proto, 4);
 }
 
 void netClose() {
@@ -627,6 +660,7 @@ void netClose() {
     rxBuf.clear(); txBuf.clear();
     isHost = matchActive = connLost = desynced = false;
     clientSeated = sawStart = cfgDirty = peerPaused = waitingForPeer = false;
+    protoMismatch = false;
     peerName.clear();
     clientCivPick = -1;
     inbox[0].clear(); inbox[1].clear();
