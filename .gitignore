@@ -118,3 +118,6 @@ replays/
 /web/index.js
 /web/index.wasm
 /web/index.data
+
+# Claude Code personal settings
+.claude/settings.local.json
