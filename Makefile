@@ -72,12 +72,16 @@ app:
 # HTTP (python3 -m http.server -d web) — file:// can't fetch wasm.
 EMXX ?= em++
 WEB_SRCS := $(OBJ_NAMES:.o=.cpp) sdl_shim.cpp
+# RELAY_URL bakes a default multiplayer relay into the build so friends don't
+# have to type it (they can still override it in the lobby). Leave unset to use
+# the ws://localhost:7523 default from realm.h.
+WEB_RELAY_DEF := $(if $(RELAY_URL),-DREALM_RELAY_URL='"$(RELAY_URL)"')
 web: web/fonts/JetBrainsMono-Regular.ttf web/shell.html
-	$(EMXX) -std=c++17 -O2 -DUSE_SDL_SHIM \
+	$(EMXX) -std=c++17 -O2 -DUSE_SDL_SHIM $(WEB_RELAY_DEF) \
 	  -finput-charset=UTF-8 -fexec-charset=UTF-8 \
 	  -sUSE_SDL=2 -sUSE_SDL_TTF=2 \
 	  -sASYNCIFY -sALLOW_MEMORY_GROWTH=0 -sINITIAL_MEMORY=256MB \
-	  -sEXIT_RUNTIME=0 -lidbfs.js \
+	  -sEXIT_RUNTIME=0 -lidbfs.js -lwebsocket.js \
 	  --preload-file web/fonts@/fonts \
 	  --shell-file web/shell.html \
 	  -o web/index.html $(WEB_SRCS)

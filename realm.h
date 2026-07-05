@@ -643,6 +643,16 @@ bool netHostStart();                            // sends START; match may begin
 // Lobby — client side
 bool netJoinConnect(const char* addr, int port, std::string& err);
 int  netClientPoll(NetMatchConfig& cfg);        // 0 idle, 1 config updated, 2 START, -1 lost
+// Browser build only: a tab can't listen()/connect() raw TCP, so both peers
+// connect out to a WebSocket relay that pairs them by room code (web-vs-web,
+// see web-relay/). These stand in for netHostOpen / netJoinConnect on web;
+// the rest of the lobby + lockstep code is shared. Override the default relay
+// at build time with `make web RELAY_URL=wss://your.relay`.
+#ifndef REALM_RELAY_URL
+#define REALM_RELAY_URL "ws://localhost:7523"
+#endif
+bool netWebHost(const char* room, const char* relay);                    // open a relay room as host
+bool netWebJoin(const char* room, const char* relay, std::string& err);  // join a relay room as client
 // LAN discovery — client side
 void netDiscoverStart();
 void netDiscoverPoll(std::vector<NetLobbyInfo>& out);

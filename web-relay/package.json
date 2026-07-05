@@ -1,0 +1,13 @@
+{
+  "name": "realm-web-relay",
+  "version": "1.0.0",
+  "description": "WebSocket relay that pairs two Realm browser players by room code and pipes bytes between them.",
+  "main": "relay.js",
+  "scripts": {
+    "start": "node relay.js"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

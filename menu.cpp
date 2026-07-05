@@ -19,7 +19,11 @@
 static bool showMapPreview(unsigned long long& outSeed);   // visual battlefield picker, below
 static int  showLoadMenu();                                // saved-game browser, below
 
+#ifdef __EMSCRIPTEN__
+static bool showMultiplayerMenuWeb(SplashResult& r);       // relay room-code lobby, below
+#else
 static bool showMultiplayerMenu(SplashResult& r);          // lobby flows, below
+#endif
 
 // Saved-game browser reachable straight from the splash ([O]) — no function
 // keys, no need to start a match first. Returns a 1-based slot to load, or 0
@@ -401,11 +405,11 @@ static bool skirmishSetup(unsigned long long& outSeed) {
 void showSplash(SplashResult& r) {
     enum { MI_SKIRMISH, MI_MULTI, MI_LOAD, MI_REPLAYS, MI_CONTROLS, MI_QUIT };
 #ifdef __EMSCRIPTEN__
-    // Browser build: raw TCP doesn't exist in a tab, so no MULTIPLAYER (the
-    // desktop build hosts/joins); QUIT would only freeze the canvas.
-    static const char* items[] = { "SKIRMISH", "LOAD GAME", "REPLAYS", "CONTROLS" };
-    static const int   acts[]  = { MI_SKIRMISH, MI_LOAD, MI_REPLAYS, MI_CONTROLS };
-    const int N = 4;
+    // Browser build: MULTIPLAYER runs through a WebSocket relay (a tab can't
+    // open raw TCP), so the flow differs; QUIT would only freeze the canvas.
+    static const char* items[] = { "SKIRMISH", "MULTIPLAYER", "LOAD GAME", "REPLAYS", "CONTROLS" };
+    static const int   acts[]  = { MI_SKIRMISH, MI_MULTI, MI_LOAD, MI_REPLAYS, MI_CONTROLS };
+    const int N = 5;
 #else
     static const char* items[] = { "SKIRMISH", "MULTIPLAYER", "LOAD GAME", "REPLAYS", "CONTROLS", "QUIT" };
     static const int   acts[]  = { MI_SKIRMISH, MI_MULTI, MI_LOAD, MI_REPLAYS, MI_CONTROLS, MI_QUIT };
@@ -450,7 +454,11 @@ void showSplash(SplashResult& r) {
         else if (ch=='\n' || ch=='\r' || ch==KEY_ENTER) {
             switch (acts[sel]) {
             case MI_SKIRMISH: if (skirmishSetup(r.seed)) { r.numAIs = cfgNumAIs; return; } break;
+#ifdef __EMSCRIPTEN__
+            case MI_MULTI:    if (showMultiplayerMenuWeb(r)) return; break;
+#else
             case MI_MULTI:    if (showMultiplayerMenu(r)) return; break;
+#endif
             case MI_LOAD:     { int s = showLoadMenu(); if (s > 0) { r.loadSlot = s; return; } break; }
             case MI_REPLAYS:  { std::string rp = showReplayMenu(); if (!rp.empty()) { r.replayPath = rp; return; } break; }
             case MI_CONTROLS: showControlsScreen(); break;
@@ -483,10 +491,20 @@ static NetMatchConfig mpCurrentCfg() {
     return c;
 }
 
+#ifdef __EMSCRIPTEN__
+// Browser multiplayer pairs by room code through a relay; these hold the
+// current room + relay URL, set by the web MP menu before entering a lobby.
+static std::string webRoom, webRelay;
+#endif
+
 // Host lobby: the skirmish settings plus a live connection panel. Any
 // change is pushed to a seated challenger immediately, AoE2-style.
 static bool hostLobby(SplashResult& r) {
+#ifdef __EMSCRIPTEN__
+    if (!netWebHost(webRoom.c_str(), webRelay.c_str())) {
+#else
     if (!netHostOpen()) {
+#endif
         // Almost always a lingering socket from a lobby closed seconds ago.
         timeout(-1);
         int maxY, maxX; getmaxyx(stdscr, maxY, maxX);
@@ -526,13 +544,19 @@ static bool hostLobby(SplashResult& r) {
         }
     };
 
+#ifndef __EMSCRIPTEN__
     std::vector<std::string> addrs = netLocalAddresses();
+#endif
     while (true) {
         bool wasSeated = netHostClientPresent();
         netHostPoll();
         if (wasSeated && netConnectionLost()) {
             // Challenger left in the lobby: reopen and keep waiting.
+#ifdef __EMSCRIPTEN__
+            netWebHost(webRoom.c_str(), webRelay.c_str());
+#else
             netHostOpen();
+#endif
             netHostSetInfo(mpCurrentCfg());
         }
         if (dirty) { netHostSetInfo(mpCurrentCfg()); dirty = false; }
@@ -595,12 +619,20 @@ static bool hostLobby(SplashResult& r) {
             mvprintw(py, c, "Lobby open - waiting for a challenger...");
             attroff(COLOR_PAIR(CP_UI_HIGH));
         }
+#ifdef __EMSCRIPTEN__
+        attron(COLOR_PAIR(CP_UI_HIGH) | A_BOLD);
+        mvprintw(py+1, c, "Room code: %s", webRoom.c_str());
+        attroff(COLOR_PAIR(CP_UI_HIGH) | A_BOLD);
+        lobbyNote(py+1, c + 12 + (int)webRoom.size() + 3, "— give this to your friend");
+        lobbyNote(py+2, c, ("Relay: " + webRelay).c_str());
+#else
         std::string addrLine = "LAN: friends pick Join via LAN. Direct: ";
         for (size_t i = 0; i < addrs.size() && i < 2; i++)
             addrLine += (i ? " or " : "") + addrs[i];
         if (addrs.empty()) addrLine += "(no network?)";
         lobbyNote(py+1, c, addrLine.c_str());
         lobbyNote(py+2, c, "Internet play: forward TCP 7521 to this Mac, or share a Tailscale IP.");
+#endif
         lobbyNote(py+3, c, "↑↓ select   ←→ change   Enter choose   Esc back");
         refresh();
 
@@ -708,6 +740,7 @@ static bool clientLobby(SplashResult& r) {
     }
 }
 
+#ifndef __EMSCRIPTEN__
 // Type-an-address entry (long-distance play: the host's public IP with TCP
 // 7521 forwarded, or their Tailscale address).
 static bool joinByAddress(SplashResult& r) {
@@ -853,6 +886,110 @@ static bool showMultiplayerMenu(SplashResult& r) {
         }
     }
 }
+#else   // __EMSCRIPTEN__
+
+// Two-field entry for browser multiplayer: the relay URL plus a room code
+// (auto-generated for the host, typed by the joiner). Fills webRoom/webRelay;
+// returns false if the user backs out. Menu-only — no sim state.
+static bool webConnectForm(bool asHost) {
+    if (webRelay.empty()) webRelay = REALM_RELAY_URL;
+    if (asHost) {
+        // A short, shareable code. Menu randomness only — never simRand.
+        char code[8]; snprintf(code, sizeof code, "%04d", (int)(time(nullptr) % 10000));
+        webRoom = code;
+    }
+    int field = asHost ? 1 : 0;      // 0 = room code, 1 = relay URL
+    std::string err;
+    while (true) {
+        int maxY, maxX; getmaxyx(stdscr, maxY, maxX);
+        erase();
+        int top = std::max(0, maxY/2 - 11);
+        drawRealmBanner(maxX, top);
+        const int bw = 58, bh = 8;
+        int c = std::max(2, maxX/2 - bw/2);
+        int r0 = top + 8;
+        drawFrame(r0, c, bw, bh, asHost ? "HOST A GAME" : "JOIN A GAME");
+        attron(COLOR_PAIR(CP_UI_TEXT));
+        mvprintw(r0+2, c+3, "Room code:");
+        mvprintw(r0+4, c+3, "Relay:");
+        attroff(COLOR_PAIR(CP_UI_TEXT));
+        int ca = (field==0) ? (COLOR_PAIR(CP_UI_HIGH)|A_BOLD) : COLOR_PAIR(CP_UI_HIGH);
+        attron(ca); mvprintw(r0+2, c+14, "%s%s", webRoom.c_str(),  field==0?"_":""); attroff(ca);
+        int la = (field==1) ? (COLOR_PAIR(CP_UI_HIGH)|A_BOLD) : COLOR_PAIR(CP_UI_HIGH);
+        attron(la); mvprintw(r0+4, c+14, "%s%s", webRelay.c_str(), field==1?"_":""); attroff(la);
+        lobbyNote(r0+6, c+3, asHost
+            ? "Share the room code with your friend, then Enter to open the lobby."
+            : "Enter your friend's room code and the same relay, then Enter.");
+        if (!err.empty()) lobbyNote(r0+bh, c, err.c_str(), CP_HP_RED);
+        else lobbyNote(r0+bh, c, "Tab / ↑↓ switch field   Enter connect   Esc back");
+        refresh();
+
+        timeout(-1);
+        int ch = getch();
+        if (ch == KEY_MOUSE) { MEVENT me; getmouse(&me); continue; }
+        if (ch == 27) return false;
+        else if (ch=='\t' || ch==KEY_UP || ch==KEY_DOWN) field ^= 1;
+        else if (ch=='\n' || ch=='\r' || ch==KEY_ENTER) {
+            if (webRoom.empty())  { err = "Enter a room code.";     continue; }
+            if (webRelay.empty()) { err = "Enter a relay address."; continue; }
+            return true;
+        }
+        else if (ch==127 || ch==8
+#ifdef KEY_BACKSPACE
+                 || ch==KEY_BACKSPACE
+#endif
+                ) { std::string& s = (field==0) ? webRoom : webRelay; if (!s.empty()) s.pop_back(); }
+        else if (ch >= 32 && ch < 127) {
+            std::string& s = (field==0) ? webRoom : webRelay;
+            if (s.size() < (size_t)(field==0 ? 16 : 80)) s.push_back((char)ch);
+        }
+    }
+}
+
+// The MULTIPLAYER entry on the browser splash — host or join a relay room.
+static bool showMultiplayerMenuWeb(SplashResult& r) {
+    static const char* items[] = { "HOST A GAME", "JOIN A GAME", "BACK" };
+    const int N = 3;
+    int sel = 0;
+    while (true) {
+        int maxY, maxX; getmaxyx(stdscr, maxY, maxX);
+        erase();
+        int top = std::max(0, maxY/2 - 9);
+        drawRealmBanner(maxX, top);
+        int my0 = top + 9, c = maxX/2 - 8;
+        for (int i = 0; i < N; i++) {
+            bool f = (i == sel);
+            int a = f ? (COLOR_PAIR(CP_UI_HIGH) | A_BOLD) : COLOR_PAIR(CP_UI_TEXT);
+            attron(a);
+            mvprintw(my0 + i, c, "%s  %s", f ? u8"›" : " ", items[i]);
+            attroff(a);
+        }
+        attron(COLOR_PAIR(CP_UI_DIM));
+        const char* hint = "Play a friend browser-to-browser through a relay (room codes)";
+        mvprintw(my0 + N + 2, maxX/2 - (int)strlen(hint)/2, "%s", hint);
+        attroff(COLOR_PAIR(CP_UI_DIM));
+        refresh();
+
+        int ch = getch();
+        if (ch == KEY_MOUSE) { MEVENT me; getmouse(&me); continue; }
+        if (ch==27 || ch=='q' || ch=='Q') return false;
+        else if (ch==KEY_UP   || ch=='k' || ch=='K') sel = (sel + N - 1) % N;
+        else if (ch==KEY_DOWN || ch=='j' || ch=='J') sel = (sel + 1) % N;
+        else if (ch=='\n' || ch=='\r' || ch==KEY_ENTER) {
+            if (sel == 0) {                       // HOST — lobby opens the relay room
+                if (webConnectForm(true) && hostLobby(r)) return true;
+            } else if (sel == 1) {                // JOIN — connect, then mirror the host
+                if (webConnectForm(false)) {
+                    std::string why;
+                    if (netWebJoin(webRoom.c_str(), webRelay.c_str(), why) && clientLobby(r))
+                        return true;
+                }
+            } else return false;
+        }
+    }
+}
+
+#endif  // __EMSCRIPTEN__
 
 // One preview cell = a BLOCK of world tiles (a thumbnail cell covers ~7x9 of
 // them). The old point-sample read a single tile, so rivers aliased away and

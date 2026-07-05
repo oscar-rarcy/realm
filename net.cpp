@@ -121,6 +121,9 @@ static bool waitingForPeer = false;
 static std::map<int, unsigned long long> localHashes, remoteHashes;
 
 static void netMatchBegin(int slot);   // defined with the scheduler below
+#ifdef __EMSCRIPTEN__
+static void wsFlushTx();                // browser WebSocket transport, defined below
+#endif
 
 static long long nowMs() {
     struct timeval tv; gettimeofday(&tv, nullptr);
@@ -171,12 +174,16 @@ static void sendFrame(unsigned char type, const void* payload, unsigned len) {
     }
     // Flush what the socket will take; the rest stays queued for netPump.
     // (errWouldBlock, not raw errno — winsock reports through WSAGetLastError.)
+#ifdef __EMSCRIPTEN__
+    wsFlushTx();                         // hand the queue to the WebSocket
+#else
     while (!txBuf.empty()) {
         ssize_t n = nsend(sock, txBuf.data(), txBuf.size());
         if (n > 0) txBuf.erase(txBuf.begin(), txBuf.begin() + n);
         else if (n < 0 && errWouldBlock()) break;
         else { CONN_LOST("send"); break; }
     }
+#endif
     lastSendMs = nowMs();
 }
 
@@ -185,6 +192,103 @@ static std::string localUserName() {
     if (!u || !*u) u = "player";
     return std::string(u).substr(0, 23);
 }
+
+// ============================================================
+// BROWSER TRANSPORT (Emscripten) — WebSocket to the pairing relay.
+// A tab can't open TCP or listen(), so both peers connect OUT to a relay
+// (web-relay/) that matches them by room code and pipes raw bytes. The relay
+// is dumb: the HELLO/WELCOME/START handshake and the whole lockstep scheduler
+// run end-to-end exactly as over TCP. `sock` is set to a non-negative sentinel
+// while the socket is open so every `sock >= 0` guard still holds — no real fd
+// syscall is ever made on this build.
+// ============================================================
+#ifdef __EMSCRIPTEN__
+#include <emscripten/websocket.h>
+static EMSCRIPTEN_WEBSOCKET_T ws = 0;
+static bool wsIsOpen    = false;
+static bool wsSendHello = false;     // client: greet with HELLO once the socket opens
+
+static void wsFlushTx() {
+    if (!wsIsOpen || ws <= 0 || txBuf.empty()) return;
+    if (emscripten_websocket_send_binary(ws, txBuf.data(), (uint32_t)txBuf.size())
+        == EMSCRIPTEN_RESULT_SUCCESS)
+        txBuf.clear();               // else leave queued; retry on the next pump
+}
+
+static void sendHelloFrame() {
+    unsigned char pl[4 + 24] = {0};
+    unsigned proto = NET_PROTO_VERSION;
+    memcpy(pl, &proto, 4);
+    snprintf((char*)pl + 4, 24, "%s", localUserName().c_str());
+    sendFrame(MSG_HELLO, pl, sizeof pl);
+}
+
+static EM_BOOL wsOnOpen(int, const EmscriptenWebSocketOpenEvent*, void*) {
+    wsIsOpen = true;
+    sock = 1;                        // sentinel: "connected" for the shared guards
+    lastRecvMs = lastSendMs = nowMs();
+    wsFlushTx();
+    if (wsSendHello) sendHelloFrame();   // client greets; host waits for HELLO
+    return EM_TRUE;
+}
+static EM_BOOL wsOnMessage(int, const EmscriptenWebSocketMessageEvent* e, void*) {
+    if (e->isText) {                 // relay control frame, e.g. "ERR room is full"
+        if (e->numBytes >= 3 && memcmp(e->data, "ERR", 3) == 0) CONN_LOST("relay");
+        return EM_TRUE;
+    }
+    rxBuf.insert(rxBuf.end(), e->data, e->data + e->numBytes);
+    lastRecvMs = nowMs();
+    return EM_TRUE;
+}
+static EM_BOOL wsOnError(int, const EmscriptenWebSocketErrorEvent*, void*) {
+    CONN_LOST("ws-error"); return EM_TRUE;
+}
+static EM_BOOL wsOnClose(int, const EmscriptenWebSocketCloseEvent*, void*) {
+    CONN_LOST("ws-close"); wsIsOpen = false; sock = -1; return EM_TRUE;
+}
+
+static bool wsConnect(const std::string& url, bool asClient) {
+    if (!emscripten_websocket_is_supported()) return false;
+    netClose();
+    EmscriptenWebSocketCreateAttributes attr;
+    emscripten_websocket_init_create_attributes(&attr);
+    attr.url = url.c_str();
+    ws = emscripten_websocket_new(&attr);
+    if (ws <= 0) { ws = 0; return false; }
+    wsIsOpen    = false;
+    wsSendHello = asClient;
+    lastRecvMs  = nowMs();
+    emscripten_websocket_set_onopen_callback(ws, nullptr, wsOnOpen);
+    emscripten_websocket_set_onmessage_callback(ws, nullptr, wsOnMessage);
+    emscripten_websocket_set_onerror_callback(ws, nullptr, wsOnError);
+    emscripten_websocket_set_onclose_callback(ws, nullptr, wsOnClose);
+    return true;
+}
+
+static std::string relayUrlFor(const char* relay, const char* room, const char* role) {
+    std::string u = (relay && *relay) ? relay : REALM_RELAY_URL;
+    u += (u.find('?') == std::string::npos) ? "?" : "&";
+    u += "room="; u += room; u += "&role="; u += role;
+    return u;
+}
+
+bool netWebHost(const char* room, const char* relay) {
+    netPlatformInit();
+    // isHost MUST be set AFTER wsConnect — wsConnect calls netClose(), which
+    // clears isHost. The HELLO handler only seats a client when isHost is true.
+    bool ok = wsConnect(relayUrlFor(relay, room, "host"), false);
+    isHost = true;
+    return ok;
+}
+bool netWebJoin(const char* room, const char* relay, std::string& err) {
+    netPlatformInit();
+    if (!wsConnect(relayUrlFor(relay, room, "join"), true)) {
+        err = "This browser has no WebSocket support."; return false;
+    }
+    isHost = false;
+    return true;
+}
+#endif  // __EMSCRIPTEN__
 
 // One settings blurb, shared by discovery replies and the lobbies.
 static std::string cfgBlurb(const NetMatchConfig& c) {
@@ -244,6 +348,7 @@ std::string netHostClientName() { return peerName; }
 
 // Accept + handshake + answer discovery pings. Returns true while healthy.
 bool netHostPoll() {
+#ifndef __EMSCRIPTEN__
     // Discovery ping?
     if (usock >= 0) {
         char buf[16]; sockaddr_in from{}; socklen_t fl = sizeof from;
@@ -274,15 +379,19 @@ bool netHostPoll() {
             lastRecvMs = nowMs();
         }
     }
+#endif  // !__EMSCRIPTEN__
     netPump();   // may complete the HELLO
+#ifndef __EMSCRIPTEN__
     // A connection that dies or never says HELLO must not wedge the lobby:
     // drop it and keep listening (port scanners, joiners whose game crashed
     // mid-connect). Seated challengers leaving is the lobby screen's case.
+    // (On web the relay owns pairing, so there's no stray socket to reap.)
     if (sock >= 0 && !clientSeated && (connLost || nowMs() - lastRecvMs > 5000)) {
         closeFd(sock);
         rxBuf.clear(); txBuf.clear();
         connLost = false;
     }
+#endif
     return !connLost;
 }
 
@@ -531,6 +640,11 @@ static void handleFrame(unsigned char type, const unsigned char* p, unsigned len
 
 void netPump() {
     if (sock < 0) return;
+#ifdef __EMSCRIPTEN__
+    // The WebSocket callbacks do the IO: wsOnMessage has already appended any
+    // received bytes into rxBuf; all we do here is push out the send queue.
+    wsFlushTx();
+#else
     // Flush anything still queued for send.
     while (!txBuf.empty()) {
         ssize_t n = nsend(sock, txBuf.data(), txBuf.size());
@@ -547,6 +661,7 @@ void netPump() {
     }
     if (n == 0) CONN_LOST("recv-eof");                        // orderly shutdown
     else if (n < 0 && !errWouldBlock()) CONN_LOST("recv-err");
+#endif
     // Parse complete frames.
     size_t off = 0;
     while (rxBuf.size() - off >= 5) {
@@ -662,6 +777,12 @@ void netSendBye() {
 }
 
 void netClose() {
+#ifdef __EMSCRIPTEN__
+    // Close the relay socket and clear the sentinel so the shared closeFd(sock)
+    // below is a no-op (sock is a fake handle on web — never a real fd).
+    if (ws > 0) { emscripten_websocket_close(ws, 1000, ""); emscripten_websocket_delete(ws); }
+    ws = 0; wsIsOpen = false; sock = -1;
+#endif
     closeFd(sock); closeFd(lsock); closeFd(usock);
     rxBuf.clear(); txBuf.clear();
     isHost = matchActive = connLost = desynced = false;
