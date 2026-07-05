@@ -1101,24 +1101,12 @@ void renderMap() {
                 // Farms are always wheat-gold — ownership doesn't change their
                 // colour, and neither does being half-sown (a growing field in
                 // the owner's team colour read as "green corn").
-                if (ent->type == E_FARM)
-                    cp = (getSeason() == SUMMER) ? CP_WHEAT_GOLD : CP_WHEAT;
-                // A field ripens tile by tile through the farming year — each
-                // cell leads or lags by its own patch of soil, so no two
-                // fields ever look alike (render-only, per-tile hash).
+                // Corn is corn: a farm is always the '%' cornfield glyph, in
+                // every season and from the moment it's sown — no growth
+                // stages, no tilled-row or stubble variants, matching wild corn.
                 if (ent->type == E_FARM) {
-                    unsigned fhash = (unsigned)(mx*7349) ^ (unsigned)(my*9241)
-                                   ^ (unsigned)(ent->id*131);
-                    if (ent->underConstruction) ch = ',';   // tilled rows
-                    else {
-                        Season fss = getSeason(); float fsp = getSeasonProgress();
-                        int grow = fss==SPRING ? (int)(fsp*8)          // sprouting
-                                 : fss==SUMMER ? 8 + (int)(fsp*8)      // filling out
-                                 : (fss==AUTUMN && fsp<0.6f) ? 20      // heavy with grain
-                                 : 0;                                  // spent stubble
-                        int v = grow + (int)(fhash % 7);
-                        ch = v < 7 ? ',' : v < 14 ? '"' : '%';
-                    }
+                    cp = (getSeason() == SUMMER) ? CP_WHEAT_GOLD : CP_WHEAT;
+                    ch = '%';
                     drawCh = (chtype)ch;
                 }
 
@@ -1141,7 +1129,7 @@ void renderMap() {
                     else
                         drawCh = horiz ? ACS_HLINE : vert ? ACS_VLINE : ACS_CKBOARD;
                 }
-                if (ent->underConstruction && g.tick%10 < 5) {
+                if (ent->underConstruction && ent->type != E_FARM && g.tick%10 < 5) {
                     ch = '#'; drawCh = (chtype)ch;
                 }
 
