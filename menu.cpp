@@ -993,8 +993,14 @@ static bool showMultiplayerMenuWeb(SplashResult& r) {
         else if (ch==KEY_UP   || ch=='k' || ch=='K') sel = (sel + N - 1) % N;
         else if (ch==KEY_DOWN || ch=='j' || ch=='J') sel = (sel + 1) % N;
         else if (ch=='\n' || ch=='\r' || ch==KEY_ENTER) {
-            if (sel == 0) {                       // HOST — lobby opens the relay room
-                if (webConnectForm(true) && hostLobby(r)) return true;
+            if (sel == 0) {                       // HOST — open the room NOW (no in-between
+                                                  // form: the code screen used to sit here
+                                                  // with no room open yet, so a friend who
+                                                  // joined early got "no such room").
+                if (webRelay.empty()) webRelay = REALM_RELAY_URL;
+                char code[8]; snprintf(code, sizeof code, "%04d", (int)(time(nullptr) % 10000));
+                webRoom = code;
+                if (hostLobby(r)) return true;    // hostLobby calls netWebHost immediately
             } else if (sel == 1) {                // JOIN — connect, then mirror the host
                 if (webConnectForm(false)) {
                     std::string why;
