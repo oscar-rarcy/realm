@@ -40,10 +40,14 @@ plain `ws://` from an `https://` page.
 `relay_deno.ts` is the same relay on Deno's native WebSocket server, ready for
 [Deno Deploy](https://deno.com/deploy) (free tier, no cold starts, TLS included).
 
-1. Install Deno + deployctl: `curl -fsSL https://deno.land/install.sh | sh`
-   then `deno install -Arf jsr:@deno/deployctl`.
-2. From this folder: `deployctl deploy --entrypoint relay_deno.ts`
-   (first run opens a browser to link your Deno account / project).
+1. Install Deno: `curl -fsSL https://deno.land/install.sh | sh` (reopen your
+   terminal afterwards so `deno` is on your PATH).
+2. Deploy the relay from this folder — no separate install needed:
+   `deno run -A jsr:@deno/deployctl deploy --entrypoint relay_deno.ts`
+   (first run opens a browser to link your Deno account / project). If you'd
+   rather install the `deployctl` command globally first, use
+   `deno install -gArf jsr:@deno/deployctl` (Deno 2 needs the `-g`/`--global`
+   flag) and then just run `deployctl deploy --entrypoint relay_deno.ts`.
    — or push the repo to GitHub and link the file in the Deno Deploy dashboard.
 3. You get a URL like `wss://realm-relay.deno.dev`. Bake it into the build so
    friends don't type it: `make web RELAY_URL=wss://realm-relay.deno.dev`
