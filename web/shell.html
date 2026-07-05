@@ -10,32 +10,31 @@
   <title>REALM</title>
   <style>
     html, body {
-      margin: 0; padding: 0; background: #0c0a08; color: #cbb37a;
+      margin: 0; padding: 0; width: 100%; height: 100%;
+      background: #000; color: #cbb37a; overflow: hidden;
       font-family: ui-monospace, Menlo, Consolas, monospace;
-      min-height: 100vh;
     }
-    .wrap { display: flex; flex-direction: column; align-items: center; }
-    header { margin: 10px 0 6px; font-size: 13px; letter-spacing: 3px; opacity: .75; }
-    canvas {
-      display: block; background: #000;
-      border: 1px solid #3a3020;
-      image-rendering: pixelated;
-      /* Pin the CSS size: SDL's resizable-window handler syncs the canvas
-         to its CSS box, and an unsized box feedback-shrinks to nothing. */
-      width: 1440px; height: 860px;
+    /* Fill the whole browser window. The canvas is SIZED (100vw/100vh, not
+       auto) — SDL's resizable-window handler syncs the drawing buffer to this
+       box and the shim's recomputeGrid() re-lays the grid to fit, so the map
+       simply gets bigger. A *pinned* size was only needed to dodge the old
+       unsized-canvas feedback-shrink; an explicit viewport size is safe. */
+    #canvas {
+      display: block; width: 100vw; height: 100vh;
+      background: #000; outline: none;
     }
-    canvas:focus { outline: none; }
-    #status { margin: 8px 0 14px; font-size: 12px; opacity: .6; min-height: 1em; }
-    a { color: #cbb37a; }
+    /* Loading line, then unobtrusive; never intercepts clicks on the canvas. */
+    #status {
+      position: fixed; left: 0; right: 0; bottom: 6px;
+      text-align: center; font-size: 12px; opacity: .55;
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <header>R E A L M</header>
-    <canvas id="canvas" width="1440" height="860" tabindex="-1"
-            oncontextmenu="event.preventDefault()"></canvas>
-    <div id="status">loading…</div>
-  </div>
+  <canvas id="canvas" width="1440" height="860" tabindex="-1"
+          oncontextmenu="event.preventDefault()"></canvas>
+  <div id="status">loading…</div>
   <script>
     var statusEl = document.getElementById('status');
     var Module = {

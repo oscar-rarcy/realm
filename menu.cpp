@@ -615,9 +615,19 @@ static bool hostLobby(SplashResult& r) {
             mvprintw(py, c, "%s has joined! Begin when ready.", netHostClientName().c_str());
             attroff(COLOR_PAIR(CP_HP_GREEN) | A_BOLD);
         } else {
-            attron(COLOR_PAIR(CP_UI_HIGH));
-            mvprintw(py, c, "Lobby open - waiting for a challenger...");
-            attroff(COLOR_PAIR(CP_UI_HIGH));
+            std::string relayWhy;
+#ifdef __EMSCRIPTEN__
+            relayWhy = netRelayError();
+#endif
+            if (!relayWhy.empty()) {
+                attron(COLOR_PAIR(CP_HP_RED) | A_BOLD);
+                mvprintw(py, c, "Relay problem: %s", relayWhy.c_str());
+                attroff(COLOR_PAIR(CP_HP_RED) | A_BOLD);
+            } else {
+                attron(COLOR_PAIR(CP_UI_HIGH));
+                mvprintw(py, c, "Lobby open - waiting for a challenger...");
+                attroff(COLOR_PAIR(CP_UI_HIGH));
+            }
         }
 #ifdef __EMSCRIPTEN__
         attron(COLOR_PAIR(CP_UI_HIGH) | A_BOLD);
@@ -681,8 +691,15 @@ static bool clientLobby(SplashResult& r) {
             timeout(-1);
             int maxY, maxX; getmaxyx(stdscr, maxY, maxX);
             erase(); drawRealmBanner(maxX, std::max(0, maxY/2 - 9));
+            std::string relayWhy;
+#ifdef __EMSCRIPTEN__
+            relayWhy = netRelayError();   // the relay's own reason, if any
+#endif
             if (netVersionMismatch())
                 lobbyNote(maxY/2 + 2, maxX/2 - 27, "Your builds differ - you and the host need the same Realm version.", CP_HP_RED);
+            else if (!relayWhy.empty())
+                lobbyNote(maxY/2 + 2, maxX/2 - (int)(("Couldn't join: " + relayWhy).size())/2,
+                          ("Couldn't join: " + relayWhy).c_str(), CP_HP_RED);
             else
                 lobbyNote(maxY/2 + 2, maxX/2 - 22, "Lost the host (they closed the lobby).", CP_HP_RED);
             lobbyNote(maxY/2 + 4, maxX/2 - 12, "Press any key to go back");

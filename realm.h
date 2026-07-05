@@ -653,6 +653,7 @@ int  netClientPoll(NetMatchConfig& cfg);        // 0 idle, 1 config updated, 2 S
 #endif
 bool netWebHost(const char* room, const char* relay);                    // open a relay room as host
 bool netWebJoin(const char* room, const char* relay, std::string& err);  // join a relay room as client
+std::string netRelayError();                                             // web: why a relay connect failed (empty if none)
 // LAN discovery — client side
 void netDiscoverStart();
 void netDiscoverPoll(std::vector<NetLobbyInfo>& out);

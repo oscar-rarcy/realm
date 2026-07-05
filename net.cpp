@@ -105,6 +105,7 @@ static bool sawStart = false;        // client: host pressed Begin
 static bool cfgDirty = false;        // client: a fresh CONFIG arrived
 static bool protoMismatch = false;   // BYE carried a different NET_PROTO_VERSION
 static std::string peerName;
+static std::string relayErr;         // web: last relay-side reason a connect failed
 static NetMatchConfig cfg;
 static int clientCivPick = -1;       // host: the challenger's declared civ
 
@@ -233,7 +234,13 @@ static EM_BOOL wsOnOpen(int, const EmscriptenWebSocketOpenEvent*, void*) {
 }
 static EM_BOOL wsOnMessage(int, const EmscriptenWebSocketMessageEvent* e, void*) {
     if (e->isText) {                 // relay control frame, e.g. "ERR room is full"
-        if (e->numBytes >= 3 && memcmp(e->data, "ERR", 3) == 0) CONN_LOST("relay");
+        if (e->numBytes >= 3 && memcmp(e->data, "ERR", 3) == 0) {
+            // Keep the reason so the lobby can say WHY (wrong code, room full,
+            // host not in their lobby yet) instead of "they closed the lobby".
+            const char* msg = (const char*)e->data + (e->numBytes > 4 ? 4 : 3);
+            relayErr.assign(msg, e->data + e->numBytes - (const uint8_t*)msg);
+            CONN_LOST("relay");
+        }
         return EM_TRUE;
     }
     rxBuf.insert(rxBuf.end(), e->data, e->data + e->numBytes);
@@ -241,9 +248,11 @@ static EM_BOOL wsOnMessage(int, const EmscriptenWebSocketMessageEvent* e, void*)
     return EM_TRUE;
 }
 static EM_BOOL wsOnError(int, const EmscriptenWebSocketErrorEvent*, void*) {
+    if (!wsIsOpen && relayErr.empty()) relayErr = "couldn't reach the relay (is it running? URL correct?)";
     CONN_LOST("ws-error"); return EM_TRUE;
 }
 static EM_BOOL wsOnClose(int, const EmscriptenWebSocketCloseEvent*, void*) {
+    if (!wsIsOpen && relayErr.empty()) relayErr = "couldn't reach the relay (is it running? URL correct?)";
     CONN_LOST("ws-close"); wsIsOpen = false; sock = -1; return EM_TRUE;
 }
 
@@ -789,8 +798,12 @@ void netClose() {
     clientSeated = sawStart = cfgDirty = peerPaused = waitingForPeer = false;
     protoMismatch = false;
     peerName.clear();
+    relayErr.clear();
     clientCivPick = -1;
     inbox[0].clear(); inbox[1].clear();
     localPending.clear(); localHashes.clear(); remoteHashes.clear();
     found.clear();
 }
+
+// Web: the relay's reason a connect failed (empty if none / native build).
+std::string netRelayError() { return relayErr; }

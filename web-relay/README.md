@@ -31,16 +31,34 @@ type the same room code and relay, connect. Host presses **Begin**.
 ## Play over the internet
 
 Host the relay anywhere reachable by both players and give both friends the same
-public relay URL in the lobby's **Relay** field:
+public relay URL in the lobby's **Relay** field. If the game page is served over
+HTTPS (GitHub Pages, itch.io), the relay MUST be `wss://` — browsers block a
+plain `ws://` from an `https://` page.
 
-- **Any small Node host / VPS**: `node relay.js 7523` behind your firewall/NAT,
-  or on a cloud box. Put it behind TLS (`wss://`) if the page is served over
-  HTTPS — browsers block mixed `ws://` from an `https://` page.
-- **Tailscale**: run the relay on one machine and use its Tailscale address as
-  the relay URL — no port-forwarding, works between cities.
-- Build the URL into the client so friends don't have to type it:
-  `make web RELAY_URL=wss://your.relay.example`.
+### Deno Deploy (recommended — free, always-on, `wss://` built in)
 
-The relay uses one TCP port (default **7523**, override with `node relay.js
-<port>` or `$PORT`). A plain `GET /` returns a health line so you can check it's
-up in a browser.
+`relay_deno.ts` is the same relay on Deno's native WebSocket server, ready for
+[Deno Deploy](https://deno.com/deploy) (free tier, no cold starts, TLS included).
+
+1. Install Deno + deployctl: `curl -fsSL https://deno.land/install.sh | sh`
+   then `deno install -Arf jsr:@deno/deployctl`.
+2. From this folder: `deployctl deploy --entrypoint relay_deno.ts`
+   (first run opens a browser to link your Deno account / project).
+   — or push the repo to GitHub and link the file in the Deno Deploy dashboard.
+3. You get a URL like `wss://realm-relay.deno.dev`. Bake it into the build so
+   friends don't type it: `make web RELAY_URL=wss://realm-relay.deno.dev`
+   (they can still override it in the lobby's Relay field).
+
+Run it locally the same way: `deno run --allow-net --allow-env relay_deno.ts`.
+
+### Other options
+
+- **Node host / VPS**: `node relay.js 7523` behind your firewall/NAT or on a
+  cloud box (add a TLS terminator for `wss://`).
+- **Render / Fly.io**: deploy `relay.js` as-is from a GitHub repo; both give an
+  automatic `wss://` URL (Render's free tier cold-starts after idle).
+- **Tailscale**: run the relay on one machine and use its Tailscale address —
+  no port-forwarding, private, works between cities.
+
+The relay uses one port (default **7523**, override with an arg or `$PORT`).
+A plain `GET /` returns a health line so you can check it's up in a browser.
