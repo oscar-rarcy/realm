@@ -42,6 +42,18 @@
       setStatus: function (t) { statusEl.textContent = t || ''; },
       onRuntimeInitialized: function () { statusEl.textContent = ''; }
     };
+    // Multiplayer relay, picked at runtime (the game reads Module.relayUrl
+    // when a lobby opens): a ?relay=wss://… query parameter wins, else a
+    // relay.json ({"relay":"wss://…"}) served beside this page, else the
+    // compiled-in default (localhost — right only for local dev).
+    var qRelay = new URLSearchParams(location.search).get('relay');
+    if (qRelay) { Module.relayUrl = qRelay; }
+    else {
+      fetch('relay.json', { cache: 'no-store' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (c) { if (c && c.relay) Module.relayUrl = c.relay; })
+        .catch(function () {});
+    }
     // Keys the game needs that the browser normally eats.
     window.addEventListener('keydown', function (e) {
       if (['Tab', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12'].includes(e.key))

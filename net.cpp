@@ -204,6 +204,7 @@ static std::string localUserName() {
 // syscall is ever made on this build.
 // ============================================================
 #ifdef __EMSCRIPTEN__
+#include <emscripten.h>
 #include <emscripten/websocket.h>
 static EMSCRIPTEN_WEBSOCKET_T ws = 0;
 static bool wsIsOpen    = false;
@@ -274,8 +275,18 @@ static bool wsConnect(const std::string& url, bool asClient) {
     return true;
 }
 
+// The page can hand us a relay at runtime: shell.html sets Module.relayUrl
+// from a ?relay=… query parameter or a relay.json served beside index.html.
+// One hosted build can then re-point at a new relay without recompiling;
+// the compile-time REALM_RELAY_URL is only the last resort (localhost dev).
+std::string realmRelayDefault() {
+    const char* s = emscripten_run_script_string(
+        "(typeof Module!=='undefined'&&Module.relayUrl)?String(Module.relayUrl):''");
+    return (s && *s) ? s : REALM_RELAY_URL;
+}
+
 static std::string relayUrlFor(const char* relay, const char* room, const char* role) {
-    std::string u = (relay && *relay) ? relay : REALM_RELAY_URL;
+    std::string u = (relay && *relay) ? relay : realmRelayDefault();
     u += (u.find('?') == std::string::npos) ? "?" : "&";
     u += "room="; u += room; u += "&role="; u += role;
     return u;

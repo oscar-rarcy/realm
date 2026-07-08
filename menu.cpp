@@ -909,7 +909,7 @@ static bool showMultiplayerMenu(SplashResult& r) {
 // (auto-generated for the host, typed by the joiner). Fills webRoom/webRelay;
 // returns false if the user backs out. Menu-only — no sim state.
 static bool webConnectForm(bool asHost) {
-    if (webRelay.empty()) webRelay = REALM_RELAY_URL;
+    if (webRelay.empty()) webRelay = realmRelayDefault();
     if (asHost) {
         // A short, shareable code. Menu randomness only — never simRand.
         char code[8]; snprintf(code, sizeof code, "%04d", (int)(time(nullptr) % 10000));
@@ -997,7 +997,7 @@ static bool showMultiplayerMenuWeb(SplashResult& r) {
                                                   // form: the code screen used to sit here
                                                   // with no room open yet, so a friend who
                                                   // joined early got "no such room").
-                if (webRelay.empty()) webRelay = REALM_RELAY_URL;
+                if (webRelay.empty()) webRelay = realmRelayDefault();
                 char code[8]; snprintf(code, sizeof code, "%04d", (int)(time(nullptr) % 10000));
                 webRoom = code;
                 if (hostLobby(r)) return true;    // hostLobby calls netWebHost immediately

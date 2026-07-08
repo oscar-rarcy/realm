@@ -651,6 +651,7 @@ int  netClientPoll(NetMatchConfig& cfg);        // 0 idle, 1 config updated, 2 S
 #ifndef REALM_RELAY_URL
 #define REALM_RELAY_URL "ws://localhost:7523"
 #endif
+std::string realmRelayDefault();  // web: ?relay= / relay.json page override, else REALM_RELAY_URL
 bool netWebHost(const char* room, const char* relay);                    // open a relay room as host
 bool netWebJoin(const char* room, const char* relay, std::string& err);  // join a relay room as client
 std::string netRelayError();                                             // web: why a relay connect failed (empty if none)
