@@ -34,6 +34,8 @@ make gui-build             # SDL window build (realm-gui)
 make app && make share     # macOS Realm.app + friend zip on ~/Desktop
 make web                   # browser build -> web/index.html (needs emcc);
                            #   serve: python3 -m http.server 8080 -d web
+./publish-web.sh           # make web + push to GitHub Pages (live site);
+                           #   --relay wss://… also re-points the MP relay
 ./realm --verify S T N B L # headless: seed/ticks/AIs/biome/layout + probe
 ./realm --test-raid        # AI plunder pipeline end-to-end (exit 0 = pass)
 ./realm --test-sow         # player farm pipeline (sow 2x2 field, tend, bank)
