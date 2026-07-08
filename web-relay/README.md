@@ -10,6 +10,10 @@ Only **web-vs-web** play is supported (two browsers on the same build stay in
 lockstep because they run byte-identical WebAssembly). Native desktop peers use
 the built-in TCP path instead.
 
+Three interchangeable implementations, one contract (`node test.js <url>`
+verifies any of them): `relay.js` (Node), `worker.js` (Cloudflare Workers),
+`relay_deno.ts` (Deno).
+
 ## Run it locally (for testing)
 
 ```sh
@@ -28,41 +32,72 @@ In browser A: **MULTIPLAYER → HOST A GAME** (note the room code, relay is the
 default `ws://localhost:7523`). In browser B: **MULTIPLAYER → JOIN A GAME**,
 type the same room code and relay, connect. Host presses **Begin**.
 
+## How the hosted page finds the relay
+
+The web build picks its default relay at runtime, in this order:
+
+1. `?relay=wss://…` query parameter on the page URL,
+2. a `relay.json` served beside `index.html` — `{ "relay": "wss://…" }`,
+3. the compile-time default (`make web RELAY_URL=wss://…`, else
+   `ws://localhost:7523`).
+
+So a deployed page (GitHub Pages, itch.io) can be re-pointed at a new relay by
+editing one JSON file — no rebuild. Players can still override the URL in the
+lobby's Relay field. Note: from an `https://` page the relay MUST be `wss://`
+— browsers block plain `ws://` there.
+
 ## Play over the internet
 
-Host the relay anywhere reachable by both players and give both friends the same
-public relay URL in the lobby's **Relay** field. If the game page is served over
-HTTPS (GitHub Pages, itch.io), the relay MUST be `wss://` — browsers block a
-plain `ws://` from an `https://` page.
+### Cloudflare Workers (recommended — free, no card, always-on)
 
-### Deno Deploy (recommended — free, always-on, `wss://` built in)
+`worker.js` + `wrangler.toml` run the relay as a Cloudflare Worker with one
+Durable Object per room (SQLite-backed class, so the **free plan** suffices;
+WebSocket hibernation keeps idle lobbies free). From this folder:
 
-`relay_deno.ts` is the same relay on Deno's native WebSocket server, ready for
-[Deno Deploy](https://deno.com/deploy) (free tier, no cold starts, TLS included).
+```sh
+npm i -g wrangler
+wrangler login        # opens the browser; a free account needs no payment card
+wrangler deploy       # -> https://realm-relay.<your-subdomain>.workers.dev
+```
 
-1. Install Deno: `curl -fsSL https://deno.land/install.sh | sh` (reopen your
-   terminal afterwards so `deno` is on your PATH).
-2. Deploy the relay from this folder — no separate install needed:
-   `deno run -A jsr:@deno/deployctl deploy --entrypoint relay_deno.ts`
-   (first run opens a browser to link your Deno account / project). If you'd
-   rather install the `deployctl` command globally first, use
-   `deno install -gArf jsr:@deno/deployctl` (Deno 2 needs the `-g`/`--global`
-   flag) and then just run `deployctl deploy --entrypoint relay_deno.ts`.
-   — or push the repo to GitHub and link the file in the Deno Deploy dashboard.
-3. You get a URL like `wss://realm-relay.deno.dev`. Bake it into the build so
-   friends don't type it: `make web RELAY_URL=wss://realm-relay.deno.dev`
-   (they can still override it in the lobby's Relay field).
+Use it in game as `wss://realm-relay.<your-subdomain>.workers.dev`. Free-tier
+limits (100k requests/day) comfortably cover friends-scale play. Optional
+hardening: set `ALLOWED_ORIGINS` in `wrangler.toml` so only your game page can
+use the relay.
 
-Run it locally the same way: `deno run --allow-net --allow-env relay_deno.ts`.
+### Instant, zero-account: Cloudflare quick tunnel
+
+For a play session right now, expose a local relay through a free
+[TryCloudflare](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/do-more-with-tunnels/trycloudflare/)
+tunnel — no account, no card:
+
+```sh
+node relay.js 7523                                  # terminal 1
+cloudflared tunnel --url http://localhost:7523     # terminal 2 (brew install cloudflared)
+```
+
+`cloudflared` prints `https://<random>.trycloudflare.com`; the relay is then at
+`wss://<random>.trycloudflare.com`. Caveats: it only lives while both processes
+run on your machine, and the URL changes every start (update `relay.json` or
+paste it in the lobby).
+
+### Deno Deploy
+
+`relay_deno.ts` is the same relay for [Deno Deploy](https://deno.com/deploy)
+(free, always-on, TLS included) — but signups were returning
+`SIGNUP_UNAVAILABLE` as of July 2026, so this path is parked. If you have a
+working account: `deno run -A jsr:@deno/deployctl deploy --entrypoint
+relay_deno.ts` → `wss://<project>.deno.dev`.
 
 ### Other options
 
 - **Node host / VPS**: `node relay.js 7523` behind your firewall/NAT or on a
   cloud box (add a TLS terminator for `wss://`).
 - **Render / Fly.io**: deploy `relay.js` as-is from a GitHub repo; both give an
-  automatic `wss://` URL (Render's free tier cold-starts after idle).
+  automatic `wss://` URL, but both ask for a payment card on signup.
 - **Tailscale**: run the relay on one machine and use its Tailscale address —
   no port-forwarding, private, works between cities.
 
-The relay uses one port (default **7523**, override with an arg or `$PORT`).
-A plain `GET /` returns a health line so you can check it's up in a browser.
+The Node/Deno relays use one port (default **7523**, override with an arg or
+`$PORT`). A plain `GET /` on any implementation returns a health line so you
+can check it's up in a browser.

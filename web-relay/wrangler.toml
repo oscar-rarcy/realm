@@ -1,0 +1,19 @@
+# Cloudflare Workers config for the Realm relay (worker.js).
+# Free plan is fine: Durable Objects are allowed there when the class is
+# SQLite-backed, which the migration below declares.
+name = "realm-relay"
+main = "worker.js"
+compatibility_date = "2025-10-01"
+
+[[durable_objects.bindings]]
+name = "ROOMS"
+class_name = "RelayRoom"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["RelayRoom"]
+
+# Optional hardening: only let these pages use the relay (comma-separated).
+# Leave commented out while testing from localhost.
+# [vars]
+# ALLOWED_ORIGINS = "https://oscar-rarcy.github.io"
