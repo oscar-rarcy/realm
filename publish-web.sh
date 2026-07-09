@@ -12,13 +12,15 @@ cd "$(dirname "$0")"
 make web
 git fetch origin gh-pages
 D="$(mktemp -d)/pages"
-git worktree add "$D" gh-pages
+# Detached at origin's tip: the local gh-pages branch would go stale the
+# moment anything (a relay.json edit via the GitHub API) lands remotely.
+git worktree add --detach "$D" origin/gh-pages
 cp web/index.html web/index.js web/index.wasm web/index.data "$D"/
 if [ "$1" = "--relay" ] && [ -n "$2" ]; then
   printf '{ "relay": "%s" }\n' "$2" > "$D/relay.json"
 fi
 git -C "$D" add -A
 git -C "$D" diff --cached --quiet || git -C "$D" commit -m "publish web build $(git rev-parse --short HEAD)"
-git -C "$D" push origin gh-pages
+git -C "$D" push origin HEAD:gh-pages
 git worktree remove --force "$D"
 echo "Live at https://oscar-rarcy.github.io/realm/ (allow ~1 min for Pages to refresh)"
