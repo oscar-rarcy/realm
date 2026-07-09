@@ -753,9 +753,9 @@ void renderUI() {
             centreBanner("Connection to " + netPeerName() +
                          " lost — [A] let their AI fight on   [Q] abandon match", CP_HP_RED);
         } else if (netPeerPaused()) {
-            centreBanner(netPeerName() + " has paused the game", CP_UI_BAR);
+            centreBanner(netPauseName() + " has paused the game", CP_UI_BAR);
         } else if (netWaitingForPeer()) {
-            centreBanner("Waiting for " + netPeerName() + "...", CP_UI_BAR);
+            centreBanner("Waiting for " + netWaitingName() + "...", CP_UI_BAR);
         }
     }
 

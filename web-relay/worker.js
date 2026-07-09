@@ -1,13 +1,16 @@
 // worker.js — Realm web-multiplayer relay on Cloudflare Workers.
 //
 // Same contract as relay.js: connect to  wss://<worker>/?room=CODE&role=host|join.
-// Before pairing the relay may send ONE text frame "ERR <reason>"; once both
-// peers are present every frame is forwarded verbatim, and either side
-// disconnecting closes the other. It never parses Realm's protocol — the
-// lockstep handshake runs end-to-end inside the two .wasm instances.
+// One host plus up to MAX_JOIN challengers per room (4-player games). The
+// relay never parses Realm's protocol — it only routes bytes:
+//   joiner -> host   forwarded with the joiner's slot index prepended
+//   host -> joiner   host prepends the destination index; relay strips it
+// Control text frames: "ERR <reason>" before a rejection; the host gets
+// "BYE <idx>" when a joiner's socket closes. The room dies with the host;
+// a joiner leaving just frees its slot.
 //
-// One Durable Object instance per room code holds the two sockets. The class
-// is SQLite-backed (see wrangler.toml migrations) so it runs on the FREE plan,
+// One Durable Object instance per room code holds the sockets. The class is
+// SQLite-backed (see wrangler.toml migrations) so it runs on the FREE plan,
 // and it uses the WebSocket hibernation API so an idle lobby costs ~nothing.
 //
 // Deploy (free Cloudflare account, no card):
@@ -18,6 +21,7 @@
 
 const MAX_FRAME = 256 * 1024; // Realm frames are tiny; anything huge is abuse
 const MAX_CODE = 32;
+const MAX_JOIN = 3;           // matches MAX_NET_CLIENTS in the game
 
 export default {
   async fetch(req, env) {
@@ -58,37 +62,65 @@ export class RelayRoom {
     return new Response(null, { status: 101, webSocket: pair[0] });
   }
 
+  host() { return this.ctx.getWebSockets('host')[0] || null; }
+
   async fetch(req) {
     const role = new URL(req.url).searchParams.get('role');
-    const hosts = this.ctx.getWebSockets('host');
-    if (role === 'host' && hosts.length)
-      return this.reject('room code already in use');
-    if (role === 'join' && !hosts.length)
-      return this.reject('no such room (has your friend opened the lobby?)');
-    if (role === 'join' && this.ctx.getWebSockets('join').length)
-      return this.reject('room is full');
-
     const pair = new WebSocketPair();
-    this.ctx.acceptWebSocket(pair[1], [role]); // hibernation API
+    if (role === 'host') {
+      if (this.host()) return this.reject('room code already in use');
+      this.ctx.acceptWebSocket(pair[1], ['host']);
+    } else {
+      if (!this.host()) return this.reject('no such room (has your friend opened the lobby?)');
+      let idx = -1;
+      for (let i = 0; i < MAX_JOIN; i++)
+        if (!this.ctx.getWebSockets('j' + i).length) { idx = i; break; }
+      if (idx < 0) return this.reject('room is full');
+      this.ctx.acceptWebSocket(pair[1], ['join', 'j' + idx]);
+    }
     return new Response(null, { status: 101, webSocket: pair[0] });
   }
 
+  joinIndexOf(ws) {
+    for (const t of this.ctx.getTags(ws))
+      if (t.length === 2 && t[0] === 'j') return t.charCodeAt(1) - 48;
+    return -1;
+  }
+
   webSocketMessage(ws, msg) {
-    const size = typeof msg === 'string' ? msg.length : msg.byteLength;
-    if (size > MAX_FRAME) { this.closeRoom(); return; }
-    const other = this.ctx.getTags(ws).includes('host') ? 'join' : 'host';
-    for (const peer of this.ctx.getWebSockets(other)) {
-      try { peer.send(msg); } catch { /* peer mid-close */ }
+    if (typeof msg === 'string') return;       // game traffic is binary-only
+    if (msg.byteLength > MAX_FRAME) { this.closeAll(); return; }
+    const bytes = new Uint8Array(msg);
+    if (this.ctx.getTags(ws).includes('host')) {
+      if (bytes.length < 1) return;            // [destIdx][bytes]
+      const peer = this.ctx.getWebSockets('j' + bytes[0])[0];
+      if (peer) { try { peer.send(msg.slice(1)); } catch { /* mid-close */ } }
+    } else {
+      const i = this.joinIndexOf(ws);
+      const h = this.host();
+      if (i < 0 || !h) return;
+      const out = new Uint8Array(1 + bytes.length);
+      out[0] = i;
+      out.set(bytes, 1);
+      try { h.send(out); } catch { /* mid-close */ }
     }
   }
 
-  webSocketClose() { this.closeRoom(); }
-  webSocketError() { this.closeRoom(); }
+  webSocketClose(ws)  { this.gone(ws); }
+  webSocketError(ws)  { this.gone(ws); }
 
-  // Mirror relay.js: the room dies with either side, freeing the code.
-  closeRoom() {
+  // Host leaving ends the room; a joiner leaving frees its slot and the
+  // host is told so the game can stand that seat's forces down.
+  gone(ws) {
+    if (this.ctx.getTags(ws).includes('host')) { this.closeAll(); return; }
+    const i = this.joinIndexOf(ws);
+    const h = this.host();
+    if (i >= 0 && h) { try { h.send('BYE ' + i); } catch { /* mid-close */ } }
+  }
+
+  closeAll() {
     for (const s of this.ctx.getWebSockets()) {
-      try { s.close(1000, 'peer left'); } catch { /* already closed */ }
+      try { s.close(1000, 'room closed'); } catch { /* already closed */ }
     }
   }
 }

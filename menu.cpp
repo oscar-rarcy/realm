@@ -486,8 +486,8 @@ static NetMatchConfig mpCurrentCfg() {
     c.layout     = (cfgLayout >= LAYOUT_COUNT) ? -1 : cfgLayout;
     c.difficulty = cfgDiff;
     c.speed      = cfgSpeed;
-    c.humanMask  = 3;         // host seat 0, challenger seat 1
-    c.civ[0]     = cfgCiv;    // seat 1 is filled in by net.cpp from the client's pick
+    c.humanMask  = 3;         // provisional — net.cpp recomputes from seated challengers
+    c.civ[0]     = cfgCiv;    // challenger seats are filled in by net.cpp from their picks
     return c;
 }
 
@@ -584,7 +584,9 @@ static bool hostLobby(SplashResult& r) {
             iy++;
         };
 
-        char opp[24]; snprintf(opp, sizeof opp, "%d extra AI%s", mpNumAIs, mpNumAIs==1?"":"s");
+        int aiEff = std::min(mpNumAIs, MAX_PLAYERS - 1 - netSeatedCount());
+        char opp[32]; snprintf(opp, sizeof opp, "%d extra AI%s%s", aiEff,
+                               aiEff == 1 ? "" : "s", aiEff < mpNumAIs ? " (no chairs)" : "");
         header("MATCH");
         field(R_OPP,  "AI seats",   opp);
         field(R_DIFF, "Difficulty", kDiffNames[cfgDiff]);
@@ -612,7 +614,8 @@ static bool hostLobby(SplashResult& r) {
         int py = r0 + bh + 1;
         if (seated) {
             attron(COLOR_PAIR(CP_HP_GREEN) | A_BOLD);
-            mvprintw(py, c, "%s has joined! Begin when ready.", netHostClientName().c_str());
+            mvprintw(py, c, "%s joined (%d/%d seats) - Begin when ready.",
+                     netHostClientName().c_str(), netSeatedCount(), MAX_NET_CLIENTS);
             attroff(COLOR_PAIR(CP_HP_GREEN) | A_BOLD);
         } else {
             std::string relayWhy;
@@ -661,11 +664,10 @@ static bool hostLobby(SplashResult& r) {
             else if (sel == R_BEGIN && seated) {
                 if (cfgSeed == 0)
                     cfgSeed = (unsigned long long)time(nullptr) * 2654435761ull + 1;
-                NetMatchConfig fin = mpCurrentCfg();
-                netHostSetInfo(fin);          // final settings incl. the real seed
+                netHostSetInfo(mpCurrentCfg());   // final settings incl. the real seed
                 if (!netHostStart()) { netClose(); return false; }
                 saveMenuConfig();
-                r.netPlay = true; r.netCfg = fin; r.netSlot = 0;
+                r.netPlay = true; r.netCfg = netFinalConfig(); r.netSlot = 0;
                 cfgSeed = 0;                  // next lobby rolls fresh again
                 return true;
             }
@@ -684,7 +686,7 @@ static bool clientLobby(SplashResult& r) {
         int rc = netClientPoll(cfgIn);
         if (rc == 1) haveCfg = true;
         if (rc == 2) {
-            r.netPlay = true; r.netCfg = cfgIn; r.netSlot = 1;
+            r.netPlay = true; r.netCfg = cfgIn; r.netSlot = netMySeat();
             return true;
         }
         if (rc < 0) {
@@ -712,7 +714,7 @@ static bool clientLobby(SplashResult& r) {
         erase();
         int top = std::max(0, maxY/2 - 13);
         drawRealmBanner(maxX, top);
-        const int bw = 44, bh = 12;
+        const int bw = 44, bh = 17;
         int c = std::max(2, maxX/2 - bw/2);
         int r0 = top + 8;
         char title[64];
@@ -732,6 +734,29 @@ static bool clientLobby(SplashResult& r) {
         }
         attroff(COLOR_PAIR(CP_UI_TEXT));
         iy++;
+        // Who sits where — the roster the host keeps re-sending as it changes.
+        if (haveCfg) {
+            attron(COLOR_PAIR(CP_UI_DIM) | A_BOLD);
+            mvprintw(iy++, ix, "SEATS");
+            attroff(COLOR_PAIR(CP_UI_DIM) | A_BOLD);
+            int humans = 0;
+            for (int s = 0; s < MAX_PLAYERS; s++) if ((cfgIn.humanMask >> s) & 1) humans++;
+            for (int s = 0; s < MAX_PLAYERS; s++) {
+                bool human = (cfgIn.humanMask >> s) & 1;
+                bool ai    = !human && s < humans + cfgIn.numAIs;
+                if (human) {
+                    attron(COLOR_PAIR(CP_UI_HIGH));
+                    mvprintw(iy++, ix, "%d. %s%s", s + 1, netSeatName(s).c_str(),
+                             s == netMySeat() ? "  (you)" : "");
+                    attroff(COLOR_PAIR(CP_UI_HIGH));
+                } else {
+                    char ln[32];
+                    snprintf(ln, sizeof ln, "%d. %s", s + 1, ai ? "AI opponent" : "empty");
+                    lobbyNote(iy++, ix, ln);
+                }
+            }
+            iy++;
+        }
         attron(COLOR_PAIR(CP_UI_HIGH));
         mvprintw(iy, ix, "Civ  [  %s  ]", civLabel(cfgCiv));
         iy++;

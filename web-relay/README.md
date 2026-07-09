@@ -1,14 +1,19 @@
 # Realm web-multiplayer relay
 
-Browser tabs can't open raw TCP or act as a server, so two web players can't
-reach each other directly. This tiny relay pairs them by a shared **room code**
-and forwards raw bytes between the two browsers. It never parses the game
-protocol — Realm's lockstep handshake runs end-to-end inside the two `.wasm`
-instances, so the relay stays dumb and stateless-per-room.
+Browser tabs can't open raw TCP or act as a server, so web players can't
+reach each other directly. This tiny relay groups them by a shared **room
+code** — one host plus up to three challengers (**4-player games**) — and
+routes bytes between the host and each joiner (joiner messages reach the
+host with a one-byte slot index prepended; the host prefixes a destination
+index the relay strips). It never parses the game protocol — Realm's
+lockstep handshake and per-tick command merging run entirely inside the
+`.wasm` instances, so the relay stays dumb.
 
-Only **web-vs-web** play is supported (two browsers on the same build stay in
-lockstep because they run byte-identical WebAssembly). Native desktop peers use
-the built-in TCP path instead.
+Only **web-vs-web** play is supported (browsers on the same build stay in
+lockstep because they run byte-identical WebAssembly). Native desktop peers
+use the built-in TCP path instead. A joiner who disconnects mid-match (or
+whose tab the browser freezes for 10+ seconds) is dropped and the battle
+carries on without them; the room dies only when the host leaves.
 
 Three interchangeable implementations, one contract (`node test.js <url>`
 verifies any of them): `relay.js` (Node), `worker.js` (Cloudflare Workers),

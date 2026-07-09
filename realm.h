@@ -614,11 +614,14 @@ void simHashTick();                   // REALM_HASH=1: append tick/hash to realm
 // ============================================================
 // net.cpp — deterministic-lockstep multiplayer (docs/networking-plan.md).
 // TCP carries Commands only (the replay codec is the wire codec); UDP
-// broadcast answers LAN lobby discovery. Host = slot 0, client = slot 1.
+// broadcast answers LAN lobby discovery. Star topology: the host is seat 0,
+// up to MAX_NET_CLIENTS challengers take seats 1..3 and talk ONLY to the
+// host, which merges every seat's commands per tick into one broadcast.
 // ============================================================
 inline constexpr int NET_TCP_PORT = 7521;   // lobby + match traffic
 inline constexpr int NET_UDP_PORT = 7522;   // LAN discovery pings
 inline constexpr int NET_CMD_DELAY = 3;     // commands run D ticks after issue (~240ms)
+inline constexpr int MAX_NET_CLIENTS = 3;   // challengers per lobby (seats 1..3)
 
 struct NetMatchConfig {
     unsigned long long seed = 0;
@@ -640,6 +643,12 @@ bool netHostPoll();                             // accept/handshake; true = clie
 bool netHostClientPresent();
 std::string netHostClientName();
 bool netHostStart();                            // sends START; match may begin
+int  netSeatedCount();                          // host: challengers seated
+NetMatchConfig netFinalConfig();                // host: cfg after seat/civ overlay
+int  netMySeat();                               // our player seat (host 0)
+std::string netSeatName(int seat);              // seat -> display name (roster)
+std::string netPauseName();                     // who paused (in-match banner)
+std::string netWaitingName();                   // who a stall waits on (banner)
 // Lobby — client side
 bool netJoinConnect(const char* addr, int port, std::string& err);
 int  netClientPoll(NetMatchConfig& cfg);        // 0 idle, 1 config updated, 2 START, -1 lost

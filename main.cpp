@@ -655,19 +655,23 @@ int main(int argc, char** argv) {
                             : ((argc >= 4) ? atoi(argv[3]) : 2000);
         ticks = std::max(NET_CMD_DELAY + 1, ticks);
         int ais = (netHost && argc >= 4) ? std::max(0, std::min(2, atoi(argv[3]))) : 1;
+        // --net-host [ticks] [ais] [clients]: wait for N challengers (4P test).
+        int wantJoin = (netHost && argc >= 5)
+                     ? std::max(1, std::min(MAX_NET_CLIENTS, atoi(argv[4]))) : 1;
         NetMatchConfig nc;
         int slot;
         if (netHost) {
             nc.seed = 424242; nc.numAIs = ais; nc.biome = 0; nc.layout = 0;
-            nc.difficulty = 1; nc.speed = 1; nc.humanMask = 3;
+            nc.difficulty = 1; nc.speed = 1;
             if (!netHostOpen()) { fprintf(stderr, "netHostOpen failed\n"); return 1; }
             netHostSetInfo(nc);
-            fprintf(stderr, "hosting on :%d, waiting for joiner...\n", NET_TCP_PORT);
-            while (!netHostClientPresent()) {
+            fprintf(stderr, "hosting on :%d, waiting for %d joiner(s)...\n", NET_TCP_PORT, wantJoin);
+            while (netSeatedCount() < wantJoin) {
                 if (!netHostPoll()) { fprintf(stderr, "lobby error\n"); return 1; }
                 msleep(10);
             }
             if (!netHostStart()) { fprintf(stderr, "start failed\n"); return 1; }
+            nc = netFinalConfig();    // the real humanMask / clamped AI count
             slot = 0;
         } else {
             std::string err;
@@ -677,7 +681,7 @@ int main(int argc, char** argv) {
                 if (rc2 < 0) { fprintf(stderr, "lost host in lobby\n"); return 1; }
                 msleep(5);
             }
-            slot = 1;
+            slot = netMySeat();       // assigned by the host's roster
         }
         g.difficulty = nc.difficulty; g.biomeChoice = nc.biome; g.layoutChoice = nc.layout;
         g.humanMask = nc.humanMask; g.localPlayer = slot;
@@ -699,9 +703,9 @@ int main(int argc, char** argv) {
                 if (netConnectionLost()) { fprintf(stderr, "pause-test: link died during the stall\n"); return 1; }
                 fprintf(stderr, "pause-test: link survived, resuming\n");
             }
-            // Scripted human traffic: each side periodically orders one of its
-            // own units around. Different phases so both directions carry load.
-            if (g.tick % 37 == (slot == 0 ? 0 : 5)) {
+            // Scripted human traffic: each seat periodically orders one of its
+            // own units around. Different phases so every leg carries load.
+            if (g.tick % 37 == (slot * 5) % 37) {
                 for (auto& e : g.entities) {
                     if (!e.alive || e.owner != slot || !isUnit(e.type)) continue;
                     Command mc;
@@ -716,7 +720,8 @@ int main(int argc, char** argv) {
             if (netTickReady()) { simTick(); netAfterTick(); stall = 0; }
             else { msleep(2); if (++stall > 10000) { fprintf(stderr, "stalled at tick %d\n", g.tick); return 1; } }
         }
-        printf("net-%s ticks=%d hash=%016llx\n", netHost ? "host" : "join", g.tick, simStateHash());
+        printf("net-%s seat=%d ticks=%d hash=%016llx\n",
+               netHost ? "host" : "join", slot, g.tick, simStateHash());
         // Linger so the slower side can finish and the final hashes cross.
         for (int i = 0; i < 200 && !netConnectionLost() && !netDesynced(); i++) { netPump(); msleep(5); }
         if (netDesynced()) { fprintf(stderr, "DESYNC at tick %d\n", netDesyncTick()); return 1; }

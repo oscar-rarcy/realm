@@ -3,9 +3,10 @@
 //
 //   node test.js [ws://localhost:7523]
 //
-// Verifies the room-code byte-pipe the game depends on: pair + verbatim
-// binary pipe both ways, dup-host reject, join-before-host reject, full-room
-// reject, and peer-close propagation. Exit 0 = all pass.
+// Verifies the 4-player room-code hub the game depends on: index-byte
+// routing between the host and up to three joiners, the reject reasons,
+// BYE notifications when a joiner leaves, slot reuse, and the room dying
+// with the host. Exit 0 = all pass.
 const WebSocket = require('ws');
 const BASE = (process.argv[2] || 'ws://localhost:7523').replace(/\/$/, '');
 const RUN = Date.now().toString(36); // unique room codes per run
@@ -15,55 +16,75 @@ const ok = (cond, name) => {
   console.log((cond ? 'PASS' : 'FAIL') + '  ' + name);
   if (!cond) failures++;
 };
+const wait = (ms) => new Promise(r => setTimeout(r, ms));
 
 // Open a socket and record everything that happens to it.
 function open(room, role) {
   const ws = new WebSocket(`${BASE}/?room=${room}-${RUN}&role=${role}`);
-  const s = { ws, msgs: [], closed: false };
-  ws.on('message', (data, isBinary) =>
-    s.msgs.push(isBinary ? Buffer.from(data) : data.toString()));
+  const s = { ws, bin: [], text: [], closed: false };
+  ws.on('message', (data, isBinary) => {
+    if (isBinary) s.bin.push(Buffer.from(data));
+    else s.text.push(data.toString());
+  });
   ws.on('close', () => { s.closed = true; });
   ws.on('error', () => { s.closed = true; });
   return s;
 }
-const wait = (ms) => new Promise(r => setTimeout(r, ms));
-const firstText = (s) => s.msgs.find(m => typeof m === 'string') || '';
+const firstText = (s) => s.text[0] || '';
 
 (async () => {
-  // 1. Pair and pipe verbatim, both directions.
+  // 1. Host + three joiners, routed both ways with index bytes.
   const host = open('r1', 'host');
   await wait(600);
-  const join = open('r1', 'join');
-  await wait(600);
-  host.ws.send(Buffer.from([1, 2, 3, 250]));
-  join.ws.send(Buffer.from([9, 8]));
-  await wait(600);
-  const h2j = join.msgs.find(Buffer.isBuffer);
-  const j2h = host.msgs.find(Buffer.isBuffer);
-  ok(h2j && h2j.equals(Buffer.from([1, 2, 3, 250])), 'host->join bytes verbatim');
-  ok(j2h && j2h.equals(Buffer.from([9, 8])), 'join->host bytes verbatim');
+  const j0 = open('r1', 'join');
+  const j1 = open('r1', 'join');
+  const j2 = open('r1', 'join');
+  await wait(700);
+  j0.ws.send(Buffer.from([10, 11]));
+  j1.ws.send(Buffer.from([20]));
+  j2.ws.send(Buffer.from([30, 31, 32]));
+  host.ws.send(Buffer.from([1, 99, 98]));       // -> j1 only, prefix stripped
+  await wait(700);
+  const from0 = host.bin.find(b => b[0] === 0);
+  const from1 = host.bin.find(b => b[0] === 1);
+  const from2 = host.bin.find(b => b[0] === 2);
+  ok(from0 && from0.equals(Buffer.from([0, 10, 11])), 'join0 -> host tagged 0');
+  ok(from1 && from1.equals(Buffer.from([1, 20])), 'join1 -> host tagged 1');
+  ok(from2 && from2.equals(Buffer.from([2, 30, 31, 32])), 'join2 -> host tagged 2');
+  ok(j1.bin.length === 1 && j1.bin[0].equals(Buffer.from([99, 98])), 'host -> join1 verbatim');
+  ok(j0.bin.length === 0 && j2.bin.length === 0, 'host -> join1 reached ONLY join1');
 
-  // 2. Second host on a live room is turned away.
+  // 2. A fourth joiner is turned away.
+  const j3 = open('r1', 'join');
+  await wait(600);
+  ok(firstText(j3).startsWith('ERR') && j3.closed, 'fourth join rejected: ' + firstText(j3));
+
+  // 3. A second host on a live room is turned away.
   const dup = open('r1', 'host');
   await wait(600);
   ok(firstText(dup).startsWith('ERR') && dup.closed, 'dup host rejected: ' + firstText(dup));
 
-  // 3. Joining a room nobody hosts is turned away.
+  // 4. Joining a room nobody hosts is turned away.
   const lost = open('nobody', 'join');
   await wait(600);
   ok(firstText(lost).startsWith('ERR') && lost.closed, 'no-room join rejected: ' + firstText(lost));
 
-  // 4. Third wheel on a paired room is turned away.
-  const third = open('r1', 'join');
+  // 5. A joiner leaving frees its slot: host hears BYE, room lives on,
+  //    and the next joiner gets the freed index back.
+  j1.ws.close();
+  await wait(700);
+  ok(host.text.includes('BYE 1'), 'host notified: BYE 1');
+  ok(!host.closed && !j0.closed && !j2.closed, 'room survives a joiner leaving');
+  const j1b = open('r1', 'join');
   await wait(600);
-  ok(firstText(third).startsWith('ERR') && third.closed, 'full room rejected: ' + firstText(third));
+  j1b.ws.send(Buffer.from([44]));
+  await wait(600);
+  ok(host.bin.some(b => b.equals(Buffer.from([1, 44]))), 'freed slot 1 reused');
 
-  // 5. Either side leaving closes the peer (game shows "lost connection").
+  // 6. The host leaving closes everyone and frees the code.
   host.ws.close();
   await wait(800);
-  ok(join.closed, 'host close propagates to joiner');
-
-  // 6. The code is free again afterwards: a new host may reuse it.
+  ok(j0.closed && j2.closed && j1b.closed, 'host close propagates to all joiners');
   const re = open('r1', 'host');
   await wait(600);
   ok(!re.closed && !firstText(re).startsWith('ERR'), 'room code reusable after close');
