@@ -1346,11 +1346,21 @@ void tickEntity(Entity& e) {
             else if (e.gatherType == 3) addFood(e.owner, e.foodKind, e.carrying, dep); // farm/berry/hunt
             else                        addFood(e.owner, F_FISH, e.carrying, dep);
             e.carrying = 0;
-            // Farm courier: rallyX/Y stores the farm we came from — go back and resume tending.
+            // Farm courier: rallyX/Y stores the farm we came from — go back
+            // and resume tending. The field is walkable, so entityAt() on the
+            // rally tile can return whatever unit happens to stand there and
+            // the courier would abandon its farm — find it by footprint.
             if (e.gatherType == 3 && inBounds(e.rallyX, e.rallyY)) {
-                Entity* home = entityAt(e.rallyX, e.rallyY);
-                if (home && home->alive && home->type == E_FARM
-                    && home->owner == e.owner && !home->underConstruction) {
+                Entity* home = nullptr;
+                for (auto& f : g.entities) {
+                    if (f.alive && f.type == E_FARM && f.owner == e.owner
+                        && !f.underConstruction
+                        && e.rallyX >= f.x && e.rallyX < f.x + STATS[E_FARM].sizeW
+                        && e.rallyY >= f.y && e.rallyY < f.y + STATS[E_FARM].sizeH) {
+                        home = &f; break;
+                    }
+                }
+                if (home) {
                     e.state = S_BUILDING; e.targetId = home->id;
                     e.targetX = home->x; e.targetY = home->y;
                     e.path = findPathFor(e, home->x, home->y); e.pathIdx = 0;
@@ -1436,8 +1446,14 @@ void tickEntity(Entity& e) {
         // ripe harvest to a depot. Fields are walkable crops now.
         if (!bld->underConstruction && bld->type == E_FARM) {
             int d = distToBuilding(e.x, e.y, *bld);
-            // Pick up as soon as there is anything worth carrying.
-            if (d <= 1 && bld->carrying >= 3 && e.carrying == 0) {
+            // Haul when there's a full peasant-load waiting — leaving at every
+            // 3-grain dribble kept the tender on the road (an untended field
+            // stops growing), which read as "the farm barely produces". A
+            // spent late-autumn field yields nothing more, so any leftover is
+            // worth banking before winter kills the wheat.
+            bool fieldSpent = (getSeason() == AUTUMN && getSeasonProgress() >= 0.6f);
+            int loadWorth = fieldSpent ? 1 : std::min(CARRY_MAX, FARM_CAP);
+            if (d <= 1 && bld->carrying >= loadWorth && e.carrying == 0) {
                 int take = std::min(bld->carrying, CARRY_MAX);
                 e.carrying = take; bld->carrying -= take;
                 e.gatherType = 3; e.foodKind = F_GRAIN; // wheat harvest
@@ -1459,7 +1475,13 @@ void tickEntity(Entity& e) {
                 if (e.path.empty() && (g.tick + e.id) % 10 == 0) {
                     e.path = findPathFor(e, bld->x, bld->y); e.pathIdx = 0;
                 }
-            } else if (e.path.empty() && (g.tick + e.id * 13) % 45 == 0) {
+            } else if (!e.path.empty()) {
+                // Arrived inside the square with approach path left over.
+                // Nothing consumes it once d == 0, and the hoe-drift below is
+                // gated on an empty path — the stale tail froze tenders into
+                // statues on their entry furrow. Drop it.
+                e.path.clear(); e.pathIdx = 0;
+            } else if ((g.tick + e.id * 13) % 45 == 0) {
                 // In the field: drift to another furrow now and then — a
                 // tender hoeing their way around the square, not a statue.
                 auto& fs = STATS[E_FARM];

@@ -619,8 +619,16 @@ int main(int argc, char** argv) {
         int maxCarry = 0, farmId = -1, inFieldTicks = 0, tendTiles = 0;
         unsigned seenTiles = 0;   // bitmask of footprint tiles the tender stood on
         int peasId = peas->id;
+        // The user-facing bug shape is "built the farm, then stood idle" —
+        // so the tender's idle time inside the window is a tracked failure.
+        int idleTicks = 0, firstIdle = -1;
         for (int i = 0; i < 2000; i++) {
             simTick();
+            Entity* p2 = findEntity(peasId);
+            if (p2 && p2->alive && p2->state == S_IDLE) {
+                idleTicks++;
+                if (firstIdle < 0) firstIdle = i;
+            }
             for (auto& e : g.entities) {
                 if (!e.alive || e.owner != 0 || e.type != E_FARM) continue;
                 if (wx >= e.x && wx < e.x + STATS[E_FARM].sizeW
@@ -628,7 +636,6 @@ int main(int argc, char** argv) {
                     farmId = e.id;
                     maxCarry = std::max(maxCarry, e.carrying);
                     // Tenders work from INSIDE the square — and move around it.
-                    Entity* p2 = findEntity(peasId);
                     if (p2 && p2->alive && p2->x >= e.x && p2->x < e.x + STATS[E_FARM].sizeW
                            && p2->y >= e.y && p2->y < e.y + STATS[E_FARM].sizeH) {
                         inFieldTicks++;
@@ -638,10 +645,11 @@ int main(int argc, char** argv) {
             }
         }
         for (unsigned m = seenTiles; m; m >>= 1) tendTiles += (int)(m & 1);
-        printf("farm=%s footprint=%dx%d maxCarry=%d grain=%d inFieldTicks=%d tendTiles=%d\n",
+        printf("farm=%s footprint=%dx%d maxCarry=%d grain=%d inFieldTicks=%d tendTiles=%d idleTicks=%d firstIdle=%d\n",
                farmId >= 0 ? "yes" : "NO", STATS[E_FARM].sizeW, STATS[E_FARM].sizeH,
-               maxCarry, g.players[0].food, inFieldTicks, tendTiles);
-        return (farmId >= 0 && maxCarry > 0 && inFieldTicks > 0 && tendTiles >= 2) ? 0 : 1;
+               maxCarry, g.players[0].food, inFieldTicks, tendTiles, idleTicks, firstIdle);
+        return (farmId >= 0 && maxCarry > 0 && inFieldTicks > 0 && tendTiles >= 2
+                && idleTicks < 100) ? 0 : 1;
     }
 
     // --net-host / --net-join: headless lockstep smoke test. Start a host in
