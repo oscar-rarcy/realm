@@ -82,7 +82,7 @@ static ssize_t nrecvfrom(int s, void* b, size_t n, sockaddr* a, socklen_t* al)
 // matching NET_PROTO_VERSION is required at the handshake.
 // ============================================================
 
-static const unsigned NET_PROTO_VERSION = 7;   // bump on ANY wire or sim-format change (v7: 8-player lobbies)
+static const unsigned NET_PROTO_VERSION = 8;   // bump on ANY wire or sim-format change (v8: darker nights, group sowing)
 
 // REALM_NET_TRACE=1: log every frame in/out (harness debugging).
 static bool netTrace() {

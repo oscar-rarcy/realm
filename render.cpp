@@ -141,12 +141,15 @@ void initColors() {
     init_pair(CP_WIN_PINE,       C::LIGHT_GRAY,   bg);
     init_pair(CP_WIN_ICE,        C::ICE_BLUE,     C::NAVY);
 
+    // Moonlight, one shade off pitch: the unlit world sinks toward black so
+    // torch pools and team colours carry the night (grass already sits on the
+    // darkest green the palette has). Units keep their readable night pairs.
     init_pair(CP_NIGHT_GRASS,    C::DARK_GREEN,   tileBg(C::NEAR_BLACK));
-    init_pair(CP_NIGHT_TREE,     C::DARK_GRAY,    bg);
-    init_pair(CP_NIGHT_WATER,    C::NAVY,         C::NEAR_BLACK);
-    init_pair(CP_NIGHT_GROUND,   C::DARKER_GRAY,  tileBg(C::NEAR_BLACK));
-    init_pair(CP_NIGHT_GOLD,     C::DARK_GOLD,    tileBg(C::NEAR_BLACK));
-    init_pair(CP_NIGHT_SNOW,     C::MED_GRAY,     bg);
+    init_pair(CP_NIGHT_TREE,     C::DARKER_GRAY,  bg);
+    init_pair(CP_NIGHT_WATER,    C::DEEP_BLUE,    C::NEAR_BLACK);
+    init_pair(CP_NIGHT_GROUND,   233,             tileBg(C::NEAR_BLACK));
+    init_pair(CP_NIGHT_GOLD,     100,             tileBg(C::NEAR_BLACK));   // corn stays gold, but moonlit
+    init_pair(CP_NIGHT_SNOW,     242,             bg);
 
     init_pair(CP_DAWN_SKY,       C::ORANGE,       bg);
     init_pair(CP_DUSK_SKY,       C::DUSK_PURPLE,  bg);

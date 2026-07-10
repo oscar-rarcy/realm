@@ -475,7 +475,9 @@ static bool sightBlockedByCliff(int x0, int y0, int x1, int y1, int viewerElev) 
 void updateFog() {
     for (int y = 0; y < MAP_H; y++) for (int x = 0; x < MAP_W; x++)
         for (int p = 0; p < MAX_PLAYERS; p++) g.map[y][x].visible[p] = false;
-    int nightPen = isNight() ? 2 : (isDusk()||isDawn()) ? 1 : 0;
+    // Night costs three tiles of sight (dusk/dawn one): full dark should feel
+    // genuinely blind past the palisade, not merely dimmer than noon.
+    int nightPen = isNight() ? 3 : (isDusk()||isDawn()) ? 1 : 0;
     if (getSeason() == WINTER) nightPen += 1; // blizzards eat sight
     // Weather always impedes sight, stacking with night and winter — a rainstorm
     // at night is genuinely dark. Storm is worse than rain/snow.
