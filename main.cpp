@@ -129,7 +129,10 @@ static void placeStartingPositions(int numAIs, std::vector<Spawn>& spawns) {
     int humans = 0;
     for (int b = 0; b < MAX_PLAYERS; b++) if ((g.humanMask >> b) & 1) humans++;
     const int needed = std::min(MAX_PLAYERS, std::max(1, humans) + numAIs);
-    const int MIN_SPAWN_DIST = std::min(MAP_W, MAP_H) * 2 / 3; // ~73 on 110x180
+    // Spacing scales with the head count: duels get ~73 tiles apart on
+    // 180x110, a full 8-seat brawl still guarantees ~31 before the relaxed
+    // fallback kicks in.
+    const int MIN_SPAWN_DIST = std::min(MAP_W, MAP_H) * 2 / std::max(3, needed - 1);
     const int EDGE = 12;
 
     auto scoreSpawn = [](int cx, int cy) -> int {
@@ -548,7 +551,7 @@ int main(int argc, char** argv) {
         int numAIs = (argc >= 5) ? atoi(argv[4]) : 3;
         int biome  = (argc >= 6) ? atoi(argv[5]) : 0;   // climate: Biome 0-4 / -1 mixed
         int layout = (argc >= 7) ? atoi(argv[6]) : 0;   // layout: Layout 0-4 / -1 random
-        return runVerify(seed, std::max(1, ticks), std::max(1, std::min(3, numAIs)), biome, layout);
+        return runVerify(seed, std::max(1, ticks), std::max(1, std::min(MAX_PLAYERS - 1, numAIs)), biome, layout);
     }
 
     // --test-raid: headless check of the whole plunder pipeline. Stages a

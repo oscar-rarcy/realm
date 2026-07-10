@@ -36,6 +36,7 @@ static ssize_t nrecvfrom(int s, void* b, size_t n, sockaddr* a, socklen_t* al)
 #include <netdb.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
+#include <signal.h>
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <unistd.h>
@@ -43,7 +44,15 @@ static int  netErrno()      { return errno; }
 static bool errWouldBlock() { return errno == EAGAIN || errno == EWOULDBLOCK; }
 static bool errInProgress() { return errno == EINPROGRESS; }
 static void closeRawSock(int fd) { close(fd); }
-static void netPlatformInit() {}
+static void netPlatformInit() {
+    // A send() to a peer that already closed raises SIGPIPE, whose default
+    // action kills the process silently (no crash report, buffered stdout
+    // lost). Ignore it so the send fails with EPIPE instead — every send
+    // path already treats an error as "peer gone". Killed the host of an
+    // 8-seat match when the seven clients closed at staggered times.
+    static bool done = false;
+    if (!done) { signal(SIGPIPE, SIG_IGN); done = true; }
+}
 static ssize_t nsend(int s, const void* b, size_t n)  { return send(s, b, n, 0); }
 static ssize_t nrecv(int s, void* b, size_t n)        { return recv(s, b, n, 0); }
 static int nsetsockopt(int s, int l, int o, const void* v, socklen_t n) { return setsockopt(s, l, o, v, n); }
@@ -73,7 +82,7 @@ static ssize_t nrecvfrom(int s, void* b, size_t n, sockaddr* a, socklen_t* al)
 // matching NET_PROTO_VERSION is required at the handshake.
 // ============================================================
 
-static const unsigned NET_PROTO_VERSION = 6;   // bump on ANY wire or sim-format change (v6: 4-player star + night sight)
+static const unsigned NET_PROTO_VERSION = 7;   // bump on ANY wire or sim-format change (v7: 8-player lobbies)
 
 // REALM_NET_TRACE=1: log every frame in/out (harness debugging).
 static bool netTrace() {
@@ -527,10 +536,11 @@ void netHostSetInfo(const NetMatchConfig& c) {
         if (p.used && p.seated && !p.dropped && p.seat > 0 && p.seat < MAX_PLAYERS)
             cfg.civ[p.seat] = p.civPick;
     if (netSeatedCount() > 0) {
-        unsigned char pl[8 + 10 * 4];
+        unsigned char pl[8 + (6 + MAX_PLAYERS) * 4];
         memcpy(pl, &cfg.seed, 8);
-        int f[10] = {cfg.numAIs, cfg.biome, cfg.layout, cfg.difficulty, cfg.speed, cfg.humanMask,
-                     cfg.civ[0], cfg.civ[1], cfg.civ[2], cfg.civ[3]};
+        int f[6 + MAX_PLAYERS] = {cfg.numAIs, cfg.biome, cfg.layout,
+                                  cfg.difficulty, cfg.speed, cfg.humanMask};
+        for (int i = 0; i < MAX_PLAYERS; i++) f[6 + i] = cfg.civ[i];
         memcpy(pl + 8, f, sizeof f);
         hostBroadcast(MSG_CONFIG, pl, sizeof pl);
     }
@@ -875,9 +885,9 @@ static void handleFrameClient(unsigned char type, const unsigned char* p, unsign
         if (len >= 4 + 24) peerName.assign((const char*)p + 4, strnlen((const char*)p + 4, 23));
         break;
     case MSG_CONFIG:
-        if (len >= 8 + 10 * 4) {
+        if (len >= 8 + (6 + MAX_PLAYERS) * 4) {
             memcpy(&cfg.seed, p, 8);
-            int f[10]; memcpy(f, p + 8, sizeof f);
+            int f[6 + MAX_PLAYERS]; memcpy(f, p + 8, sizeof f);
             cfg.numAIs = f[0]; cfg.biome = f[1]; cfg.layout = f[2];
             cfg.difficulty = f[3]; cfg.speed = f[4]; cfg.humanMask = f[5];
             for (int i = 0; i < MAX_PLAYERS; i++) cfg.civ[i] = f[6 + i];

@@ -3,7 +3,7 @@
 // A browser tab can't open a raw TCP socket or listen(), so web players
 // can't reach each other directly. Everyone connects OUT to this relay,
 // which groups them by a shared room code: one host plus up to MAX_JOIN
-// challengers (4-player games). It is deliberately dumb — it never parses
+// challengers (8-player games). It is deliberately dumb — it never parses
 // Realm's protocol, it only ROUTES bytes:
 //   joiner -> host   each message is forwarded with the joiner's slot
 //                    index prepended:  [idx][bytes]
@@ -25,7 +25,7 @@ const { WebSocketServer } = require('ws');
 
 const PORT = parseInt(process.argv[2] || process.env.PORT || '7523', 10);
 const OPEN = 1; // ws.readyState === OPEN
-const MAX_JOIN = 3; // matches MAX_NET_CLIENTS in the game
+const MAX_JOIN = 7; // matches MAX_NET_CLIENTS in the game
 
 const rooms = new Map(); // code -> { host, joins: [ws|null x MAX_JOIN] }
 

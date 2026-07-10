@@ -2,7 +2,7 @@
 
 Browser tabs can't open raw TCP or act as a server, so web players can't
 reach each other directly. This tiny relay groups them by a shared **room
-code** — one host plus up to three challengers (**4-player games**) — and
+code** — one host plus up to seven challengers (**8-player games**) — and
 routes bytes between the host and each joiner (joiner messages reach the
 host with a one-byte slot index prepended; the host prefixes a destination
 index the relay strips). It never parses the game protocol — Realm's

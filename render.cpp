@@ -251,6 +251,8 @@ static const TeamColor TEAM_COLORS[] = {
     {"Gold",    C::GOLD,        C::DARK_GOLD,  C::NEAR_BLACK},
     {"Purple",  99,             54,            C::SNOW_WHITE},
     {"Magenta", 170,            90,            C::SNOW_WHITE},
+    {"Orange",  208,            C::AMBER,      C::NEAR_BLACK},
+    {"Teal",    C::TEAL,        C::PINE_GREEN, C::SNOW_WHITE},
 };
 static const int NUM_TEAM_COLORS = (int)(sizeof(TEAM_COLORS)/sizeof(TEAM_COLORS[0]));
 
@@ -298,20 +300,9 @@ void applyTeamColors() {
 // type-specific pairs and are never passed here.
 // ============================================================
 static int ownerColorPair(int owner, bool night) {
-    if (night) {
-        switch (owner) {
-            case 0:  return CP_OWN_P0_NIGHT;
-            case 1:  return CP_OWN_P1_NIGHT;
-            case 2:  return CP_OWN_P2_NIGHT;
-            default: return CP_OWN_P3_NIGHT;
-        }
-    }
-    switch (owner) {
-        case 0:  return CP_OWN_P0;
-        case 1:  return CP_OWN_P1;
-        case 2:  return CP_OWN_P2;
-        default: return CP_OWN_P3;
-    }
+    // CP_OWN_P0..P7 and their night twins are contiguous, one per seat.
+    int o = (owner >= 0 && owner < MAX_PLAYERS) ? owner : MAX_PLAYERS - 1;
+    return (night ? CP_OWN_P0_NIGHT : CP_OWN_P0) + o;
 }
 
 static unsigned tileHash(int x, int y, unsigned salt = 0) {
@@ -1095,8 +1086,7 @@ void renderMap() {
                 // All boats get a wood-brown deck; glyph colour is per-player
                 // so each side's fleet is identifiable.
                 if (isNaval(ent->type) && ent->owner < MAX_PLAYERS) {
-                    static const int shipCp[] = { CP_SHIP_P0, CP_SHIP_P1, CP_SHIP_P2, CP_SHIP_P3 };
-                    cp = shipCp[ent->owner];
+                    cp = CP_SHIP_P0 + ent->owner;   // CP_SHIP_P0..P7 contiguous
                 }
                 // Farms are always wheat-gold — ownership doesn't change their
                 // colour, and neither does being half-sown (a growing field in

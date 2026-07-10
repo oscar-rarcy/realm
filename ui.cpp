@@ -761,7 +761,7 @@ void renderUI() {
 
     // ---- Post-match statistics: sparkline history + summary table ----
     if (g.mode == M_STATS) {
-        int hw = std::min(maxX - 4, 100), hh = std::min(maxY - 2, 34);
+        int hw = std::min(maxX - 4, 100), hh = std::min(maxY - 2, 46);
         int hx = std::max(1, (maxX - hw) / 2), hy = std::max(0, (maxY - hh) / 2);
         attron(COLOR_PAIR(CP_UI_BAR));
         for (int r = 0; r < hh; r++) mvhline(hy+r, hx, ' ', hw);
@@ -769,13 +769,17 @@ void renderUI() {
         int n = (int)g.statSamples.size();
         int cw = std::min(n, hw - 26);
         static const char ramp[] = " .:-=+*#%@";
-        static const int ownCp[] = { CP_OWN_P0, CP_OWN_P1, CP_OWN_P2, CP_OWN_P3 };
+        // CP_OWN_P0..P7 are contiguous, one per seat (a fixed 4-entry table
+        // here read out of bounds once MAX_PLAYERS grew to 8).
+        auto ownCp = [](int pl) { return CP_OWN_P0 + pl; };
         int row = hy + 3;
+        int rowMax = hy + hh - 3;   // clip: 8 seated players can outgrow the box
         struct Series { const char* name; int kind; };
         static const Series charts[] = { {"ARMY", 0}, {"WORKERS", 1}, {"WEALTH", 2} };
         for (auto& chart : charts) {
+            if (row >= rowMax) break;
             attron(COLOR_PAIR(CP_UI_BAR) | A_BOLD); mvprintw(row++, hx+2, "%s", chart.name); attroff(A_BOLD);
-            for (int pl = 0; pl < MAX_PLAYERS; pl++) {
+            for (int pl = 0; pl < MAX_PLAYERS && row < rowMax; pl++) {
                 bool seated = g.players[pl].alive;
                 for (auto& e : g.entities) if (e.alive && e.owner == pl) { seated = true; break; }
                 if (!seated && g.statEraTick[pl][1] == 0 && pl > 0) {
@@ -788,7 +792,7 @@ void renderUI() {
                 for (int k = 0; k < n; k++) { auto& smp = g.statSamples[k];
                     int v = chart.kind==0?smp.army[pl]:chart.kind==1?smp.work[pl]:smp.wealth[pl];
                     if (v > mx) mx = v; }
-                attron(COLOR_PAIR(ownCp[pl]) | A_BOLD); mvprintw(row, hx+2, "P%d", pl+1); attroff(COLOR_PAIR(ownCp[pl]) | A_BOLD);
+                attron(COLOR_PAIR(ownCp(pl)) | A_BOLD); mvprintw(row, hx+2, "P%d", pl+1); attroff(COLOR_PAIR(ownCp(pl)) | A_BOLD);
                 attron(COLOR_PAIR(CP_UI_BAR));
                 int last = 0;
                 for (int c2 = 0; c2 < cw; c2++) {
@@ -807,7 +811,7 @@ void renderUI() {
         }
         // Summary table: civ, eras with timestamps, plunder.
         attron(A_BOLD); mvprintw(row++, hx+2, "%-4s %-13s %-22s %s", "", "CIVILISATION", "ERAS (game-minute)", "RAIDS"); attroff(A_BOLD);
-        for (int pl = 0; pl < MAX_PLAYERS; pl++) {
+        for (int pl = 0; pl < MAX_PLAYERS && row < rowMax; pl++) {
             bool everSeen = g.players[pl].alive;
             for (int k = 0; k < n && !everSeen; k++) if (g.statSamples[k].work[pl] > 0) everSeen = true;
             if (!everSeen) continue;
@@ -816,7 +820,7 @@ void renderUI() {
             for (int er = 1; er < ERA_COUNT; er++)
                 if (g.statEraTick[pl][er] > 0)
                     el += snprintf(eras+el, sizeof(eras)-el, " > %s@%d", eraName(er), g.statEraTick[pl][er]*TICK_MS/60000);
-            attron(COLOR_PAIR(ownCp[pl]) | A_BOLD); mvprintw(row, hx+2, "P%d", pl+1); attroff(COLOR_PAIR(ownCp[pl]) | A_BOLD);
+            attron(COLOR_PAIR(ownCp(pl)) | A_BOLD); mvprintw(row, hx+2, "P%d", pl+1); attroff(COLOR_PAIR(ownCp(pl)) | A_BOLD);
             attron(COLOR_PAIR(CP_UI_BAR));
             mvprintw(row, hx+7, "%-13s %-22s %d%s", CIVS[g.players[pl].civ].name, eras,
                      g.statRaids[pl], g.players[pl].alive ? "" : "   (fallen)");

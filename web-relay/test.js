@@ -3,8 +3,8 @@
 //
 //   node test.js [ws://localhost:7523]
 //
-// Verifies the 4-player room-code hub the game depends on: index-byte
-// routing between the host and up to three joiners, the reject reasons,
+// Verifies the 8-player room-code hub the game depends on: index-byte
+// routing between the host and up to seven joiners, the reject reasons,
 // BYE notifications when a joiner leaves, slot reuse, and the room dying
 // with the host. Exit 0 = all pass.
 const WebSocket = require('ws');
@@ -54,10 +54,18 @@ const firstText = (s) => s.text[0] || '';
   ok(j1.bin.length === 1 && j1.bin[0].equals(Buffer.from([99, 98])), 'host -> join1 verbatim');
   ok(j0.bin.length === 0 && j2.bin.length === 0, 'host -> join1 reached ONLY join1');
 
-  // 2. A fourth joiner is turned away.
-  const j3 = open('r1', 'join');
+  // 2. The room seats seven joiners; the highest slot still routes, and
+  //    the eighth joiner is turned away.
+  const extra = [open('r1', 'join'), open('r1', 'join'),
+                 open('r1', 'join'), open('r1', 'join')];   // slots 3..6
+  await wait(700);
+  extra[3].ws.send(Buffer.from([60]));
   await wait(600);
-  ok(firstText(j3).startsWith('ERR') && j3.closed, 'fourth join rejected: ' + firstText(j3));
+  const from6 = host.bin.find(b => b[0] === 6);
+  ok(from6 && from6.equals(Buffer.from([6, 60])), 'join6 -> host tagged 6');
+  const j7 = open('r1', 'join');
+  await wait(600);
+  ok(firstText(j7).startsWith('ERR') && j7.closed, 'eighth join rejected: ' + firstText(j7));
 
   // 3. A second host on a live room is turned away.
   const dup = open('r1', 'host');
@@ -84,7 +92,8 @@ const firstText = (s) => s.text[0] || '';
   // 6. The host leaving closes everyone and frees the code.
   host.ws.close();
   await wait(800);
-  ok(j0.closed && j2.closed && j1b.closed, 'host close propagates to all joiners');
+  ok(j0.closed && j2.closed && j1b.closed && extra.every(j => j.closed),
+     'host close propagates to all joiners');
   const re = open('r1', 'host');
   await wait(600);
   ok(!re.closed && !firstText(re).startsWith('ERR'), 'room code reusable after close');

@@ -36,7 +36,7 @@ const int SEASON_LENGTH= 3000;
 const int CARRY_MAX    = 20;
 const int WAGON_CAP    = 100;  // supply wagon hold — five peasant-loads per trip
 const int FARM_CAP     = 40;   // ripe grain a 2x2 field holds awaiting pickup
-const int MAX_PLAYERS  = 4;
+const int MAX_PLAYERS  = 8;
 const int OWNER_NATURE = MAX_PLAYERS;
 
 // ============================================================
@@ -194,6 +194,7 @@ enum {
     CP_SHIP_PLAYER, CP_SHIP_ENEMY,
     // Per-player ship hulls: brown deck, owner-coloured glyph.
     CP_SHIP_P0, CP_SHIP_P1, CP_SHIP_P2, CP_SHIP_P3,
+    CP_SHIP_P4, CP_SHIP_P5, CP_SHIP_P6, CP_SHIP_P7,
     CP_PROJ_ARROW, CP_PROJ_BOULDER, CP_PROJ_TOWER,
     CP_RAIN, CP_SNOW_FALL,
     CP_UI_BAR, CP_UI_TEXT, CP_UI_HIGH, CP_UI_DIM, CP_UI_ACCENT,
@@ -207,9 +208,11 @@ enum {
     CP_LAVA, CP_LAVA_HOT, CP_ASH,
     // Ownership background colours: background = owner, foreground = glyph.
     // Used for all land units and buildings (ships keep CP_SHIP_* wood bg).
-    // One set per player slot (0=human, 1-3=AI); separate night variants.
+    // One set per player slot (0..MAX_PLAYERS-1); separate night variants.
     CP_OWN_P0, CP_OWN_P1, CP_OWN_P2, CP_OWN_P3,
+    CP_OWN_P4, CP_OWN_P5, CP_OWN_P6, CP_OWN_P7,
     CP_OWN_P0_NIGHT, CP_OWN_P1_NIGHT, CP_OWN_P2_NIGHT, CP_OWN_P3_NIGHT,
+    CP_OWN_P4_NIGHT, CP_OWN_P5_NIGHT, CP_OWN_P6_NIGHT, CP_OWN_P7_NIGHT,
     CP_BUILD_OK, CP_BUILD_BAD,
     CP_CLIFF,   // plateau rim escarpment
     CP_CORPSE,  // fallen-soldier marker (dim blood-red)
@@ -386,7 +389,7 @@ struct Game {
     // Civ choices per seat: -1 = roll one from the seed in initGame. Match
     // config like biomeChoice — set by splash/lobby/replay header, identical
     // on every machine, NOT reset by resetMatchState.
-    int civChoice[MAX_PLAYERS] = {-1, -1, -1, -1};
+    int civChoice[MAX_PLAYERS] = {-1, -1, -1, -1, -1, -1, -1, -1};
     int biomeChoice;      // CLIMATE: -1 = mixed climate bands, else a forced Biome (0-4)
     int layoutChoice;     // LAYOUT: -1 = random (resolved in initGame), else a Layout
     std::string mapName;  // evocative battlefield name (display only; derived from seed)
@@ -615,19 +618,19 @@ void simHashTick();                   // REALM_HASH=1: append tick/hash to realm
 // net.cpp — deterministic-lockstep multiplayer (docs/networking-plan.md).
 // TCP carries Commands only (the replay codec is the wire codec); UDP
 // broadcast answers LAN lobby discovery. Star topology: the host is seat 0,
-// up to MAX_NET_CLIENTS challengers take seats 1..3 and talk ONLY to the
+// up to MAX_NET_CLIENTS challengers take seats 1..MAX_PLAYERS-1 and talk ONLY to the
 // host, which merges every seat's commands per tick into one broadcast.
 // ============================================================
 inline constexpr int NET_TCP_PORT = 7521;   // lobby + match traffic
 inline constexpr int NET_UDP_PORT = 7522;   // LAN discovery pings
 inline constexpr int NET_CMD_DELAY = 3;     // commands run D ticks after issue (~240ms)
-inline constexpr int MAX_NET_CLIENTS = 3;   // challengers per lobby (seats 1..3)
+inline constexpr int MAX_NET_CLIENTS = MAX_PLAYERS - 1;   // challengers per lobby (seats 1..7)
 
 struct NetMatchConfig {
     unsigned long long seed = 0;
     int numAIs = 1, biome = -1, layout = -1, difficulty = 1, speed = 1;
     int humanMask = 3;
-    int civ[MAX_PLAYERS] = {-1, -1, -1, -1};   // per-seat civ choice; -1 = rolled
+    int civ[MAX_PLAYERS] = {-1, -1, -1, -1, -1, -1, -1, -1};   // per-seat civ choice; -1 = rolled
 };
 struct NetLobbyInfo {                 // one discovered LAN game
     std::string addr;                 // dotted IP

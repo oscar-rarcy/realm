@@ -14,7 +14,7 @@
 //   - Skips garbage corrupt files via fread return-value checks
 
 static constexpr char MAGIC[4] = {'R','L','M','2'};
-static constexpr int  SAVE_VERSION = 15; // v15: farms are 2x2 fields (footprint/sim rules changed)
+static constexpr int  SAVE_VERSION = 16; // v16: MAX_PLAYERS 4->8 (per-player arrays grew)
 static constexpr int  MAX_ENTITIES = 100000;
 static constexpr int  MAX_VEC_LEN  = 50000;
 

@@ -1,7 +1,7 @@
 // relay_deno.ts — Realm web-multiplayer relay for Deno / Deno Deploy.
 //
 // Same room-code hub as relay.js, built on Deno's native WebSocket server:
-// one host plus up to MAX_JOIN challengers per room (4-player games). The
+// one host plus up to MAX_JOIN challengers per room (8-player games). The
 // relay never parses the game protocol — it only routes bytes:
 //   joiner -> host   forwarded with the joiner's slot index prepended
 //   host -> joiner   host prepends the destination index; relay strips it
@@ -16,7 +16,7 @@
 //
 // Clients connect to  <url>/?room=CODE&role=host|join   (see web-relay/README).
 
-const MAX_JOIN = 3; // matches MAX_NET_CLIENTS in the game
+const MAX_JOIN = 7; // matches MAX_NET_CLIENTS in the game
 
 interface Room { host?: WebSocket; joins: (WebSocket | null)[]; }
 const rooms = new Map<string, Room>();

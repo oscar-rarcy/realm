@@ -210,14 +210,14 @@ void loadMenuConfig() {
         char* val = eq + 1;
         val[strcspn(val, "\r\n")] = 0;
         int v = atoi(val);
-        if      (!strcmp(k, "ais"))    cfgNumAIs = std::max(1, std::min(3, v));
+        if      (!strcmp(k, "ais"))    cfgNumAIs = std::max(1, std::min(MAX_PLAYERS - 1, v));
         else if (!strcmp(k, "diff"))   cfgDiff   = std::max(0, std::min(2, v));
         else if (!strcmp(k, "clim"))   cfgClim   = std::max(0, std::min(kClimCount, v));
         else if (!strcmp(k, "layout")) cfgLayout = std::max(0, std::min((int)LAYOUT_COUNT, v));
         else if (!strcmp(k, "speed"))  cfgSpeed  = std::max(0, std::min(2, v));
         else if (!strcmp(k, "civ"))    cfgCiv    = std::max(-1, std::min(NUM_CIVS - 1, v));
         else if (!strcmp(k, "colour")) g.playerColor = std::max(0, std::min(numTeamColors() - 1, v));
-        else if (!strcmp(k, "mpais"))  mpNumAIs  = std::max(0, std::min(2, v));
+        else if (!strcmp(k, "mpais"))  mpNumAIs  = std::max(0, std::min(MAX_PLAYERS - 2, v));
         else if (!strcmp(k, "lastaddr") && strlen(val) <= 40) cfgLastAddr = val;
     }
     fclose(f);
@@ -296,7 +296,7 @@ static bool skirmishSetup(unsigned long long& outSeed) {
 
     auto adjust = [&](int row, int d) {
         switch (row) {
-            case R_OPP:    cfgNumAIs = ((cfgNumAIs - 1 + d + 3) % 3) + 1; break;
+            case R_OPP:    cfgNumAIs = ((cfgNumAIs - 1 + d + (MAX_PLAYERS-1)) % (MAX_PLAYERS-1)) + 1; break;
             case R_DIFF:   cfgDiff   = (cfgDiff + d + 3) % 3; break;
             case R_LAYOUT: cfgLayout = (cfgLayout + d + (LAYOUT_COUNT+1)) % (LAYOUT_COUNT+1); cfgSeed = 0; break;
             case R_CLIM:   cfgClim   = (cfgClim + d + (kClimCount+1)) % (kClimCount+1); cfgSeed = 0; break;
@@ -521,7 +521,7 @@ static bool hostLobby(SplashResult& r) {
     bool dirty = false;
     auto adjust = [&](int row, int d) {
         switch (row) {
-            case R_OPP:    mpNumAIs = (mpNumAIs + d + 3) % 3; break;   // 0..2
+            case R_OPP:    mpNumAIs = (mpNumAIs + d + (MAX_PLAYERS-1)) % (MAX_PLAYERS-1); break;   // 0..MAX_PLAYERS-2
             case R_DIFF:   cfgDiff   = (cfgDiff + d + 3) % 3; break;
             case R_LAYOUT: cfgLayout = (cfgLayout + d + (LAYOUT_COUNT+1)) % (LAYOUT_COUNT+1); cfgSeed = 0; break;
             case R_CLIM:   cfgClim   = (cfgClim + d + (kClimCount+1)) % (kClimCount+1); cfgSeed = 0; break;
@@ -714,7 +714,7 @@ static bool clientLobby(SplashResult& r) {
         erase();
         int top = std::max(0, maxY/2 - 13);
         drawRealmBanner(maxX, top);
-        const int bw = 44, bh = 17;
+        const int bw = 44, bh = 21;   // tall enough for the 8-seat roster
         int c = std::max(2, maxX/2 - bw/2);
         int r0 = top + 8;
         char title[64];

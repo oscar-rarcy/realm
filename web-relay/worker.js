@@ -1,7 +1,7 @@
 // worker.js — Realm web-multiplayer relay on Cloudflare Workers.
 //
 // Same contract as relay.js: connect to  wss://<worker>/?room=CODE&role=host|join.
-// One host plus up to MAX_JOIN challengers per room (4-player games). The
+// One host plus up to MAX_JOIN challengers per room (8-player games). The
 // relay never parses Realm's protocol — it only routes bytes:
 //   joiner -> host   forwarded with the joiner's slot index prepended
 //   host -> joiner   host prepends the destination index; relay strips it
@@ -21,7 +21,7 @@
 
 const MAX_FRAME = 256 * 1024; // Realm frames are tiny; anything huge is abuse
 const MAX_CODE = 32;
-const MAX_JOIN = 3;           // matches MAX_NET_CLIENTS in the game
+const MAX_JOIN = 7;           // matches MAX_NET_CLIENTS in the game
 
 export default {
   async fetch(req, env) {

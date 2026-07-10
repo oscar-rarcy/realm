@@ -517,7 +517,7 @@ void applyCommand(const Command& c) {
 // (same caveat as save files).
 // ============================================================
 static constexpr char REP_MAGIC[4] = {'R','L','R','P'};
-static constexpr int  REP_VERSION  = 10;  // v10: fields walkable, tenders work from inside the square
+static constexpr int  REP_VERSION  = 11;  // v11: MAX_PLAYERS 4->8 (header carries 8 civ picks)
 
 // ---- Command codec ----
 // One binary layout — a flat int32 field sequence — shared by the replay
