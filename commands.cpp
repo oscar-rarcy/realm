@@ -82,6 +82,29 @@ bool farmAnchorFor(int x, int y, int player, int ignoreId, int& ax, int& ay) {
     return best >= 0;
 }
 
+// Group sowing: later peasants take their own square somewhere in the meadow
+// around the click — the wheat-richest placeable anchor within reach, nearest
+// first on ties. Must cover at least one wheat tile (a group order on corn
+// means "sow this corn", not "plaster the grass"). Fixed scan order keeps
+// lockstep sides agreed.
+static bool farmAnchorNear(int x, int y, int player, int ignoreId, int& ax, int& ay) {
+    int fw = STATS[E_FARM].sizeW, fh = STATS[E_FARM].sizeH;
+    const int R = 8;
+    int best = 0, bestD = 0;
+    for (int ty = y - R; ty <= y + R; ty++) for (int tx = x - R; tx <= x + R; tx++) {
+        if (!canPlace(E_FARM, tx, ty, player, ignoreId)) continue;
+        int score = 0;
+        for (int dy = 0; dy < fh; dy++) for (int dx = 0; dx < fw; dx++)
+            if (g.map[ty+dy][tx+dx].terrain == T_WHEAT) score++;
+        if (score == 0) continue;
+        int d = mdist(x, y, tx, ty);
+        if (score > best || (score == best && d < bestD)) {
+            best = score; bestD = d; ax = tx; ay = ty;
+        }
+    }
+    return best > 0;
+}
+
 void applyCommand(const Command& c) {
     if (c.player < 0 || c.player >= MAX_PLAYERS) return;
     bool human = (c.player == g.localPlayer);
@@ -217,14 +240,30 @@ void applyCommand(const Command& c) {
 
     case CMD_SOW_FARM: {
         if (c.units.empty() || !inBounds(c.x, c.y)) return;
-        Entity* u = cmdEnt(c, c.units[0]);
-        if (!u || u->type != E_PEASANT) return;
         if (g.map[c.y][c.x].terrain != T_WHEAT) return;
-        int ax, ay;
-        if (!farmAnchorFor(c.x, c.y, c.player, u->id, ax, ay)) return;
-        int fid = spawnEntity(E_FARM, c.player, ax, ay, true);
-        clearQueued(*u);
-        orderHelp(*u, fid);
+        // One field per peasant. The first anchor is chosen exactly as the
+        // single-unit order always was (old replays reproduce); the rest of
+        // the group tiles the meadow outward. Sites spawned earlier in the
+        // loop block later anchors via canPlace, so fields never overlap.
+        // When the meadow is full, leftover hands help raise the newest
+        // field and tend it once it stands.
+        int lastFid = -1;
+        for (int uid : c.units) {
+            Entity* u = cmdEnt(c, uid);
+            if (!u || u->type != E_PEASANT) continue;
+            int ax, ay;
+            bool found = (lastFid < 0)
+                       ? farmAnchorFor(c.x, c.y, c.player, u->id, ax, ay)
+                       : farmAnchorNear(c.x, c.y, c.player, u->id, ax, ay);
+            if (found) {
+                lastFid = spawnEntity(E_FARM, c.player, ax, ay, true);
+                clearQueued(*u);
+                orderHelp(*u, lastFid);
+            } else if (lastFid >= 0) {
+                clearQueued(*u);
+                orderHelp(*u, lastFid);
+            }
+        }
         break;
     }
 

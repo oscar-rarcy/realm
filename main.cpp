@@ -591,33 +591,42 @@ int main(int argc, char** argv) {
     }
 
     // --test-sow: headless check of the player farm pipeline. Stages a wild
-    // wheat patch beside the human's start, right-clicks it through the
-    // command funnel (CMD_SOW_FARM), and requires a 2x2 field containing the
-    // clicked tile to exist and produce grain within 2000 ticks.
+    // wheat meadow beside the human's start, group-right-clicks it through
+    // the command funnel (CMD_SOW_FARM with three peasants), and requires a
+    // field on the clicked tile, two more tiling the meadow, and grain
+    // production within 2000 ticks.
     if (argc >= 2 && strcmp(argv[1], "--test-sow") == 0) {
         g.biomeChoice = 0; g.layoutChoice = 0; g.difficulty = 1;
         g.humanMask = 1; g.localPlayer = 0;
         for (int i = 0; i < MAX_PLAYERS; i++) g.civChoice[i] = -1;
-        initGame(1, 777);
+        // No AI seat: this gate is about the farm pipeline, and a hostile
+        // roll of the sim RNG once razed the test town mid-window.
+        initGame(0, 777);
         Entity* th = nullptr; Entity* peas = nullptr;
+        std::vector<int> sowers;
         for (auto& e : g.entities) {
             if (!e.alive || e.owner != 0) continue;
             if (e.type == E_TOWNHALL) th = &e;
-            if (e.type == E_PEASANT && !peas) peas = &e;
+            if (e.type == E_PEASANT) {
+                if (!peas) peas = &e;
+                if (sowers.size() < 3) sowers.push_back(e.id);
+            }
         }
-        if (!th || !peas) { fprintf(stderr, "no start town hall / peasant\n"); return 1; }
-        // Paint a wheat meadow on open ground near the hall and click its centre.
+        if (!th || !peas || sowers.size() < 3) { fprintf(stderr, "no start town hall / 3 peasants\n"); return 1; }
+        // Paint a 4x4 wheat meadow on open ground near the hall — room for
+        // four 2x2 fields, so a three-peasant group sow must yield three.
         int wx = -1, wy = -1;
         for (int a = 0; a < 4000 && wx < 0; a++) {
             int x = th->x + (simRand()%17) - 8, y = th->y + (simRand()%17) - 8;
             if (dist(th->x, th->y, x, y) < 4) continue;   // off the hall's doorstep
-            if (canPlace(E_FARM, x, y, 0)) { wx = x; wy = y; }
+            if (canPlace(E_FARM, x, y, 0) && canPlace(E_FARM, x+2, y, 0)
+             && canPlace(E_FARM, x, y+2, 0) && canPlace(E_FARM, x+2, y+2, 0)) { wx = x; wy = y; }
         }
         if (wx < 0) { fprintf(stderr, "no sowable ground near start\n"); return 1; }
-        for (int dy = 0; dy < 2; dy++) for (int dx = 0; dx < 2; dx++)
+        for (int dy = 0; dy < 4; dy++) for (int dx = 0; dx < 4; dx++)
             g.map[wy+dy][wx+dx].terrain = T_WHEAT;
         Command c; c.type = CMD_SOW_FARM; c.player = 0;
-        c.x = wx; c.y = wy; c.units = { peas->id };
+        c.x = wx; c.y = wy; c.units = sowers;
         pushCommand(c);
         int maxCarry = 0, farmId = -1, inFieldTicks = 0, tendTiles = 0;
         unsigned seenTiles = 0;   // bitmask of footprint tiles the tender stood on
@@ -648,10 +657,13 @@ int main(int argc, char** argv) {
             }
         }
         for (unsigned m = seenTiles; m; m >>= 1) tendTiles += (int)(m & 1);
-        printf("farm=%s footprint=%dx%d maxCarry=%d grain=%d inFieldTicks=%d tendTiles=%d idleTicks=%d firstIdle=%d\n",
-               farmId >= 0 ? "yes" : "NO", STATS[E_FARM].sizeW, STATS[E_FARM].sizeH,
+        int farms = 0;
+        for (auto& e : g.entities)
+            if (e.alive && e.owner == 0 && e.type == E_FARM) farms++;
+        printf("farm=%s farms=%d footprint=%dx%d maxCarry=%d grain=%d inFieldTicks=%d tendTiles=%d idleTicks=%d firstIdle=%d\n",
+               farmId >= 0 ? "yes" : "NO", farms, STATS[E_FARM].sizeW, STATS[E_FARM].sizeH,
                maxCarry, g.players[0].food, inFieldTicks, tendTiles, idleTicks, firstIdle);
-        return (farmId >= 0 && maxCarry > 0 && inFieldTicks > 0 && tendTiles >= 2
+        return (farmId >= 0 && farms >= 3 && maxCarry > 0 && inFieldTicks > 0 && tendTiles >= 2
                 && idleTicks < 100) ? 0 : 1;
     }
 

@@ -177,6 +177,24 @@ static void cmdAtTileGroup(int x, int y) {
     if (tgt && tgt->alive && tgt->owner != g.localPlayer && visible) {
         pushCmd(CMD_ATTACK, selectedUnitIds(), 0, 0, tgt->id); return;
     }
+    // A wheat meadow: the whole gang sows it, one field per peasant tiling
+    // out from the click. Soldiers riding along just escort (move).
+    if (!tgt && g.map[y][x].terrain == T_WHEAT) {
+        std::vector<int> sowers, escort;
+        for (int id : selectedUnitIds()) {
+            Entity* u = findEntity(id);
+            if (!u) continue;
+            (u->type == E_PEASANT ? sowers : escort).push_back(id);
+        }
+        int fax, fay;
+        if (!sowers.empty()
+            && farmAnchorFor(x, y, g.localPlayer, sowers[0], fax, fay)) {
+            pushCmd(CMD_SOW_FARM, std::move(sowers), x, y);
+            if (!escort.empty()) pushCmd(CMD_MOVE, std::move(escort), x, y);
+            setStatus("Working the wheat fields...");
+            return;
+        }
+    }
     pushCmd(CMD_MOVE, selectedUnitIds(), x, y);
 }
 
