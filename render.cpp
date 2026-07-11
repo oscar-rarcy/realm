@@ -82,8 +82,10 @@ void initColors() {
     init_pair(CP_HEATH,         96,              tileBg(C::DARK_GREEN));   // heather purple on moss
     init_pair(CP_MM_HEATH,      139,             C::NEAR_BLACK);
     // Torchlight: a warm amber pool (core) fading to embers (fringe flicker).
-    init_pair(CP_TORCHLIT,      222,             tileBg(58));
-    init_pair(CP_TORCHLIT_DIM,  137,             tileBg(235));
+    // Candlelight spilling from doorways: warm cream on ember-brown at the
+    // threshold, a dim amber wash on the fringe.
+    init_pair(CP_TORCHLIT,      223,             tileBg(94));
+    init_pair(CP_TORCHLIT_DIM,  C::AMBER,        tileBg(235));
     init_pair(CP_FLOWERS,       C::LAVENDER,     tileBg(C::MED_GREEN));
     init_pair(CP_FLOWERS_BLUE,  C::MED_BLUE,     tileBg(C::MED_GREEN));
     init_pair(CP_FLOWERS_YELLOW,C::BRIGHT_GOLD,  tileBg(C::MED_GREEN));
@@ -573,15 +575,14 @@ void getTerrainVisual(Terrain t, int x, int y, char& ch, int& cp, int lit) {
         if (cp==CP_WIN_GROUND||cp==CP_SNOW_GROUND) cp = CP_NIGHT_SNOW;
     }
 
-    // Firelight: inside a torch pool after dusk the ground bathes amber.
-    // Core tiles glow steadily; the fringe keeps its daylight colours but
-    // gutters — every few ticks a tile falls to ember-dim, so the edge of
-    // the light LIVES the way real torchlight does. Water won't take it.
+    // Candlelight: after dusk the ground around a doorway bathes warm and
+    // STEADY — a bright pool at the threshold, a quiet ember wash beyond.
+    // (The old fringe "guttered" tiles at random, which read as flicker
+    // noise rather than living light.) Water won't take it.
     if (lit > 0 && bright < 0.45f
         && cp != CP_NIGHT_WATER && cp != CP_WATER && cp != CP_WATER_SHIMMER
         && cp != CP_SHALLOWS && cp != CP_LAVA && cp != CP_LAVA_HOT) {
-        if (lit >= 2) cp = CP_TORCHLIT;
-        else if (((unsigned)(x*7349 + y*4913 + (g.tick/4)*911) % 7) == 0) cp = CP_TORCHLIT_DIM;
+        cp = (lit >= 2) ? CP_TORCHLIT : CP_TORCHLIT_DIM;
     }
 }
 
@@ -695,9 +696,10 @@ static void drawMapOverlays(int tileW) {
         }
     }
 
-    // Hearth smoke by day, torch flicker by night — life around settled homes.
-    {
-        bool night = getBrightness() < 0.3f;
+    // Hearth smoke by day — life around settled homes. Night ambience is the
+    // steady candlelit doorways painted by the light mask; the old blinking
+    // torch sparks above rooftops are gone (they read as flickering icons).
+    if (getBrightness() >= 0.3f) {
         for (auto& e : g.entities) {
             if (!e.alive || !isBuilding(e.type) || e.underConstruction) continue;
             bool hearth = (e.type==E_HOUSE || e.type==E_TOWNHALL || e.type==E_MANOR ||
@@ -705,27 +707,16 @@ static void drawMapOverlays(int tileW) {
             if (!hearth || !inBounds(e.x,e.y) || !g.map[e.y][e.x].visible[g.localPlayer]) continue;
             int sx = e.x - g.viewX, sy = e.y - g.viewY;
             if (sx < 0 || sy < 1 || sx >= g.viewW || sy >= g.viewH) continue;  // need a row above
-            if (night) {
-                if (((g.tick/2 + e.id) % 7) < 4) {                 // flicker on/off
-                    int pmx = e.x, pmy = e.y - 1;
-                    if (inBounds(pmx,pmy) && !entityAt(pmx,pmy)) {
-                        attron(COLOR_PAIR(CP_SUN)|A_BOLD);
-                        mvaddch(sy-1+2, sx*tileW, ((g.tick+e.id)&1)?'\'':'.');
-                        attroff(COLOR_PAIR(CP_SUN)|A_BOLD);
-                    }
-                }
-            } else {
-                int ph = (g.tick/6 + e.id*3);
-                if ((ph % 4) < 3) {                                 // intermittent puffs
-                    int puffX = sx + (((ph/8) % 3) - 1);            // drift with the wind
-                    int puffY = sy - 1 - ((ph/4) % 2);             // rise one-two rows
-                    int pmx = g.viewX + puffX, pmy = g.viewY + puffY;
-                    if (puffX >= 0 && puffY >= 0 && puffX < g.viewW &&
-                        inBounds(pmx,pmy) && !entityAt(pmx,pmy)) {
-                        attron(COLOR_PAIR(CP_UI_DIM));
-                        mvaddch(puffY+2, puffX*tileW, ((ph/4)&1)?'%':'*');
-                        attroff(COLOR_PAIR(CP_UI_DIM));
-                    }
+            int ph = (g.tick/6 + e.id*3);
+            if ((ph % 4) < 3) {                                 // intermittent puffs
+                int puffX = sx + (((ph/8) % 3) - 1);            // drift with the wind
+                int puffY = sy - 1 - ((ph/4) % 2);             // rise one-two rows
+                int pmx = g.viewX + puffX, pmy = g.viewY + puffY;
+                if (puffX >= 0 && puffY >= 0 && puffX < g.viewW &&
+                    inBounds(pmx,pmy) && !entityAt(pmx,pmy)) {
+                    attron(COLOR_PAIR(CP_UI_DIM));
+                    mvaddch(puffY+2, puffX*tileW, ((ph/4)&1)?'%':'*');
+                    attroff(COLOR_PAIR(CP_UI_DIM));
                 }
             }
         }
@@ -803,14 +794,16 @@ static bool          wallPrev[MAP_H][MAP_W];
 // unit/tower range ring, and the build / wall-drag placement previews.
 // Fills the file-static masks the map loop reads below.
 static void rmPreparePass(int& ringX, int& ringY, int& ringR) {
-    // Torchlight: from dusk on, every standing building casts a ROUND pool of
-    // warm light — a bright core by the walls fading to an ember fringe. The
-    // old version was a binary square of daytime colours; round falloff plus
-    // the amber palette below is what makes it read as firelight. All owners
-    // glow (a world effect): villages become constellations after dark.
+    // Candlelight: from dusk on, every standing building spills a warm,
+    // STEADY pool from its open doorway — bright by the threshold, an ember
+    // wash further out. The doorway sits centre of the south face (where the
+    // architecture pass draws the '+' door), so big halls pool their light in
+    // front of the door rather than glowing evenly all round. Walls and gates
+    // stay dark — no doorway, no candle. All owners glow (a world effect):
+    // villages become constellations after dark.
     memset(litMask, 0, sizeof(litMask));
     memset(wallGrid, 0, sizeof(wallGrid));
-    bool lamps = (getBrightness() < 0.45f);   // lamplighters work from dusk
+    bool lamps = (getBrightness() < 0.45f);   // candles are lit from dusk
     for (auto& b : g.entities) {
         if (!b.alive || !isBuilding(b.type)) continue;
         int bx2 = b.x + STATS[b.type].sizeW - 1, by2 = b.y + STATS[b.type].sizeH - 1;
@@ -819,26 +812,28 @@ static void rmPreparePass(int& ringX, int& ringY, int& ringR) {
             for (int yy = b.y; yy <= by2; yy++) for (int xx = b.x; xx <= bx2; xx++)
                 if (inBounds(xx, yy)) wallGrid[yy][xx] = 1;
         if (!lamps || b.underConstruction) continue;
-        // Light class: beacons (keeps, towers, halls, taverns) throw far;
-        // cottages keep a hearth-pool; walls carry a rim of embers.
+        if (b.type == E_WALL || b.type == E_GATE) continue;
+        // Great halls have wide doors and many candles; cottages keep a
+        // close, homely pool.
         float coreR, fringeR;
         switch (b.type) {
-            case E_TOWNHALL: case E_CASTLE: case E_TOWER:
-            case E_CHURCH:   case E_TAVERN:               coreR = 2.4f; fringeR = 5.0f; break;
-            case E_WALL:     case E_GATE:                 coreR = 0.0f; fringeR = 1.6f; break;
-            default:                                      coreR = 1.5f; fringeR = 3.4f; break;
+            case E_TOWNHALL: case E_CASTLE:
+            case E_CHURCH:   case E_TAVERN:  coreR = 2.0f; fringeR = 4.0f; break;
+            default:                         coreR = 1.4f; fringeR = 2.8f; break;
         }
+        int doorX = (b.x + bx2) / 2, doorY = by2;   // the '+' on the south face
         int R = (int)fringeR + 1;
         for (int yy = b.y - R; yy <= by2 + R; yy++) for (int xx = b.x - R; xx <= bx2 + R; xx++) {
             if (!inBounds(xx, yy)) continue;
-            // Distance to the building's footprint rectangle (not its centre),
-            // so long walls and big keeps glow evenly along their length.
+            // Fringe falls off from the footprint rectangle (the whole house
+            // is warm); the bright core spills from the door tile itself.
             int cx = std::max(b.x, std::min(xx, bx2));
             int cy = std::max(b.y, std::min(yy, by2));
-            float d2 = (float)((xx-cx)*(xx-cx) + (yy-cy)*(yy-cy));
+            float dRect2 = (float)((xx-cx)*(xx-cx) + (yy-cy)*(yy-cy));
+            float dDoor2 = (float)((xx-doorX)*(xx-doorX) + (yy-doorY)*(yy-doorY));
             unsigned char lv = 0;
-            if      (coreR > 0 && d2 <= coreR*coreR)  lv = 2;
-            else if (d2 <= fringeR*fringeR)           lv = 1;
+            if      (dDoor2 <= coreR*coreR)     lv = 2;
+            else if (dRect2 <= fringeR*fringeR) lv = 1;
             if (lv > litMask[yy][xx]) litMask[yy][xx] = lv;
         }
     }

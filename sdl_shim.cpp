@@ -480,28 +480,35 @@ void selfTestStep() {
     Uint32 t = SDL_GetTicks() - t0;
     switch (phase) {
         case 0: if (t > 1200) {
-                    injectText("1"); injectKey(SDLK_RETURN);
+                    injectText("1"); injectKey(SDLK_RETURN);   // splash -> skirmish form
+                    phase++;
+                } break;
+        case 1: if (t > 2200) {
+                    // The setup form opens on its first row; one 'k' wraps
+                    // the cursor to Begin battle. (The old script's bare
+                    // Enter stopped starting matches when the form arrived.)
+                    injectText("k"); injectKey(SDLK_RETURN);
                     injectText("S");   // debug reveal: dumps show the whole map
                     phase++;
                 } break;
-        case 1: if (t > 3500) { injectMotion(400, 300); phase++; } break;
-        case 2: if (t > 3600) { injectButton(true, 400, 300); phase++; } break;
-        case 3: if (t > 3700 && t < 5200) {
-                    int step = (int)((t - 3700) / 100);
+        case 2: if (t > 4500) { injectMotion(400, 300); phase++; } break;
+        case 3: if (t > 4600) { injectButton(true, 400, 300); phase++; } break;
+        case 4: if (t > 4700 && t < 6200) {
+                    int step = (int)((t - 4700) / 100);
                     injectMotion(400 + step * 20, 300 + step * 12);
-                } else if (t >= 5200) phase++;
+                } else if (t >= 6200) phase++;
                 break;  // keep holding: drag box should be on screen now
-        case 4: if (t > 6800) { injectButton(false, 700, 480); phase++; } break;
-        case 5: // Hover the bottom window edge (over the hotkey bar): must
+        case 5: if (t > 7800) { injectButton(false, 700, 480); phase++; } break;
+        case 6: // Hover the bottom window edge (over the hotkey bar): must
                 // edge-scroll calmly (time-throttled) and must NOT move the
                 // cell cursor — that area is UI, not map. Jitter between two
                 // cells so motion events keep flowing like a real trackpad.
-                if (t > 7600 && t < 8000) {
+                if (t > 8600 && t < 9000) {
                     static bool flip = false; flip = !flip;
                     injectMotion(flip ? 720 : 740, 855);
-                } else if (t >= 8000) phase++;
+                } else if (t >= 9000) phase++;
                 break;
-        case 6: if (t > 8600) { fprintf(stderr, "[selftest] done\n"); exit(0); } break;
+        case 7: if (t > 9600) { fprintf(stderr, "[selftest] done\n"); exit(0); } break;
     }
 }
 
