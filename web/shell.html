@@ -34,6 +34,11 @@
 <body>
   <canvas id="canvas" width="1440" height="860" tabindex="-1"
           oncontextmenu="event.preventDefault()"></canvas>
+  <!-- Invisible keyboard sink — see the keyboard-capture note below. -->
+  <input id="kbd" type="text" autocomplete="off" autocapitalize="off" spellcheck="false"
+         aria-hidden="true"
+         style="position:fixed; top:0; left:0; width:1px; height:1px;
+                opacity:0; border:0; padding:0; z-index:-1;">
   <div id="status">loading…</div>
   <script>
     var statusEl = document.getElementById('status');
@@ -59,6 +64,26 @@
       if (['Tab', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12'].includes(e.key))
         e.preventDefault();
     }, { capture: true });
+    // Keyboard capture: keep an invisible text field focused while playing.
+    // Vim-style browser extensions (Vimium and friends) and Firefox's
+    // find-as-you-type run single-key shortcuts on keys the page "isn't
+    // typing with" — 't' opened a new tab instead of training a unit — but
+    // all of them pass keys through when the user is typing in a text
+    // field. SDL listens on window and key events on the field bubble
+    // there, so the game receives everything exactly as before; SDL's
+    // keypress handler preventDefaults, so no text piles up in the field.
+    // Skipped on touch devices, where a focused field pops the on-screen
+    // keyboard.
+    var kbd = document.getElementById('kbd');
+    if (!window.matchMedia || !window.matchMedia('(pointer: coarse)').matches) {
+      var refocus = function () {
+        if (document.activeElement !== kbd) kbd.focus({ preventScroll: true });
+      };
+      kbd.addEventListener('blur', function () { setTimeout(refocus, 0); });
+      kbd.addEventListener('input', function () { kbd.value = ''; });
+      window.addEventListener('mousedown', function () { setTimeout(refocus, 0); });
+      refocus();
+    }
   </script>
   {{{ SCRIPT }}}
 </body>
