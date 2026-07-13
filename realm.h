@@ -219,6 +219,10 @@ enum {
     CP_HEATH, CP_MM_HEATH,   // moorland heather (map + minimap/preview)
     CP_TORCHLIT,             // torch-glow core: warm amber pool around buildings
     CP_TORCHLIT_DIM,         // glow fringe flicker: embers at the edge of the light
+    // Twilight terrain tints, one pair per terrain family. Dusk is the blue
+    // hour (cool slate/teal); dawn is rose-grey warming toward gold.
+    CP_DUSK_GRASS, CP_DUSK_TREE, CP_DUSK_GROUND, CP_DUSK_SHIMMER, CP_DUSK_SNOW,
+    CP_DAWN_GRASS, CP_DAWN_TREE, CP_DAWN_GROUND, CP_DAWN_SHIMMER, CP_DAWN_SNOW,
     CP_COUNT
 };
 

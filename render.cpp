@@ -81,11 +81,12 @@ void initColors() {
     init_pair(CP_TALL_GRASS,    C::MED_GREEN,    tileBg(C::DARK_GREEN));
     init_pair(CP_HEATH,         96,              tileBg(C::DARK_GREEN));   // heather purple on moss
     init_pair(CP_MM_HEATH,      139,             C::NEAR_BLACK);
-    // Torchlight: a warm amber pool (core) fading to embers (fringe flicker).
-    // Candlelight spilling from doorways: warm cream on ember-brown at the
-    // threshold, a dim amber wash on the fringe.
-    init_pair(CP_TORCHLIT,      223,             tileBg(94));
-    init_pair(CP_TORCHLIT_DIM,  C::AMBER,        tileBg(235));
+    // Candlelight spilling from doorways: candle-gold at the threshold,
+    // an orange ember wash on the fringe. Firelight is gold/orange, never
+    // brown — the old amber-130 fringe (#af5f00) read as rust, and warm
+    // light only reads warm against the cool twilight/night ambient.
+    init_pair(CP_TORCHLIT,      222,             bg);   // candle gold (255,215,135)
+    init_pair(CP_TORCHLIT_DIM,  172,             bg);   // ember orange (215,135,0)
     init_pair(CP_FLOWERS,       C::LAVENDER,     tileBg(C::MED_GREEN));
     init_pair(CP_FLOWERS_BLUE,  C::MED_BLUE,     tileBg(C::MED_GREEN));
     init_pair(CP_FLOWERS_YELLOW,C::BRIGHT_GOLD,  tileBg(C::MED_GREEN));
@@ -144,17 +145,36 @@ void initColors() {
     init_pair(CP_WIN_ICE,        C::ICE_BLUE,     C::NAVY);
 
     // Moonlight, one shade off pitch: the unlit world sinks toward black so
-    // torch pools and team colours carry the night (grass already sits on the
-    // darkest green the palette has). Units keep their readable night pairs.
-    init_pair(CP_NIGHT_GRASS,    C::DARK_GREEN,   tileBg(C::NEAR_BLACK));
+    // candle pools and team colours carry the night. Hues follow the eye's
+    // night vision (Purkinje shift): warm colours die first, so what little
+    // survives is blue-green — moonlit grass is teal-dark, snow glows faint
+    // blue, and wheat fades to a pale ghost of its gold, never brown.
+    init_pair(CP_NIGHT_GRASS,    C::PINE_GREEN,   tileBg(C::NEAR_BLACK));
     init_pair(CP_NIGHT_TREE,     C::DARKER_GRAY,  bg);
     init_pair(CP_NIGHT_WATER,    C::DEEP_BLUE,    C::NEAR_BLACK);
     init_pair(CP_NIGHT_GROUND,   233,             tileBg(C::NEAR_BLACK));
-    init_pair(CP_NIGHT_GOLD,     100,             tileBg(C::NEAR_BLACK));   // corn stays gold, but moonlit
-    init_pair(CP_NIGHT_SNOW,     242,             bg);
+    init_pair(CP_NIGHT_GOLD,     101,             tileBg(C::NEAR_BLACK));   // moonlit wheat: desaturated khaki (135,135,95)
+    init_pair(CP_NIGHT_SNOW,     60,              bg);                      // moonlit snow is blue (95,95,135)
 
-    init_pair(CP_DAWN_SKY,       C::ORANGE,       bg);
-    init_pair(CP_DUSK_SKY,       C::DUSK_PURPLE,  bg);
+    // Twilight, one tint per terrain family. Dusk is the blue hour: the sun
+    // is gone and the land is lit only by the sky dome, so everything cools
+    // and desaturates — sage grass, teal trees, violet-slate earth, water
+    // catching lavender off the sky. Dawn answers in rose: the morning air
+    // is clearer than evening's, so first light is pink-grey warming toward
+    // gold — fresh green, rose-mauve earth, alpenglow on the snow.
+    init_pair(CP_DUSK_GRASS,     65,              bg);   // sage (95,135,95)
+    init_pair(CP_DUSK_TREE,      C::PINE_GREEN,   bg);   // teal silhouette
+    init_pair(CP_DUSK_GROUND,    60,              bg);   // violet slate (95,95,135)
+    init_pair(CP_DUSK_SHIMMER,   140,             C::DEEP_BLUE);   // lavender crests
+    init_pair(CP_DUSK_SNOW,      103,             bg);   // slate lavender (135,135,175)
+    init_pair(CP_DAWN_GRASS,     71,              bg);   // fresh green (95,175,95)
+    init_pair(CP_DAWN_TREE,      65,              bg);   // sage catching first light
+    init_pair(CP_DAWN_GROUND,    95,              bg);   // rose mauve (135,95,95)
+    init_pair(CP_DAWN_SHIMMER,   174,             C::DEEP_BLUE);   // rose crests
+    init_pair(CP_DAWN_SNOW,      181,             bg);   // alpenglow (215,175,175)
+
+    init_pair(CP_DAWN_SKY,       217,             bg);   // dawn rose, not orange
+    init_pair(CP_DUSK_SKY,       97,              bg);   // dusk violet (135,95,175)
 
     init_pair(CP_PLAYER,         C::PLAYER_CYAN,  tileBg(C::NEAR_BLACK));
     init_pair(CP_PLAYER_NIGHT,   C::PLAYER_DIM,   tileBg(C::NEAR_BLACK));
@@ -573,6 +593,32 @@ void getTerrainVisual(Terrain t, int x, int y, char& ch, int& cp, int lit) {
         if (cp==CP_GOLD||cp==CP_GOLD_SHIMMER||cp==CP_WHEAT||cp==CP_WHEAT_GOLD) cp = CP_NIGHT_GOLD;
         // Snow tiles darken but stay distinctly lighter than bare ground at night.
         if (cp==CP_WIN_GROUND||cp==CP_SNOW_GROUND) cp = CP_NIGHT_SNOW;
+    }
+    // Twilight: the same families cool into dusk's blue hour or warm out of
+    // dawn's rose-grey (see the pair definitions). Gold and wheat keep their
+    // day colours — that's the golden hour doing what it does, and the
+    // harvest stays readable at a glance. Lit tiles skip the tint; the
+    // candle pass below owns them.
+    else if (lit == 0 && (isDusk() || isDawn())) {
+        bool dawn = isDawn();
+        if (cp==CP_GRASS||cp==CP_GRASS_LIGHT||cp==CP_GRASS_DRY||cp==CP_TALL_GRASS||cp==CP_MEADOW
+            ||cp==CP_AUT_GRASS||cp==CP_AUT_GRASS_LATE
+            ||cp==CP_SPRING_FLOWER
+            ||cp==CP_FLOWERS||cp==CP_FLOWERS_BLUE||cp==CP_FLOWERS_YELLOW||cp==CP_FLOWERS_RED
+            ||cp==CP_BERRY||cp==CP_MARSH||cp==CP_REEDS)
+            cp = dawn ? CP_DAWN_GRASS : CP_DUSK_GRASS;
+        if (cp==CP_FOREST||cp==CP_FOREST_DARK||cp==CP_PINE||cp==CP_PALM||cp==CP_DEAD_TREE
+            ||cp==CP_AUT_TREE_EARLY||cp==CP_AUT_TREE_MID||cp==CP_AUT_TREE_LATE
+            ||cp==CP_AUT_TREE_GOLD||cp==CP_AUT_TREE_RED
+            ||cp==CP_WIN_TREE||cp==CP_WIN_PINE)
+            cp = dawn ? CP_DAWN_TREE : CP_DUSK_TREE;
+        // Water is the sky's mirror: only the wave crests take the tint.
+        if (cp==CP_WATER_SHIMMER) cp = dawn ? CP_DAWN_SHIMMER : CP_DUSK_SHIMMER;
+        if (cp==CP_SAND||cp==CP_DUNES||cp==CP_DIRT||cp==CP_ROAD||cp==CP_GRAVEL
+            ||cp==CP_CASTLE_FLOOR||cp==CP_RUINS
+            ||cp==CP_HILLS||cp==CP_STONE||cp==CP_HEATH)
+            cp = dawn ? CP_DAWN_GROUND : CP_DUSK_GROUND;
+        if (cp==CP_WIN_GROUND||cp==CP_SNOW_GROUND) cp = dawn ? CP_DAWN_SNOW : CP_DUSK_SNOW;
     }
 
     // Candlelight: after dusk the ground around a doorway bathes warm and
